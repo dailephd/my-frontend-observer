@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+observations/
+*.tgz
+.my-dev-kit/
+.my-dev-kit-orchestrator/
+.idea/
