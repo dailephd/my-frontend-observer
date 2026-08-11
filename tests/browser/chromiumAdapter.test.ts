@@ -7,6 +7,11 @@ import {
   type FixtureServer,
   OBSERVATION_FIXTURE_SELECTORS,
   OBSERVATION_FIXTURE_BUTTON_GEOMETRY,
+  OBSERVATION_FIXTURE_ROLE,
+  OBSERVATION_FIXTURE_IDS,
+  OBSERVATION_FIXTURE_DATA_ATTRIBUTE,
+  OBSERVATION_FIXTURE_SEMANTIC_ELEMENT,
+  OBSERVATION_FIXTURE_TEXT,
 } from '../fixtures/server.js';
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
@@ -507,5 +512,288 @@ describe('chromiumAdapter (Batch 3 page/target observation)', () => {
     expect(available(button.geometry) && Object.getPrototypeOf(button.geometry.value)).toBe(Object.prototype);
 
     expect(browserConnected).toBe(false);
+  });
+});
+
+describe('v0.2 Batch 2: real browser semantic locator resolution', () => {
+  let fixtures: FixtureServer;
+
+  beforeAll(async () => {
+    fixtures = await startFixtureServer();
+  });
+
+  afterAll(async () => {
+    await fixtures.close();
+  });
+
+  function requestWithTarget(name: string, locators: NormalizedObservationRequest['targets'][number]['locators']): NormalizedObservationRequest {
+    return {
+      targetUrl: `${fixtures.baseUrl}/observation`,
+      viewport: { width: 800, height: 600 },
+      targets: [{ name, locators }],
+      outputLocation: 'observations',
+      timeoutMs: 30000,
+      readiness: { condition: 'load', timeoutMs: 10000 },
+    };
+  }
+
+  async function resolve(name: string, locators: NormalizedObservationRequest['targets'][number]['locators']) {
+    const { result } = await captureViewportInternal(requestWithTarget(name, locators));
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok result');
+    return result;
+  }
+
+  describe('role locator', () => {
+    it('resolves a unique role+accessible-name match (navigation)', async () => {
+      const result = await resolve('nav', [{ kind: 'role', role: OBSERVATION_FIXTURE_ROLE.navRole, name: OBSERVATION_FIXTURE_ROLE.navName }]);
+      expect(available(result.targetEvidence.nav!.resolution) && result.targetEvidence.nav!.resolution.value).toMatchObject({
+        selectionStatus: 'matched',
+        selectedLocatorKind: 'role',
+        selectedLocatorIndex: 0,
+        usedFallback: false,
+        confidence: 'exact',
+      });
+    });
+
+    it('resolves a unique role+accessible-name match (button)', async () => {
+      const result = await resolve('btn', [{ kind: 'role', role: OBSERVATION_FIXTURE_ROLE.buttonRole, name: OBSERVATION_FIXTURE_ROLE.buttonName }]);
+      expect(available(result.targetEvidence.btn!.resolution) && result.targetEvidence.btn!.resolution.value.selectionStatus).toBe('matched');
+      expect(available(result.targetEvidence.btn!.tag) && result.targetEvidence.btn!.tag.value).toBe('button');
+    });
+
+    it('reports not-found for a role with no matching element', async () => {
+      const result = await resolve('missing-role', [{ kind: 'role', role: OBSERVATION_FIXTURE_ROLE.missingRole }]);
+      expect(available(result.targetEvidence['missing-role']!.resolution) && result.targetEvidence['missing-role']!.resolution.value.selectionStatus).toBe(
+        'not-found',
+      );
+    });
+
+    it('reports ambiguous when a role+name matches multiple elements, without using .first()', async () => {
+      const result = await resolve('dup-role', [{ kind: 'role', role: OBSERVATION_FIXTURE_ROLE.duplicateRole, name: OBSERVATION_FIXTURE_ROLE.duplicateName }]);
+      expect(available(result.targetEvidence['dup-role']!.resolution) && result.targetEvidence['dup-role']!.resolution.value).toMatchObject({
+        selectionStatus: 'ambiguous',
+        confidence: 'none',
+      });
+    });
+  });
+
+  describe('id locator', () => {
+    it('resolves a unique exact id', async () => {
+      const result = await resolve('by-id', [{ kind: 'id', value: OBSERVATION_FIXTURE_IDS.header }]);
+      expect(available(result.targetEvidence['by-id']!.resolution) && result.targetEvidence['by-id']!.resolution.value.selectionStatus).toBe('matched');
+      expect(available(result.targetEvidence['by-id']!.tag) && result.targetEvidence['by-id']!.tag.value).toBe('header');
+    });
+
+    it('reports not-found for a missing id', async () => {
+      const result = await resolve('ghost-id', [{ kind: 'id', value: OBSERVATION_FIXTURE_IDS.missing }]);
+      expect(available(result.targetEvidence['ghost-id']!.resolution) && result.targetEvidence['ghost-id']!.resolution.value.selectionStatus).toBe(
+        'not-found',
+      );
+    });
+
+    it('reports ambiguous when multiple elements share the same id (invalid but tolerated HTML)', async () => {
+      const result = await resolve('dup-id', [{ kind: 'id', value: OBSERVATION_FIXTURE_IDS.duplicate }]);
+      expect(available(result.targetEvidence['dup-id']!.resolution) && result.targetEvidence['dup-id']!.resolution.value.selectionStatus).toBe('ambiguous');
+    });
+  });
+
+  describe('data-attribute locator', () => {
+    it('resolves a unique exact data-* attribute/value match', async () => {
+      const result = await resolve('region', [
+        { kind: 'data-attribute', attribute: OBSERVATION_FIXTURE_DATA_ATTRIBUTE.attribute, value: OBSERVATION_FIXTURE_DATA_ATTRIBUTE.uniqueValue },
+      ]);
+      expect(available(result.targetEvidence.region!.resolution) && result.targetEvidence.region!.resolution.value.selectionStatus).toBe('matched');
+    });
+
+    it('reports not-found for a missing data-* value', async () => {
+      const result = await resolve('ghost-region', [
+        { kind: 'data-attribute', attribute: OBSERVATION_FIXTURE_DATA_ATTRIBUTE.attribute, value: OBSERVATION_FIXTURE_DATA_ATTRIBUTE.missingValue },
+      ]);
+      expect(
+        available(result.targetEvidence['ghost-region']!.resolution) && result.targetEvidence['ghost-region']!.resolution.value.selectionStatus,
+      ).toBe('not-found');
+    });
+
+    it('reports ambiguous when multiple elements share the same data-* value', async () => {
+      const result = await resolve('dup-region', [
+        { kind: 'data-attribute', attribute: OBSERVATION_FIXTURE_DATA_ATTRIBUTE.attribute, value: OBSERVATION_FIXTURE_DATA_ATTRIBUTE.duplicateValue },
+      ]);
+      expect(
+        available(result.targetEvidence['dup-region']!.resolution) && result.targetEvidence['dup-region']!.resolution.value.selectionStatus,
+      ).toBe('ambiguous');
+    });
+  });
+
+  describe('semantic-element locator', () => {
+    it('resolves a unique semantic element', async () => {
+      const result = await resolve('side', [{ kind: 'semantic-element', tag: OBSERVATION_FIXTURE_SEMANTIC_ELEMENT.uniqueTag }]);
+      expect(available(result.targetEvidence.side!.resolution) && result.targetEvidence.side!.resolution.value.selectionStatus).toBe('matched');
+      expect(available(result.targetEvidence.side!.tag) && result.targetEvidence.side!.tag.value).toBe(OBSERVATION_FIXTURE_SEMANTIC_ELEMENT.uniqueTag);
+    });
+
+    it('reports not-found for a semantic element absent from the page', async () => {
+      const result = await resolve('missing-dialog', [{ kind: 'semantic-element', tag: OBSERVATION_FIXTURE_SEMANTIC_ELEMENT.missingTag }]);
+      expect(
+        available(result.targetEvidence['missing-dialog']!.resolution) && result.targetEvidence['missing-dialog']!.resolution.value.selectionStatus,
+      ).toBe('not-found');
+    });
+
+    it('reports ambiguous when multiple elements share the same semantic tag', async () => {
+      const result = await resolve('dup-article', [{ kind: 'semantic-element', tag: OBSERVATION_FIXTURE_SEMANTIC_ELEMENT.duplicateTag }]);
+      expect(
+        available(result.targetEvidence['dup-article']!.resolution) && result.targetEvidence['dup-article']!.resolution.value.selectionStatus,
+      ).toBe('ambiguous');
+    });
+  });
+
+  describe('css locator (regression through the unified resolver)', () => {
+    it('unique CSS match still resolves', async () => {
+      const result = await resolve('css-header', [{ kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.header }]);
+      expect(available(result.targetEvidence['css-header']!.resolution) && result.targetEvidence['css-header']!.resolution.value.selectionStatus).toBe(
+        'matched',
+      );
+    });
+
+    it('missing CSS selector still reports not-found', async () => {
+      const result = await resolve('css-ghost', [{ kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.missing }]);
+      expect(available(result.targetEvidence['css-ghost']!.resolution) && result.targetEvidence['css-ghost']!.resolution.value.selectionStatus).toBe(
+        'not-found',
+      );
+    });
+
+    it('ambiguous CSS selector still reports ambiguous', async () => {
+      const result = await resolve('css-dup', [{ kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.duplicate }]);
+      expect(available(result.targetEvidence['css-dup']!.resolution) && result.targetEvidence['css-dup']!.resolution.value.selectionStatus).toBe(
+        'ambiguous',
+      );
+    });
+  });
+
+  describe('exact text locator', () => {
+    it('resolves a unique exact text match', async () => {
+      const result = await resolve('exact-text', [{ kind: 'text', text: OBSERVATION_FIXTURE_TEXT.unique }]);
+      expect(available(result.targetEvidence['exact-text']!.resolution) && result.targetEvidence['exact-text']!.resolution.value.selectionStatus).toBe(
+        'matched',
+      );
+    });
+
+    it('reports not-found for text that does not appear anywhere (no substring/fuzzy match)', async () => {
+      const result = await resolve('ghost-text', [{ kind: 'text', text: OBSERVATION_FIXTURE_TEXT.missing }]);
+      expect(available(result.targetEvidence['ghost-text']!.resolution) && result.targetEvidence['ghost-text']!.resolution.value.selectionStatus).toBe(
+        'not-found',
+      );
+    });
+
+    it('reports ambiguous when exact text appears on multiple elements', async () => {
+      const result = await resolve('dup-text', [{ kind: 'text', text: OBSERVATION_FIXTURE_TEXT.duplicate }]);
+      expect(available(result.targetEvidence['dup-text']!.resolution) && result.targetEvidence['dup-text']!.resolution.value.selectionStatus).toBe(
+        'ambiguous',
+      );
+    });
+
+    it('does not accidentally substring-match a longer exact-text target against a shorter configured text', async () => {
+      // "Duplicate Text" (2 elements) must not match a text locator configured for
+      // "Distinctive Exact Text" (1 element) or vice versa - exact means exact.
+      const result = await resolve('no-substring', [{ kind: 'text', text: OBSERVATION_FIXTURE_TEXT.unique }]);
+      expect(
+        available(result.targetEvidence['no-substring']!.resolution) && result.targetEvidence['no-substring']!.resolution.value.selectionStatus,
+      ).toBe('matched');
+      expect(available(result.targetEvidence['no-substring']!.resolution) && result.targetEvidence['no-substring']!.resolution.value.attempts).toEqual([
+        { locatorIndex: 0, locatorKind: 'text', status: 'matched', matchCount: 1 },
+      ]);
+    });
+  });
+
+  describe('fallback across mixed locator kinds', () => {
+    it('a missing role locator falls back to a unique css locator', async () => {
+      const result = await resolve('mixed-fallback', [
+        { kind: 'role', role: OBSERVATION_FIXTURE_ROLE.missingRole },
+        { kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.header },
+      ]);
+      expect(available(result.targetEvidence['mixed-fallback']!.resolution) && result.targetEvidence['mixed-fallback']!.resolution.value).toMatchObject({
+        selectionStatus: 'matched',
+        selectedLocatorKind: 'css',
+        selectedLocatorIndex: 1,
+        usedFallback: true,
+        confidence: 'exact',
+      });
+      expect(
+        available(result.targetEvidence['mixed-fallback']!.resolution) && result.targetEvidence['mixed-fallback']!.resolution.value.attempts.map((a) => a.status),
+      ).toEqual(['not-found', 'matched']);
+    });
+
+    it('multi-step fallback: two not-found locators then a unique match', async () => {
+      const result = await resolve('multi-fallback', [
+        { kind: 'id', value: OBSERVATION_FIXTURE_IDS.missing },
+        { kind: 'role', role: OBSERVATION_FIXTURE_ROLE.missingRole },
+        { kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.header },
+      ]);
+      expect(available(result.targetEvidence['multi-fallback']!.resolution) && result.targetEvidence['multi-fallback']!.resolution.value).toMatchObject({
+        selectionStatus: 'matched',
+        selectedLocatorIndex: 2,
+        usedFallback: true,
+      });
+      expect(
+        available(result.targetEvidence['multi-fallback']!.resolution) && result.targetEvidence['multi-fallback']!.resolution.value.attempts.map((a) => a.status),
+      ).toEqual(['not-found', 'not-found', 'matched']);
+    });
+  });
+
+  describe('ambiguity never falls back, across locator kinds', () => {
+    it('an ambiguous role locator stops immediately even though a later id locator would uniquely match', async () => {
+      const result = await resolve('ambiguous-then-unique', [
+        { kind: 'role', role: OBSERVATION_FIXTURE_ROLE.duplicateRole, name: OBSERVATION_FIXTURE_ROLE.duplicateName },
+        { kind: 'id', value: OBSERVATION_FIXTURE_IDS.header },
+      ]);
+      const resolution = available(result.targetEvidence['ambiguous-then-unique']!.resolution) && result.targetEvidence['ambiguous-then-unique']!.resolution.value;
+      expect(resolution).toMatchObject({ selectionStatus: 'ambiguous', usedFallback: false, confidence: 'none' });
+      expect(resolution && resolution.attempts).toHaveLength(1);
+      expect(resolution && resolution.attempts[0]).toMatchObject({ locatorIndex: 0, locatorKind: 'role', status: 'ambiguous' });
+    });
+  });
+
+  describe('unavailable locator evaluation never falls back', () => {
+    it('a syntactically invalid CSS locator is unavailable, not not-found, and does not fall back to a later valid locator', async () => {
+      const result = await resolve('bad-selector', [
+        { kind: 'css', selector: '[' },
+        { kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.header },
+      ]);
+      const resolution = available(result.targetEvidence['bad-selector']!.resolution) && result.targetEvidence['bad-selector']!.resolution.value;
+      expect(resolution).toMatchObject({ selectionStatus: 'unavailable', usedFallback: false, confidence: 'none' });
+      expect(resolution && resolution.attempts).toHaveLength(1);
+      expect(resolution && resolution.attempts[0]).toMatchObject({ locatorIndex: 0, locatorKind: 'css', status: 'unavailable' });
+      expect(result.diagnostics).toContainEqual(expect.objectContaining({ code: 'browser-evidence-unavailable', targetName: 'bad-selector' }));
+    });
+  });
+
+  describe('hidden target via a non-CSS locator', () => {
+    it('an id locator resolves a hidden element as matched, visible=false, with a target-hidden warning', async () => {
+      const result = await resolve('hidden-by-id', [{ kind: 'id', value: OBSERVATION_FIXTURE_IDS.hidden }]);
+      const hidden = result.targetEvidence['hidden-by-id']!;
+      expect(available(hidden.resolution) && hidden.resolution.value.selectionStatus).toBe('matched');
+      expect(available(hidden.visibility) && hidden.visibility.value.visible).toBe(false);
+      expect(result.diagnostics).toContainEqual(expect.objectContaining({ code: 'target-hidden', severity: 'warning', targetName: 'hidden-by-id' }));
+    });
+  });
+
+  describe('cross-locator measurement equivalence', () => {
+    it('the same button resolved by role, id, text, and css produces equivalent measurement evidence', async () => {
+      const [byRole, byId, byText, byCss] = await Promise.all([
+        resolve('via-role', [{ kind: 'role', role: OBSERVATION_FIXTURE_ROLE.buttonRole, name: OBSERVATION_FIXTURE_ROLE.buttonName }]),
+        resolve('via-id', [{ kind: 'id', value: OBSERVATION_FIXTURE_IDS.button }]),
+        resolve('via-text', [{ kind: 'text', text: OBSERVATION_FIXTURE_ROLE.buttonName }]),
+        resolve('via-css', [{ kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.button }]),
+      ]);
+
+      const records = [byRole.targetEvidence['via-role']!, byId.targetEvidence['via-id']!, byText.targetEvidence['via-text']!, byCss.targetEvidence['via-css']!];
+
+      for (const record of records) {
+        expect(available(record.tag) && record.tag.value).toBe('button');
+        expect(available(record.geometry) && record.geometry.value).toEqual(OBSERVATION_FIXTURE_BUTTON_GEOMETRY);
+        expect(available(record.visibility) && record.visibility.value.visible).toBe(true);
+        expect(available(record.semantics) && record.semantics.value).toEqual({ role: 'button', name: 'Submit' });
+      }
+    });
   });
 });

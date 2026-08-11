@@ -25,6 +25,49 @@ export const OBSERVATION_FIXTURE_SELECTORS = {
   missing: '#does-not-exist',
 } as const;
 
+/** v0.2 Batch 2: role/accessible-name locator fixture cases. */
+export const OBSERVATION_FIXTURE_ROLE = {
+  navRole: 'navigation',
+  navName: 'Primary',
+  buttonRole: 'button',
+  buttonName: 'Submit',
+  missingRole: 'alert',
+  duplicateRole: 'button',
+  duplicateName: 'Duplicate Button',
+} as const;
+
+/** v0.2 Batch 2: exact-`id` locator fixture cases. */
+export const OBSERVATION_FIXTURE_IDS = {
+  header: 'header',
+  button: 'cta-button',
+  hidden: 'hidden-target',
+  workspaceRegion: 'workspace-region',
+  missing: 'does-not-exist-id',
+  duplicate: 'duplicate-id',
+} as const;
+
+/** v0.2 Batch 2: exact `data-*` attribute/value locator fixture cases. */
+export const OBSERVATION_FIXTURE_DATA_ATTRIBUTE = {
+  attribute: 'data-region',
+  uniqueValue: 'workspace',
+  missingValue: 'no-such-region',
+  duplicateValue: 'duplicate-region',
+} as const;
+
+/** v0.2 Batch 2: semantic-element locator fixture cases (tags from the Batch 1 frozen set). */
+export const OBSERVATION_FIXTURE_SEMANTIC_ELEMENT = {
+  uniqueTag: 'aside',
+  missingTag: 'dialog',
+  duplicateTag: 'article',
+} as const;
+
+/** v0.2 Batch 2: exact-text locator fixture cases. */
+export const OBSERVATION_FIXTURE_TEXT = {
+  unique: 'Distinctive Exact Text',
+  missing: 'Text That Does Not Appear Anywhere',
+  duplicate: 'Duplicate Text',
+} as const;
+
 const OBSERVATION_FIXTURE_HTML = `<!doctype html>
 <html>
 <head>
@@ -51,6 +94,19 @@ const OBSERVATION_FIXTURE_HTML = `<!doctype html>
   <div class="duplicate-item">Item A</div>
   <div class="duplicate-item">Item B</div>
   <div id="hidden-target">Hidden content</div>
+  <div id="workspace-region" data-region="workspace">Workspace</div>
+  <div data-region="duplicate-region">Duplicate Region A</div>
+  <div data-region="duplicate-region">Duplicate Region B</div>
+  <aside id="sidebar">Sidebar</aside>
+  <article>Article A</article>
+  <article>Article B</article>
+  <p id="exact-text-target">Distinctive Exact Text</p>
+  <p>Duplicate Text</p>
+  <p>Duplicate Text</p>
+  <button type="button">Duplicate Button</button>
+  <button type="button">Duplicate Button</button>
+  <span id="duplicate-id">Duplicate ID A</span>
+  <span id="duplicate-id">Duplicate ID B</span>
 </body>
 </html>`;
 

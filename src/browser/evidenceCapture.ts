@@ -1,4 +1,4 @@
-import type { Page } from 'playwright';
+import type { Page, Locator } from 'playwright';
 import type { EvidenceField } from '../domain/evidence.js';
 import type { Diagnostic, DiagnosticCode } from '../domain/diagnostics.js';
 import { DIAGNOSTIC_SEVERITY } from '../domain/diagnostics.js';
@@ -143,19 +143,24 @@ function unresolvedTargetRecord(
  * evidence and screenshot. Role/name come from Playwright's real
  * accessibility tree (`page.accessibility.snapshot`), not a hand-rolled
  * approximation; when the browser cannot supply them reliably for this
- * element, they are reported `unavailable` rather than guessed.
+ * element, they are reported `unavailable` rather than guessed. Takes a
+ * resolved Playwright `Locator` rather than a raw CSS selector so every
+ * locator kind (role/id/data-attribute/semantic-element/css/text) converges
+ * on this one measurement path - there is no per-kind measurement function.
  */
 async function captureResolvedTargetRecord(
-  page: Page,
-  selector: string,
+  target: Locator,
   attempts: TargetLocatorAttempt[],
   selectedLocatorIndex: number,
 ): Promise<{ record: TargetEvidenceRecord; visible: boolean | undefined }> {
-  const handle = await page.$(selector);
-  if (!handle) return { record: unresolvedTargetRecord('not-found', attempts, 'target selector matched no element'), visible: undefined };
-
+  // Already known to match exactly one element (the caller checked cardinality),
+  // so elementHandles() resolves immediately without waiting for actionability.
+  const handles = await target.elementHandles();
+  const handle = handles[0];
   try {
-    const raw: RawTargetMeasurement = await handle.evaluate((el) => {
+    if (!handle) return { record: unresolvedTargetRecord('not-found', attempts, 'target locator matched no element'), visible: undefined };
+
+    const raw: RawTargetMeasurement = await handle.evaluate((el: Element) => {
       const rect = el.getBoundingClientRect();
       const computed = getComputedStyle(el);
       return {
@@ -178,7 +183,7 @@ async function captureResolvedTargetRecord(
 
     let semantics: EvidenceField<{ role?: string; name?: string }>;
     try {
-      const snapshot = await page.locator(selector).ariaSnapshot();
+      const snapshot = await target.ariaSnapshot();
       const parsed = parseAriaSnapshotFirstLine(snapshot);
       semantics = parsed ? computedField(parsed) : unavailableField('no distinct accessible role/name is exposed for this target');
     } catch (err) {
@@ -209,7 +214,7 @@ async function captureResolvedTargetRecord(
       visible,
     };
   } finally {
-    await handle.dispose();
+    await Promise.all(handles.map((h) => h.dispose()));
   }
 }
 
@@ -224,23 +229,65 @@ interface LocatorAttemptOutcome {
 }
 
 /**
- * Evaluates one locator against the live page. Only `css` locators are
- * actually resolved in Batch 1 - every other kind is honestly reported as
- * `unsupported` (no DOM query performed, never faked as a match, never
- * silently downgraded to css) until Batch 2 implements real semantic
- * resolution for it.
+ * A CSS quoted-string literal for an attribute selector value (`[attr="..."]`).
+ * Only backslash and double-quote need escaping inside a CSS quoted string;
+ * this keeps the configured id/data-attribute value literal - it is never
+ * reinterpreted as selector syntax (e.g. a value containing `#`, `.`, `[`,
+ * or `"` still matches exactly, it cannot escape the attribute-value
+ * position it was placed in).
  */
-async function evaluateLocatorAttempt(page: Page, locator: TargetLocator): Promise<LocatorAttemptOutcome> {
-  if (locator.kind !== 'css') {
-    return { status: 'unsupported' };
+function cssAttributeValueLiteral(value: string): string {
+  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+/**
+ * Maps one frozen v0.2 TargetLocator to the Playwright `Locator` that
+ * resolves it - the single point where locator kind becomes a real browser
+ * query. `role`/`text` use Playwright's own semantic locators (real
+ * accessibility-tree/text resolution, not a hand-rolled approximation);
+ * `id`/`data-attribute` use an exact CSS attribute-equals selector (never
+ * `#id`/bare-value syntax, so the configured value can never be
+ * reinterpreted as selector syntax); `semantic-element` uses a plain tag
+ * selector from the Batch 1 frozen tag set; `css` is unchanged v0.1
+ * behavior. Every kind converges on the same Playwright `Locator` type, so
+ * cardinality/measurement downstream never branches on locator kind again.
+ */
+function buildPlaywrightLocator(page: Page, locator: TargetLocator): Locator {
+  switch (locator.kind) {
+    case 'css':
+      return page.locator(locator.selector);
+    case 'id':
+      return page.locator(`[id=${cssAttributeValueLiteral(locator.value)}]`);
+    case 'data-attribute':
+      return page.locator(`[${locator.attribute}=${cssAttributeValueLiteral(locator.value)}]`);
+    case 'semantic-element':
+      return page.locator(locator.tag);
+    case 'role':
+      return page.getByRole(
+        locator.role as Parameters<Page['getByRole']>[0],
+        locator.name === undefined ? undefined : { name: locator.name, exact: true },
+      );
+    case 'text':
+      return page.getByText(locator.text, { exact: true });
   }
+}
+
+/**
+ * Evaluates one locator against the live page: builds its real Playwright
+ * `Locator` and measures cardinality via `.count()` (no waiting, no
+ * `.first()`/`.nth(0)` shortcut that would silently resolve an ambiguous
+ * match). A locator that cannot be constructed or counted reliably is
+ * `unavailable`, never silently treated as zero matches.
+ */
+async function evaluateLocatorAttempt(page: Page, locator: TargetLocator): Promise<{ playwrightLocator: Locator | undefined; outcome: LocatorAttemptOutcome }> {
   try {
-    const matchCount = await page.evaluate((selector) => document.querySelectorAll(selector).length, locator.selector);
-    if (matchCount === 0) return { status: 'not-found', matchCount: 0 };
-    if (matchCount > 1) return { status: 'ambiguous', matchCount };
-    return { status: 'matched', matchCount: 1 };
+    const playwrightLocator = buildPlaywrightLocator(page, locator);
+    const matchCount = await playwrightLocator.count();
+    if (matchCount === 0) return { playwrightLocator, outcome: { status: 'not-found', matchCount: 0 } };
+    if (matchCount > 1) return { playwrightLocator, outcome: { status: 'ambiguous', matchCount } };
+    return { playwrightLocator, outcome: { status: 'matched', matchCount: 1 } };
   } catch {
-    return { status: 'unavailable' };
+    return { playwrightLocator: undefined, outcome: { status: 'unavailable' } };
   }
 }
 
@@ -260,11 +307,11 @@ export async function captureTargetEvidence(page: Page, targets: readonly NamedT
     const attempts: TargetLocatorAttempt[] = [];
     let stopStatus: 'matched' | 'ambiguous' | 'unavailable' | undefined;
     let matchedIndex: number | undefined;
-    let matchedLocator: Extract<TargetLocator, { kind: 'css' }> | undefined;
+    let matchedPlaywrightLocator: Locator | undefined;
 
     for (let index = 0; index < target.locators.length; index += 1) {
       const locator = target.locators[index] as TargetLocator;
-      const outcome = await evaluateLocatorAttempt(page, locator);
+      const { playwrightLocator, outcome } = await evaluateLocatorAttempt(page, locator);
       attempts.push({
         locatorIndex: index,
         locatorKind: locator.kind,
@@ -272,10 +319,10 @@ export async function captureTargetEvidence(page: Page, targets: readonly NamedT
         ...(outcome.matchCount !== undefined ? { matchCount: outcome.matchCount } : {}),
       });
 
-      if (outcome.status === 'matched' && locator.kind === 'css') {
+      if (outcome.status === 'matched' && playwrightLocator) {
         stopStatus = 'matched';
         matchedIndex = index;
-        matchedLocator = locator;
+        matchedPlaywrightLocator = playwrightLocator;
         break;
       }
       if (outcome.status === 'ambiguous') {
@@ -286,12 +333,12 @@ export async function captureTargetEvidence(page: Page, targets: readonly NamedT
         stopStatus = 'unavailable';
         break;
       }
-      // 'not-found' or 'unsupported': fall through to the next configured locator.
+      // 'not-found': fall through to the next configured locator.
     }
 
-    if (stopStatus === 'matched' && matchedLocator && matchedIndex !== undefined) {
+    if (stopStatus === 'matched' && matchedPlaywrightLocator && matchedIndex !== undefined) {
       try {
-        const { record, visible } = await captureResolvedTargetRecord(page, matchedLocator.selector, attempts, matchedIndex);
+        const { record, visible } = await captureResolvedTargetRecord(matchedPlaywrightLocator, attempts, matchedIndex);
         targetEvidence[target.name] = record;
         if (visible === false) {
           diagnostics.push(diagnostic('target-hidden', `target "${target.name}" resolved but is not visible`, target.name));
@@ -320,7 +367,7 @@ export async function captureTargetEvidence(page: Page, targets: readonly NamedT
       continue;
     }
 
-    // Every configured locator was tried and none matched (all not-found/unsupported).
+    // Every configured locator was tried and none matched.
     targetEvidence[target.name] = unresolvedTargetRecord('not-found', attempts, 'no configured locator matched an element');
     diagnostics.push(diagnostic('target-missing', `no locator matched an element for target "${target.name}"`, target.name));
   }

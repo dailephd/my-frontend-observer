@@ -35,8 +35,8 @@ compatibility promise has been made.
 
 ## Active v0.2 target-contract evolution
 
-v0.2 Batch 1 (implementation branch only, not yet published) introduces a
-canonical target-configuration model: each configured target has a stable
+v0.2 (implementation branch only, not yet published) introduces a canonical
+target-configuration model: each configured target has a stable
 observer-level `name` plus an ordered array of bounded `locators`
 (`role`, `id`, `data-attribute`, `semantic-element`, `css`, `text`). This
 identity is distinct from both the browser locator definition that resolves
@@ -45,11 +45,15 @@ accepted and normalizes to a one-item `css` locator, so every published
 `0.1.0` CLI invocation continues to work unchanged. Locator precedence is the
 configured array order; resolution stops on the first unique match, on any
 ambiguous match (never falling through to a later locator), or on an
-unevaluable locator - never silently. Only `css` locators are actually
-resolved against the browser in Batch 1; other locator kinds are reserved for
-a later batch and are reported honestly as unsupported rather than faked.
-This section will be superseded by the full v0.2 documentation reconciliation
-once all v0.2 batches are complete.
+unevaluable locator - never silently. All six frozen locator kinds are now
+resolved against a real Chromium page (`role` via Playwright's accessibility-
+role/name locator with exact name matching, `id`/`data-attribute` via exact
+CSS attribute-equals matching that never reinterprets the configured value as
+selector syntax, `semantic-element` via the frozen tag set, `css` via the
+existing v0.1 behavior, `text` via exact-text matching only); every kind
+converges on the same measurement path, so locator strategy never changes the
+resulting target evidence shape. This section will be superseded by the full
+v0.2 documentation reconciliation once all v0.2 batches are complete.
 
 ## Approved v0.1 design inputs
 
