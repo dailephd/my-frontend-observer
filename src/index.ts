@@ -16,6 +16,12 @@ export type {
   TargetLayoutMetrics,
   TargetVisibility,
   TargetSemantics,
+  TargetLocatorKind,
+  TargetSelectionStatus,
+  TargetSelectionConfidence,
+  TargetLocatorAttemptStatus,
+  TargetLocatorAttempt,
+  TargetResolution,
   SchemaValidationResult,
 } from './domain/schema.js';
 export { ARTIFACT_KIND, SCHEMA_VERSION, PRODUCER_NAME, getProducerInfo, isValidObservationArtifact } from './domain/schema.js';
@@ -24,6 +30,8 @@ export { buildRequestIdentity, buildObservationIdentity } from './domain/identit
 
 export type {
   NamedTarget,
+  RawNamedTarget,
+  TargetLocator,
   Viewport,
   ReadinessCondition,
   ReadinessConfig,

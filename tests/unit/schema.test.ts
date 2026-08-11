@@ -36,9 +36,9 @@ describe('isValidObservationArtifact', () => {
     expect(isValidObservationArtifact({ ...minimalValidArtifact(), schemaVersion: '1.0.1' }).valid).toBe(false);
   });
 
-  it('TST-018: schemaVersion is fixed at "1.0.0" independent of the package version', () => {
+  it('TST-018: schemaVersion is fixed at "1.1.0" independent of the package version', () => {
     const producerInfo = getProducerInfo();
-    expect(SCHEMA_VERSION).toBe('1.0.0');
+    expect(SCHEMA_VERSION).toBe('1.1.0');
     expect(typeof producerInfo.version).toBe('string');
     expect(producerInfo.version.length).toBeGreaterThan(0);
   });
@@ -78,5 +78,128 @@ describe('isValidObservationArtifact', () => {
   it('TST-023: rejects a non-boolean limits.truncated', () => {
     const artifact = { ...minimalValidArtifact(), limits: { truncated: 'yes', omittedFields: [], omittedTargets: [] } };
     expect(isValidObservationArtifact(artifact).valid).toBe(false);
+  });
+
+  describe('v0.2 target resolution evidence', () => {
+    function withResolution(resolutionValue: unknown) {
+      return {
+        ...minimalValidArtifact(),
+        targetEvidence: {
+          header: {
+            resolution: { state: 'available', source: 'derived', value: resolutionValue, derivedFrom: ['locator-attempts'] },
+            tag: { state: 'not-applicable' },
+            geometry: { state: 'not-applicable' },
+            style: { state: 'not-applicable' },
+            layout: { state: 'not-applicable' },
+            visibility: { state: 'not-applicable' },
+            semantics: { state: 'not-applicable' },
+          },
+        },
+      };
+    }
+
+    it('produces schemaVersion 1.1.0 for a freshly built artifact', () => {
+      expect(minimalValidArtifact().schemaVersion).toBe('1.1.0');
+    });
+
+    it('accepts a valid matched resolution with a selected locator', () => {
+      const artifact = withResolution({
+        selectionMethod: 'ordered-locators',
+        selectionStatus: 'matched',
+        selectedLocatorKind: 'css',
+        selectedLocatorIndex: 1,
+        usedFallback: true,
+        confidence: 'exact',
+        attempts: [
+          { locatorIndex: 0, locatorKind: 'role', status: 'not-found' },
+          { locatorIndex: 1, locatorKind: 'css', status: 'matched', matchCount: 1 },
+        ],
+      });
+      expect(isValidObservationArtifact(artifact).valid).toBe(true);
+    });
+
+    it('accepts a valid not-found resolution with no selected locator', () => {
+      const artifact = withResolution({
+        selectionMethod: 'ordered-locators',
+        selectionStatus: 'not-found',
+        usedFallback: false,
+        confidence: 'none',
+        attempts: [{ locatorIndex: 0, locatorKind: 'css', status: 'not-found', matchCount: 0 }],
+      });
+      expect(isValidObservationArtifact(artifact).valid).toBe(true);
+    });
+
+    it('rejects a numeric or otherwise malformed confidence', () => {
+      const artifact = withResolution({
+        selectionMethod: 'ordered-locators',
+        selectionStatus: 'not-found',
+        usedFallback: false,
+        confidence: 0.83,
+        attempts: [],
+      });
+      expect(isValidObservationArtifact(artifact).valid).toBe(false);
+    });
+
+    it('rejects selectedLocatorKind/selectedLocatorIndex present when not matched', () => {
+      const artifact = withResolution({
+        selectionMethod: 'ordered-locators',
+        selectionStatus: 'not-found',
+        selectedLocatorKind: 'css',
+        selectedLocatorIndex: 0,
+        usedFallback: false,
+        confidence: 'none',
+        attempts: [],
+      });
+      expect(isValidObservationArtifact(artifact).valid).toBe(false);
+    });
+
+    it('rejects a matched resolution missing selectedLocatorKind/selectedLocatorIndex', () => {
+      const artifact = withResolution({
+        selectionMethod: 'ordered-locators',
+        selectionStatus: 'matched',
+        usedFallback: false,
+        confidence: 'exact',
+        attempts: [{ locatorIndex: 0, locatorKind: 'css', status: 'matched', matchCount: 1 }],
+      });
+      expect(isValidObservationArtifact(artifact).valid).toBe(false);
+    });
+
+    it('rejects usedFallback inconsistent with selectedLocatorIndex', () => {
+      const artifact = withResolution({
+        selectionMethod: 'ordered-locators',
+        selectionStatus: 'matched',
+        selectedLocatorKind: 'css',
+        selectedLocatorIndex: 1,
+        usedFallback: false,
+        confidence: 'exact',
+        attempts: [
+          { locatorIndex: 0, locatorKind: 'css', status: 'not-found', matchCount: 0 },
+          { locatorIndex: 1, locatorKind: 'css', status: 'matched', matchCount: 1 },
+        ],
+      });
+      expect(isValidObservationArtifact(artifact).valid).toBe(false);
+    });
+
+    it('rejects malformed attempt evidence (unknown status, non-increasing locatorIndex)', () => {
+      const badStatus = withResolution({
+        selectionMethod: 'ordered-locators',
+        selectionStatus: 'not-found',
+        usedFallback: false,
+        confidence: 'none',
+        attempts: [{ locatorIndex: 0, locatorKind: 'css', status: 'bogus-status' }],
+      });
+      const badOrder = withResolution({
+        selectionMethod: 'ordered-locators',
+        selectionStatus: 'not-found',
+        usedFallback: false,
+        confidence: 'none',
+        attempts: [
+          { locatorIndex: 1, locatorKind: 'css', status: 'not-found' },
+          { locatorIndex: 0, locatorKind: 'css', status: 'not-found' },
+        ],
+      });
+      expect(isValidObservationArtifact(badStatus).valid).toBe(false);
+      expect(isValidObservationArtifact(badOrder).valid).toBe(false);
+    });
   });
 });

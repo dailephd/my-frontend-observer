@@ -35,4 +35,16 @@ describe('orderDiagnostics', () => {
     }
     expect(Object.keys(DIAGNOSTIC_SEVERITY).sort()).toEqual([...DIAGNOSTIC_CODES].sort());
   });
+
+  it('v0.2: target-hidden is a warning-severity code and participates in the existing deterministic ordering', () => {
+    expect(DIAGNOSTIC_SEVERITY['target-hidden']).toBe('warning');
+    const input: Diagnostic[] = [
+      { code: 'unsafe-url', severity: 'error', message: 'x' },
+      { code: 'target-hidden', severity: 'warning', message: 'x', targetName: 'header' },
+      { code: 'target-missing', severity: 'warning', message: 'x', targetName: 'other' },
+    ];
+    const ordered = orderDiagnostics(input);
+    expect(ordered[0]?.code).toBe('unsafe-url');
+    expect(ordered.map((d) => d.code)).toEqual(['unsafe-url', 'target-hidden', 'target-missing']);
+  });
 });

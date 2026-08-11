@@ -51,9 +51,9 @@ describe('artifact persistence (Batch 4, real Chromium capture to disk)', () => 
       targetUrl: `${fixtures.baseUrl}/observation`,
       viewport: { width: 800, height: 600 },
       targets: [
-        { name: 'button', selector: OBSERVATION_FIXTURE_SELECTORS.button },
-        { name: 'ghost', selector: OBSERVATION_FIXTURE_SELECTORS.missing },
-        { name: 'dup', selector: OBSERVATION_FIXTURE_SELECTORS.duplicate },
+        { name: 'button', locators: [{ kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.button }] },
+        { name: 'ghost', locators: [{ kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.missing }] },
+        { name: 'dup', locators: [{ kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.duplicate }] },
       ],
       outputLocation: '.',
       timeoutMs: 30000,

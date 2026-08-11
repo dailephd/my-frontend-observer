@@ -9,8 +9,30 @@ import type { CompletionState } from './completion.js';
 import type { NormalizedObservationRequest } from '../request/request.js';
 
 export const ARTIFACT_KIND = 'my-frontend-observer/observation' as const;
-export const SCHEMA_VERSION = '1.0.0' as const;
+export const SCHEMA_VERSION = '1.1.0' as const;
 export const PRODUCER_NAME = 'my-frontend-observer' as const;
+
+export type TargetLocatorKind = 'role' | 'id' | 'data-attribute' | 'semantic-element' | 'css' | 'text';
+export type TargetSelectionStatus = 'matched' | 'not-found' | 'ambiguous' | 'unavailable';
+export type TargetSelectionConfidence = 'exact' | 'none';
+export type TargetLocatorAttemptStatus = 'not-found' | 'ambiguous' | 'matched' | 'unavailable' | 'unsupported';
+
+export interface TargetLocatorAttempt {
+  locatorIndex: number;
+  locatorKind: TargetLocatorKind;
+  status: TargetLocatorAttemptStatus;
+  matchCount?: number;
+}
+
+export interface TargetResolution {
+  selectionMethod: string;
+  selectionStatus: TargetSelectionStatus;
+  selectedLocatorKind?: TargetLocatorKind;
+  selectedLocatorIndex?: number;
+  usedFallback: boolean;
+  confidence: TargetSelectionConfidence;
+  attempts: TargetLocatorAttempt[];
+}
 
 export interface ArtifactReference {
   path: string;
@@ -62,7 +84,7 @@ export interface TargetSemantics {
  * existing caller loses a field.
  */
 export interface TargetEvidenceRecord {
-  resolution: EvidenceField<{ selectionMethod: string; selectionStatus: string }>;
+  resolution: EvidenceField<TargetResolution>;
   tag: EvidenceField<string>;
   geometry: EvidenceField<TargetGeometry>;
   style: EvidenceField<TargetComputedStyle>;
@@ -113,6 +135,48 @@ export function getProducerInfo(): { name: typeof PRODUCER_NAME; version: string
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+const TARGET_LOCATOR_KINDS: readonly TargetLocatorKind[] = ['role', 'id', 'data-attribute', 'semantic-element', 'css', 'text'];
+const TARGET_SELECTION_STATUSES: readonly TargetSelectionStatus[] = ['matched', 'not-found', 'ambiguous', 'unavailable'];
+const TARGET_SELECTION_CONFIDENCES: readonly TargetSelectionConfidence[] = ['exact', 'none'];
+const TARGET_LOCATOR_ATTEMPT_STATUSES: readonly TargetLocatorAttemptStatus[] = ['not-found', 'ambiguous', 'matched', 'unavailable', 'unsupported'];
+
+function isValidTargetLocatorAttempt(value: unknown): value is TargetLocatorAttempt {
+  if (!isPlainObject(value)) return false;
+  if (typeof value.locatorIndex !== 'number' || !Number.isInteger(value.locatorIndex) || value.locatorIndex < 0) return false;
+  if (typeof value.locatorKind !== 'string' || !(TARGET_LOCATOR_KINDS as readonly string[]).includes(value.locatorKind)) return false;
+  if (typeof value.status !== 'string' || !(TARGET_LOCATOR_ATTEMPT_STATUSES as readonly string[]).includes(value.status)) return false;
+  if ('matchCount' in value && value.matchCount !== undefined && (typeof value.matchCount !== 'number' || !Number.isInteger(value.matchCount) || value.matchCount < 0)) {
+    return false;
+  }
+  return true;
+}
+
+/** Structural validator for the frozen schema-1.1.0 TargetResolution contract, including the selectedLocatorKind/selectedLocatorIndex-iff-matched and usedFallback-iff-nonzero-index invariants. */
+function isValidTargetResolutionValue(value: unknown): value is TargetResolution {
+  if (!isPlainObject(value)) return false;
+  if (typeof value.selectionMethod !== 'string') return false;
+  if (typeof value.selectionStatus !== 'string' || !(TARGET_SELECTION_STATUSES as readonly string[]).includes(value.selectionStatus)) return false;
+  if (typeof value.usedFallback !== 'boolean') return false;
+  if (typeof value.confidence !== 'string' || !(TARGET_SELECTION_CONFIDENCES as readonly string[]).includes(value.confidence)) return false;
+  if (!Array.isArray(value.attempts) || !value.attempts.every((a: unknown) => isValidTargetLocatorAttempt(a))) return false;
+  for (let i = 1; i < value.attempts.length; i += 1) {
+    if ((value.attempts[i] as TargetLocatorAttempt).locatorIndex <= (value.attempts[i - 1] as TargetLocatorAttempt).locatorIndex) return false;
+  }
+
+  const isMatched = value.selectionStatus === 'matched';
+  const hasSelectedKind = 'selectedLocatorKind' in value && value.selectedLocatorKind !== undefined;
+  const hasSelectedIndex = 'selectedLocatorIndex' in value && value.selectedLocatorIndex !== undefined;
+  if (hasSelectedKind !== isMatched || hasSelectedIndex !== isMatched) return false;
+  if (isMatched) {
+    if (typeof value.selectedLocatorKind !== 'string' || !(TARGET_LOCATOR_KINDS as readonly string[]).includes(value.selectedLocatorKind)) return false;
+    if (typeof value.selectedLocatorIndex !== 'number' || !Number.isInteger(value.selectedLocatorIndex) || value.selectedLocatorIndex < 0) return false;
+    if (value.usedFallback !== value.selectedLocatorIndex > 0) return false;
+  } else if (value.usedFallback) {
+    return false;
+  }
+  return true;
 }
 
 function isValidDiagnostic(value: unknown): value is Diagnostic {
@@ -178,6 +242,12 @@ export function isValidObservationArtifact(value: unknown): SchemaValidationResu
         valid: false,
         reason: 'targetEvidence entries must have valid resolution/tag/geometry/style/layout/visibility/semantics evidence fields',
       };
+    }
+    const resolutionField = target.resolution as Record<string, unknown>;
+    if (resolutionField.state === 'available' || resolutionField.state === 'partial') {
+      if (!isValidTargetResolutionValue(resolutionField.value)) {
+        return { valid: false, reason: 'targetEvidence resolution value must be a valid TargetResolution' };
+      }
     }
   }
   if (!isValidEvidenceField(value.screenshot)) return { valid: false, reason: 'screenshot evidence field is invalid' };

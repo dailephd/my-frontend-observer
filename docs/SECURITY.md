@@ -29,5 +29,9 @@ tests:
 Certificate-failure-specific handling, permission-prompt-specific handling
 (Chromium's default deny-all applies; no permission is ever explicitly
 granted), and any non-loopback/remote browsing mode remain unimplemented and
-out of v0.1 scope. Package publication and any hosted-CI/release-pipeline
-security gate are separate, later decisions - not addressed here.
+out of v0.1 scope. `my-frontend-observer@0.1.0` is published to npm, and a
+pre-release readiness CI workflow (Windows/Linux/macOS packed-candidate
+validation) already exists (see `docs/CI_CD.md`); these are no longer future
+decisions. Those facts do not expand the security scope above: remote
+browsing, certificate handling, and permission-prompt handling remain
+separate, unimplemented concerns.

@@ -259,11 +259,11 @@ describe('chromiumAdapter (Batch 3 page/target observation)', () => {
       targetUrl: `${fixtures.baseUrl}/observation`,
       viewport: { width: 800, height: 600 },
       targets: [
-        { name: 'header', selector: OBSERVATION_FIXTURE_SELECTORS.header },
-        { name: 'button', selector: OBSERVATION_FIXTURE_SELECTORS.button },
-        { name: 'main', selector: OBSERVATION_FIXTURE_SELECTORS.main },
-        { name: 'footer', selector: OBSERVATION_FIXTURE_SELECTORS.footer },
-        { name: 'hidden', selector: OBSERVATION_FIXTURE_SELECTORS.hidden },
+        { name: 'header', locators: [{ kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.header }] },
+        { name: 'button', locators: [{ kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.button }] },
+        { name: 'main', locators: [{ kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.main }] },
+        { name: 'footer', locators: [{ kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.footer }] },
+        { name: 'hidden', locators: [{ kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.hidden }] },
       ],
       outputLocation: 'observations',
       timeoutMs: 30000,
@@ -329,7 +329,7 @@ describe('chromiumAdapter (Batch 3 page/target observation)', () => {
     const request: NormalizedObservationRequest = {
       targetUrl: `${fixtures.baseUrl}/observation`,
       viewport: { width: 800, height: 600 },
-      targets: [{ name: 'ghost', selector: OBSERVATION_FIXTURE_SELECTORS.missing }],
+      targets: [{ name: 'ghost', locators: [{ kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.missing }] }],
       outputLocation: 'observations',
       timeoutMs: 30000,
       readiness: { condition: 'load', timeoutMs: 10000 },
@@ -355,7 +355,7 @@ describe('chromiumAdapter (Batch 3 page/target observation)', () => {
     const request: NormalizedObservationRequest = {
       targetUrl: `${fixtures.baseUrl}/observation`,
       viewport: { width: 800, height: 600 },
-      targets: [{ name: 'dup', selector: OBSERVATION_FIXTURE_SELECTORS.duplicate }],
+      targets: [{ name: 'dup', locators: [{ kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.duplicate }] }],
       outputLocation: 'observations',
       timeoutMs: 30000,
       readiness: { condition: 'load', timeoutMs: 10000 },
@@ -372,12 +372,119 @@ describe('chromiumAdapter (Batch 3 page/target observation)', () => {
     expect(result.diagnostics).toContainEqual(expect.objectContaining({ code: 'target-ambiguous', severity: 'warning', targetName: 'dup' }));
   });
 
+  // v0.2: ordered-locator fallback/ambiguity/hidden-target resolution contract.
+  it('v0.2: a unique CSS target selects locator 0 with no fallback and exact confidence', async () => {
+    const request = baseRequest({
+      targetUrl: `${fixtures.baseUrl}/observation`,
+      targets: [{ name: 'header', locators: [{ kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.header }] }],
+    });
+    const { result } = await captureViewportInternal(request);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok result');
+
+    const header = result.targetEvidence.header!;
+    expect(available(header.resolution) && header.resolution.value).toMatchObject({
+      selectionStatus: 'matched',
+      selectedLocatorKind: 'css',
+      selectedLocatorIndex: 0,
+      usedFallback: false,
+      confidence: 'exact',
+    });
+    expect(available(header.resolution) && header.resolution.value.attempts).toEqual([
+      { locatorIndex: 0, locatorKind: 'css', status: 'matched', matchCount: 1 },
+    ]);
+  });
+
+  it('v0.2: when all applicable CSS locators miss, resolution is not-found with confidence none', async () => {
+    const request = baseRequest({
+      targetUrl: `${fixtures.baseUrl}/observation`,
+      targets: [{ name: 'ghost', locators: [{ kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.missing }] }],
+    });
+    const { result } = await captureViewportInternal(request);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok result');
+
+    const ghost = result.targetEvidence.ghost!;
+    expect(available(ghost.resolution) && ghost.resolution.value).toMatchObject({ selectionStatus: 'not-found', usedFallback: false, confidence: 'none' });
+    expect(available(ghost.resolution) && 'selectedLocatorKind' in ghost.resolution.value).toBe(false);
+  });
+
+  it('v0.2: a missing first locator falls back to a uniquely-matching second locator', async () => {
+    const request = baseRequest({
+      targetUrl: `${fixtures.baseUrl}/observation`,
+      targets: [
+        {
+          name: 'header',
+          locators: [
+            { kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.missing },
+            { kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.header },
+          ],
+        },
+      ],
+    });
+    const { result } = await captureViewportInternal(request);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok result');
+
+    const header = result.targetEvidence.header!;
+    expect(available(header.resolution) && header.resolution.value).toMatchObject({
+      selectionStatus: 'matched',
+      selectedLocatorKind: 'css',
+      selectedLocatorIndex: 1,
+      usedFallback: true,
+      confidence: 'exact',
+    });
+    expect(available(header.resolution) && header.resolution.value.attempts.map((a) => a.status)).toEqual(['not-found', 'matched']);
+  });
+
+  it('v0.2: an ambiguous locator stops immediately and never falls through to a later locator', async () => {
+    const request = baseRequest({
+      targetUrl: `${fixtures.baseUrl}/observation`,
+      targets: [
+        {
+          name: 'dup',
+          locators: [
+            { kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.duplicate },
+            { kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.header },
+          ],
+        },
+      ],
+    });
+    const { result } = await captureViewportInternal(request);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok result');
+
+    const dup = result.targetEvidence.dup!;
+    expect(available(dup.resolution) && dup.resolution.value).toMatchObject({ selectionStatus: 'ambiguous', usedFallback: false, confidence: 'none' });
+    expect(available(dup.resolution) && dup.resolution.value.attempts).toHaveLength(1);
+    expect(available(dup.resolution) && dup.resolution.value.attempts[0]).toMatchObject({ locatorIndex: 0, locatorKind: 'css', status: 'ambiguous' });
+  });
+
+  it('v0.2: a hidden but uniquely-resolved target is matched (not missing), reports visible=false, and yields a target-hidden warning with completion=partial', async () => {
+    const request = baseRequest({
+      targetUrl: `${fixtures.baseUrl}/observation`,
+      targets: [{ name: 'hidden', locators: [{ kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.hidden }] }],
+    });
+    const { result } = await captureViewportInternal(request);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok result');
+
+    const hidden = result.targetEvidence.hidden!;
+    expect(available(hidden.resolution) && hidden.resolution.value.selectionStatus).toBe('matched');
+    expect(available(hidden.visibility) && hidden.visibility.value.visible).toBe(false);
+    expect(result.diagnostics).toContainEqual(expect.objectContaining({ code: 'target-hidden', severity: 'warning', targetName: 'hidden' }));
+    expect(result.diagnostics.some((d) => d.code === 'target-missing' && d.targetName === 'hidden')).toBe(false);
+
+    const { deriveCompletion } = await import('../../src/domain/completion.js');
+    expect(deriveCompletion(result.diagnostics, 'post-capture')).toMatchObject({ state: 'partial' });
+  });
+
   // B3-TST-017,018,019: same live page for screenshot + page evidence + target evidence, plain result, cleanup unaffected.
   it('B3-TST-017..019: screenshot, page evidence, and target evidence come from the same observation and cleanup remains reliable', async () => {
     const request: NormalizedObservationRequest = {
       targetUrl: `${fixtures.baseUrl}/observation`,
       viewport: { width: 800, height: 600 },
-      targets: [{ name: 'button', selector: OBSERVATION_FIXTURE_SELECTORS.button }],
+      targets: [{ name: 'button', locators: [{ kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.button }] }],
       outputLocation: 'observations',
       timeoutMs: 30000,
       readiness: { condition: 'load', timeoutMs: 10000 },

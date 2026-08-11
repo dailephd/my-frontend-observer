@@ -33,7 +33,8 @@ This is exercised by `runCli()`-level tests, by a built
 `node dist/cli.js observe ...` run against the deterministic local fixture,
 and by the real `npm pack` tarball installed and run from a clean temporary
 consumer directory outside the repository - the same workflow, independent
-of the source checkout. It has not been published to a registry.
+of the source checkout. This workflow is part of the published
+`my-frontend-observer@0.1.0` package.
 
 The future dependency order after observation is:
 

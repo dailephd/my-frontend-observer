@@ -66,9 +66,9 @@ describe('runCli observe - application orchestration (mocked application service
     expect(observeMock).toHaveBeenCalledTimes(1);
     const request = observeMock.mock.calls[0]?.[0];
     expect(request?.targets).toEqual([
-      { name: 'first', selector: '#first' },
-      { name: 'action', selector: 'button[data-state="active"]' },
-      { name: 'last', selector: '.last' },
+      { name: 'first', locators: [{ kind: 'css', selector: '#first' }] },
+      { name: 'action', locators: [{ kind: 'css', selector: 'button[data-state="active"]' }] },
+      { name: 'last', locators: [{ kind: 'css', selector: '.last' }] },
     ]);
   });
 

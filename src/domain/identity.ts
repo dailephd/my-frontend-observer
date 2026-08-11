@@ -22,7 +22,7 @@ export function buildRequestIdentity(request: NormalizedObservationRequest): str
   const semanticView = {
     targetUrl: request.targetUrl,
     viewport: { width: request.viewport.width, height: request.viewport.height },
-    targets: request.targets.map((target) => ({ name: target.name.toLowerCase(), selector: target.selector })),
+    targets: request.targets.map((target) => ({ name: target.name.toLowerCase(), locators: target.locators })),
     readinessCondition: request.readiness.condition,
   };
   const serialized = JSON.stringify(canonicalize(semanticView));

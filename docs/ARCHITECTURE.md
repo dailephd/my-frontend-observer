@@ -2,7 +2,8 @@
 
 ## Current scaffold architecture
 
-The current repository is one private TypeScript ESM package:
+The current repository is one published TypeScript ESM package
+(`my-frontend-observer@0.1.0`):
 
 - `src/cli.ts` is the real, thin `observe` command entry point (argument
   parsing/output only).

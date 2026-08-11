@@ -2,8 +2,15 @@ import type { Page } from 'playwright';
 import type { EvidenceField } from '../domain/evidence.js';
 import type { Diagnostic, DiagnosticCode } from '../domain/diagnostics.js';
 import { DIAGNOSTIC_SEVERITY } from '../domain/diagnostics.js';
-import type { NamedTarget, Viewport } from '../request/request.js';
-import type { TargetEvidenceRecord, TargetGeometry, TargetComputedStyle, TargetLayoutMetrics } from '../domain/schema.js';
+import type { NamedTarget, TargetLocator, Viewport } from '../request/request.js';
+import type {
+  TargetEvidenceRecord,
+  TargetGeometry,
+  TargetComputedStyle,
+  TargetLayoutMetrics,
+  TargetLocatorAttempt,
+  TargetResolution,
+} from '../domain/schema.js';
 
 function diagnostic(code: DiagnosticCode, message: string, targetName?: string): Diagnostic {
   const base: Diagnostic = { code, severity: DIAGNOSTIC_SEVERITY[code], message };
@@ -106,23 +113,21 @@ interface RawTargetMeasurement {
   computedVisibility: string;
 }
 
-function missingTargetRecord(): TargetEvidenceRecord {
-  const reason = 'target selector matched no element';
-  return {
-    resolution: { state: 'available', source: 'derived', value: { selectionMethod: 'css-selector', selectionStatus: 'not-found' }, derivedFrom: ['selector-query'] },
-    tag: unavailableField(reason),
-    geometry: unavailableField(reason),
-    style: unavailableField(reason),
-    layout: unavailableField(reason),
-    visibility: unavailableField(reason),
-    semantics: unavailableField(reason),
+/** Builds the shared unresolved-target evidence record (not-found/ambiguous/unavailable) with the full ordered attempt history and no selected locator. */
+function unresolvedTargetRecord(
+  selectionStatus: TargetResolution['selectionStatus'],
+  attempts: TargetLocatorAttempt[],
+  reason: string,
+): TargetEvidenceRecord {
+  const resolution: TargetResolution = {
+    selectionMethod: 'ordered-locators',
+    selectionStatus,
+    usedFallback: false,
+    confidence: 'none',
+    attempts,
   };
-}
-
-function ambiguousTargetRecord(matchCount: number): TargetEvidenceRecord {
-  const reason = `target selector matched ${matchCount} elements; expected exactly one`;
   return {
-    resolution: { state: 'available', source: 'derived', value: { selectionMethod: 'css-selector', selectionStatus: 'ambiguous' }, derivedFrom: ['selector-query'] },
+    resolution: { state: 'available', source: 'derived', value: resolution, derivedFrom: ['locator-attempts'] },
     tag: unavailableField(reason),
     geometry: unavailableField(reason),
     style: unavailableField(reason),
@@ -140,9 +145,14 @@ function ambiguousTargetRecord(matchCount: number): TargetEvidenceRecord {
  * approximation; when the browser cannot supply them reliably for this
  * element, they are reported `unavailable` rather than guessed.
  */
-async function captureResolvedTargetRecord(page: Page, selector: string): Promise<TargetEvidenceRecord> {
+async function captureResolvedTargetRecord(
+  page: Page,
+  selector: string,
+  attempts: TargetLocatorAttempt[],
+  selectedLocatorIndex: number,
+): Promise<{ record: TargetEvidenceRecord; visible: boolean | undefined }> {
   const handle = await page.$(selector);
-  if (!handle) return missingTargetRecord();
+  if (!handle) return { record: unresolvedTargetRecord('not-found', attempts, 'target selector matched no element'), visible: undefined };
 
   try {
     const raw: RawTargetMeasurement = await handle.evaluate((el) => {
@@ -176,19 +186,27 @@ async function captureResolvedTargetRecord(page: Page, selector: string): Promis
       semantics = unavailableField(`accessibility snapshot failed: ${message}`);
     }
 
+    const resolution: TargetResolution = {
+      selectionMethod: 'ordered-locators',
+      selectionStatus: 'matched',
+      selectedLocatorKind: attempts[selectedLocatorIndex]?.locatorKind ?? 'css',
+      selectedLocatorIndex,
+      usedFallback: selectedLocatorIndex > 0,
+      confidence: 'exact',
+      attempts,
+    };
+
     return {
-      resolution: {
-        state: 'available',
-        source: 'derived',
-        value: { selectionMethod: 'css-selector', selectionStatus: 'matched' },
-        derivedFrom: ['selector-query'],
+      record: {
+        resolution: { state: 'available', source: 'derived', value: resolution, derivedFrom: ['locator-attempts'] },
+        tag: browserField(raw.tag),
+        geometry: browserField(raw.geometry),
+        style: computedField(raw.style),
+        layout: browserField(raw.layout),
+        visibility: derivedField({ visible }, ['style.display', 'computed-visibility', 'geometry.width', 'geometry.height']),
+        semantics,
       },
-      tag: browserField(raw.tag),
-      geometry: browserField(raw.geometry),
-      style: computedField(raw.style),
-      layout: browserField(raw.layout),
-      visibility: derivedField({ visible }, ['style.display', 'computed-visibility', 'geometry.width', 'geometry.height']),
-      semantics,
+      visible,
     };
   } finally {
     await handle.dispose();
@@ -200,47 +218,111 @@ export interface TargetEvidenceCaptureResult {
   diagnostics: Diagnostic[];
 }
 
-/** Observes every explicitly configured Batch 1 target from the same live page, honoring the 0/1/many cardinality contract. */
+interface LocatorAttemptOutcome {
+  status: TargetLocatorAttempt['status'];
+  matchCount?: number;
+}
+
+/**
+ * Evaluates one locator against the live page. Only `css` locators are
+ * actually resolved in Batch 1 - every other kind is honestly reported as
+ * `unsupported` (no DOM query performed, never faked as a match, never
+ * silently downgraded to css) until Batch 2 implements real semantic
+ * resolution for it.
+ */
+async function evaluateLocatorAttempt(page: Page, locator: TargetLocator): Promise<LocatorAttemptOutcome> {
+  if (locator.kind !== 'css') {
+    return { status: 'unsupported' };
+  }
+  try {
+    const matchCount = await page.evaluate((selector) => document.querySelectorAll(selector).length, locator.selector);
+    if (matchCount === 0) return { status: 'not-found', matchCount: 0 };
+    if (matchCount > 1) return { status: 'ambiguous', matchCount };
+    return { status: 'matched', matchCount: 1 };
+  } catch {
+    return { status: 'unavailable' };
+  }
+}
+
+/**
+ * Observes every explicitly configured target from the same live page,
+ * honoring the frozen ordered-locator resolution contract: 0 matches tries
+ * the next locator; exactly 1 match selects and stops; more than 1 match is
+ * ambiguous and stops (never falls through); an unevaluable locator is
+ * unavailable and stops (never falls through). Ambiguity never triggers
+ * fallback.
+ */
 export async function captureTargetEvidence(page: Page, targets: readonly NamedTarget[]): Promise<TargetEvidenceCaptureResult> {
   const targetEvidence: Record<string, TargetEvidenceRecord> = {};
   const diagnostics: Diagnostic[] = [];
 
   for (const target of targets) {
-    const matchCount = await page.evaluate((selector) => document.querySelectorAll(selector).length, target.selector);
+    const attempts: TargetLocatorAttempt[] = [];
+    let stopStatus: 'matched' | 'ambiguous' | 'unavailable' | undefined;
+    let matchedIndex: number | undefined;
+    let matchedLocator: Extract<TargetLocator, { kind: 'css' }> | undefined;
 
-    if (matchCount === 0) {
-      targetEvidence[target.name] = missingTargetRecord();
-      diagnostics.push(diagnostic('target-missing', `no element matched selector for target "${target.name}"`, target.name));
+    for (let index = 0; index < target.locators.length; index += 1) {
+      const locator = target.locators[index] as TargetLocator;
+      const outcome = await evaluateLocatorAttempt(page, locator);
+      attempts.push({
+        locatorIndex: index,
+        locatorKind: locator.kind,
+        status: outcome.status,
+        ...(outcome.matchCount !== undefined ? { matchCount: outcome.matchCount } : {}),
+      });
+
+      if (outcome.status === 'matched' && locator.kind === 'css') {
+        stopStatus = 'matched';
+        matchedIndex = index;
+        matchedLocator = locator;
+        break;
+      }
+      if (outcome.status === 'ambiguous') {
+        stopStatus = 'ambiguous';
+        break;
+      }
+      if (outcome.status === 'unavailable') {
+        stopStatus = 'unavailable';
+        break;
+      }
+      // 'not-found' or 'unsupported': fall through to the next configured locator.
+    }
+
+    if (stopStatus === 'matched' && matchedLocator && matchedIndex !== undefined) {
+      try {
+        const { record, visible } = await captureResolvedTargetRecord(page, matchedLocator.selector, attempts, matchedIndex);
+        targetEvidence[target.name] = record;
+        if (visible === false) {
+          diagnostics.push(diagnostic('target-hidden', `target "${target.name}" resolved but is not visible`, target.name));
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        const reason = `target evaluation failed: ${message}`;
+        targetEvidence[target.name] = unresolvedTargetRecord('unavailable', attempts, reason);
+        diagnostics.push(diagnostic('browser-evidence-unavailable', reason, target.name));
+      }
       continue;
     }
 
-    if (matchCount > 1) {
-      targetEvidence[target.name] = ambiguousTargetRecord(matchCount);
-      diagnostics.push(diagnostic('target-ambiguous', `${matchCount} elements matched selector for target "${target.name}"`, target.name));
+    if (stopStatus === 'ambiguous') {
+      const lastAttempt = attempts[attempts.length - 1];
+      const matchCount = lastAttempt?.matchCount ?? 0;
+      targetEvidence[target.name] = unresolvedTargetRecord('ambiguous', attempts, `target locator matched ${matchCount} elements; expected exactly one`);
+      diagnostics.push(diagnostic('target-ambiguous', `${matchCount} elements matched a locator for target "${target.name}"`, target.name));
       continue;
     }
 
-    try {
-      targetEvidence[target.name] = await captureResolvedTargetRecord(page, target.selector);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      const reason = `target evaluation failed: ${message}`;
-      targetEvidence[target.name] = {
-        resolution: {
-          state: 'available',
-          source: 'derived',
-          value: { selectionMethod: 'css-selector', selectionStatus: 'matched' },
-          derivedFrom: ['selector-query'],
-        },
-        tag: unavailableField(reason),
-        geometry: unavailableField(reason),
-        style: unavailableField(reason),
-        layout: unavailableField(reason),
-        visibility: unavailableField(reason),
-        semantics: unavailableField(reason),
-      };
+    if (stopStatus === 'unavailable') {
+      const reason = `target locator could not be evaluated reliably for "${target.name}"`;
+      targetEvidence[target.name] = unresolvedTargetRecord('unavailable', attempts, reason);
       diagnostics.push(diagnostic('browser-evidence-unavailable', reason, target.name));
+      continue;
     }
+
+    // Every configured locator was tried and none matched (all not-found/unsupported).
+    targetEvidence[target.name] = unresolvedTargetRecord('not-found', attempts, 'no configured locator matched an element');
+    diagnostics.push(diagnostic('target-missing', `no locator matched an element for target "${target.name}"`, target.name));
   }
 
   return { targetEvidence, diagnostics };
