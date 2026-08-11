@@ -56,6 +56,9 @@ function successfulCapture(overrides: Partial<Extract<BrowserCaptureResult, { ok
         layout: { state: 'available', source: 'browser', value: { scrollWidth: 120, scrollHeight: 32, clientWidth: 120, clientHeight: 32, scrollTop: 0, scrollLeft: 0 } },
         visibility: { state: 'available', source: 'derived', value: { visible: true }, derivedFrom: ['style.display', 'computed-visibility', 'geometry.width', 'geometry.height'] },
         semantics: { state: 'available', source: 'computed-browser', value: { role: 'button', name: 'Submit' } },
+        semanticState: { state: 'not-applicable', reason: 'no supported semantic state is exposed for this target' },
+        landmark: { state: 'not-applicable', reason: 'role "button" is not a recognized landmark role' },
+        containment: { state: 'available', source: 'browser', value: { containedByTargetIds: [], evaluatedTargetIds: [], unresolvedTargetIds: [] } },
       },
       ghost: {
         resolution: {
@@ -76,6 +79,9 @@ function successfulCapture(overrides: Partial<Extract<BrowserCaptureResult, { ok
         layout: { state: 'unavailable', reason: 'target selector matched no element' },
         visibility: { state: 'unavailable', reason: 'target selector matched no element' },
         semantics: { state: 'unavailable', reason: 'target selector matched no element' },
+        semanticState: { state: 'unavailable', reason: 'target selector matched no element' },
+        landmark: { state: 'unavailable', reason: 'target selector matched no element' },
+        containment: { state: 'unavailable', reason: 'target itself did not resolve (status: not-found)' },
       },
     },
     diagnostics: [{ code: 'target-missing', severity: 'warning', message: 'no element matched selector for target "ghost"', targetName: 'ghost' }],

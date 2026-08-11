@@ -93,6 +93,9 @@ describe('isValidObservationArtifact', () => {
             layout: { state: 'not-applicable' },
             visibility: { state: 'not-applicable' },
             semantics: { state: 'not-applicable' },
+            semanticState: { state: 'not-applicable' },
+            landmark: { state: 'not-applicable' },
+            containment: { state: 'not-applicable' },
           },
         },
       };

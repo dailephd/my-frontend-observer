@@ -127,4 +127,55 @@ describe('artifact persistence (Batch 4, real Chromium capture to disk)', () => 
     const afterHtml = await fetch(request.targetUrl).then((r) => r.text());
     expect(afterHtml).toBe(beforeHtml);
   });
+
+  // v0.2 Batch 3: semantic state, landmark, and containment evidence survive persistence and validate against schema 1.1.0.
+  it('v0.2 Batch 3: semantic state, landmark, and (partial) containment evidence survive persistence', async () => {
+    const cwd = await freshCwd();
+    const request: NormalizedObservationRequest = {
+      targetUrl: `${fixtures.baseUrl}/observation`,
+      viewport: { width: 800, height: 600 },
+      targets: [
+        { name: 'appShell', locators: [{ kind: 'css', selector: '#app-shell' }] },
+        { name: 'nav', locators: [{ kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.nav }] },
+        { name: 'ghost', locators: [{ kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.missing }] },
+      ],
+      outputLocation: '.',
+      timeoutMs: 30000,
+      readiness: { condition: 'load', timeoutMs: 10000 },
+    };
+
+    const { result: capture } = await captureViewportInternal(request);
+    if (!capture.ok) throw new Error('expected a successful browser capture');
+    const persisted = await persistBrowserCapture(capture, request, { cwd });
+    if (!persisted.ok) throw new Error('expected persistence to succeed');
+
+    const manifest = JSON.parse(await readFile(persisted.manifestPath, 'utf8')) as ObservationArtifact;
+    expect(manifest.schemaVersion).toBe('1.1.0');
+    expect(isValidObservationArtifact(manifest)).toEqual({ valid: true });
+
+    // Semantic state survives: nav has no supported semantic state -> not-applicable, not an empty available object.
+    expect(manifest.targetEvidence.nav?.semanticState.state).toBe('not-applicable');
+
+    // Landmark evidence survives serialization.
+    expect(manifest.targetEvidence.nav?.landmark).toMatchObject({ state: 'available', source: 'derived', value: 'navigation' });
+
+    // Containment survives: nav is contained by appShell (partial overall, since ghost - the
+    // third configured target - never resolved and so could not be checked from nav's side either).
+    expect(manifest.targetEvidence.nav?.containment).toMatchObject({
+      state: 'partial',
+      source: 'browser',
+      value: { containedByTargetIds: ['appShell'], unresolvedTargetIds: ['ghost'] },
+    });
+
+    // Partial containment survives: appShell's containment couldn't be fully evaluated because ghost never resolved.
+    const appShellContainment = manifest.targetEvidence.appShell?.containment;
+    expect(appShellContainment?.state).toBe('partial');
+    const appShellValue = (appShellContainment as { value: { unresolvedTargetIds: string[] } }).value;
+    expect(appShellValue.unresolvedTargetIds).toContain('ghost');
+
+    // Ghost itself never resolved -> containment unavailable, and stable target names remain intact in both places.
+    expect(manifest.targetEvidence.ghost?.containment.state).toBe('unavailable');
+    expect(Object.keys(manifest.targetEvidence).sort()).toEqual(['appShell', 'ghost', 'nav']);
+    expect(manifest.requestConfig.targets.map((t) => t.name)).toEqual(['appShell', 'nav', 'ghost']);
+  });
 });

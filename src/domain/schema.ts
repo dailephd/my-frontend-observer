@@ -74,6 +74,34 @@ export interface TargetSemantics {
 }
 
 /**
+ * Bounded first semantic-state family (Batch 3). Each key is present only
+ * when the browser exposes that state as applicable to this element (native
+ * form-control property or an explicit `aria-*` attribute) - an absent key
+ * means "not applicable to this element", never a guessed `false`. `checked`
+ * and `pressed` additionally support the browser's tri-state `'mixed'`
+ * value; `current` mirrors the `aria-current` value space (`true` for the
+ * bare/`"true"` form, or the specific token).
+ */
+export interface TargetSemanticState {
+  disabled?: boolean;
+  expanded?: boolean;
+  checked?: boolean | 'mixed';
+  selected?: boolean;
+  pressed?: boolean | 'mixed';
+  current?: true | 'page' | 'step' | 'location' | 'date' | 'time';
+}
+
+export const TARGET_LANDMARK_ROLES = ['banner', 'navigation', 'main', 'complementary', 'contentinfo', 'form', 'region', 'search'] as const;
+export type TargetLandmarkRole = (typeof TARGET_LANDMARK_ROLES)[number];
+
+/** Bounded configured-target-only DOM containment (Batch 3) - not a layout/relationship graph. All arrays follow configured target order and exclude the target itself. */
+export interface TargetContainment {
+  containedByTargetIds: string[];
+  evaluatedTargetIds: string[];
+  unresolvedTargetIds: string[];
+}
+
+/**
  * Batch 1 froze the wrapper (EvidenceField<T>) and the category names
  * (resolution/geometry/style) but deliberately left geometry/style typed
  * `unknown`, deferring the concrete rendered-evidence shapes to whichever
@@ -91,6 +119,9 @@ export interface TargetEvidenceRecord {
   layout: EvidenceField<TargetLayoutMetrics>;
   visibility: EvidenceField<TargetVisibility>;
   semantics: EvidenceField<TargetSemantics>;
+  semanticState: EvidenceField<TargetSemanticState>;
+  landmark: EvidenceField<TargetLandmarkRole>;
+  containment: EvidenceField<TargetContainment>;
 }
 
 export interface ObservationArtifact {
@@ -179,6 +210,41 @@ function isValidTargetResolutionValue(value: unknown): value is TargetResolution
   return true;
 }
 
+const TARGET_CURRENT_VALUES: readonly string[] = ['page', 'step', 'location', 'date', 'time'];
+
+/** Structural validator for TargetSemanticState: every present key must use its exact supported value vocabulary; an absent key is valid (means "not applicable"). */
+function isValidTargetSemanticState(value: unknown): value is TargetSemanticState {
+  if (!isPlainObject(value)) return false;
+  const keys = ['disabled', 'expanded', 'checked', 'selected', 'pressed', 'current'];
+  if (!Object.keys(value).every((k) => keys.includes(k))) return false;
+  if ('disabled' in value && typeof value.disabled !== 'boolean') return false;
+  if ('expanded' in value && typeof value.expanded !== 'boolean') return false;
+  if ('checked' in value && typeof value.checked !== 'boolean' && value.checked !== 'mixed') return false;
+  if ('selected' in value && typeof value.selected !== 'boolean') return false;
+  if ('pressed' in value && typeof value.pressed !== 'boolean' && value.pressed !== 'mixed') return false;
+  if ('current' in value && value.current !== true && !(TARGET_CURRENT_VALUES as readonly string[]).includes(value.current as string)) return false;
+  return true;
+}
+
+function isValidTargetLandmarkRole(value: unknown): value is TargetLandmarkRole {
+  return typeof value === 'string' && (TARGET_LANDMARK_ROLES as readonly string[]).includes(value);
+}
+
+/** Structural validator for TargetContainment: string arrays, no duplicates, and no target ID appearing in more than one of the three arrays. */
+function isValidTargetContainment(value: unknown): value is TargetContainment {
+  if (!isPlainObject(value)) return false;
+  const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every((entry) => typeof entry === 'string');
+  if (!isStringArray(value.containedByTargetIds) || !isStringArray(value.evaluatedTargetIds) || !isStringArray(value.unresolvedTargetIds)) return false;
+  const containedByTargetIds = value.containedByTargetIds;
+  const evaluatedTargetIds = value.evaluatedTargetIds;
+  const unresolvedTargetIds = value.unresolvedTargetIds;
+  const noDuplicates = (arr: string[]) => new Set(arr).size === arr.length;
+  if (!noDuplicates(containedByTargetIds) || !noDuplicates(evaluatedTargetIds) || !noDuplicates(unresolvedTargetIds)) return false;
+  if (!containedByTargetIds.every((id) => evaluatedTargetIds.includes(id))) return false;
+  if (evaluatedTargetIds.some((id) => unresolvedTargetIds.includes(id))) return false;
+  return true;
+}
+
 function isValidDiagnostic(value: unknown): value is Diagnostic {
   if (!isPlainObject(value)) return false;
   const code = value.code;
@@ -236,17 +302,39 @@ export function isValidObservationArtifact(value: unknown): SchemaValidationResu
       !isValidEvidenceField(target.style) ||
       !isValidEvidenceField(target.layout) ||
       !isValidEvidenceField(target.visibility) ||
-      !isValidEvidenceField(target.semantics)
+      !isValidEvidenceField(target.semantics) ||
+      !isValidEvidenceField(target.semanticState) ||
+      !isValidEvidenceField(target.landmark) ||
+      !isValidEvidenceField(target.containment)
     ) {
       return {
         valid: false,
-        reason: 'targetEvidence entries must have valid resolution/tag/geometry/style/layout/visibility/semantics evidence fields',
+        reason:
+          'targetEvidence entries must have valid resolution/tag/geometry/style/layout/visibility/semantics/semanticState/landmark/containment evidence fields',
       };
     }
     const resolutionField = target.resolution as Record<string, unknown>;
     if (resolutionField.state === 'available' || resolutionField.state === 'partial') {
       if (!isValidTargetResolutionValue(resolutionField.value)) {
         return { valid: false, reason: 'targetEvidence resolution value must be a valid TargetResolution' };
+      }
+    }
+    const semanticStateField = target.semanticState as Record<string, unknown>;
+    if (semanticStateField.state === 'available' || semanticStateField.state === 'partial') {
+      if (!isValidTargetSemanticState(semanticStateField.value)) {
+        return { valid: false, reason: 'targetEvidence semanticState value must be a valid TargetSemanticState' };
+      }
+    }
+    const landmarkField = target.landmark as Record<string, unknown>;
+    if (landmarkField.state === 'available' || landmarkField.state === 'partial') {
+      if (!isValidTargetLandmarkRole(landmarkField.value)) {
+        return { valid: false, reason: 'targetEvidence landmark value must be a recognized landmark role' };
+      }
+    }
+    const containmentField = target.containment as Record<string, unknown>;
+    if (containmentField.state === 'available' || containmentField.state === 'partial') {
+      if (!isValidTargetContainment(containmentField.value)) {
+        return { valid: false, reason: 'targetEvidence containment value must be a valid TargetContainment' };
       }
     }
   }

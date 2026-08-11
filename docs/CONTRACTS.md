@@ -52,8 +52,31 @@ CSS attribute-equals matching that never reinterprets the configured value as
 selector syntax, `semantic-element` via the frozen tag set, `css` via the
 existing v0.1 behavior, `text` via exact-text matching only); every kind
 converges on the same measurement path, so locator strategy never changes the
-resulting target evidence shape. This section will be superseded by the full
-v0.2 documentation reconciliation once all v0.2 batches are complete.
+resulting target evidence shape.
+
+Each resolved target's evidence record additionally carries three bounded
+Batch 3 fields: `semanticState` (a first family of `disabled`/`expanded`/
+`checked`/`selected`/`pressed`/`current` values read from the element's own
+native form-control properties and explicit `aria-*` attributes - a key is
+present only when the browser exposes that state as applicable to this
+element, so an explicit `false` is always distinguishable from "not
+applicable"; `not-applicable` when no supported state applies at all);
+`landmark` (derived only from the already-captured browser-exposed
+role - never from locator kind or HTML tag - against the standard landmark
+role set `banner`/`navigation`/`main`/`complementary`/`contentinfo`/`form`/
+`region`/`search`); and `containment` (bounded DOM containment checked only
+among the other explicitly configured targets in the same observation, in
+configured order, never a layout/relationship graph - `available` when every
+other configured target was itself resolved and checked, `partial` when one
+or more could not be, `unavailable` when the target itself never resolved).
+Stable observer target identity is proven, not just declared: the same
+target configuration produces the same `requestId` across repeated
+observations (with a fresh `observationId` each time); changing a target's
+locator strategy while keeping its stable name changes `requestId` but not
+the `targetEvidence` key; and actual runtime disappearance of a
+still-configured target changes only its resolution status, never the
+`requestId`. This section will be superseded by the full v0.2 documentation
+reconciliation once all v0.2 batches are complete.
 
 ## Approved v0.1 design inputs
 

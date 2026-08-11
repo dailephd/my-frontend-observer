@@ -12,7 +12,11 @@ import {
   OBSERVATION_FIXTURE_DATA_ATTRIBUTE,
   OBSERVATION_FIXTURE_SEMANTIC_ELEMENT,
   OBSERVATION_FIXTURE_TEXT,
+  OBSERVATION_FIXTURE_CONTAINMENT,
+  OBSERVATION_FIXTURE_SEMANTIC_STATE,
+  OBSERVATION_DISAPPEARING_FIXTURE_SELECTOR,
 } from '../fixtures/server.js';
+import { buildRequestIdentity, buildObservationIdentity } from '../../src/domain/identity.js';
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
@@ -794,6 +798,261 @@ describe('v0.2 Batch 2: real browser semantic locator resolution', () => {
         expect(available(record.visibility) && record.visibility.value.visible).toBe(true);
         expect(available(record.semantics) && record.semantics.value).toEqual({ role: 'button', name: 'Submit' });
       }
+    });
+  });
+});
+
+describe('v0.2 Batch 3: semantic state, landmark, and configured-target containment', () => {
+  let fixtures: FixtureServer;
+
+  beforeAll(async () => {
+    fixtures = await startFixtureServer();
+  });
+
+  afterAll(async () => {
+    await fixtures.close();
+  });
+
+  function requestWithTargets(targets: NormalizedObservationRequest['targets'], urlPath = '/observation'): NormalizedObservationRequest {
+    return {
+      targetUrl: `${fixtures.baseUrl}${urlPath}`,
+      viewport: { width: 800, height: 600 },
+      targets,
+      outputLocation: 'observations',
+      timeoutMs: 30000,
+      readiness: { condition: 'load', timeoutMs: 10000 },
+    };
+  }
+
+  async function resolveTargets(targets: NormalizedObservationRequest['targets'], urlPath = '/observation') {
+    const { result } = await captureViewportInternal(requestWithTargets(targets, urlPath));
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok result');
+    return result;
+  }
+
+  function cssTarget(name: string, selector: string) {
+    return { name, locators: [{ kind: 'css' as const, selector }] };
+  }
+
+  describe('bounded semantic state', () => {
+    it('disabled: explicit true and explicit false are both reported (not omitted)', async () => {
+      const result = await resolveTargets([
+        cssTarget('disabled', `#${OBSERVATION_FIXTURE_SEMANTIC_STATE.disabledButton}`),
+        cssTarget('enabled', `#${OBSERVATION_FIXTURE_SEMANTIC_STATE.enabledButton}`),
+      ]);
+      expect(available(result.targetEvidence.disabled!.semanticState) && result.targetEvidence.disabled!.semanticState.value.disabled).toBe(true);
+      expect(available(result.targetEvidence.enabled!.semanticState) && result.targetEvidence.enabled!.semanticState.value.disabled).toBe(false);
+    });
+
+    it('expanded: true and false are both distinguishable', async () => {
+      const result = await resolveTargets([
+        cssTarget('expanded', `#${OBSERVATION_FIXTURE_SEMANTIC_STATE.expandedButton}`),
+        cssTarget('collapsed', `#${OBSERVATION_FIXTURE_SEMANTIC_STATE.collapsedButton}`),
+      ]);
+      expect(available(result.targetEvidence.expanded!.semanticState) && result.targetEvidence.expanded!.semanticState.value.expanded).toBe(true);
+      expect(available(result.targetEvidence.collapsed!.semanticState) && result.targetEvidence.collapsed!.semanticState.value.expanded).toBe(false);
+    });
+
+    it('checked: true, false, and mixed are all distinguishable', async () => {
+      const result = await resolveTargets([
+        cssTarget('checked', `#${OBSERVATION_FIXTURE_SEMANTIC_STATE.checkedCheckbox}`),
+        cssTarget('unchecked', `#${OBSERVATION_FIXTURE_SEMANTIC_STATE.uncheckedCheckbox}`),
+        cssTarget('mixed', `#${OBSERVATION_FIXTURE_SEMANTIC_STATE.mixedCheckbox}`),
+      ]);
+      expect(available(result.targetEvidence.checked!.semanticState) && result.targetEvidence.checked!.semanticState.value.checked).toBe(true);
+      expect(available(result.targetEvidence.unchecked!.semanticState) && result.targetEvidence.unchecked!.semanticState.value.checked).toBe(false);
+      expect(available(result.targetEvidence.mixed!.semanticState) && result.targetEvidence.mixed!.semanticState.value.checked).toBe('mixed');
+    });
+
+    it('selected: true and false are both distinguishable', async () => {
+      const result = await resolveTargets([
+        cssTarget('selected', `#${OBSERVATION_FIXTURE_SEMANTIC_STATE.selectedOption}`),
+        cssTarget('unselected', `#${OBSERVATION_FIXTURE_SEMANTIC_STATE.unselectedOption}`),
+      ]);
+      expect(available(result.targetEvidence.selected!.semanticState) && result.targetEvidence.selected!.semanticState.value.selected).toBe(true);
+      expect(available(result.targetEvidence.unselected!.semanticState) && result.targetEvidence.unselected!.semanticState.value.selected).toBe(false);
+    });
+
+    it('pressed: true, false, and mixed are all distinguishable', async () => {
+      const result = await resolveTargets([
+        cssTarget('pressed', `#${OBSERVATION_FIXTURE_SEMANTIC_STATE.pressedButton}`),
+        cssTarget('unpressed', `#${OBSERVATION_FIXTURE_SEMANTIC_STATE.unpressedButton}`),
+        cssTarget('mixedPressed', `#${OBSERVATION_FIXTURE_SEMANTIC_STATE.mixedPressedButton}`),
+      ]);
+      expect(available(result.targetEvidence.pressed!.semanticState) && result.targetEvidence.pressed!.semanticState.value.pressed).toBe(true);
+      expect(available(result.targetEvidence.unpressed!.semanticState) && result.targetEvidence.unpressed!.semanticState.value.pressed).toBe(false);
+      expect(available(result.targetEvidence.mixedPressed!.semanticState) && result.targetEvidence.mixedPressed!.semanticState.value.pressed).toBe(
+        'mixed',
+      );
+    });
+
+    it('current: exposed for aria-current="page", absent (not-applicable) for a plain link', async () => {
+      const result = await resolveTargets([
+        cssTarget('current', `#${OBSERVATION_FIXTURE_SEMANTIC_STATE.currentLink}`),
+        cssTarget('noncurrent', `#${OBSERVATION_FIXTURE_SEMANTIC_STATE.noncurrentLink}`),
+      ]);
+      expect(available(result.targetEvidence.current!.semanticState) && result.targetEvidence.current!.semanticState.value.current).toBe('page');
+      expect(available(result.targetEvidence.noncurrent!.semanticState) && 'current' in result.targetEvidence.noncurrent!.semanticState.value).toBe(
+        false,
+      );
+    });
+
+    it('explicit false is distinct from not-applicable: a plain div with no supported state reports not-applicable, not an empty available object', async () => {
+      const result = await resolveTargets([cssTarget('plain', `#${OBSERVATION_FIXTURE_SEMANTIC_STATE.plainDiv}`)]);
+      expect(result.targetEvidence.plain!.semanticState.state).toBe('not-applicable');
+    });
+  });
+
+  describe('landmark evidence', () => {
+    it('derives banner/navigation/main/contentinfo from the actual browser-exposed role', async () => {
+      const result = await resolveTargets([
+        cssTarget('header', OBSERVATION_FIXTURE_SELECTORS.header),
+        cssTarget('nav', OBSERVATION_FIXTURE_SELECTORS.nav),
+        cssTarget('main', OBSERVATION_FIXTURE_SELECTORS.main),
+        cssTarget('footer', OBSERVATION_FIXTURE_SELECTORS.footer),
+      ]);
+      expect(available(result.targetEvidence.header!.landmark) && result.targetEvidence.header!.landmark.value).toBe('banner');
+      expect(available(result.targetEvidence.nav!.landmark) && result.targetEvidence.nav!.landmark.value).toBe('navigation');
+      expect(available(result.targetEvidence.main!.landmark) && result.targetEvidence.main!.landmark.value).toBe('main');
+      expect(available(result.targetEvidence.footer!.landmark) && result.targetEvidence.footer!.landmark.value).toBe('contentinfo');
+    });
+
+    it('a non-landmark target reports landmark not-applicable', async () => {
+      const result = await resolveTargets([cssTarget('button', OBSERVATION_FIXTURE_SELECTORS.button)]);
+      expect(result.targetEvidence.button!.landmark.state).toBe('not-applicable');
+    });
+
+    it('landmark is derived from the browser-exposed role, not from locator kind: resolving navigation by ID still yields the navigation landmark', async () => {
+      const result = await resolveTargets([{ name: 'navById', locators: [{ kind: 'id', value: 'nav' }] }]);
+      expect(available(result.targetEvidence.navById!.landmark) && result.targetEvidence.navById!.landmark.value).toBe('navigation');
+    });
+  });
+
+  describe('configured-target containment', () => {
+    it('simple containment: primary-navigation is contained by app-shell', async () => {
+      const result = await resolveTargets([
+        cssTarget('appShell', `#${OBSERVATION_FIXTURE_CONTAINMENT.appShell}`),
+        cssTarget('primaryNavigation', `#${OBSERVATION_FIXTURE_CONTAINMENT.primaryNavigation}`),
+      ]);
+      const containment = available(result.targetEvidence.primaryNavigation!.containment) && result.targetEvidence.primaryNavigation!.containment.value;
+      expect(containment && containment.containedByTargetIds).toEqual(['appShell']);
+      expect(containment && containment.evaluatedTargetIds).toEqual(['appShell']);
+      expect(containment && containment.unresolvedTargetIds).toEqual([]);
+    });
+
+    it('nested containment: tool-workspace is contained by both app-shell and main-content, in configured order', async () => {
+      const result = await resolveTargets([
+        cssTarget('appShell', `#${OBSERVATION_FIXTURE_CONTAINMENT.appShell}`),
+        cssTarget('mainContent', `#${OBSERVATION_FIXTURE_CONTAINMENT.mainContent}`),
+        cssTarget('toolWorkspace', `#${OBSERVATION_FIXTURE_CONTAINMENT.toolWorkspace}`),
+      ]);
+      const containment = available(result.targetEvidence.toolWorkspace!.containment) && result.targetEvidence.toolWorkspace!.containment.value;
+      expect(containment && containment.containedByTargetIds).toEqual(['appShell', 'mainContent']);
+    });
+
+    it('no containment: main-content is not contained by primary-navigation', async () => {
+      const result = await resolveTargets([
+        cssTarget('primaryNavigation', `#${OBSERVATION_FIXTURE_CONTAINMENT.primaryNavigation}`),
+        cssTarget('mainContent', `#${OBSERVATION_FIXTURE_CONTAINMENT.mainContent}`),
+      ]);
+      const containment = available(result.targetEvidence.mainContent!.containment) && result.targetEvidence.mainContent!.containment.value;
+      expect(containment && containment.containedByTargetIds).toEqual([]);
+    });
+
+    it('missing comparison target: containment is partial, proven relationships survive, unresolved targets are recorded', async () => {
+      const result = await resolveTargets([
+        cssTarget('appShell', `#${OBSERVATION_FIXTURE_CONTAINMENT.appShell}`),
+        cssTarget('toolWorkspace', `#${OBSERVATION_FIXTURE_CONTAINMENT.toolWorkspace}`),
+        cssTarget('ghost', OBSERVATION_FIXTURE_SELECTORS.missing),
+      ]);
+      const workspaceContainment = result.targetEvidence.toolWorkspace!.containment;
+      expect(workspaceContainment.state).toBe('partial');
+      const value = (workspaceContainment as { state: 'partial'; value: { containedByTargetIds: string[]; unresolvedTargetIds: string[] } }).value;
+      expect(value.containedByTargetIds).toContain('appShell');
+      expect(value.unresolvedTargetIds).toContain('ghost');
+    });
+
+    it('the unresolved target itself reports containment unavailable', async () => {
+      const result = await resolveTargets([
+        cssTarget('appShell', `#${OBSERVATION_FIXTURE_CONTAINMENT.appShell}`),
+        cssTarget('ghost', OBSERVATION_FIXTURE_SELECTORS.missing),
+      ]);
+      expect(result.targetEvidence.ghost!.containment.state).toBe('unavailable');
+    });
+
+    it('a hidden but resolved configured target still participates in containment', async () => {
+      const result = await resolveTargets([
+        cssTarget('appShell', `#${OBSERVATION_FIXTURE_CONTAINMENT.appShell}`),
+        cssTarget('hidden', OBSERVATION_FIXTURE_SELECTORS.hidden),
+      ]);
+      // #hidden-target is a sibling of #app-shell in the fixture, not contained by it -
+      // this proves containment still runs (evaluatedTargetIds populated) for a hidden target.
+      const containment = available(result.targetEvidence.hidden!.containment) && result.targetEvidence.hidden!.containment.value;
+      expect(containment && containment.evaluatedTargetIds).toEqual(['appShell']);
+      expect(available(result.targetEvidence.hidden!.visibility) && result.targetEvidence.hidden!.visibility.value.visible).toBe(false);
+      expect(result.diagnostics).toContainEqual(expect.objectContaining({ code: 'target-hidden', targetName: 'hidden' }));
+    });
+  });
+
+  describe('persisted identity stability', () => {
+    it('same configuration, repeated observations: same requestId, different observationId, equivalent evidence', async () => {
+      const targets = [cssTarget('header', OBSERVATION_FIXTURE_SELECTORS.header)];
+      const request = requestWithTargets(targets);
+      const requestIdA = buildRequestIdentity(request);
+      const requestIdB = buildRequestIdentity(request);
+      expect(requestIdA).toBe(requestIdB);
+      expect(buildObservationIdentity(requestIdA)).not.toBe(buildObservationIdentity(requestIdB));
+
+      const resultA = await resolveTargets(targets);
+      const resultB = await resolveTargets(targets);
+      expect(available(resultA.targetEvidence.header!.resolution) && resultA.targetEvidence.header!.resolution.value.selectionStatus).toBe(
+        available(resultB.targetEvidence.header!.resolution) && resultB.targetEvidence.header!.resolution.value.selectionStatus,
+      );
+      expect(available(resultA.targetEvidence.header!.semantics) && resultA.targetEvidence.header!.semantics.value).toEqual(
+        available(resultB.targetEvidence.header!.semantics) && resultB.targetEvidence.header!.semantics.value,
+      );
+    });
+
+    it('same stable target name, changed locator configuration: same targetEvidence key, different requestId', async () => {
+      const byRole: NormalizedObservationRequest['targets'] = [
+        { name: 'primary-navigation', locators: [{ kind: 'role', role: OBSERVATION_FIXTURE_ROLE.navRole, name: OBSERVATION_FIXTURE_ROLE.navName }] },
+      ];
+      const byId: NormalizedObservationRequest['targets'] = [{ name: 'primary-navigation', locators: [{ kind: 'id', value: 'nav' }] }];
+
+      const requestA = requestWithTargets(byRole);
+      const requestB = requestWithTargets(byId);
+      expect(buildRequestIdentity(requestA)).not.toBe(buildRequestIdentity(requestB));
+
+      const resultA = await resolveTargets(byRole);
+      const resultB = await resolveTargets(byId);
+      expect(Object.keys(resultA.targetEvidence)).toEqual(['primary-navigation']);
+      expect(Object.keys(resultB.targetEvidence)).toEqual(['primary-navigation']);
+    });
+
+    it('same configuration, same URL, actual runtime disappearance: same requestId, matched then not-found, target-missing warning', async () => {
+      fixtures.setDisappearingTargetPresent(true);
+      const targets = [cssTarget('disappearing', OBSERVATION_DISAPPEARING_FIXTURE_SELECTOR)];
+      const request = requestWithTargets(targets, '/disappearing');
+      const requestIdBefore = buildRequestIdentity(request);
+
+      const first = await resolveTargets(targets, '/disappearing');
+      expect(available(first.targetEvidence.disappearing!.resolution) && first.targetEvidence.disappearing!.resolution.value.selectionStatus).toBe(
+        'matched',
+      );
+
+      // External fixture-harness mutation only - the observer itself performs no write/interaction.
+      fixtures.setDisappearingTargetPresent(false);
+
+      const second = await resolveTargets(targets, '/disappearing');
+      const requestIdAfter = buildRequestIdentity(requestWithTargets(targets, '/disappearing'));
+      expect(requestIdAfter).toBe(requestIdBefore);
+      expect(available(second.targetEvidence.disappearing!.resolution) && second.targetEvidence.disappearing!.resolution.value.selectionStatus).toBe(
+        'not-found',
+      );
+      expect(second.diagnostics).toContainEqual(expect.objectContaining({ code: 'target-missing', targetName: 'disappearing' }));
+
+      fixtures.setDisappearingTargetPresent(true);
     });
   });
 });
