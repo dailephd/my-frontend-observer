@@ -61,14 +61,20 @@ async function main() {
     await writeFile(path.join(consumerDir, 'package.json'), JSON.stringify({ name: 'mfo-ci-smoke-consumer', version: '0.0.0', private: true }, null, 2));
 
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+    console.log(`[t+0ms] installing candidate tarball with ${npmCmd}...`);
+    const t0 = Date.now();
     const install = await run(npmCmd, ['install', tarballPath, '--no-audit', '--no-fund'], { cwd: consumerDir });
+    console.log(`[t+${Date.now() - t0}ms] npm install exit=${install.code}`);
     if (install.code !== 0) fail(`npm install of candidate tarball failed:\n${install.stdout}\n${install.stderr}`);
 
-    const installedPkg = JSON.parse(await readFile(path.join(consumerDir, 'node_modules', 'my-frontend-observer', 'package.json'), 'utf8'));
+    const installedPkgPath = path.join(consumerDir, 'node_modules', 'my-frontend-observer', 'package.json');
+    console.log(`checking installed package at ${installedPkgPath}`);
+    const installedPkg = JSON.parse(await readFile(installedPkgPath, 'utf8'));
     const binName = Object.keys(installedPkg.bin ?? {})[0];
     if (!binName) fail('installed package.json has no bin entry');
     summary.binName = binName;
     summary.packageVersion = installedPkg.version;
+    console.log(`binName=${binName} packageVersion=${installedPkg.version}`);
 
     function runBin(binArgs) {
       const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
@@ -78,19 +84,24 @@ async function main() {
     const pwVersion = installedPkg.dependencies?.playwright;
     summary.playwrightDependencyRange = pwVersion ?? null;
 
+    console.log(`[t+${Date.now() - t0}ms] installing Chromium via consumer-local playwright...`);
     const pwInstall = await run(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['--no-install', 'playwright', 'install', 'chromium', ...(process.platform === 'linux' ? ['--with-deps'] : [])], {
       cwd: consumerDir,
     });
+    console.log(`[t+${Date.now() - t0}ms] playwright install chromium exit=${pwInstall.code}`);
     if (pwInstall.code !== 0) fail(`playwright install chromium failed:\n${pwInstall.stdout}\n${pwInstall.stderr}`);
 
     const versionRes = await runBin(['--version']);
-    if (versionRes.code !== 0) fail(`--version failed:\n${versionRes.stderr}`);
+    console.log(`[t+${Date.now() - t0}ms] --version exit=${versionRes.code} stdout=${JSON.stringify(versionRes.stdout)} stderr=${JSON.stringify(versionRes.stderr)}`);
+    if (versionRes.code !== 0 || versionRes.stdout.trim().length === 0) fail(`--version failed or empty (exit ${versionRes.code}):\nstdout:\n${versionRes.stdout}\nstderr:\n${versionRes.stderr}`);
     summary.versionOutput = versionRes.stdout.trim();
 
     const helpRes = await runBin(['--help']);
-    if (helpRes.code !== 0) fail(`--help failed:\n${helpRes.stderr}`);
+    console.log(`[t+${Date.now() - t0}ms] --help exit=${helpRes.code} stdoutLength=${helpRes.stdout.length}`);
+    if (helpRes.code !== 0 || helpRes.stdout.trim().length === 0) fail(`--help failed or empty (exit ${helpRes.code}):\nstdout:\n${helpRes.stdout}\nstderr:\n${helpRes.stderr}`);
 
     const observeHelpRes = await runBin(['observe', '--help']);
+    console.log(`[t+${Date.now() - t0}ms] observe --help exit=${observeHelpRes.code} stdoutLength=${observeHelpRes.stdout.length}`);
     if (observeHelpRes.code !== 0) fail(`observe --help failed:\n${observeHelpRes.stderr}`);
 
     const html = '<!doctype html><html><head><title>ci smoke fixture</title></head><body><header id="header">Header</header><main id="main">Main</main></body></html>';
@@ -129,11 +140,19 @@ async function main() {
 
     summary.observeExitCode = observeRes.code;
     summary.observeStdout = observeRes.stdout;
+    summary.observeStderr = observeRes.stderr;
+    console.log('--- observe stdout ---');
+    console.log(observeRes.stdout);
+    console.log('--- observe stderr ---');
+    console.log(observeRes.stderr);
+    console.log(`--- observe exit code: ${observeRes.code} ---`);
     if (observeRes.code !== 0) fail(`observe failed (exit ${observeRes.code}):\n${observeRes.stdout}\n${observeRes.stderr}`);
 
     const requiredLines = ['Observation:', 'State:', 'Artifact:', 'Targets:', 'Diagnostics:'];
     for (const prefix of requiredLines) {
-      if (!observeRes.stdout.includes(prefix)) fail(`observe stdout missing expected "${prefix}" line`);
+      if (!observeRes.stdout.includes(prefix)) {
+        fail(`observe stdout missing expected "${prefix}" line. Full stdout:\n${observeRes.stdout}\nFull stderr:\n${observeRes.stderr}`);
+      }
     }
 
     const artifactLine = observeRes.stdout.split('\n').find((l) => l.startsWith('Artifact: '));
