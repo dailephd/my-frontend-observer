@@ -105,10 +105,16 @@ describe('runCli observe - argument parsing (B5-TST-002..006)', () => {
 });
 
 describe('runCli - CLI has no browser/persistence implementation of its own (B5-TST-008,009)', () => {
-  it('B5-TST-008,009: cli.ts source imports no Playwright or filesystem-write module', async () => {
+  it('B5-TST-008,009: cli.ts source imports no Playwright or filesystem-write/artifact module', async () => {
     const { readFile } = await import('node:fs/promises');
     const source = await readFile(new URL('../../src/cli.ts', import.meta.url), 'utf8');
     expect(source).not.toMatch(/from ['"]playwright['"]/);
-    expect(source).not.toMatch(/from ['"]node:fs/);
+    // The CLI may use synchronous, read-only node:fs utilities for entry-point bootstrapping
+    // (e.g. realpathSync, to detect "am I the invoked main module" symlink-safely - see the
+    // isMainModule comment in src/cli.ts), but must never import the filesystem-*write* module
+    // or the artifact writer directly: persistence stays owned by src/artifacts/.
+    expect(source).not.toMatch(/from ['"]node:fs\/promises['"]/);
+    expect(source).not.toMatch(/from ['"].*artifacts\//);
+    expect(source).not.toMatch(/\b(writeFile|writeFileSync|mkdir|mkdirSync|rmSync|rename|renameSync)\b/);
   });
 });

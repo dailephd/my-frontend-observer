@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { pathToFileURL } from 'node:url';
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { normalizeRequest } from './request/request.js';
 import type { RawObservationRequest } from './request/request.js';
 import type { Diagnostic } from './domain/diagnostics.js';
@@ -213,8 +214,24 @@ export async function runCli(argv: readonly string[], io: CliIO = defaultIO): Pr
   return 1;
 }
 
-const isMainModule = process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
-if (isMainModule) {
+/**
+ * Resolves symlinks on both sides before comparing paths, not just a raw URL string
+ * comparison: on macOS, `os.tmpdir()` (and other paths) live under `/var`, which is
+ * itself a symlink to `/private/var`. A plain `import.meta.url === pathToFileURL(...)`
+ * comparison silently evaluates false in that case (mismatched but equivalent paths),
+ * so the CLI's own entry point never runs - `node dist/cli.js ...` exits 0 having
+ * printed nothing. Real-pathing both sides makes the comparison symlink-safe.
+ */
+function isMainModule(): boolean {
+  if (process.argv[1] === undefined) return false;
+  try {
+    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (isMainModule()) {
   runCli(process.argv.slice(2)).then((exitCode) => {
     process.exitCode = exitCode;
   });
