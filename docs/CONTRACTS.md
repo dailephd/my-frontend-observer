@@ -6,7 +6,7 @@ The v0.1 observation artifact contract is implemented (`src/domain/schema.ts`)
 and proven both from the source checkout and from the packed npm tarball:
 
 - artifact kind `my-frontend-observer/observation`, schema version `1.0.0`
-  (independent of the package version, currently `0.0.0`);
+  (independent of the package version, currently `0.1.0`);
 - one artifact root per observation, `<outputLocation>/<observationId>/`,
   containing exactly `manifest.json` (the full `ObservationArtifact`, with
   page/target evidence embedded inline) and `screenshot.png` - there is no

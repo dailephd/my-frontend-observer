@@ -15,12 +15,12 @@ The responsibility split is stable:
 
 ## Current repository state
 
-v0.1, Runtime Observation Foundation, is implemented as a source checkout and
-validated as a packed npm tarball in a clean consumer environment: a real
-`observe` CLI command launches Chromium, enforces loopback-only safety,
+v0.1, Runtime Observation Foundation, is released as `0.1.0`, published to
+npm and validated as a packed npm tarball in a clean consumer environment: a
+real `observe` CLI command launches Chromium, enforces loopback-only safety,
 captures bounded page/target evidence and a viewport screenshot, and
-persists one portable local artifact. It is not yet published or
-release-prepared. v0.2–v0.10 remain future and unimplemented.
+persists one portable local artifact. v0.2–v0.10 remain future and
+unimplemented.
 
 The revised dependency path reaches practical coding-agent use before graphical
 interaction:

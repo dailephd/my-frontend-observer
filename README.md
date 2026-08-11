@@ -6,14 +6,20 @@ in [docs/PROJECT_DESCRIPTION.md](docs/PROJECT_DESCRIPTION.md).
 
 ## Current status
 
-Roadmap v0.1, Runtime Observation Foundation, is implemented as a
-source checkout: `my-frontend-observer observe` launches a real, sandboxed
-Chromium browser, enforces a loopback-only safety policy, captures a viewport
-screenshot plus bounded page/target evidence, and persists it as one portable
-`manifest.json` + `screenshot.png` artifact. v0.1 is not yet released as a
-published package.
+`v0.1.0`, Runtime Observation Foundation, is the current published release:
+`my-frontend-observer observe` launches a real, sandboxed Chromium browser,
+enforces a loopback-only safety policy, captures a viewport screenshot plus
+bounded page/target evidence, and persists it as one portable
+`manifest.json` + `screenshot.png` artifact.
 
-Setup:
+Install:
+
+```powershell
+npm install my-frontend-observer
+npx playwright install chromium
+```
+
+Setup for working from a source checkout instead:
 
 ```powershell
 npm install
@@ -24,13 +30,15 @@ npm run build
 Example use, against your own locally running frontend:
 
 ```powershell
-node dist/cli.js observe `
+my-frontend-observer observe `
   --url http://localhost:3000/ `
   --viewport 1280x720 `
   --target header=header `
   --target main-content=main `
   --output observations
 ```
+
+(From a source checkout, use `node dist/cli.js observe ...` instead.)
 
 This prints a concise result (`Observation:`/`State:`/`Artifact:`/`Targets:`/
 `Diagnostics:`) and exits `0` on a successfully persisted observation. See
@@ -53,9 +61,9 @@ Planning authorities:
   intent and responsibility boundaries.
 - [Project Milestones](docs/PROJECT_MILESTONES.md): complete ordered capability
   design and cross-milestone rules.
-- [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1 is implemented,
+- [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1 is released,
   v0.2 is next.
 - [Current State](docs/CURRENT_STATE.md): retained scaffold and release state.
 
-This package is private and unreleased. No sibling ecosystem repository is a
-runtime dependency of the retained foundation.
+No sibling ecosystem repository is a runtime dependency of the retained
+foundation.

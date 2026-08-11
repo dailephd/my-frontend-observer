@@ -1,9 +1,12 @@
 {
   "name": "my-frontend-observer",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "Local-first browser runtime evidence producer",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dailephd/my-frontend-observer.git"
+  },
   "bin": {
     "my-frontend-observer": "dist/cli.js"
   },

@@ -1,6 +1,7 @@
 # Current State
 
-The project is private and unreleased at package version `0.0.0`.
+The project is published at package version `0.1.0` (roadmap v0.1, Runtime
+Observation Foundation).
 
 ## Greenfield foundation established
 
@@ -21,7 +22,7 @@ The retained repository contains:
 The package bin (`src/cli.ts`) now implements the real `observe` command
 described below; it is no longer the not-implemented placeholder.
 
-## v0.1 progress (Batch 1–6; implementation complete, not yet release-ready)
+## v0.1 progress (Batch 1–6; implemented and released as 0.1.0)
 
 - Batch 1 froze and implemented the observation request contract, evidence
   states/sources, schema 1.0.0, observation/request identity, bounded
@@ -78,7 +79,7 @@ described below; it is no longer the not-implemented placeholder.
   persisted observation - including one whose completion state honestly
   reports `partial` - exits `0`; invalid syntax/request, an unpersistable
   browser failure, or a failed artifact write exits nonzero. Package version
-  stays `0.0.0`; schema stays `1.0.0`.
+  is `0.1.0`; schema stays `1.0.0`.
 
 So: `my-frontend-observer observe --url ... --viewport ... --target ...
 --output ...` is a real, working, source-checkout command that launches
@@ -103,17 +104,10 @@ batch.
 
 ## Not implemented
 
-- v0.1 is implemented and packaged-tarball-validated, but it is not yet
-  published, tagged, or release-prepared - no version bump, release branch,
-  or npm publication has occurred.
 - There is no controlled-scroll behavior, target-source correlation, or
   capability beyond the bounded page/target evidence Batches 3-5 established.
 - No v0.2–v0.10 capability is implemented.
-- No public release, deployment, or hosted CI workflow exists; local package
-  validation (this batch) is not cross-platform CI.
 
 ## Next target
 
-v0.1 implementation is complete. The next allowed workflow is a separate
-pre-release-readiness (cross-platform + security validation) task; it has
-not been performed as part of this implementation work.
+v0.1.0 is released. The next allowed workflow is v0.2 planning.
