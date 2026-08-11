@@ -5,6 +5,10 @@ on:
   push:
     branches:
       - 'validation/**'
+      - 'release/**'
+  pull_request:
+    branches:
+      - master
 
 permissions:
   contents: read
