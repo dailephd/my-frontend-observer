@@ -4,12 +4,13 @@
 
 The v0.1 observation artifact contract is published as `my-frontend-observer@0.1.0`
 and proven both from the source checkout and from the packed npm tarball. On the
-active v0.2 implementation branch, the observation schema has advanced to `1.1.0`
-(see "Active v0.2 target-contract evolution" below); the published `0.1.0` package
-still ships schema `1.0.0`:
+current `feature/v0.2-stable-semantic-targets` branch, the observation schema has
+advanced to `1.1.0` (see "v0.2 target contract" below, implemented and
+feature-complete but not yet released); the published `0.1.0` package still
+ships schema `1.0.0`:
 
 - artifact kind `my-frontend-observer/observation`, schema version `1.1.0` on the
-  v0.2 implementation branch (`1.0.0` in the published `0.1.0` package;
+  current v0.2 feature branch (`1.0.0` in the published `0.1.0` package;
   independent of the package version either way);
 - one artifact root per observation, `<outputLocation>/<observationId>/`,
   containing exactly `manifest.json` (the full `ObservationArtifact`, with
@@ -33,10 +34,9 @@ still ships schema `1.0.0`:
 This contract is implemented and published; no public programmatic-API
 compatibility promise has been made.
 
-## Active v0.2 target-contract evolution
+## v0.2 target contract (implemented on the current branch, not yet released)
 
-v0.2 (implementation branch only, not yet published) introduces a canonical
-target-configuration model: each configured target has a stable
+v0.2 introduces a canonical target-configuration model: each configured target has a stable
 observer-level `name` plus an ordered array of bounded `locators`
 (`role`, `id`, `data-attribute`, `semantic-element`, `css`, `text`). This
 identity is distinct from both the browser locator definition that resolves
@@ -55,7 +55,7 @@ converges on the same measurement path, so locator strategy never changes the
 resulting target evidence shape.
 
 Each resolved target's evidence record additionally carries three bounded
-Batch 3 fields: `semanticState` (a first family of `disabled`/`expanded`/
+fields: `semanticState` (a first family of `disabled`/`expanded`/
 `checked`/`selected`/`pressed`/`current` values read from the element's own
 native form-control properties and explicit `aria-*` attributes - a key is
 present only when the browser exposes that state as applicable to this
@@ -75,10 +75,9 @@ observations (with a fresh `observationId` each time); changing a target's
 locator strategy while keeping its stable name changes `requestId` but not
 the `targetEvidence` key; and actual runtime disappearance of a
 still-configured target changes only its resolution status, never the
-`requestId`. This section will be superseded by the full v0.2 documentation
-reconciliation once all v0.2 batches are complete.
+`requestId`.
 
-The full canonical semantic target model above is now reachable through the
+The full canonical semantic target model above is reachable through the
 real public CLI: `my-frontend-observer observe --targets-file <json-file>`
 supplies the structured `{ "targets": [...] }` collection (see
 `docs/COMMANDS.md` "Structured semantic targets") as an alternative to the

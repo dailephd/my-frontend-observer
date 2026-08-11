@@ -44,12 +44,17 @@ This prints a concise result (`Observation:`/`State:`/`Artifact:`/`Targets:`/
 `Diagnostics:`) and exits `0` on a successfully persisted observation. See
 [docs/COMMANDS.md](docs/COMMANDS.md) for the full flag reference.
 
-For targets that need more than a CSS selector - a role and accessible name,
-a stable `id`, a `data-*` attribute, a semantic landmark element, exact
-text, or an ordered fallback between several of those - pass
-`--targets-file <json-file>` instead of one or more `--target` flags; see
-"Structured semantic targets" in [docs/COMMANDS.md](docs/COMMANDS.md#structured-semantic-targets-targets-file)
-for the exact JSON format.
+**The published `v0.1.0` package above supports `--target` (CSS shorthand)
+only.** A second, structured `--targets-file <json-file>` input mode -
+supporting a role and accessible name, a stable `id`, a `data-*` attribute,
+a semantic landmark element, exact text, or an ordered fallback between
+several of those - is implemented and feature-complete on the current
+`feature/v0.2-stable-semantic-targets` **source-checkout branch**, but is
+not yet part of any published release. To try it today, build from that
+branch (`npm install && npx playwright install chromium && npm run build`,
+then `node dist/cli.js observe --targets-file ...`); see "Structured
+semantic targets" in [docs/COMMANDS.md](docs/COMMANDS.md#structured-semantic-targets-targets-file)
+for the exact JSON format and current status.
 
 Validation:
 
@@ -69,7 +74,8 @@ Planning authorities:
 - [Project Milestones](docs/PROJECT_MILESTONES.md): complete ordered capability
   design and cross-milestone rules.
 - [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1 is released,
-  v0.2 is next.
+  v0.2 is implemented on the current feature branch (not yet released),
+  v0.3 is next.
 - [Current State](docs/CURRENT_STATE.md): retained scaffold and release state.
 
 No sibling ecosystem repository is a runtime dependency of the retained

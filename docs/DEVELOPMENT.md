@@ -21,9 +21,9 @@ npm run check:docs
 npm pack --dry-run
 ```
 
-`npm test` runs the fast unit suite only (`tests/unit/`, currently 70
+`npm test` runs the fast unit suite only (`tests/unit/`, currently 106
 passing tests). `npm run test:browser` runs the real-Chromium integration
-suite (`tests/browser/`, currently 16 passing tests) against deterministic
+suite (`tests/browser/`, currently 69 passing tests) against deterministic
 local fixtures under `tests/fixtures/` and requires the Chromium binary
 above to be installed first; it is kept out of `npm test` because it
 launches a real browser and is slower.
@@ -62,4 +62,24 @@ It is what `.github/workflows/pre-release-readiness.yml` runs identically on
 Windows, Linux, and macOS against one shared candidate tarball (see
 `docs/CI_CD.md`); it can also be run locally the same way the workflow runs
 it. It is readiness/CI infrastructure only, not part of the published
-package and never imported by production code.
+package and never imported by production code. As of this writing it still
+only exercises the v0.1 `--target` (legacy CSS shorthand) packed-observation
+shape - see `docs/CI_CD.md` for the current v0.2 readiness coverage gap.
+
+`scripts/dev/builtCliTargetsFileSmoke.mjs` is a separate, narrower v0.2
+development smoke, added alongside the `--targets-file` implementation: it
+runs the built `dist/cli.js` directly (`node dist/cli.js observe
+--targets-file ...`) against an inline disposable local HTTP fixture and a
+temporary JSON target file, proving a real semantic observation persists a
+valid schema-`1.1.0` artifact with no packed-tarball step involved. Run it
+locally after `npm run build`:
+
+```powershell
+node scripts/dev/builtCliTargetsFileSmoke.mjs
+```
+
+Unlike `scripts/ci/runPackedObservationSmoke.mjs`, it is not wired into any
+CI workflow and is not a release gate - it is source-checkout development
+evidence only, proving the built CLI's `--targets-file` behavior without
+installing a packed tarball or requiring cross-platform infrastructure. It
+is not part of the published package.

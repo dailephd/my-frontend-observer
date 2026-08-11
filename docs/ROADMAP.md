@@ -43,6 +43,10 @@ and the concrete dependency/version set before implementation.
 
 ## v0.2 — Stable Semantic Targets and Region Identity
 
+Current status: implemented on the current feature branch
+(`feature/v0.2-stable-semantic-targets`); not yet released. See
+`docs/CURRENT_STATE.md` for the implementation summary.
+
 Objective/problem: let humans and consumers refer reliably to conceptual
 rendered regions across observations without brittle selector-only identity.
 Required capabilities include semantic HTML, accessibility role/name, stable

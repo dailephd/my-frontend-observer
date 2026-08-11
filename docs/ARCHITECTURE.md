@@ -48,6 +48,33 @@ packed npm tarball end to end in a clean consumer environment, independent
 of the source checkout. There is still no controlled-scroll/comparison
 behavior.
 
+## Current v0.2 architecture (implemented on the current branch, not yet released)
+
+v0.2 extends the same architecture rather than adding a parallel one.
+`src/request/request.ts` now owns a canonical `{name, locators}` target
+model (`TargetLocator`, six frozen kinds) in place of the old CSS-only
+shape; the legacy `{name, selector}` input still normalizes into it. The one
+existing browser-side target resolver/measurement module,
+`src/browser/evidenceCapture.ts`, was extended - not replaced - to resolve
+all six locator kinds against the live page through a single Playwright
+`Locator` per attempt, honor the frozen ordered-fallback/ambiguity/
+unavailable-no-fallback contract, and converge every kind on the same
+measurement path (`captureResolvedTargetRecord`); it additionally computes
+bounded semantic state, derived landmark identity, and configured-target-
+only DOM containment from the same already-resolved elements in the same
+capture pass - no second browser/page, no second resolution algorithm.
+`src/domain/schema.ts` extends `TargetEvidenceRecord`/`TargetResolution`
+additively for schema `1.1.0`, with matching structural validation in
+`isValidObservationArtifact`. `src/cli.ts` gained one CLI/input-boundary-
+only addition, `--targets-file`: it reads and validates only the JSON root
+wrapper (via the already-imported `node:fs`, never `node:fs/promises`) and
+hands the parsed `targets` value into the existing `RawObservationRequest`/
+`normalizeRequest()` path unchanged - there is no second application
+observation use case, and Playwright objects still never leave
+`src/browser/`. The artifact writer, application observation use case, and
+overall boundary chain (`CLI → normalizeRequest → observe() →
+runBrowserCapture → artifact writer`) are unchanged from v0.1.
+
 ## Planned v0.1 architecture constraints
 
 v0.1 planning must preserve these approved boundaries without treating module
