@@ -2,21 +2,32 @@
 
 ## Current controls
 
-The current scaffold performs no browser navigation, page capture, network
-requests, target interaction, or observation artifact writing. Its only runtime
-bin behavior is a not-implemented message with failure status. No browser/network
-security boundary is therefore implemented as product behavior.
+`my-frontend-observer` launches a real, sandboxed Chromium browser
+(`src/browser/chromiumAdapter.ts`) and enforces a conservative, local-first,
+credential-free, non-destructive browser/network boundary
+(`src/safety/policy.ts`) as actual product behavior, covered by real-Chromium
+tests:
 
-## Required v0.1 boundary
+- allowed schemes are `http`/`https` only;
+- allowed hosts are loopback only (`localhost`, `127.0.0.1`, `::1`, and any
+  `127.x.x.x` form) - no DNS resolution, no arbitrary "local dev host";
+- credential-bearing URLs (`user:pass@host`) are rejected;
+- the initial target, every navigation redirect, and every subresource
+  request are independently classified against the same loopback policy and
+  blocked before being contacted if unsafe;
+- popups and downloads are never followed/saved (reported as non-fatal
+  diagnostics);
+- navigation and readiness are bounded by explicit, request-configured
+  timeouts - no unbounded wait;
+- the Chromium browser/context/page are reliably closed on every exit path
+  (success, safety rejection, navigation/readiness failure, or an
+  unexpected internal error);
+- the observed target's own content/source is never modified by observation.
 
-Project Description, Milestone 1, and ROADMAP require a conservative local-first,
-credential-free, non-destructive browser/network boundary. The historical
-greenfield scaffold plan proposed credential-free HTTP(S) loopback targets,
-redirect/final-URL and subresource validation, blocked external requests,
-blocked service workers, and no downloads. These remain v0.1 planning inputs,
-not current controls.
+## Not yet addressed
 
-v0.1 planning must explicitly address schemes, local/remote targets, redirects,
-timeouts, certificate failures, downloads, popups, permissions, unexpected
-navigation, sensitive content/output, cleanup, and target immutability before
-implementation.
+Certificate-failure-specific handling, permission-prompt-specific handling
+(Chromium's default deny-all applies; no permission is ever explicitly
+granted), and any non-loopback/remote browsing mode remain unimplemented and
+out of v0.1 scope. Package publication and any hosted-CI/release-pipeline
+security gate are separate, later decisions - not addressed here.

@@ -1,0 +1,198 @@
+#!/usr/bin/env node
+// Cross-platform (Windows/Linux/macOS) readiness-only smoke helper.
+//
+// Proves that the actual packed npm tarball - not the source checkout -
+// installs, exposes its bin, launches real Chromium, performs a real
+// observation against a disposable local HTTP target, and produces a valid
+// portable artifact. Exits nonzero on any contract failure so CI can gate on
+// it directly. This is test/readiness infrastructure only: it is never
+// imported by production code and is not itself part of the npm package
+// (see package.json "files").
+//
+// Usage: node scripts/ci/runPackedObservationSmoke.mjs <path-to-tarball> [--out <summary-json-path>]
+
+import { createServer } from 'node:http';
+import { spawn } from 'node:child_process';
+import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { randomUUID } from 'node:crypto';
+
+function fail(message) {
+  console.error(`SMOKE FAILURE: ${message}`);
+  process.exitCode = 1;
+  throw new Error(message);
+}
+
+function run(cmd, args, opts = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'], shell: process.platform === 'win32', ...opts });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (d) => {
+      stdout += d.toString();
+    });
+    child.stderr.on('data', (d) => {
+      stderr += d.toString();
+    });
+    child.on('error', reject);
+    child.on('close', (code) => resolve({ code, stdout, stderr }));
+  });
+}
+
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+function isPngSignature(bytes) {
+  return PNG_SIGNATURE.every((byte, index) => bytes[index] === byte);
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+  const tarballArg = args.find((a) => !a.startsWith('--'));
+  const outIndex = args.indexOf('--out');
+  const outPath = outIndex >= 0 ? args[outIndex + 1] : undefined;
+
+  if (!tarballArg) fail('usage: runPackedObservationSmoke.mjs <path-to-tarball> [--out <summary-json-path>]');
+  const tarballPath = path.resolve(tarballArg);
+
+  const consumerDir = await mkdtemp(path.join(tmpdir(), 'mfo-ci-smoke-'));
+  const summary = { platform: process.platform, arch: process.arch, nodeVersion: process.version };
+
+  try {
+    await writeFile(path.join(consumerDir, 'package.json'), JSON.stringify({ name: 'mfo-ci-smoke-consumer', version: '0.0.0', private: true }, null, 2));
+
+    const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+    const install = await run(npmCmd, ['install', tarballPath, '--no-audit', '--no-fund'], { cwd: consumerDir });
+    if (install.code !== 0) fail(`npm install of candidate tarball failed:\n${install.stdout}\n${install.stderr}`);
+
+    const installedPkg = JSON.parse(await readFile(path.join(consumerDir, 'node_modules', 'my-frontend-observer', 'package.json'), 'utf8'));
+    const binName = Object.keys(installedPkg.bin ?? {})[0];
+    if (!binName) fail('installed package.json has no bin entry');
+    summary.binName = binName;
+    summary.packageVersion = installedPkg.version;
+
+    function runBin(binArgs) {
+      const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+      return run(npx, ['--no-install', binName, ...binArgs], { cwd: consumerDir });
+    }
+
+    const pwVersion = installedPkg.dependencies?.playwright;
+    summary.playwrightDependencyRange = pwVersion ?? null;
+
+    const pwInstall = await run(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['--no-install', 'playwright', 'install', 'chromium', ...(process.platform === 'linux' ? ['--with-deps'] : [])], {
+      cwd: consumerDir,
+    });
+    if (pwInstall.code !== 0) fail(`playwright install chromium failed:\n${pwInstall.stdout}\n${pwInstall.stderr}`);
+
+    const versionRes = await runBin(['--version']);
+    if (versionRes.code !== 0) fail(`--version failed:\n${versionRes.stderr}`);
+    summary.versionOutput = versionRes.stdout.trim();
+
+    const helpRes = await runBin(['--help']);
+    if (helpRes.code !== 0) fail(`--help failed:\n${helpRes.stderr}`);
+
+    const observeHelpRes = await runBin(['observe', '--help']);
+    if (observeHelpRes.code !== 0) fail(`observe --help failed:\n${observeHelpRes.stderr}`);
+
+    const html = '<!doctype html><html><head><title>ci smoke fixture</title></head><body><header id="header">Header</header><main id="main">Main</main></body></html>';
+    const server = createServer((req, res) => {
+      if (req.url === '/smoke') {
+        res.writeHead(200, { 'content-type': 'text/html' });
+        res.end(html);
+        return;
+      }
+      res.writeHead(404);
+      res.end();
+    });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = server.address().port;
+    const targetUrl = `http://127.0.0.1:${port}/smoke`;
+
+    const beforeHtml = await fetch(targetUrl).then((r) => r.text());
+
+    const outputSubdir = `ci-smoke-output-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, outputSubdir), { recursive: true });
+
+    const observeRes = await runBin([
+      'observe',
+      '--url', targetUrl,
+      '--viewport', '1024x768',
+      '--target', 'header=#header',
+      '--target', 'main=#main',
+      '--output', outputSubdir,
+    ]);
+
+    const afterHtml = await fetch(targetUrl).then((r) => r.text());
+    server.close();
+
+    summary.targetImmutable = beforeHtml === afterHtml;
+    if (!summary.targetImmutable) fail('observed target content changed after observation');
+
+    summary.observeExitCode = observeRes.code;
+    summary.observeStdout = observeRes.stdout;
+    if (observeRes.code !== 0) fail(`observe failed (exit ${observeRes.code}):\n${observeRes.stdout}\n${observeRes.stderr}`);
+
+    const requiredLines = ['Observation:', 'State:', 'Artifact:', 'Targets:', 'Diagnostics:'];
+    for (const prefix of requiredLines) {
+      if (!observeRes.stdout.includes(prefix)) fail(`observe stdout missing expected "${prefix}" line`);
+    }
+
+    const artifactLine = observeRes.stdout.split('\n').find((l) => l.startsWith('Artifact: '));
+    const artifactRoot = artifactLine.slice('Artifact: '.length).trim();
+    summary.artifactRoot = artifactRoot;
+
+    const manifest = JSON.parse(await readFile(path.join(artifactRoot, 'manifest.json'), 'utf8'));
+    const screenshot = await readFile(path.join(artifactRoot, 'screenshot.png'));
+
+    if (manifest.schemaVersion !== '1.0.0') fail(`unexpected schemaVersion: ${manifest.schemaVersion}`);
+    if (manifest.artifactKind !== 'my-frontend-observer/observation') fail(`unexpected artifactKind: ${manifest.artifactKind}`);
+    if (typeof manifest.observationId !== 'string' || manifest.observationId.length === 0) fail('missing observationId');
+    if (typeof manifest.requestId !== 'string' || manifest.requestId.length === 0) fail('missing requestId');
+    if (manifest.browser?.state !== 'available') fail('missing browser provenance');
+    if (!manifest.pageEvidence || Object.keys(manifest.pageEvidence).length === 0) fail('missing page evidence');
+    if (!manifest.targetEvidence || Object.keys(manifest.targetEvidence).length === 0) fail('missing target evidence');
+    const screenshotRef = manifest.artifactReferences?.find((r) => r.kind === 'screenshot');
+    if (!screenshotRef || path.isAbsolute(screenshotRef.path) || screenshotRef.path.includes(':')) fail('screenshot artifact reference is not relative');
+    if (screenshot.length === 0) fail('screenshot.png is empty');
+    if (!isPngSignature(new Uint8Array(screenshot))) fail('screenshot.png is not a valid PNG');
+
+    summary.schemaVersion = manifest.schemaVersion;
+    summary.artifactKind = manifest.artifactKind;
+    summary.targetIds = Object.keys(manifest.targetEvidence).sort();
+    summary.targetSelectionStatuses = Object.fromEntries(
+      Object.entries(manifest.targetEvidence).map(([name, record]) => [name, record.resolution?.value?.selectionStatus]),
+    );
+    summary.evidenceStatesEncountered = Array.from(
+      new Set(
+        [...Object.values(manifest.pageEvidence), ...Object.values(manifest.targetEvidence).flatMap((r) => Object.values(r))]
+          .map((f) => f?.state)
+          .filter(Boolean),
+      ),
+    ).sort();
+    summary.evidenceSourcesEncountered = Array.from(
+      new Set(
+        [...Object.values(manifest.pageEvidence), ...Object.values(manifest.targetEvidence).flatMap((r) => Object.values(r))]
+          .map((f) => f?.source)
+          .filter(Boolean),
+      ),
+    ).sort();
+    summary.artifactReferencePaths = (manifest.artifactReferences ?? []).map((r) => r.path);
+    summary.completionState = manifest.completion?.state;
+    summary.browserProvenance = manifest.browser?.value ?? null;
+    summary.screenshotBytes = screenshot.length;
+    summary.pass = true;
+
+    console.log('SMOKE PASS');
+    console.log(JSON.stringify(summary, null, 2));
+  } finally {
+    await rm(consumerDir, { recursive: true, force: true }).catch(() => undefined);
+  }
+
+  if (outPath) {
+    await writeFile(outPath, JSON.stringify(summary, null, 2), 'utf8');
+  }
+}
+
+main().catch((err) => {
+  console.error(err instanceof Error ? err.stack : err);
+  process.exitCode = process.exitCode || 1;
+});

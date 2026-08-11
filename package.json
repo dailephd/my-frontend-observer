@@ -25,6 +25,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "test": "vitest run --passWithNoTests",
+    "test:browser": "vitest run --config vitest.browser.config.ts --passWithNoTests",
+    "test:security": "vitest run tests/unit/policy.test.ts && vitest run --config vitest.browser.config.ts tests/browser/chromiumAdapter.test.ts",
     "check:docs": "node scripts/check-docs.mjs"
   },
   "devDependencies": {
@@ -34,5 +36,8 @@
     "typescript": "6.0.3",
     "typescript-eslint": "8.66.0",
     "vitest": "4.1.10"
+  },
+  "dependencies": {
+    "playwright": "^1.62.1"
   }
 }
