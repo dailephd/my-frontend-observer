@@ -1,0 +1,127 @@
+name: Pre-release readiness
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'validation/**'
+      - 'release/**'
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  candidate:
+    name: Package exact candidate (Linux, Node 24)
+    runs-on: ubuntu-latest
+    outputs:
+      tarball: ${{ steps.pack.outputs.tarball }}
+      sha256: ${{ steps.hash.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Record resolved Node/npm versions
+        run: |
+          node --version
+          npm --version
+
+      - run: npm ci
+
+      - name: Install Chromium (with system deps)
+        run: npx playwright install --with-deps chromium
+
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run test:browser
+      - name: Security test suite (npm run test:security)
+        run: npm run test:security
+      - run: npm run build
+      - run: npm run check:docs
+
+      - id: pack
+        name: Build the exact candidate tarball
+        shell: bash
+        run: |
+          FILENAME=$(npm pack --json | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d)[0].filename));")
+          echo "tarball=$FILENAME" >> "$GITHUB_OUTPUT"
+
+      - id: hash
+        name: Compute candidate SHA-256
+        shell: bash
+        run: |
+          HASH=$(node -e "const {createHash}=require('node:crypto');const fs=require('node:fs');console.log(createHash('sha256').update(fs.readFileSync(process.argv[1])).digest('hex'));" "${{ steps.pack.outputs.tarball }}")
+          echo "sha256=$HASH" >> "$GITHUB_OUTPUT"
+          echo "$HASH  ${{ steps.pack.outputs.tarball }}" > candidate.sha256.txt
+          cat candidate.sha256.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: candidate-package
+          path: |
+            ${{ steps.pack.outputs.tarball }}
+            candidate.sha256.txt
+          retention-days: 7
+          if-no-files-found: error
+
+  matrix-smoke:
+    name: ${{ matrix.os }} exact-candidate smoke
+    needs: candidate
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Record resolved Node/npm versions
+        shell: bash
+        run: |
+          node --version
+          npm --version
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: candidate-package
+
+      - name: Verify exact-candidate SHA-256
+        shell: bash
+        run: |
+          EXPECTED="${{ needs.candidate.outputs.sha256 }}"
+          ACTUAL=$(node -e "const {createHash}=require('node:crypto');const fs=require('node:fs');console.log(createHash('sha256').update(fs.readFileSync(process.argv[1])).digest('hex'));" "${{ needs.candidate.outputs.tarball }}")
+          echo "expected=$EXPECTED"
+          echo "actual=$ACTUAL"
+          if [ "$EXPECTED" != "$ACTUAL" ]; then
+            echo "::error::Candidate SHA-256 mismatch on ${{ matrix.os }} - this is not the same tarball the candidate job produced."
+            exit 1
+          fi
+
+      - name: Install Chromium (Linux, with system deps)
+        if: runner.os == 'Linux'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Chromium
+        if: runner.os != 'Linux'
+        run: npx playwright install chromium
+
+      - name: Packed-observation smoke (installed tarball only, real Chromium)
+        shell: bash
+        run: node scripts/ci/runPackedObservationSmoke.mjs "${{ needs.candidate.outputs.tarball }}" --out smoke-summary.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smoke-summary-${{ matrix.os }}
+          path: smoke-summary.json
+          if-no-files-found: error

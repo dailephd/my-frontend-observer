@@ -1,7 +1,7 @@
 # Project Overview
 
-`my-frontend-observer` is the planned rendered browser/runtime evidence producer
-in the my-dev-kit ecosystem. It addresses the gap between source-level evidence
+`my-frontend-observer` is the rendered browser/runtime evidence producer in
+the my-dev-kit ecosystem. It addresses the gap between source-level evidence
 and what a browser actually renders and supports three durable jobs: human-to-LLM
 design communication, safer LLM-assisted frontend changes, and runtime evidence
 for coordinated ecosystem work.
@@ -15,11 +15,12 @@ The responsibility split is stable:
 
 ## Current repository state
 
-The standardized greenfield TypeScript CLI foundation exists. It includes
-package/build/lint/test/documentation configuration and transparent CLI/library
-entry-point placeholders. It does not implement browser observation or any
-roadmap capability. v0.1, Runtime Observation Foundation, is the next version
-to plan and implement; v0.2–v0.10 remain future.
+v0.1, Runtime Observation Foundation, is released as `0.1.0`, published to
+npm and validated as a packed npm tarball in a clean consumer environment: a
+real `observe` CLI command launches Chromium, enforces loopback-only safety,
+captures bounded page/target evidence and a viewport screenshot, and
+persists one portable local artifact. v0.2–v0.10 remain future and
+unimplemented.
 
 The revised dependency path reaches practical coding-agent use before graphical
 interaction:

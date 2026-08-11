@@ -7,9 +7,9 @@ needed my-dev-kit retrieval and architecture work.
 
 ## v0.1 — Runtime Observation Foundation
 
-Current status: not implemented. This is the next roadmap version to plan and
-implement after inspecting the corrected greenfield foundation. Concrete steps
-and batches must be designed during that planning task, not added here.
+Current status: released as `0.1.0`, published to npm and validated as a
+packed npm tarball in a clean consumer environment on Windows, Linux, and
+macOS. See `docs/CURRENT_STATE.md` for the implementation summary.
 
 Objective and user problem: establish trustworthy evidence of what a local
 frontend actually rendered, rather than relying on source inference.

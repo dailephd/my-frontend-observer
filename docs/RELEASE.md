@@ -1,8 +1,9 @@
 # Release
 
-The project is unreleased. Release policy, versioning, supported platforms,
-artifact compatibility promises, and npm publication will be established only
-through a later explicit task.
+`v0.1.0` is published to npm as `my-frontend-observer`, validated on
+Windows, Linux, and macOS as an installed packed-tarball consumer prior to
+publication. No project license has been declared yet; that decision remains
+open for a later explicit task.
 
-Observation schema version and package version remain separate. Never publish
-from the greenfield bootstrap or infer release readiness from file existence.
+Observation schema version and package version remain separate: schema
+`1.0.0` does not change automatically with the package version.

@@ -1,25 +1,39 @@
 # Workflows
 
-## Current greenfield foundation workflow
+## Current validation workflow
 
 ```text
-install scaffold dependencies
+install dependencies (npm install; npx playwright install chromium)
 → validate types and lint
-→ run the empty foundation test runner
-→ build placeholder CLI/library entries
-→ validate documentation
-→ inspect package inventory when needed
+→ run the fast unit suite (npm test)
+→ run the real-Chromium integration suite (npm run test:browser)
+→ build the CLI/library entries (npm run build)
+→ validate documentation (npm run check:docs)
 ```
 
-This workflow validates project infrastructure only. It does not validate any
-browser/runtime evidence capability.
+## Current v0.1 observation workflow
 
-## Planned v0.1 observation workflow
+The real, source-checkout `observe` workflow is:
 
-ROADMAP v0.1 requires a future workflow that accepts a local target URL,
-viewport, explicit observation targets, and output location; runs real Chromium;
-captures a screenshot and bounded page/target evidence; and writes one versioned
-observer-owned artifact. That workflow is not executable today.
+```text
+CLI arguments (--url, --viewport, --target, --output, --timeout)
+→ request construction
+→ existing Batch 1 request validation/normalization
+→ application observation use case (src/application/observationPersistence.ts#observe)
+→ existing Chromium capture (launch, safe navigation, readiness, screenshot,
+  page/target evidence) - exactly once
+→ existing atomic artifact persistence (manifest.json + screenshot.png) -
+  exactly once, only on a successful capture
+→ concise CLI result (Observation/State/Artifact/Targets/Diagnostics)
+→ process exit status (0 for a persisted observation, including one whose
+  state honestly reports "partial"; nonzero otherwise)
+```
+
+This is exercised by `runCli()`-level tests, by a built
+`node dist/cli.js observe ...` run against the deterministic local fixture,
+and by the real `npm pack` tarball installed and run from a clean temporary
+consumer directory outside the repository - the same workflow, independent
+of the source checkout. It has not been published to a registry.
 
 The future dependency order after observation is:
 

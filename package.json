@@ -1,9 +1,12 @@
 {
   "name": "my-frontend-observer",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "Local-first browser runtime evidence producer",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dailephd/my-frontend-observer.git"
+  },
   "bin": {
     "my-frontend-observer": "dist/cli.js"
   },
@@ -25,6 +28,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "test": "vitest run --passWithNoTests",
+    "test:browser": "vitest run --config vitest.browser.config.ts --passWithNoTests",
+    "test:security": "vitest run tests/unit/policy.test.ts && vitest run --config vitest.browser.config.ts tests/browser/chromiumAdapter.test.ts",
     "check:docs": "node scripts/check-docs.mjs"
   },
   "devDependencies": {
@@ -34,5 +39,8 @@
     "typescript": "6.0.3",
     "typescript-eslint": "8.66.0",
     "vitest": "4.1.10"
+  },
+  "dependencies": {
+    "playwright": "^1.62.1"
   }
 }

@@ -1,10 +1,28 @@
 # CI/CD
 
-No hosted CI, publication, or deployment workflow is configured. Current
-foundation validation is local and covers typecheck, lint, the empty test runner,
-build, documentation checks, and package dry-run.
+A GitHub Actions pre-release readiness workflow exists at
+`.github/workflows/pre-release-readiness.yml` (triggered manually via
+`workflow_dispatch` or by pushing a `validation/**` branch). It has two
+phases:
 
-Future CI requirements must be planned with the roadmap capability they verify.
-Browser installation and browser tests belong to v0.1 implementation, not the
-current corrected greenfield foundation. Package publication requires a later
-explicit release decision.
+1. **candidate** (Linux, Node 24): `npm ci`, install Chromium, typecheck,
+   lint, `npm test`, `npm run test:browser`, `npm run test:security`,
+   build, `npm run check:docs`, then `npm pack` to produce exactly one
+   candidate tarball and its SHA-256, uploaded as build artifacts.
+2. **matrix-smoke** (`windows-latest`, `ubuntu-latest`, `macos-latest`, all
+   Node 24): each job downloads the *same* candidate tarball produced by the
+   candidate job, independently recomputes and verifies its SHA-256 against
+   the candidate job's hash (failing immediately on any mismatch - no job
+   ever builds its own tarball), installs Chromium via the installed
+   package's own Playwright dependency, and runs
+   `scripts/ci/runPackedObservationSmoke.mjs` against the installed
+   tarball: a real Chromium observation against a disposable local HTTP
+   target, with artifact/schema/screenshot/target-immutability assertions.
+
+This proves the same packaged candidate installs and performs a real
+observation on Windows, Linux, and macOS, not just in the source checkout.
+
+There is no automated npm publication and no automated GitHub Release
+creation - this workflow is readiness validation only, run from a
+`validation/**` branch, never from a release branch or tag. Package
+publication remains a separate, later, explicit release decision.
