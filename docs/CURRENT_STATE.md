@@ -1,7 +1,7 @@
 # Current State
 
-The project is published at package version `0.1.0` (roadmap v0.1, Runtime
-Observation Foundation).
+The project is published at package version `0.2.0` (roadmap v0.2, Stable
+Semantic Targets and Region Identity; observation schema `1.1.0`).
 
 ## Greenfield foundation established
 
@@ -104,16 +104,14 @@ batch.
 
 ## v0.1 status
 
-`v0.1.0` remains the latest **published** release (see `CHANGELOG.md` and
-`docs/RELEASE.md`). Everything above this section describes that published,
-released state.
+`v0.1.0` was the first published release (see `CHANGELOG.md` and
+`docs/RELEASE.md`). Everything above this section describes that released
+state, still present unchanged in `v0.2.0`.
 
-## v0.2 progress (Stable Semantic Targets and Region Identity) - implemented on this branch, not yet released
+## v0.2 status (Stable Semantic Targets and Region Identity) - released as 0.2.0
 
-v0.2 is feature-complete on `feature/v0.2-stable-semantic-targets` across
-four implementation batches. It has **not** been released: the published
-npm package is still `0.1.0` with observation schema `1.0.0`. Everything in
-this section describes the current source-checkout/branch state only.
+v0.2 is implemented and released as package version `0.2.0`, observation
+schema `1.1.0`.
 
 - **Canonical target/locator model.** Each configured target has a stable
   observer-owned `name` plus an ordered, bounded `locators` array
@@ -188,7 +186,5 @@ this section describes the current source-checkout/branch state only.
 
 ## Next target
 
-v0.2 implementation is complete on the current feature branch but
-unreleased. The next allowed workflow is v0.2 pre-release readiness
-(exact packaged-candidate, cross-platform, and security validation for the
-completed semantic-target feature), not v0.3 planning.
+v0.2 is implemented, validated, and released as `0.2.0`. v0.3 (Controlled
+Scroll and Overflow Scenarios) is the next planned version.

@@ -1,11 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 - 2026-08-11
 
-Stable Semantic Targets and Region Identity (v0.2). Implemented and
-feature-complete on `feature/v0.2-stable-semantic-targets`; not yet
-released - observation schema `1.1.0` on this branch, package version still
-`0.1.0`.
+Stable Semantic Targets and Region Identity.
 
 - Canonical `{name, locators}` target model with a stable observer-owned
   target identity, distinct from both the browser locator that resolves a
@@ -17,6 +14,8 @@ released - observation schema `1.1.0` on this branch, package version still
   on ambiguous or unevaluable results: `role` (+ optional exact accessible
   name), `id`, `data-attribute`, `semantic-element`, `css`, and `text`
   (exact match only).
+- Explicit missing/ambiguous/unavailable resolution reporting, and hidden
+  (present-but-not-visible) target evidence, for every locator kind.
 - Bounded semantic-region evidence per resolved target: accessibility
   state (`disabled`/`expanded`/`checked`/`selected`/`pressed`/`current`,
   with an explicit `false` always distinguishable from "not applicable"),
@@ -28,6 +27,11 @@ released - observation schema `1.1.0` on this branch, package version still
   distinguishable from a configuration change.
 - New `--targets-file <json-file>` CLI input for structured semantic target
   configuration, mutually exclusive with `--target`.
+- Observation schema `1.1.0`.
+- Cross-platform packed-candidate validation: one hash-verified npm
+  candidate tarball proven on Windows, Linux, and macOS, covering both the
+  legacy `--target` CSS shorthand and the structured `--targets-file`
+  semantic-target path.
 
 ## 0.1.0 - 2026-08-11
 

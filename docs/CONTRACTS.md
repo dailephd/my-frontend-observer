@@ -2,16 +2,13 @@
 
 ## Current contracts
 
-The v0.1 observation artifact contract is published as `my-frontend-observer@0.1.0`
-and proven both from the source checkout and from the packed npm tarball. On the
-current `feature/v0.2-stable-semantic-targets` branch, the observation schema has
-advanced to `1.1.0` (see "v0.2 target contract" below, implemented and
-feature-complete but not yet released); the published `0.1.0` package still
-ships schema `1.0.0`:
+The observation artifact contract is published as `my-frontend-observer@0.2.0`
+and proven both from the source checkout and from the packed npm tarball,
+on Windows, Linux, and macOS. The observation schema is `1.1.0` (see "v0.2
+target contract" below, shipped as part of this release):
 
-- artifact kind `my-frontend-observer/observation`, schema version `1.1.0` on the
-  current v0.2 feature branch (`1.0.0` in the published `0.1.0` package;
-  independent of the package version either way);
+- artifact kind `my-frontend-observer/observation`, schema version `1.1.0`
+  (independent of the package version);
 - one artifact root per observation, `<outputLocation>/<observationId>/`,
   containing exactly `manifest.json` (the full `ObservationArtifact`, with
   page/target evidence embedded inline) and `screenshot.png` - there is no
@@ -34,7 +31,7 @@ ships schema `1.0.0`:
 This contract is implemented and published; no public programmatic-API
 compatibility promise has been made.
 
-## v0.2 target contract (implemented on the current branch, not yet released)
+## v0.2 target contract (shipped as part of this release)
 
 v0.2 introduces a canonical target-configuration model: each configured target has a stable
 observer-level `name` plus an ordered array of bounded `locators`

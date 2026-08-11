@@ -59,11 +59,8 @@ diagnostics print one per line as `[code] message`.
 
 ### Structured semantic targets (`--targets-file`)
 
-**Current status: implemented and feature-complete on the current
-`feature/v0.2-stable-semantic-targets` source-checkout branch; not yet part
-of any published release.** The published `my-frontend-observer@0.1.0`
-package supports `--target` (CSS shorthand) only. Everything below in this
-section describes the source-checkout/branch behavior.
+**Current status: shipped as part of the published `my-frontend-observer@0.2.0`
+package.** `--target` (CSS shorthand) remains fully supported alongside it.
 
 `--targets-file <json-file>` is the public entry point to the v0.2 canonical
 target/locator model established in `src/request/request.ts`. It supplies

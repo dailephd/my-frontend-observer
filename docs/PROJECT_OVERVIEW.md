@@ -15,15 +15,15 @@ The responsibility split is stable:
 
 ## Current repository state
 
-v0.1, Runtime Observation Foundation, is released as `0.1.0`, published to
-npm and validated as a packed npm tarball in a clean consumer environment: a
-real `observe` CLI command launches Chromium, enforces loopback-only safety,
-captures bounded page/target evidence and a viewport screenshot, and
-persists one portable local artifact. v0.2, Stable Semantic Targets and
-Region Identity, is implemented and feature-complete on the current
-`feature/v0.2-stable-semantic-targets` branch (schema `1.1.0`) but not yet
-released - see `docs/CURRENT_STATE.md` for the implementation summary.
-v0.3–v0.10 remain future and unimplemented.
+v0.1, Runtime Observation Foundation, and v0.2, Stable Semantic Targets and
+Region Identity, are released, published to npm (current version `0.2.0`,
+observation schema `1.1.0`) and validated as a packed npm tarball in a
+clean consumer environment across Windows, Linux, and macOS: a real
+`observe` CLI command launches Chromium, enforces loopback-only safety,
+captures bounded page/target evidence via either legacy CSS-shorthand
+targets or structured semantic `--targets-file` targets, and persists one
+portable local artifact - see `docs/CURRENT_STATE.md` for the
+implementation summary. v0.3–v0.10 remain future and unimplemented.
 
 The revised dependency path reaches practical coding-agent use before graphical
 interaction:

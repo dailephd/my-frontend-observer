@@ -22,7 +22,7 @@ node dist/cli.js observe `
 This launches Chromium, captures a screenshot plus bounded page/target
 evidence, and writes one portable artifact under `observations/<observation-id>/`.
 See [COMMANDS.md](COMMANDS.md) for the full flag reference, including the
-current-branch `--targets-file` structured semantic-target input.
+`--targets-file` structured semantic-target input.
 
 To validate the repository itself instead:
 
