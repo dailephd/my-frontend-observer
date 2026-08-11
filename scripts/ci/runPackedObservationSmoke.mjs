@@ -72,21 +72,37 @@ async function main() {
     const installedPkg = JSON.parse(await readFile(installedPkgPath, 'utf8'));
     const binName = Object.keys(installedPkg.bin ?? {})[0];
     if (!binName) fail('installed package.json has no bin entry');
+    const binRelativePath = installedPkg.bin[binName];
+    const binAbsolutePath = path.join(consumerDir, 'node_modules', 'my-frontend-observer', binRelativePath);
     summary.binName = binName;
     summary.packageVersion = installedPkg.version;
-    console.log(`binName=${binName} packageVersion=${installedPkg.version}`);
+    console.log(`binName=${binName} packageVersion=${installedPkg.version} binPath=${binAbsolutePath}`);
 
+    // Resolve and invoke the installed bin's real file directly via `node`, rather than through
+    // `npx --no-install <name>`: npx's local-only bin resolution proved unreliable in this
+    // environment (observed returning exit 0 with completely empty stdout/stderr on macOS/Linux
+    // hosted runners, i.e. silently not running anything). Invoking `node <installed-dist-file>`
+    // still exercises exactly the installed tarball's own compiled code - never the source
+    // checkout - just without routing through npx's shim resolution.
     function runBin(binArgs) {
-      const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-      return run(npx, ['--no-install', binName, ...binArgs], { cwd: consumerDir });
+      // shell:false - process.execPath may contain spaces (e.g. "C:\Program Files\nodejs\node.exe"),
+      // which a shell:true invocation would mis-tokenize; spawning the real executable directly needs no shell.
+      return run(process.execPath, [binAbsolutePath, ...binArgs], { cwd: consumerDir, shell: false });
     }
 
     const pwVersion = installedPkg.dependencies?.playwright;
     summary.playwrightDependencyRange = pwVersion ?? null;
 
-    console.log(`[t+${Date.now() - t0}ms] installing Chromium via consumer-local playwright...`);
-    const pwInstall = await run(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['--no-install', 'playwright', 'install', 'chromium', ...(process.platform === 'linux' ? ['--with-deps'] : [])], {
+    const playwrightPkgPath = path.join(consumerDir, 'node_modules', 'playwright', 'package.json');
+    const playwrightPkg = JSON.parse(await readFile(playwrightPkgPath, 'utf8'));
+    const playwrightCliRelative = playwrightPkg.bin?.playwright;
+    if (!playwrightCliRelative) fail('installed playwright package.json has no "playwright" bin entry');
+    const playwrightCliPath = path.join(consumerDir, 'node_modules', 'playwright', playwrightCliRelative);
+
+    console.log(`[t+${Date.now() - t0}ms] installing Chromium via consumer-local playwright (${playwrightCliPath})...`);
+    const pwInstall = await run(process.execPath, [playwrightCliPath, 'install', 'chromium', ...(process.platform === 'linux' ? ['--with-deps'] : [])], {
       cwd: consumerDir,
+      shell: false,
     });
     console.log(`[t+${Date.now() - t0}ms] playwright install chromium exit=${pwInstall.code}`);
     if (pwInstall.code !== 0) fail(`playwright install chromium failed:\n${pwInstall.stdout}\n${pwInstall.stderr}`);
