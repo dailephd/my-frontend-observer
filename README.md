@@ -44,6 +44,13 @@ This prints a concise result (`Observation:`/`State:`/`Artifact:`/`Targets:`/
 `Diagnostics:`) and exits `0` on a successfully persisted observation. See
 [docs/COMMANDS.md](docs/COMMANDS.md) for the full flag reference.
 
+For targets that need more than a CSS selector - a role and accessible name,
+a stable `id`, a `data-*` attribute, a semantic landmark element, exact
+text, or an ordered fallback between several of those - pass
+`--targets-file <json-file>` instead of one or more `--target` flags; see
+"Structured semantic targets" in [docs/COMMANDS.md](docs/COMMANDS.md#structured-semantic-targets-targets-file)
+for the exact JSON format.
+
 Validation:
 
 ```powershell

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { realpathSync } from 'node:fs';
+import { realpathSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { normalizeRequest } from './request/request.js';
 import type { RawObservationRequest } from './request/request.js';
@@ -45,10 +45,21 @@ Required:
 
 Options:
   --viewport <WIDTHxHEIGHT> Viewport size, e.g. 1280x720.
-  --target <id=selector>    An explicit observation target. Repeatable.
-                            Parsed on the first "=" only, so selectors
-                            containing "=" (e.g. button[data-state="active"])
-                            are preserved intact.
+  --target <id=selector>    An explicit CSS-shorthand observation target.
+                            Repeatable. Parsed on the first "=" only, so
+                            selectors containing "=" (e.g.
+                            button[data-state="active"]) are preserved
+                            intact. Cannot be combined with --targets-file.
+  --targets-file <json-file> Loads structured semantic observation targets
+                            from a local JSON file: { "targets": [ { "name":
+                            "...", "locators": [ { "kind": "role"|"id"|
+                            "data-attribute"|"semantic-element"|"css"|"text",
+                            ... } ] } ] }. Locator order within a target is
+                            the fallback order. Relative paths resolve from
+                            the current working directory; the file path
+                            itself is never persisted into the artifact or
+                            included in the observation's request identity.
+                            Cannot be combined with --target.
   --output <directory>      Portable, relative output location for the
                             observation artifact.
   --timeout <ms>            Overall request timeout in milliseconds.
@@ -74,7 +85,7 @@ function parseTarget(raw: string): { name: string; selector: string } | undefine
   return { name: raw.slice(0, eq), selector: raw.slice(eq + 1) };
 }
 
-type ParsedObserveArgs = { ok: true; raw: RawObservationRequest } | { ok: false; errors: string[] };
+type ParsedObserveArgs = { ok: true; raw: RawObservationRequest; targetsFilePath?: string } | { ok: false; errors: string[] };
 
 /** CLI-syntax-only parsing: shape/format errors only. Domain bounds and policy are Batch 1's job, not this function's. */
 function parseObserveArgs(argv: readonly string[]): ParsedObserveArgs {
@@ -84,6 +95,8 @@ function parseObserveArgs(argv: readonly string[]): ParsedObserveArgs {
   const targets: { name: string; selector: string }[] = [];
   let outputLocation: string | undefined;
   let timeoutMs: number | undefined;
+  let targetsFilePath: string | undefined;
+  let targetsFileFlagCount = 0;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -111,6 +124,18 @@ function parseObserveArgs(argv: readonly string[]): ParsedObserveArgs {
         }
         break;
       }
+      case '--targets-file': {
+        const value = argv[(i += 1)];
+        targetsFileFlagCount += 1;
+        if (value === undefined) {
+          errors.push('--targets-file requires a file path argument');
+        } else if (targetsFileFlagCount > 1) {
+          errors.push('--targets-file may only be specified once');
+        } else {
+          targetsFilePath = value;
+        }
+        break;
+      }
       case '--output':
         outputLocation = argv[(i += 1)];
         break;
@@ -130,6 +155,9 @@ function parseObserveArgs(argv: readonly string[]): ParsedObserveArgs {
   }
 
   if (targetUrl === undefined) errors.push('--url is required');
+  if (targets.length > 0 && targetsFilePath !== undefined) {
+    errors.push('--target and --targets-file cannot be combined; use one or the other');
+  }
 
   if (errors.length > 0) return { ok: false, errors };
 
@@ -140,7 +168,53 @@ function parseObserveArgs(argv: readonly string[]): ParsedObserveArgs {
     ...(outputLocation === undefined ? {} : { outputLocation }),
     ...(timeoutMs === undefined ? {} : { timeoutMs }),
   };
-  return { ok: true, raw };
+  return { ok: true, raw, ...(targetsFilePath === undefined ? {} : { targetsFilePath }) };
+}
+
+const TARGETS_FILE_ALLOWED_ROOT_FIELDS = new Set(['targets']);
+
+type LoadTargetsFileResult = { ok: true; targets: unknown } | { ok: false; error: string };
+
+/**
+ * CLI/input-boundary-only responsibility: read one local JSON file, validate
+ * only the root wrapper this file format owns (object root, exactly the
+ * "targets" field, nothing else), and hand the still-unvalidated `targets`
+ * value to the existing `normalizeRequest()` - every target/locator-internal
+ * rule (bounds, locator kinds, per-kind fields) stays owned there, not
+ * duplicated here. The file path itself is never returned to the caller
+ * beyond this function, so it can never reach the persisted request/artifact.
+ */
+function loadTargetsFile(filePath: string): LoadTargetsFileResult {
+  let rawText: string;
+  try {
+    rawText = readFileSync(filePath, 'utf8');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `--targets-file could not be read: ${message}` };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `--targets-file is not valid JSON: ${message}` };
+  }
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return { ok: false, error: '--targets-file root must be a JSON object' };
+  }
+
+  const record = parsed as Record<string, unknown>;
+  const unknownFields = Object.keys(record).filter((key) => !TARGETS_FILE_ALLOWED_ROOT_FIELDS.has(key));
+  if (unknownFields.length > 0) {
+    return { ok: false, error: `--targets-file has unsupported top-level field(s): ${unknownFields.join(', ')}` };
+  }
+  if (!('targets' in record)) {
+    return { ok: false, error: '--targets-file must have a "targets" property' };
+  }
+
+  return { ok: true, targets: record.targets };
 }
 
 function formatDiagnostic(diagnostic: Diagnostic): string {
@@ -164,7 +238,18 @@ async function runObserveCommand(argv: readonly string[], io: CliIO): Promise<nu
     return 1;
   }
 
-  const normalized = normalizeRequest(parsedArgs.raw);
+  let raw = parsedArgs.raw;
+  if (parsedArgs.targetsFilePath !== undefined) {
+    const loaded = loadTargetsFile(parsedArgs.targetsFilePath);
+    if (!loaded.ok) {
+      io.stderr(`error: ${loaded.error}\n`);
+      io.stderr(OBSERVE_HELP);
+      return 1;
+    }
+    raw = { ...raw, targets: loaded.targets };
+  }
+
+  const normalized = normalizeRequest(raw);
   if (!normalized.ok) {
     for (const diagnostic of normalized.diagnostics) io.stderr(`${formatDiagnostic(diagnostic)}\n`);
     return 1;

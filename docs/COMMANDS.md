@@ -21,10 +21,14 @@ Options:
 - `--viewport <WIDTHxHEIGHT>` — e.g. `1280x720`. Malformed syntax (missing
   `x`, non-numeric, empty side) is rejected before any browser launches;
   in-range bounds are enforced by the existing request validator.
-- `--target <id=css-selector>` — an explicit observation target. Repeatable;
-  order is preserved. Parsed on the *first* `=` only, so a selector
-  containing `=` survives intact, e.g.
-  `--target action=button[data-state="active"]`.
+- `--target <id=css-selector>` — an explicit CSS-shorthand observation
+  target. Repeatable; order is preserved. Parsed on the *first* `=` only, so
+  a selector containing `=` survives intact, e.g.
+  `--target action=button[data-state="active"]`. Cannot be combined with
+  `--targets-file`.
+- `--targets-file <json-file>` — loads structured semantic observation
+  targets from a local JSON file instead of `--target`. Cannot be combined
+  with `--target`. See "Structured semantic targets" below.
 - `--output <directory>` — portable, relative output location for the
   observation artifact (same contract as the request's `outputLocation`; no
   drive letter, no leading `/`, no `..` segments).
@@ -52,6 +56,70 @@ failed artifact write. No progress output is printed during a normal
 capture. CLI-syntax errors (e.g. a missing `--url`) print as `error:
 <message>` followed by `observe` usage; request/capture/persistence
 diagnostics print one per line as `[code] message`.
+
+### Structured semantic targets (`--targets-file`)
+
+`--targets-file <json-file>` is the public entry point to the v0.2 canonical
+target/locator model established in `src/request/request.ts`. It supplies
+the same `targets` collection that `--target` supplies, just in structured
+form; both converge on the same `normalizeRequest()` validation and the same
+downstream browser resolver - there is no separate semantic observation path.
+
+File format (the exact, first frozen structure - the root object supports
+only the `targets` field; any other top-level field is rejected):
+
+```json
+{
+  "targets": [
+    {
+      "name": "primary-navigation",
+      "locators": [
+        { "kind": "role", "role": "navigation", "name": "Primary" },
+        { "kind": "id", "value": "nav" }
+      ]
+    },
+    {
+      "name": "workspace",
+      "locators": [
+        { "kind": "data-attribute", "attribute": "data-region", "value": "workspace" }
+      ]
+    }
+  ]
+}
+```
+
+Each target has a stable `name` and an ordered `locators` array (1-5
+entries; order is the fallback order - the first locator that resolves
+uniquely wins, an ambiguous or unevaluable locator stops immediately without
+trying the next one). Each locator is one of the six frozen kinds:
+
+- `{ "kind": "role", "role": "<string>", "name"?: "<string>" }`
+- `{ "kind": "id", "value": "<string>" }`
+- `{ "kind": "data-attribute", "attribute": "data-*", "value": "<string>" }`
+- `{ "kind": "semantic-element", "tag": "<one of the frozen structural tags>" }`
+- `{ "kind": "css", "selector": "<string>" }`
+- `{ "kind": "text", "text": "<exact string>" }`
+
+`--targets-file` itself only validates that the file is readable, is valid
+JSON, and has an object root containing exactly a `targets` field - every
+target/locator-internal rule (bounds, per-kind required fields, supported
+values) is enforced by the same `normalizeRequest()` validator `--target`
+already goes through, so both input modes produce identical diagnostics for
+equivalent mistakes.
+
+The path may be relative (resolved from the current working directory) or
+absolute; it is operational input only - it never affects the observation's
+request identity and is never written into `manifest.json`.
+
+Example:
+
+```powershell
+my-frontend-observer observe `
+  --url http://localhost:3000/ `
+  --viewport 1280x720 `
+  --targets-file .\targets.json `
+  --output observations
+```
 
 ## Foundation commands
 

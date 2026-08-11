@@ -78,6 +78,17 @@ still-configured target changes only its resolution status, never the
 `requestId`. This section will be superseded by the full v0.2 documentation
 reconciliation once all v0.2 batches are complete.
 
+The full canonical semantic target model above is now reachable through the
+real public CLI: `my-frontend-observer observe --targets-file <json-file>`
+supplies the structured `{ "targets": [...] }` collection (see
+`docs/COMMANDS.md` "Structured semantic targets") as an alternative to the
+existing `--target id=css-selector` shorthand - the two are mutually
+exclusive per invocation, and both converge on the same
+`normalizeRequest()`/browser-resolver/artifact path, so a semantic
+observation produces exactly the same `manifest.json` shape (schema `1.1.0`)
+as a CSS-shorthand one. `--targets-file`'s local input path is never part of
+the persisted request identity or artifact.
+
 ## Approved v0.1 design inputs
 
 The historical greenfield scaffold plan recorded these v0.1 design decisions:
