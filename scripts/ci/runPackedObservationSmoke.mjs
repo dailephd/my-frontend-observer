@@ -120,7 +120,12 @@ async function main() {
     console.log(`[t+${Date.now() - t0}ms] observe --help exit=${observeHelpRes.code} stdoutLength=${observeHelpRes.stdout.length}`);
     if (observeHelpRes.code !== 0) fail(`observe --help failed:\n${observeHelpRes.stderr}`);
 
-    const html = '<!doctype html><html><head><title>ci smoke fixture</title></head><body><header id="header">Header</header><main id="main">Main</main></body></html>';
+    const html =
+      '<!doctype html><html><head><title>ci smoke fixture</title></head><body>' +
+      '<header id="header">Header</header><main id="main">Main</main>' +
+      '<nav aria-label="Primary"><a href="#">Home</a></nav>' +
+      '<button type="button">Run</button>' +
+      '</body></html>';
     const server = createServer((req, res) => {
       if (req.url === '/smoke') {
         res.writeHead(200, { 'content-type': 'text/html' });
@@ -136,16 +141,74 @@ async function main() {
 
     const beforeHtml = await fetch(targetUrl).then((r) => r.text());
 
-    const outputSubdir = `ci-smoke-output-${randomUUID()}`;
-    await mkdir(path.join(consumerDir, outputSubdir), { recursive: true });
+    // --- Observation 1: legacy CSS --target shorthand (v0.1 packed-compatibility evidence). ---
+    const cssOutputSubdir = `ci-smoke-output-css-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, cssOutputSubdir), { recursive: true });
 
-    const observeRes = await runBin([
+    const cssObserveRes = await runBin([
       'observe',
       '--url', targetUrl,
       '--viewport', '1024x768',
       '--target', 'header=#header',
       '--target', 'main=#main',
-      '--output', outputSubdir,
+      '--output', cssOutputSubdir,
+    ]);
+
+    console.log('--- css observe stdout ---');
+    console.log(cssObserveRes.stdout);
+    console.log('--- css observe stderr ---');
+    console.log(cssObserveRes.stderr);
+    console.log(`--- css observe exit code: ${cssObserveRes.code} ---`);
+    if (cssObserveRes.code !== 0) fail(`legacy CSS observe failed (exit ${cssObserveRes.code}):\n${cssObserveRes.stdout}\n${cssObserveRes.stderr}`);
+
+    const requiredLines = ['Observation:', 'State:', 'Artifact:', 'Targets:', 'Diagnostics:'];
+    for (const prefix of requiredLines) {
+      if (!cssObserveRes.stdout.includes(prefix)) {
+        fail(`css observe stdout missing expected "${prefix}" line. Full stdout:\n${cssObserveRes.stdout}\nFull stderr:\n${cssObserveRes.stderr}`);
+      }
+    }
+
+    const cssArtifactLine = cssObserveRes.stdout.split('\n').find((l) => l.startsWith('Artifact: '));
+    const cssArtifactRoot = cssArtifactLine.slice('Artifact: '.length).trim();
+    summary.cssArtifactRoot = cssArtifactRoot;
+
+    const cssManifest = JSON.parse(await readFile(path.join(cssArtifactRoot, 'manifest.json'), 'utf8'));
+    const cssScreenshot = await readFile(path.join(cssArtifactRoot, 'screenshot.png'));
+
+    if (cssManifest.schemaVersion !== '1.1.0') fail(`unexpected schemaVersion (css observation): ${cssManifest.schemaVersion}`);
+    if (cssManifest.artifactKind !== 'my-frontend-observer/observation') fail(`unexpected artifactKind (css observation): ${cssManifest.artifactKind}`);
+    if (typeof cssManifest.observationId !== 'string' || cssManifest.observationId.length === 0) fail('missing observationId (css observation)');
+    if (typeof cssManifest.requestId !== 'string' || cssManifest.requestId.length === 0) fail('missing requestId (css observation)');
+    if (cssManifest.browser?.state !== 'available') fail('missing browser provenance (css observation)');
+    if (!cssManifest.pageEvidence || Object.keys(cssManifest.pageEvidence).length === 0) fail('missing page evidence (css observation)');
+    if (!cssManifest.targetEvidence || Object.keys(cssManifest.targetEvidence).length === 0) fail('missing target evidence (css observation)');
+    const cssScreenshotRef = cssManifest.artifactReferences?.find((r) => r.kind === 'screenshot');
+    if (!cssScreenshotRef || path.isAbsolute(cssScreenshotRef.path) || cssScreenshotRef.path.includes(':')) fail('css screenshot artifact reference is not relative');
+    if (cssScreenshot.length === 0) fail('css screenshot.png is empty');
+    if (!isPngSignature(new Uint8Array(cssScreenshot))) fail('css screenshot.png is not a valid PNG');
+
+    // --- Observation 2: v0.2 structured --targets-file, real semantic (non-CSS) locators. ---
+    const targetsFilePath = path.join(consumerDir, 'targets.json');
+    await writeFile(
+      targetsFilePath,
+      JSON.stringify({
+        targets: [
+          { name: 'primary-navigation', locators: [{ kind: 'role', role: 'navigation', name: 'Primary' }] },
+          { name: 'action', locators: [{ kind: 'text', text: 'Run' }] },
+        ],
+      }),
+      'utf8',
+    );
+
+    const semanticOutputSubdir = `ci-smoke-output-semantic-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, semanticOutputSubdir), { recursive: true });
+
+    const semanticObserveRes = await runBin([
+      'observe',
+      '--url', targetUrl,
+      '--viewport', '1024x768',
+      '--targets-file', targetsFilePath,
+      '--output', semanticOutputSubdir,
     ]);
 
     const afterHtml = await fetch(targetUrl).then((r) => r.text());
@@ -154,31 +217,30 @@ async function main() {
     summary.targetImmutable = beforeHtml === afterHtml;
     if (!summary.targetImmutable) fail('observed target content changed after observation');
 
-    summary.observeExitCode = observeRes.code;
-    summary.observeStdout = observeRes.stdout;
-    summary.observeStderr = observeRes.stderr;
-    console.log('--- observe stdout ---');
-    console.log(observeRes.stdout);
-    console.log('--- observe stderr ---');
-    console.log(observeRes.stderr);
-    console.log(`--- observe exit code: ${observeRes.code} ---`);
-    if (observeRes.code !== 0) fail(`observe failed (exit ${observeRes.code}):\n${observeRes.stdout}\n${observeRes.stderr}`);
+    summary.observeExitCode = semanticObserveRes.code;
+    summary.observeStdout = semanticObserveRes.stdout;
+    summary.observeStderr = semanticObserveRes.stderr;
+    console.log('--- semantic observe stdout ---');
+    console.log(semanticObserveRes.stdout);
+    console.log('--- semantic observe stderr ---');
+    console.log(semanticObserveRes.stderr);
+    console.log(`--- semantic observe exit code: ${semanticObserveRes.code} ---`);
+    if (semanticObserveRes.code !== 0) fail(`semantic --targets-file observe failed (exit ${semanticObserveRes.code}):\n${semanticObserveRes.stdout}\n${semanticObserveRes.stderr}`);
 
-    const requiredLines = ['Observation:', 'State:', 'Artifact:', 'Targets:', 'Diagnostics:'];
     for (const prefix of requiredLines) {
-      if (!observeRes.stdout.includes(prefix)) {
-        fail(`observe stdout missing expected "${prefix}" line. Full stdout:\n${observeRes.stdout}\nFull stderr:\n${observeRes.stderr}`);
+      if (!semanticObserveRes.stdout.includes(prefix)) {
+        fail(`semantic observe stdout missing expected "${prefix}" line. Full stdout:\n${semanticObserveRes.stdout}\nFull stderr:\n${semanticObserveRes.stderr}`);
       }
     }
 
-    const artifactLine = observeRes.stdout.split('\n').find((l) => l.startsWith('Artifact: '));
+    const artifactLine = semanticObserveRes.stdout.split('\n').find((l) => l.startsWith('Artifact: '));
     const artifactRoot = artifactLine.slice('Artifact: '.length).trim();
     summary.artifactRoot = artifactRoot;
 
     const manifest = JSON.parse(await readFile(path.join(artifactRoot, 'manifest.json'), 'utf8'));
     const screenshot = await readFile(path.join(artifactRoot, 'screenshot.png'));
 
-    if (manifest.schemaVersion !== '1.0.0') fail(`unexpected schemaVersion: ${manifest.schemaVersion}`);
+    if (manifest.schemaVersion !== '1.1.0') fail(`unexpected schemaVersion: ${manifest.schemaVersion}`);
     if (manifest.artifactKind !== 'my-frontend-observer/observation') fail(`unexpected artifactKind: ${manifest.artifactKind}`);
     if (typeof manifest.observationId !== 'string' || manifest.observationId.length === 0) fail('missing observationId');
     if (typeof manifest.requestId !== 'string' || manifest.requestId.length === 0) fail('missing requestId');
@@ -190,12 +252,38 @@ async function main() {
     if (screenshot.length === 0) fail('screenshot.png is empty');
     if (!isPngSignature(new Uint8Array(screenshot))) fail('screenshot.png is not a valid PNG');
 
+    // Structured targets preserved in requestConfig (names + canonical locator shape).
+    const configuredTargetNames = (manifest.requestConfig?.targets ?? []).map((t) => t.name);
+    if (JSON.stringify(configuredTargetNames) !== JSON.stringify(['primary-navigation', 'action'])) {
+      fail(`requestConfig.targets names not preserved in order: ${JSON.stringify(configuredTargetNames)}`);
+    }
+
+    // Semantic locator resolution: both configured targets must have actually matched.
+    const navRecord = manifest.targetEvidence['primary-navigation'];
+    const actionRecord = manifest.targetEvidence['action'];
+    if (navRecord?.resolution?.value?.selectionStatus !== 'matched') fail('primary-navigation (role locator) did not resolve');
+    if (navRecord?.resolution?.value?.selectedLocatorKind !== 'role') fail('primary-navigation selected-locator provenance missing/wrong');
+    if (actionRecord?.resolution?.value?.selectionStatus !== 'matched') fail('action (text locator) did not resolve');
+    if (actionRecord?.resolution?.value?.selectedLocatorKind !== 'text') fail('action selected-locator provenance missing/wrong');
+
+    // Semantic role/name evidence and derived landmark, where the fixture supports them.
+    if (navRecord?.semantics?.value?.role !== 'navigation') fail('primary-navigation semantic role not persisted');
+    if (navRecord?.landmark?.value !== 'navigation') fail('primary-navigation landmark evidence not persisted');
+
+    // Target-file path privacy: the temporary absolute targets-file path must never be serialized.
+    const serializedManifest = JSON.stringify(manifest);
+    if (serializedManifest.includes(targetsFilePath) || serializedManifest.includes('targets.json')) {
+      fail('targets-file path leaked into persisted manifest');
+    }
+
     summary.schemaVersion = manifest.schemaVersion;
     summary.artifactKind = manifest.artifactKind;
     summary.targetIds = Object.keys(manifest.targetEvidence).sort();
     summary.targetSelectionStatuses = Object.fromEntries(
       Object.entries(manifest.targetEvidence).map(([name, record]) => [name, record.resolution?.value?.selectionStatus]),
     );
+    summary.semanticLocatorKindsCovered = Object.values(manifest.targetEvidence).map((r) => r.resolution?.value?.selectedLocatorKind).filter(Boolean).sort();
+    summary.landmarkEvidence = navRecord?.landmark?.value ?? null;
     summary.evidenceStatesEncountered = Array.from(
       new Set(
         [...Object.values(manifest.pageEvidence), ...Object.values(manifest.targetEvidence).flatMap((r) => Object.values(r))]
@@ -214,6 +302,8 @@ async function main() {
     summary.completionState = manifest.completion?.state;
     summary.browserProvenance = manifest.browser?.value ?? null;
     summary.screenshotBytes = screenshot.length;
+    summary.targetsFilePathLeaked = false;
+    summary.legacyCssObservationPassed = true;
     summary.pass = true;
 
     console.log('SMOKE PASS');

@@ -3,6 +3,14 @@ import { createServer, type Server } from 'node:http';
 export interface FixtureServer {
   baseUrl: string;
   close: () => Promise<void>;
+  /**
+   * v0.2 Batch 3: test-only, in-process, synchronous control over the
+   * `/disappearing` route's served content - lets a test prove actual
+   * runtime target disappearance (same URL, same request, second
+   * observation finds nothing) without the observer itself ever mutating
+   * anything. Defaults to `true` (target present) on every fresh server.
+   */
+  setDisappearingTargetPresent: (present: boolean) => void;
 }
 
 /**
@@ -25,6 +33,81 @@ export const OBSERVATION_FIXTURE_SELECTORS = {
   missing: '#does-not-exist',
 } as const;
 
+/** v0.2 Batch 2: role/accessible-name locator fixture cases. */
+export const OBSERVATION_FIXTURE_ROLE = {
+  navRole: 'navigation',
+  navName: 'Primary',
+  buttonRole: 'button',
+  buttonName: 'Submit',
+  missingRole: 'alert',
+  duplicateRole: 'button',
+  duplicateName: 'Duplicate Button',
+} as const;
+
+/** v0.2 Batch 2: exact-`id` locator fixture cases. */
+export const OBSERVATION_FIXTURE_IDS = {
+  header: 'header',
+  button: 'cta-button',
+  hidden: 'hidden-target',
+  workspaceRegion: 'workspace-region',
+  missing: 'does-not-exist-id',
+  duplicate: 'duplicate-id',
+} as const;
+
+/** v0.2 Batch 2: exact `data-*` attribute/value locator fixture cases. */
+export const OBSERVATION_FIXTURE_DATA_ATTRIBUTE = {
+  attribute: 'data-region',
+  uniqueValue: 'workspace',
+  missingValue: 'no-such-region',
+  duplicateValue: 'duplicate-region',
+} as const;
+
+/** v0.2 Batch 2: semantic-element locator fixture cases (tags from the Batch 1 frozen set). */
+export const OBSERVATION_FIXTURE_SEMANTIC_ELEMENT = {
+  uniqueTag: 'aside',
+  missingTag: 'dialog',
+  duplicateTag: 'article',
+} as const;
+
+/** v0.2 Batch 2: exact-text locator fixture cases. */
+export const OBSERVATION_FIXTURE_TEXT = {
+  unique: 'Distinctive Exact Text',
+  missing: 'Text That Does Not Appear Anywhere',
+  duplicate: 'Duplicate Text',
+} as const;
+
+/** v0.2 Batch 3: configured-target-only DOM containment fixture regions. */
+export const OBSERVATION_FIXTURE_CONTAINMENT = {
+  appShell: 'app-shell',
+  header: 'header',
+  primaryNavigation: 'nav',
+  mainContent: 'main-content',
+  toolWorkspace: 'tool-workspace',
+  footer: 'footer',
+} as const;
+
+/** v0.2 Batch 3: bounded semantic-state fixture cases (disabled/expanded/checked/selected/pressed/current). */
+export const OBSERVATION_FIXTURE_SEMANTIC_STATE = {
+  disabledButton: 'disabled-btn',
+  enabledButton: 'enabled-btn',
+  expandedButton: 'expanded-btn',
+  collapsedButton: 'collapsed-btn',
+  checkedCheckbox: 'checked-checkbox',
+  uncheckedCheckbox: 'unchecked-checkbox',
+  mixedCheckbox: 'mixed-checkbox',
+  selectedOption: 'selected-option',
+  unselectedOption: 'unselected-option',
+  pressedButton: 'pressed-btn',
+  unpressedButton: 'unpressed-btn',
+  mixedPressedButton: 'mixed-pressed-btn',
+  currentLink: 'current-link',
+  noncurrentLink: 'noncurrent-link',
+  plainDiv: 'plain-div',
+} as const;
+
+/** v0.2 Batch 3: same URL, same request - the target present at `/disappearing` until the test flips {@link FixtureServer.setDisappearingTargetPresent}. */
+export const OBSERVATION_DISAPPEARING_FIXTURE_SELECTOR = '#disappearing-target';
+
 const OBSERVATION_FIXTURE_HTML = `<!doctype html>
 <html>
 <head>
@@ -43,14 +126,44 @@ const OBSERVATION_FIXTURE_HTML = `<!doctype html>
 </style>
 </head>
 <body>
-  <header id="header">Site Header</header>
-  <nav id="nav" aria-label="Primary"><a href="#home">Home</a></nav>
-  <main id="main"><div id="main-content">workspace content</div></main>
-  <footer id="footer">Site Footer</footer>
+  <div id="app-shell">
+    <header id="header">Site Header</header>
+    <nav id="nav" aria-label="Primary"><a href="#home">Home</a></nav>
+    <main id="main"><div id="main-content"><div id="tool-workspace">Workspace Tool</div></div></main>
+    <footer id="footer">Site Footer</footer>
+  </div>
   <button id="cta-button" type="button">Submit</button>
+  <button id="disabled-btn" disabled>Disabled Button</button>
+  <button id="enabled-btn">Enabled Button</button>
+  <button id="expanded-btn" aria-expanded="true">Expanded Button</button>
+  <button id="collapsed-btn" aria-expanded="false">Collapsed Button</button>
+  <input id="checked-checkbox" type="checkbox" checked aria-label="Checked checkbox">
+  <input id="unchecked-checkbox" type="checkbox" aria-label="Unchecked checkbox">
+  <div id="mixed-checkbox" role="checkbox" aria-checked="mixed" tabindex="0">Mixed Checkbox</div>
+  <div id="selected-option" role="option" aria-selected="true">Selected Option</div>
+  <div id="unselected-option" role="option" aria-selected="false">Unselected Option</div>
+  <button id="pressed-btn" aria-pressed="true">Pressed Toggle</button>
+  <button id="unpressed-btn" aria-pressed="false">Unpressed Toggle</button>
+  <button id="mixed-pressed-btn" aria-pressed="mixed">Mixed Toggle</button>
+  <a id="current-link" href="#current" aria-current="page">Current Link</a>
+  <a id="noncurrent-link" href="#noncurrent">Noncurrent Link</a>
+  <div id="plain-div">Plain div, no special semantics</div>
   <div class="duplicate-item">Item A</div>
   <div class="duplicate-item">Item B</div>
   <div id="hidden-target">Hidden content</div>
+  <div id="workspace-region" data-region="workspace">Workspace</div>
+  <div data-region="duplicate-region">Duplicate Region A</div>
+  <div data-region="duplicate-region">Duplicate Region B</div>
+  <aside id="sidebar">Sidebar</aside>
+  <article>Article A</article>
+  <article>Article B</article>
+  <p id="exact-text-target">Distinctive Exact Text</p>
+  <p>Duplicate Text</p>
+  <p>Duplicate Text</p>
+  <button type="button">Duplicate Button</button>
+  <button type="button">Duplicate Button</button>
+  <span id="duplicate-id">Duplicate ID A</span>
+  <span id="duplicate-id">Duplicate ID B</span>
 </body>
 </html>`;
 
@@ -62,8 +175,19 @@ const OBSERVATION_FIXTURE_HTML = `<!doctype html>
  * Playwright would otherwise attempt it.
  */
 export async function startFixtureServer(): Promise<FixtureServer> {
+  let disappearingTargetPresent = true;
+
   const server: Server = createServer((req, res) => {
     const url = req.url ?? '/';
+
+    if (url === '/disappearing') {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      const body = disappearingTargetPresent
+        ? '<div id="disappearing-target">Present</div>'
+        : '<div id="still-here">The disappearing target is gone from this response.</div>';
+      res.end(`<!doctype html><html><head><title>disappearing fixture</title></head><body>${body}</body></html>`);
+      return;
+    }
 
     if (url === '/normal') {
       res.writeHead(200, { 'content-type': 'text/html' });
@@ -118,5 +242,8 @@ export async function startFixtureServer(): Promise<FixtureServer> {
       new Promise<void>((resolve, reject) => {
         server.close((err) => (err ? reject(err) : resolve()));
       }),
+    setDisappearingTargetPresent: (present: boolean) => {
+      disappearingTargetPresent = present;
+    },
   };
 }

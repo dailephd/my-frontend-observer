@@ -2,8 +2,8 @@
 
 A GitHub Actions pre-release readiness workflow exists at
 `.github/workflows/pre-release-readiness.yml` (triggered manually via
-`workflow_dispatch` or by pushing a `validation/**` branch). It has two
-phases:
+`workflow_dispatch`, by pushing a `validation/**` or `release/**` branch, or
+by a pull request into `master`). It has two phases:
 
 1. **candidate** (Linux, Node 24): `npm ci`, install Chromium, typecheck,
    lint, `npm test`, `npm run test:browser`, `npm run test:security`,
@@ -16,13 +16,27 @@ phases:
    ever builds its own tarball), installs Chromium via the installed
    package's own Playwright dependency, and runs
    `scripts/ci/runPackedObservationSmoke.mjs` against the installed
-   tarball: a real Chromium observation against a disposable local HTTP
-   target, with artifact/schema/screenshot/target-immutability assertions.
+   tarball: real Chromium observations against a disposable local HTTP
+   target, covering both the legacy `--target` CSS shorthand and the
+   structured `--targets-file` semantic-target path (`role`+accessible-name
+   and `text` locators, schema `1.1.0`, landmark evidence,
+   targets-file-path privacy, and target immutability).
 
 This proves the same packaged candidate installs and performs a real
-observation on Windows, Linux, and macOS, not just in the source checkout.
+observation - CSS-shorthand and semantic alike - on Windows, Linux, and
+macOS, not just in the source checkout.
 
 There is no automated npm publication and no automated GitHub Release
-creation - this workflow is readiness validation only, run from a
-`validation/**` branch, never from a release branch or tag. Package
-publication remains a separate, later, explicit release decision.
+creation - this workflow is readiness validation only. Package publication
+remains a separate, later, explicit release decision.
+
+## v0.2 readiness coverage
+
+The packed-candidate readiness gap that previously existed for
+`--targets-file` has been closed: `scripts/ci/runPackedObservationSmoke.mjs`
+now exercises both the legacy CSS-shorthand path and the structured
+semantic `--targets-file` path in the same run, on every platform in the
+matrix. This was proven on `validation/v0.2-pre-release`
+(`2a0718c37cfe6988fc5d9852db455b99aa8238af`), GitHub Actions run
+`31537578062`, which passed on Windows, Linux, and macOS using one
+hash-verified candidate tarball.

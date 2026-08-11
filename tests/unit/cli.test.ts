@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, afterEach } from 'vitest';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { runCli } from '../../src/cli.js';
 import { getProducerInfo } from '../../src/domain/schema.js';
 
@@ -46,11 +49,11 @@ describe('runCli - top-level', () => {
     expect(out.stderr()).toContain('observe');
   });
 
-  it('observe --help documents --url/--viewport/--target/--output/--timeout', async () => {
+  it('observe --help documents --url/--viewport/--target/--targets-file/--output/--timeout', async () => {
     const out = capture();
     const code = await runCli(['observe', '--help'], out.io);
     expect(code).toBe(0);
-    for (const flag of ['--url', '--viewport', '--target', '--output', '--timeout']) {
+    for (const flag of ['--url', '--viewport', '--target', '--targets-file', '--output', '--timeout']) {
       expect(out.stdout()).toContain(flag);
     }
   });
@@ -99,6 +102,121 @@ describe('runCli observe - argument parsing (B5-TST-002..006)', () => {
   it('B5-TST-006: a non-loopback URL is rejected by the existing Batch 1 safety policy, not a CLI allowlist', async () => {
     const out = capture();
     const code = await runCli(['observe', '--url', 'http://example.com/'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('[unsafe-url]');
+  });
+});
+
+describe('runCli observe --targets-file (v0.2 Batch 4 CLI/input boundary)', () => {
+  const tempDirs: string[] = [];
+
+  afterEach(async () => {
+    await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+  });
+
+  async function writeTargetsFile(content: string): Promise<string> {
+    const dir = await mkdtemp(path.join(tmpdir(), 'mfo-cli-targets-file-'));
+    tempDirs.push(dir);
+    const filePath = path.join(dir, 'targets.json');
+    await writeFile(filePath, content, 'utf8');
+    return filePath;
+  }
+
+  it('requires a value: bare --targets-file fails before browser launch', async () => {
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--targets-file'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--targets-file requires a file path argument');
+  });
+
+  it('rejects a second --targets-file flag', async () => {
+    const filePath = await writeTargetsFile(JSON.stringify({ targets: [] }));
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--targets-file', filePath, '--targets-file', filePath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--targets-file may only be specified once');
+  });
+
+  it('rejects --target combined with --targets-file, before browser launch', async () => {
+    const filePath = await writeTargetsFile(JSON.stringify({ targets: [] }));
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--target', 'a=b', '--targets-file', filePath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--target and --targets-file cannot be combined');
+  });
+
+  it('reports a clear error for a missing/unreadable file', async () => {
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--targets-file', '/does/not/exist-targets.json'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--targets-file could not be read');
+  });
+
+  it('reports a clear error for invalid JSON', async () => {
+    const filePath = await writeTargetsFile('{ not valid json');
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--targets-file', filePath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--targets-file is not valid JSON');
+  });
+
+  it('rejects a non-object root (array, null)', async () => {
+    for (const content of ['[]', 'null']) {
+      const filePath = await writeTargetsFile(content);
+      const out = capture();
+      const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--targets-file', filePath], out.io);
+      expect(code).toBe(1);
+      expect(out.stderr()).toContain('--targets-file root must be a JSON object');
+    }
+  });
+
+  it('rejects an object root missing the "targets" property entirely', async () => {
+    const filePath = await writeTargetsFile(JSON.stringify({}));
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--targets-file', filePath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('must have a "targets" property');
+  });
+
+  it('rejects an object root with an unrecognized field instead of "targets"', async () => {
+    const filePath = await writeTargetsFile(JSON.stringify({ foo: [] }));
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--targets-file', filePath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('unsupported top-level field');
+  });
+
+  it('rejects unknown top-level fields alongside a valid "targets" property', async () => {
+    const filePath = await writeTargetsFile(JSON.stringify({ targets: [], viewport: '1280x720' }));
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--targets-file', filePath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('unsupported top-level field(s): viewport');
+  });
+
+  it('rejects unknown top-level fields such as a misplaced "url"', async () => {
+    const filePath = await writeTargetsFile(JSON.stringify({ targets: [], url: 'http://localhost:3000' }));
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--targets-file', filePath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('unsupported top-level field(s): url');
+  });
+
+  it('passes representative invalid target-file content through to the existing domain validator, not an ad hoc CLI error', async () => {
+    const filePath = await writeTargetsFile(JSON.stringify({ targets: [{ name: 'a', locators: [{ kind: 'unsupported-kind' }] }] }));
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--targets-file', filePath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('[invalid-request]');
+  });
+
+  it('accepts a relative targets-file path resolved from the current working directory', async () => {
+    const filePath = await writeTargetsFile(JSON.stringify({ targets: [{ name: 'a', locators: [{ kind: 'css', selector: 'body' }] }] }));
+    const relativePath = path.relative(process.cwd(), filePath);
+    const out = capture();
+    // --url deliberately points nowhere reachable; this only proves the file itself parses
+    // and reaches domain validation (a safe non-loopback URL still fails first, deterministically).
+    const code = await runCli(['observe', '--url', 'http://example.com/', '--targets-file', relativePath], out.io);
     expect(code).toBe(1);
     expect(out.stderr()).toContain('[unsafe-url]');
   });

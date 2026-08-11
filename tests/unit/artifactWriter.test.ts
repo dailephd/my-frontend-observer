@@ -16,7 +16,7 @@ function baseRequest(overrides: Partial<NormalizedObservationRequest> = {}): Nor
   return {
     targetUrl: 'http://127.0.0.1/observation',
     viewport: { width: 800, height: 600 },
-    targets: [{ name: 'button', selector: '#cta-button' }],
+    targets: [{ name: 'button', locators: [{ kind: 'css', selector: '#cta-button' }] }],
     outputLocation: '.',
     timeoutMs: 30000,
     readiness: { condition: 'load', timeoutMs: 10000 },
@@ -36,22 +36,52 @@ function successfulCapture(overrides: Partial<Extract<BrowserCaptureResult, { ok
     },
     targetEvidence: {
       button: {
-        resolution: { state: 'available', source: 'derived', value: { selectionMethod: 'css-selector', selectionStatus: 'matched' }, derivedFrom: ['selector-query'] },
+        resolution: {
+          state: 'available',
+          source: 'derived',
+          value: {
+            selectionMethod: 'ordered-locators',
+            selectionStatus: 'matched',
+            selectedLocatorKind: 'css',
+            selectedLocatorIndex: 0,
+            usedFallback: false,
+            confidence: 'exact',
+            attempts: [{ locatorIndex: 0, locatorKind: 'css', status: 'matched', matchCount: 1 }],
+          },
+          derivedFrom: ['locator-attempts'],
+        },
         tag: { state: 'available', source: 'browser', value: 'button' },
         geometry: { state: 'available', source: 'browser', value: { x: 20, y: 500, width: 120, height: 32, right: 140, bottom: 532 } },
         style: { state: 'available', source: 'computed-browser', value: { display: 'inline-block', position: 'absolute', overflowX: 'visible', overflowY: 'visible' } },
         layout: { state: 'available', source: 'browser', value: { scrollWidth: 120, scrollHeight: 32, clientWidth: 120, clientHeight: 32, scrollTop: 0, scrollLeft: 0 } },
         visibility: { state: 'available', source: 'derived', value: { visible: true }, derivedFrom: ['style.display', 'computed-visibility', 'geometry.width', 'geometry.height'] },
         semantics: { state: 'available', source: 'computed-browser', value: { role: 'button', name: 'Submit' } },
+        semanticState: { state: 'not-applicable', reason: 'no supported semantic state is exposed for this target' },
+        landmark: { state: 'not-applicable', reason: 'role "button" is not a recognized landmark role' },
+        containment: { state: 'available', source: 'browser', value: { containedByTargetIds: [], evaluatedTargetIds: [], unresolvedTargetIds: [] } },
       },
       ghost: {
-        resolution: { state: 'available', source: 'derived', value: { selectionMethod: 'css-selector', selectionStatus: 'not-found' }, derivedFrom: ['selector-query'] },
+        resolution: {
+          state: 'available',
+          source: 'derived',
+          value: {
+            selectionMethod: 'ordered-locators',
+            selectionStatus: 'not-found',
+            usedFallback: false,
+            confidence: 'none',
+            attempts: [{ locatorIndex: 0, locatorKind: 'css', status: 'not-found', matchCount: 0 }],
+          },
+          derivedFrom: ['locator-attempts'],
+        },
         tag: { state: 'unavailable', reason: 'target selector matched no element' },
         geometry: { state: 'unavailable', reason: 'target selector matched no element' },
         style: { state: 'unavailable', reason: 'target selector matched no element' },
         layout: { state: 'unavailable', reason: 'target selector matched no element' },
         visibility: { state: 'unavailable', reason: 'target selector matched no element' },
         semantics: { state: 'unavailable', reason: 'target selector matched no element' },
+        semanticState: { state: 'unavailable', reason: 'target selector matched no element' },
+        landmark: { state: 'unavailable', reason: 'target selector matched no element' },
+        containment: { state: 'unavailable', reason: 'target itself did not resolve (status: not-found)' },
       },
     },
     diagnostics: [{ code: 'target-missing', severity: 'warning', message: 'no element matched selector for target "ghost"', targetName: 'ghost' }],
@@ -86,7 +116,7 @@ describe('artifactWriter', () => {
 
     const manifestRaw = await readFile(result.manifestPath, 'utf8');
     const manifest = JSON.parse(manifestRaw) as ObservationArtifact;
-    expect(manifest.schemaVersion).toBe('1.0.0');
+    expect(manifest.schemaVersion).toBe('1.1.0');
     expect(isValidObservationArtifact(manifest)).toEqual({ valid: true });
 
     for (const ref of manifest.artifactReferences) {

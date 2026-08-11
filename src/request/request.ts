@@ -3,9 +3,24 @@ import { orderDiagnostics } from '../domain/diagnostics.js';
 import { classifyUrl } from '../safety/policy.js';
 import { normalizeOutputLocation } from './paths.js';
 
+export type TargetLocator =
+  | { kind: 'role'; role: string; name?: string }
+  | { kind: 'id'; value: string }
+  | { kind: 'data-attribute'; attribute: string; value: string }
+  | { kind: 'semantic-element'; tag: string }
+  | { kind: 'css'; selector: string }
+  | { kind: 'text'; text: string };
+
 export interface NamedTarget {
   name: string;
-  selector: string;
+  locators: TargetLocator[];
+}
+
+/** Raw, not-yet-validated target shape as it may appear in a RawObservationRequest. Exactly one of `selector` (legacy) or `locators` (canonical) may be present, never both. */
+export interface RawNamedTarget {
+  name?: unknown;
+  selector?: unknown;
+  locators?: unknown;
 }
 
 export interface Viewport {
@@ -54,6 +69,25 @@ const READINESS_TIMEOUT_MIN_MS = 500;
 const MAX_TARGETS = 20;
 const TARGET_NAME_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const MAX_SELECTOR_LENGTH = 500;
+const MAX_LOCATORS_PER_TARGET = 5;
+const MAX_ROLE_LENGTH = 64;
+const MAX_ACCESSIBLE_NAME_LENGTH = 200;
+const MAX_ID_VALUE_LENGTH = 200;
+const DATA_ATTRIBUTE_NAME_RE = /^data-[a-z0-9-]{1,64}$/;
+const MAX_DATA_ATTRIBUTE_VALUE_LENGTH = 500;
+const MAX_TEXT_LENGTH = 200;
+const SUPPORTED_SEMANTIC_ELEMENT_TAGS = new Set([
+  'header',
+  'nav',
+  'main',
+  'footer',
+  'article',
+  'section',
+  'aside',
+  'form',
+  'dialog',
+]);
+const SUPPORTED_LOCATOR_KINDS = new Set(['role', 'id', 'data-attribute', 'semantic-element', 'css', 'text']);
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -61,6 +95,118 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 function isInRange(value: number, min: number, max: number): boolean {
   return Number.isInteger(value) && value >= min && value <= max;
+}
+
+function isBoundedString(value: unknown, min: number, max: number): value is string {
+  return typeof value === 'string' && value.length >= min && value.length <= max;
+}
+
+/** Validates one raw locator object against the frozen v0.2 locator-kind contract. Total: always returns either a valid TargetLocator or a list of every problem found (never throws, never short-circuits). */
+function validateLocator(raw: unknown, targetName: string, index: number): { ok: true; locator: TargetLocator } | { ok: false; diagnostics: Diagnostic[] } {
+  if (!isPlainObject(raw)) {
+    return {
+      ok: false,
+      diagnostics: [{ code: 'invalid-request', severity: 'error', message: `locator at index ${index} must be an object`, targetName }],
+    };
+  }
+  const kind = raw.kind;
+  if (typeof kind !== 'string' || !SUPPORTED_LOCATOR_KINDS.has(kind)) {
+    return {
+      ok: false,
+      diagnostics: [{ code: 'invalid-request', severity: 'error', message: `locator at index ${index} has an unsupported kind`, targetName }],
+    };
+  }
+
+  switch (kind) {
+    case 'css': {
+      if (!isBoundedString(raw.selector, 1, MAX_SELECTOR_LENGTH)) {
+        return {
+          ok: false,
+          diagnostics: [
+            { code: 'invalid-request', severity: 'error', message: `css locator at index ${index} must have a selector 1-${MAX_SELECTOR_LENGTH} characters`, targetName },
+          ],
+        };
+      }
+      return { ok: true, locator: { kind: 'css', selector: raw.selector } };
+    }
+    case 'role': {
+      if (!isBoundedString(raw.role, 1, MAX_ROLE_LENGTH)) {
+        return {
+          ok: false,
+          diagnostics: [{ code: 'invalid-request', severity: 'error', message: `role locator at index ${index} must have a role 1-${MAX_ROLE_LENGTH} characters`, targetName }],
+        };
+      }
+      if (raw.name !== undefined && !isBoundedString(raw.name, 0, MAX_ACCESSIBLE_NAME_LENGTH)) {
+        return {
+          ok: false,
+          diagnostics: [
+            { code: 'invalid-request', severity: 'error', message: `role locator at index ${index} name must be at most ${MAX_ACCESSIBLE_NAME_LENGTH} characters`, targetName },
+          ],
+        };
+      }
+      return { ok: true, locator: raw.name === undefined ? { kind: 'role', role: raw.role } : { kind: 'role', role: raw.role, name: raw.name } };
+    }
+    case 'id': {
+      if (!isBoundedString(raw.value, 1, MAX_ID_VALUE_LENGTH)) {
+        return {
+          ok: false,
+          diagnostics: [{ code: 'invalid-request', severity: 'error', message: `id locator at index ${index} must have a value 1-${MAX_ID_VALUE_LENGTH} characters`, targetName }],
+        };
+      }
+      return { ok: true, locator: { kind: 'id', value: raw.value } };
+    }
+    case 'data-attribute': {
+      if (typeof raw.attribute !== 'string' || !DATA_ATTRIBUTE_NAME_RE.test(raw.attribute)) {
+        return {
+          ok: false,
+          diagnostics: [
+            { code: 'invalid-request', severity: 'error', message: `data-attribute locator at index ${index} must have an attribute matching ^data-[a-z0-9-]{1,64}$`, targetName },
+          ],
+        };
+      }
+      if (!isBoundedString(raw.value, 1, MAX_DATA_ATTRIBUTE_VALUE_LENGTH)) {
+        return {
+          ok: false,
+          diagnostics: [
+            {
+              code: 'invalid-request',
+              severity: 'error',
+              message: `data-attribute locator at index ${index} must have a value 1-${MAX_DATA_ATTRIBUTE_VALUE_LENGTH} characters`,
+              targetName,
+            },
+          ],
+        };
+      }
+      return { ok: true, locator: { kind: 'data-attribute', attribute: raw.attribute, value: raw.value } };
+    }
+    case 'semantic-element': {
+      if (typeof raw.tag !== 'string' || !SUPPORTED_SEMANTIC_ELEMENT_TAGS.has(raw.tag)) {
+        return {
+          ok: false,
+          diagnostics: [
+            {
+              code: 'invalid-request',
+              severity: 'error',
+              message: `semantic-element locator at index ${index} must have a tag in {${[...SUPPORTED_SEMANTIC_ELEMENT_TAGS].join(', ')}}`,
+              targetName,
+            },
+          ],
+        };
+      }
+      return { ok: true, locator: { kind: 'semantic-element', tag: raw.tag } };
+    }
+    case 'text': {
+      if (!isBoundedString(raw.text, 1, MAX_TEXT_LENGTH)) {
+        return {
+          ok: false,
+          diagnostics: [{ code: 'invalid-request', severity: 'error', message: `text locator at index ${index} must have text 1-${MAX_TEXT_LENGTH} characters`, targetName }],
+        };
+      }
+      return { ok: true, locator: { kind: 'text', text: raw.text } };
+    }
+    default:
+      return { ok: false, diagnostics: [{ code: 'invalid-request', severity: 'error', message: `locator at index ${index} has an unsupported kind`, targetName }] };
+  }
 }
 
 /**
@@ -108,23 +254,16 @@ export function normalizeRequest(raw: RawObservationRequest): NormalizeRequestRe
       diagnostics.push({ code: 'invalid-request', severity: 'error', message: `targets must contain at most ${MAX_TARGETS} entries` });
     } else {
       const seenNames = new Set<string>();
-      for (const rawTarget of raw.targets as unknown[]) {
-        if (!isPlainObject(rawTarget) || typeof rawTarget.name !== 'string' || typeof rawTarget.selector !== 'string') {
-          diagnostics.push({ code: 'invalid-request', severity: 'error', message: 'each target requires a string name and string selector' });
+      for (const rawTargetUnknown of raw.targets as unknown[]) {
+        if (!isPlainObject(rawTargetUnknown) || typeof rawTargetUnknown.name !== 'string') {
+          diagnostics.push({ code: 'invalid-request', severity: 'error', message: 'each target requires a string name and either a string selector or a locators array' });
           continue;
         }
-        const name = rawTarget.name;
-        const selector = rawTarget.selector;
+        const rawTarget = rawTargetUnknown as RawNamedTarget;
+        const name = rawTargetUnknown.name as string;
+
         if (!TARGET_NAME_RE.test(name)) {
           diagnostics.push({ code: 'invalid-request', severity: 'error', message: 'target name must match ^[A-Za-z0-9_-]{1,64}$', targetName: name });
-        }
-        if (selector.length === 0 || selector.length > MAX_SELECTOR_LENGTH) {
-          diagnostics.push({
-            code: 'invalid-request',
-            severity: 'error',
-            message: `target selector must be 1-${MAX_SELECTOR_LENGTH} characters`,
-            targetName: name,
-          });
         }
         const normalizedName = name.toLowerCase();
         if (seenNames.has(normalizedName)) {
@@ -132,7 +271,61 @@ export function normalizeRequest(raw: RawObservationRequest): NormalizeRequestRe
         } else {
           seenNames.add(normalizedName);
         }
-        targets.push({ name, selector });
+
+        const hasSelector = rawTarget.selector !== undefined;
+        const hasLocators = rawTarget.locators !== undefined;
+
+        if (hasSelector && hasLocators) {
+          diagnostics.push({ code: 'invalid-request', severity: 'error', message: 'target must not specify both selector and locators', targetName: name });
+          continue;
+        }
+
+        if (hasSelector) {
+          if (typeof rawTarget.selector !== 'string' || rawTarget.selector.length === 0 || rawTarget.selector.length > MAX_SELECTOR_LENGTH) {
+            diagnostics.push({
+              code: 'invalid-request',
+              severity: 'error',
+              message: `target selector must be 1-${MAX_SELECTOR_LENGTH} characters`,
+              targetName: name,
+            });
+            continue;
+          }
+          targets.push({ name, locators: [{ kind: 'css', selector: rawTarget.selector }] });
+          continue;
+        }
+
+        if (hasLocators) {
+          if (!Array.isArray(rawTarget.locators) || rawTarget.locators.length === 0) {
+            diagnostics.push({ code: 'invalid-request', severity: 'error', message: 'target locators must be a non-empty array', targetName: name });
+            continue;
+          }
+          if (rawTarget.locators.length > MAX_LOCATORS_PER_TARGET) {
+            diagnostics.push({
+              code: 'invalid-request',
+              severity: 'error',
+              message: `target locators must contain at most ${MAX_LOCATORS_PER_TARGET} entries`,
+              targetName: name,
+            });
+            continue;
+          }
+          const locators: TargetLocator[] = [];
+          let anyInvalid = false;
+          rawTarget.locators.forEach((rawLocator, index) => {
+            const validated = validateLocator(rawLocator, name, index);
+            if (validated.ok) {
+              locators.push(validated.locator);
+            } else {
+              anyInvalid = true;
+              diagnostics.push(...validated.diagnostics);
+            }
+          });
+          if (!anyInvalid) {
+            targets.push({ name, locators });
+          }
+          continue;
+        }
+
+        diagnostics.push({ code: 'invalid-request', severity: 'error', message: 'each target requires either a selector or a locators array', targetName: name });
       }
     }
   }

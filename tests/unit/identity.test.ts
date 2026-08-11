@@ -26,17 +26,51 @@ describe('buildRequestIdentity', () => {
   it('TST-025: target order is semantic (not sorted away)', () => {
     const forward = baseRequest({
       targets: [
-        { name: 'a', selector: '.a' },
-        { name: 'b', selector: '.b' },
+        { name: 'a', locators: [{ kind: 'css', selector: '.a' }] },
+        { name: 'b', locators: [{ kind: 'css', selector: '.b' }] },
       ],
     });
     const reversed = baseRequest({
       targets: [
-        { name: 'b', selector: '.b' },
-        { name: 'a', selector: '.a' },
+        { name: 'b', locators: [{ kind: 'css', selector: '.b' }] },
+        { name: 'a', locators: [{ kind: 'css', selector: '.a' }] },
       ],
     });
     expect(buildRequestIdentity(forward)).not.toBe(buildRequestIdentity(reversed));
+  });
+
+  it('v0.2: legacy CSS shape and its equivalent canonical CSS shape produce the same identity', () => {
+    const legacy = baseRequest({ targets: [{ name: 'header', locators: [{ kind: 'css', selector: 'header' }] }] });
+    const canonical = baseRequest({ targets: [{ name: 'header', locators: [{ kind: 'css', selector: 'header' }] }] });
+    expect(buildRequestIdentity(legacy)).toBe(buildRequestIdentity(canonical));
+  });
+
+  it('v0.2: same canonical configuration produces the same requestId', () => {
+    const a = baseRequest({ targets: [{ name: 'header', locators: [{ kind: 'role', role: 'banner' }] }] });
+    const b = baseRequest({ targets: [{ name: 'header', locators: [{ kind: 'role', role: 'banner' }] }] });
+    expect(buildRequestIdentity(a)).toBe(buildRequestIdentity(b));
+  });
+
+  it('v0.2: a locator value change produces a different requestId', () => {
+    const a = baseRequest({ targets: [{ name: 'header', locators: [{ kind: 'css', selector: '#a' }] }] });
+    const b = baseRequest({ targets: [{ name: 'header', locators: [{ kind: 'css', selector: '#b' }] }] });
+    expect(buildRequestIdentity(a)).not.toBe(buildRequestIdentity(b));
+  });
+
+  it('v0.2: a locator kind change produces a different requestId', () => {
+    const a = baseRequest({ targets: [{ name: 'header', locators: [{ kind: 'css', selector: 'header' }] }] });
+    const b = baseRequest({ targets: [{ name: 'header', locators: [{ kind: 'id', value: 'header' }] }] });
+    expect(buildRequestIdentity(a)).not.toBe(buildRequestIdentity(b));
+  });
+
+  it('v0.2: a locator order change produces a different requestId', () => {
+    const a = baseRequest({
+      targets: [{ name: 'header', locators: [{ kind: 'css', selector: '#a' }, { kind: 'css', selector: '#b' }] }],
+    });
+    const b = baseRequest({
+      targets: [{ name: 'header', locators: [{ kind: 'css', selector: '#b' }, { kind: 'css', selector: '#a' }] }],
+    });
+    expect(buildRequestIdentity(a)).not.toBe(buildRequestIdentity(b));
   });
 });
 

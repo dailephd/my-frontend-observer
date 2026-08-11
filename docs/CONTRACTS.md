@@ -2,11 +2,13 @@
 
 ## Current contracts
 
-The v0.1 observation artifact contract is implemented (`src/domain/schema.ts`)
-and proven both from the source checkout and from the packed npm tarball:
+The observation artifact contract is published as `my-frontend-observer@0.2.0`
+and proven both from the source checkout and from the packed npm tarball,
+on Windows, Linux, and macOS. The observation schema is `1.1.0` (see "v0.2
+target contract" below, shipped as part of this release):
 
-- artifact kind `my-frontend-observer/observation`, schema version `1.0.0`
-  (independent of the package version, currently `0.1.0`);
+- artifact kind `my-frontend-observer/observation`, schema version `1.1.0`
+  (independent of the package version);
 - one artifact root per observation, `<outputLocation>/<observationId>/`,
   containing exactly `manifest.json` (the full `ObservationArtifact`, with
   page/target evidence embedded inline) and `screenshot.png` - there is no
@@ -26,8 +28,62 @@ and proven both from the source checkout and from the packed npm tarball:
 - observation/request identity, producer/package identity, and browser
   provenance are all present in every persisted manifest.
 
-This contract is implemented; it is not yet published as a package, and no
-public programmatic-API compatibility promise has been made.
+This contract is implemented and published; no public programmatic-API
+compatibility promise has been made.
+
+## v0.2 target contract (shipped as part of this release)
+
+v0.2 introduces a canonical target-configuration model: each configured target has a stable
+observer-level `name` plus an ordered array of bounded `locators`
+(`role`, `id`, `data-attribute`, `semantic-element`, `css`, `text`). This
+identity is distinct from both the browser locator definition that resolves
+it and any source-code identity. The legacy `{name, selector}` shape remains
+accepted and normalizes to a one-item `css` locator, so every published
+`0.1.0` CLI invocation continues to work unchanged. Locator precedence is the
+configured array order; resolution stops on the first unique match, on any
+ambiguous match (never falling through to a later locator), or on an
+unevaluable locator - never silently. All six frozen locator kinds are now
+resolved against a real Chromium page (`role` via Playwright's accessibility-
+role/name locator with exact name matching, `id`/`data-attribute` via exact
+CSS attribute-equals matching that never reinterprets the configured value as
+selector syntax, `semantic-element` via the frozen tag set, `css` via the
+existing v0.1 behavior, `text` via exact-text matching only); every kind
+converges on the same measurement path, so locator strategy never changes the
+resulting target evidence shape.
+
+Each resolved target's evidence record additionally carries three bounded
+fields: `semanticState` (a first family of `disabled`/`expanded`/
+`checked`/`selected`/`pressed`/`current` values read from the element's own
+native form-control properties and explicit `aria-*` attributes - a key is
+present only when the browser exposes that state as applicable to this
+element, so an explicit `false` is always distinguishable from "not
+applicable"; `not-applicable` when no supported state applies at all);
+`landmark` (derived only from the already-captured browser-exposed
+role - never from locator kind or HTML tag - against the standard landmark
+role set `banner`/`navigation`/`main`/`complementary`/`contentinfo`/`form`/
+`region`/`search`); and `containment` (bounded DOM containment checked only
+among the other explicitly configured targets in the same observation, in
+configured order, never a layout/relationship graph - `available` when every
+other configured target was itself resolved and checked, `partial` when one
+or more could not be, `unavailable` when the target itself never resolved).
+Stable observer target identity is proven, not just declared: the same
+target configuration produces the same `requestId` across repeated
+observations (with a fresh `observationId` each time); changing a target's
+locator strategy while keeping its stable name changes `requestId` but not
+the `targetEvidence` key; and actual runtime disappearance of a
+still-configured target changes only its resolution status, never the
+`requestId`.
+
+The full canonical semantic target model above is reachable through the
+real public CLI: `my-frontend-observer observe --targets-file <json-file>`
+supplies the structured `{ "targets": [...] }` collection (see
+`docs/COMMANDS.md` "Structured semantic targets") as an alternative to the
+existing `--target id=css-selector` shorthand - the two are mutually
+exclusive per invocation, and both converge on the same
+`normalizeRequest()`/browser-resolver/artifact path, so a semantic
+observation produces exactly the same `manifest.json` shape (schema `1.1.0`)
+as a CSS-shorthand one. `--targets-file`'s local input path is never part of
+the persisted request identity or artifact.
 
 ## Approved v0.1 design inputs
 

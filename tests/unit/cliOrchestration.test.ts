@@ -1,6 +1,10 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import type { ApplicationObservationResult } from '../../src/application/observationPersistence.js';
 import type { NormalizedObservationRequest } from '../../src/request/request.js';
+import { buildRequestIdentity } from '../../src/domain/identity.js';
 
 const observeMock = vi.fn<(request: NormalizedObservationRequest) => Promise<ApplicationObservationResult>>();
 
@@ -66,9 +70,9 @@ describe('runCli observe - application orchestration (mocked application service
     expect(observeMock).toHaveBeenCalledTimes(1);
     const request = observeMock.mock.calls[0]?.[0];
     expect(request?.targets).toEqual([
-      { name: 'first', selector: '#first' },
-      { name: 'action', selector: 'button[data-state="active"]' },
-      { name: 'last', selector: '.last' },
+      { name: 'first', locators: [{ kind: 'css', selector: '#first' }] },
+      { name: 'action', locators: [{ kind: 'css', selector: 'button[data-state="active"]' }] },
+      { name: 'last', locators: [{ kind: 'css', selector: '.last' }] },
     ]);
   });
 
@@ -155,5 +159,91 @@ describe('runCli observe - application orchestration (mocked application service
 
     expect(code).toBe(1);
     expect(out.stdout()).toContain('State: fatal');
+  });
+});
+
+describe('runCli observe --targets-file - canonical passthrough (v0.2 Batch 4)', () => {
+  const tempDirs: string[] = [];
+
+  beforeEach(() => {
+    observeMock.mockReset();
+  });
+
+  afterEach(async () => {
+    await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+  });
+
+  async function writeTargetsFile(content: unknown): Promise<string> {
+    const dir = await mkdtemp(path.join(tmpdir(), 'mfo-cli-orch-targets-file-'));
+    tempDirs.push(dir);
+    const filePath = path.join(dir, 'targets.json');
+    await writeFile(filePath, JSON.stringify(content), 'utf8');
+    return filePath;
+  }
+
+  it('passes canonical semantic targets from the file into normalizeRequest, preserving target and locator order', async () => {
+    observeMock.mockResolvedValue(okResult());
+    const filePath = await writeTargetsFile({
+      targets: [
+        {
+          name: 'primary-navigation',
+          locators: [
+            { kind: 'role', role: 'navigation', name: 'Does Not Exist' },
+            { kind: 'id', value: 'nav' },
+          ],
+        },
+        { name: 'workspace', locators: [{ kind: 'data-attribute', attribute: 'data-region', value: 'workspace' }] },
+      ],
+    });
+    const out = capture();
+
+    await runCli(['observe', '--url', 'http://127.0.0.1/observation', '--targets-file', filePath], out.io);
+
+    expect(observeMock).toHaveBeenCalledTimes(1);
+    const request = observeMock.mock.calls[0]?.[0];
+    expect(request?.targets).toEqual([
+      {
+        name: 'primary-navigation',
+        locators: [
+          { kind: 'role', role: 'navigation', name: 'Does Not Exist' },
+          { kind: 'id', value: 'nav' },
+        ],
+      },
+      { name: 'workspace', locators: [{ kind: 'data-attribute', attribute: 'data-region', value: 'workspace' }] },
+    ]);
+  });
+
+  it('never propagates the targets-file path into the normalized request passed to the application layer', async () => {
+    observeMock.mockResolvedValue(okResult());
+    const filePath = await writeTargetsFile({ targets: [{ name: 'header', locators: [{ kind: 'css', selector: 'header' }] }] });
+    const out = capture();
+
+    await runCli(['observe', '--url', 'http://127.0.0.1/observation', '--targets-file', filePath], out.io);
+
+    const request = observeMock.mock.calls[0]?.[0];
+    const serialized = JSON.stringify(request);
+    expect(serialized).not.toContain(filePath);
+    expect(serialized).not.toContain('targets.json');
+  });
+
+  it('two different file paths with identical target content produce equivalent (not merely similar) normalized requests, and therefore the same requestId', async () => {
+    observeMock.mockResolvedValue(okResult());
+    const targetsContent = { targets: [{ name: 'header', locators: [{ kind: 'css' as const, selector: 'header' }] }] };
+    const filePathA = await writeTargetsFile(targetsContent);
+    const filePathB = await writeTargetsFile(targetsContent);
+    expect(filePathA).not.toBe(filePathB);
+
+    const outA = capture();
+    await runCli(['observe', '--url', 'http://127.0.0.1/observation', '--targets-file', filePathA], outA.io);
+    const requestA = observeMock.mock.calls[0]?.[0] as NormalizedObservationRequest;
+
+    observeMock.mockReset();
+    observeMock.mockResolvedValue(okResult());
+    const outB = capture();
+    await runCli(['observe', '--url', 'http://127.0.0.1/observation', '--targets-file', filePathB], outB.io);
+    const requestB = observeMock.mock.calls[0]?.[0] as NormalizedObservationRequest;
+
+    expect(requestA).toEqual(requestB);
+    expect(buildRequestIdentity(requestA)).toBe(buildRequestIdentity(requestB));
   });
 });
