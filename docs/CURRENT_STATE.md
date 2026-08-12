@@ -177,12 +177,16 @@ schema `1.1.0`.
 
 ## Not implemented
 
-- No controlled-scroll behavior, layout/spatial relationship engine,
-  before/after comparison, frontend contracts/change scope, source
-  ownership, my-dev-kit runtime/static integration, orchestrator/lab
-  product integration, viewer, or annotation - all remain v0.3+ and
-  unimplemented.
-- No v0.3–v0.10 capability is implemented.
+- v0.3 Batch 1 (scroll scenario request/identity/schema contract) and Batch
+  2 (real `window-scroll-by` execution and before/after runtime capture) are
+  implemented on this branch, not yet released. See
+  `docs/CONTRACTS.md`/`src/domain/schema.ts` for the current schema-`1.2.0`
+  scroll-scenario evidence shape.
+- `target-scroll-by` execution (nested/element scrolling), layout/spatial
+  relationship engine, before/after comparison, frontend contracts/change
+  scope, source ownership, my-dev-kit runtime/static integration,
+  orchestrator/lab product integration, viewer, and annotation all remain
+  unimplemented (v0.3 Batch 3+ / v0.4+).
 
 ## Next target
 

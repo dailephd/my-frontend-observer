@@ -108,6 +108,54 @@ export const OBSERVATION_FIXTURE_SEMANTIC_STATE = {
 /** v0.2 Batch 3: same URL, same request - the target present at `/disappearing` until the test flips {@link FixtureServer.setDisappearingTargetPresent}. */
 export const OBSERVATION_DISAPPEARING_FIXTURE_SELECTOR = '#disappearing-target';
 
+/**
+ * v0.3 Batch 2: deterministic fixture for the `/scroll` route. `body` is
+ * 3000x3000px against an 800x600 test viewport, giving real, measurable
+ * horizontal and vertical document overflow. `#above-target` starts inside
+ * the viewport and leaves it after a large downward scroll; `#below-target`
+ * starts below the viewport and enters it. `#no-overflow-box` deliberately
+ * declares `overflow: auto` while its content fits exactly, proving actual
+ * dimensional overflow is measured, never inferred from the CSS declaration
+ * alone. `#hidden-scroll-target` is `display: none`, for the hidden-vs-
+ * offscreen viewport-relation case.
+ */
+export const SCROLL_FIXTURE_SELECTORS = {
+  aboveTarget: '#above-target',
+  belowTarget: '#below-target',
+  hiddenTarget: '#hidden-scroll-target',
+  noOverflowBox: '#no-overflow-box',
+} as const;
+
+/** `above-target`'s initial (unscrolled) viewport-relative geometry against the fixture's own CSS. */
+export const SCROLL_FIXTURE_ABOVE_TARGET_INITIAL_TOP = 20;
+/** `below-target`'s initial (unscrolled) viewport-relative `top`, chosen to sit below an 800x600 test viewport. */
+export const SCROLL_FIXTURE_BELOW_TARGET_INITIAL_TOP = 1400;
+/** Total scrollable document height/width for the `/scroll` fixture body. */
+export const SCROLL_FIXTURE_DOCUMENT_SIZE = 3000;
+
+const SCROLL_FIXTURE_HTML = `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>scroll fixture</title>
+<style>
+  html, body { margin: 0; padding: 0; }
+  body { width: ${SCROLL_FIXTURE_DOCUMENT_SIZE}px; height: ${SCROLL_FIXTURE_DOCUMENT_SIZE}px; }
+  #above-target { position: absolute; top: ${SCROLL_FIXTURE_ABOVE_TARGET_INITIAL_TOP}px; left: 20px; width: 100px; height: 50px; background: #eee; }
+  #below-target { position: absolute; top: ${SCROLL_FIXTURE_BELOW_TARGET_INITIAL_TOP}px; left: 20px; width: 100px; height: 50px; background: #ccc; }
+  #hidden-scroll-target { display: none; }
+  #no-overflow-box { position: absolute; top: 2000px; left: 20px; width: 200px; height: 100px; overflow: auto; }
+  #no-overflow-content { width: 100px; height: 50px; }
+</style>
+</head>
+<body>
+  <div id="above-target">Above</div>
+  <div id="below-target">Below</div>
+  <div id="hidden-scroll-target">Hidden</div>
+  <div id="no-overflow-box"><div id="no-overflow-content"></div></div>
+</body>
+</html>`;
+
 const OBSERVATION_FIXTURE_HTML = `<!doctype html>
 <html>
 <head>
@@ -223,6 +271,12 @@ export async function startFixtureServer(): Promise<FixtureServer> {
     if (url === '/observation') {
       res.writeHead(200, { 'content-type': 'text/html' });
       res.end(OBSERVATION_FIXTURE_HTML);
+      return;
+    }
+
+    if (url === '/scroll') {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end(SCROLL_FIXTURE_HTML);
       return;
     }
 

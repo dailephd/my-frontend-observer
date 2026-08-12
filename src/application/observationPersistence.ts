@@ -40,6 +40,7 @@ export function buildObservationArtifact(
     provenance: { capturedAt: new Date().toISOString(), observationMethod: 'chromium-navigate-and-capture' },
     pageEvidence: capture.pageEvidence,
     targetEvidence: capture.targetEvidence,
+    ...(capture.scrollScenarioEvidence ? { scrollScenarioEvidence: capture.scrollScenarioEvidence } : {}),
     screenshot: { state: 'available', source: 'browser', value: { path: SCREENSHOT_FILENAME } },
     completion,
     diagnostics: capture.diagnostics,

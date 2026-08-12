@@ -3,9 +3,11 @@ import type { NormalizedObservationRequest } from '../request/request.js';
 import type { Diagnostic, DiagnosticCode } from '../domain/diagnostics.js';
 import { DIAGNOSTIC_SEVERITY } from '../domain/diagnostics.js';
 import type { EvidenceField } from '../domain/evidence.js';
-import type { TargetEvidenceRecord } from '../domain/schema.js';
+import type { ScrollScenarioEvidence, TargetEvidenceRecord } from '../domain/schema.js';
 import { classifyUrl, classifyRedirect, classifySubresource, classifyPopup, classifyDownload } from '../safety/policy.js';
-import { capturePageEvidence, captureTargetEvidence } from './evidenceCapture.js';
+import { capturePageEvidence, captureTargetEvidence, resolveConfiguredTargets } from './evidenceCapture.js';
+import { captureScrollRuntimeSnapshot, performWindowScrollBy, waitTwoAnimationFrames } from './scrollCapture.js';
+import { deriveScrollScenarioTransition, deriveWindowScrollOwner } from '../domain/scrollEvidence.js';
 import type { BrowserCaptureResult, BrowserProvenance } from './types.js';
 
 export type { BrowserCaptureResult, BrowserProvenance } from './types.js';
@@ -44,16 +46,16 @@ export async function captureViewportInternal(request: NormalizedObservationRequ
     return { result: { ok: false, diagnostics: [initialDecision.diagnostic] }, browserConnected: false };
   }
 
-  // v0.3 Batch 1 froze the scrollScenario request contract but does not yet
-  // execute it (Batch 2/3 add real window/target scroll execution). A
-  // request that configures one must fail honestly here - before any
-  // browser/page is even launched - rather than silently ignoring the
-  // scenario and running an ordinary observation as if it had been applied.
-  if (request.scrollScenario) {
+  // v0.3 Batch 2 implements real window-scroll-by execution below.
+  // target-scroll-by remains Batch 3's responsibility, so a request
+  // configuring it must still fail honestly here - before any browser/page
+  // is even launched - rather than silently ignoring it or reinterpreting it
+  // as a window scroll.
+  if (request.scrollScenario && request.scrollScenario.action.kind === 'target-scroll-by') {
     return {
       result: {
         ok: false,
-        diagnostics: [{ code: 'unsupported-configuration', severity: 'error', message: 'scrollScenario execution is not yet supported' }],
+        diagnostics: [{ code: 'unsupported-configuration', severity: 'error', message: 'target-scroll-by execution is not yet supported' }],
       },
       browserConnected: false,
     };
@@ -141,8 +143,35 @@ export async function captureViewportInternal(request: NormalizedObservationRequ
     } else if (navigationError) {
       result = { ok: false, diagnostics: [...diagnostics, classifyNavigationError(navigationError, request.readiness.timeoutMs)] };
     } else {
-      // Captured from the same live page, after the same readiness point, as
-      // required by Batch 3: no second browser/page is ever opened.
+      // v0.3 Batch 2: for a window-scroll-by request, resolve configured
+      // targets exactly once (reusing the same canonical
+      // resolveConfiguredTargets algorithm captureTargetEvidence uses below),
+      // capture the initial runtime snapshot, perform the immediate window
+      // scroll, wait the frozen two-animation-frame stabilization, and
+      // capture the final runtime snapshot - all before the screenshot and
+      // ordinary page/target evidence below, so every one of those
+      // downstream captures describes only the final post-action state. No
+      // second navigation, page, or observation ever happens.
+      let scrollScenarioEvidence: ScrollScenarioEvidence | undefined;
+      if (request.scrollScenario) {
+        const action = request.scrollScenario.action;
+        const resolvedForScenario = await resolveConfiguredTargets(page, request.targets);
+        try {
+          const initial = await captureScrollRuntimeSnapshot(page, resolvedForScenario, request.viewport);
+          await performWindowScrollBy(page, action.deltaX, action.deltaY);
+          await waitTwoAnimationFrames(page);
+          const final = await captureScrollRuntimeSnapshot(page, resolvedForScenario, request.viewport);
+          const transition = deriveScrollScenarioTransition(initial, final);
+          const scrollOwner = deriveWindowScrollOwner(transition);
+          scrollScenarioEvidence = { initial, final, transition, scrollOwner };
+        } finally {
+          await Promise.all(resolvedForScenario.filter((info) => info.handle).map((info) => info.handle!.dispose()));
+        }
+      }
+
+      // Captured from the same live page, after the same readiness point (and,
+      // for a scenario request, after the scroll action above), as required by
+      // Batch 3/v0.3 Batch 2: no second browser/page is ever opened.
       const screenshotBuffer = await page.screenshot({ type: 'png' });
       const provenance: BrowserProvenance = { engine: 'chromium', version: browser.version() };
 
@@ -166,7 +195,15 @@ export async function captureViewportInternal(request: NormalizedObservationRequ
         targetEvidence = {};
       }
 
-      result = { ok: true, provenance, screenshot: new Uint8Array(screenshotBuffer), pageEvidence, targetEvidence, diagnostics };
+      result = {
+        ok: true,
+        provenance,
+        screenshot: new Uint8Array(screenshotBuffer),
+        pageEvidence,
+        targetEvidence,
+        diagnostics,
+        ...(scrollScenarioEvidence ? { scrollScenarioEvidence } : {}),
+      };
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

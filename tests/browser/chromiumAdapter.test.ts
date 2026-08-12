@@ -134,10 +134,11 @@ describe('chromiumAdapter (Batch 2 browser boundary)', () => {
     expect(browserConnected).toBe(false);
   });
 
-  it('v0.3 Batch 1: a request with a scrollScenario fails honestly (unsupported-configuration) without launching a browser', async () => {
+  it('v0.3 Batch 2: target-scroll-by remains honestly unsupported (unsupported-configuration) without launching a browser', async () => {
     const request = baseRequest({
       targetUrl: `${fixtures.baseUrl}/normal`,
-      scrollScenario: { action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 400 } },
+      targets: [{ name: 'workspace', locators: [{ kind: 'css', selector: 'body' }] }],
+      scrollScenario: { action: { kind: 'target-scroll-by', target: 'workspace', deltaX: 0, deltaY: 400 } },
     });
 
     const { result, browserConnected } = await captureViewportInternal(request);
@@ -147,7 +148,8 @@ describe('chromiumAdapter (Batch 2 browser boundary)', () => {
     expect(result.diagnostics).toHaveLength(1);
     expect(result.diagnostics[0]?.code).toBe('unsupported-configuration');
 
-    // Not silently ignored and not partially executed - no browser launched.
+    // Not silently ignored, not reinterpreted as a window scroll, and not
+    // partially executed - no browser launched.
     expect(browserConnected).toBe(false);
   });
 
