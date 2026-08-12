@@ -162,6 +162,95 @@ public entry point is `my-frontend-observer observe --scroll-scenario-file
 directly, and its local path is operational input only, exactly like
 `--targets-file`'s path - never persisted, never part of request identity.
 
+## v0.4 comparison contract (implemented on feature branch, unreleased)
+
+**Current status: implemented on `feature/v0.4-layout-comparison`, not yet
+released.** Package remains `0.3.0`; observation schema remains `1.2.0`.
+Comparison is a distinct artifact kind and schema, never a bump to the
+observation schema:
+
+- artifact kind: `my-frontend-observer/comparison`;
+- comparison schema: `1.0.0`.
+
+**Geometry tolerance**: `ComparisonConfig.geometryTolerancePx`, default
+`0.5` CSS px, bounded `[0, 10]`. Suppresses insignificant subpixel noise
+only - never a design contract, never permission for a change.
+
+**Layout relationship graph**: `deriveLayoutRelationships(observation,
+options?)` derives, per observation, a bounded `LayoutRelationshipGraph`
+among configured targets only (≤20 targets, ≤190 unordered pairs):
+horizontal order (`left-of`/`right-of`/`horizontally-overlapping`),
+vertical order (`above`/`below`/`vertically-overlapping`), area overlap
+(`overlaps`/`does-not-overlap`), relative width (`wider-than`/
+`narrower-than`/`equal-width-within-tolerance`), geometric fit
+(`fits-inside`/`does-not-fit-inside` - geometry-only, deliberately distinct
+from DOM containment), vertical sequencing (`follows-vertically`), and one
+page-level relationship (`document-width-fits-viewport`/
+`document-width-exceeds-viewport`). Every relationship carries explicit
+evidence-path provenance back to the source observation. A configured
+target lacking usable geometry is listed as honestly unresolved
+(`not-found`/`ambiguous`/`unavailable`/`hidden`), never fabricated as a
+zero-sized region.
+
+**Comparability**: evaluated before any rendered difference, using exactly
+three states (`comparable`/`comparable-with-warnings`/`incomparable`) with
+structured reasons, never a bare boolean. Hard incompatibilities (page URL,
+viewport, browser engine, scroll-scenario configuration mismatch) force
+`incomparable`; producer-version, browser-version, and target-configuration
+differences are warning-only; theme/authenticated-state/application-state
+identity are recorded as `unassessed` dimensions the observer does not yet
+model - never silently claimed identical. An `incomparable` result still
+persists a structurally valid `ComparisonArtifact` with empty rendered
+differences, not a fabricated comparison.
+
+**Difference categories**: `appeared`/`disappeared` (only for a stable
+target name configured on both sides, transitioning between a definite
+`not-found` and `matched` resolution status - never for a target merely
+added/removed from configuration, which is its own separate
+`configurationChanges` entry), `moved`/`resized` (tolerance-aware, a target
+may be both), `visibility-changed`, `clipping-changed` (reusing the
+canonical `deriveTargetClipping` helper, never re-derived), `horizontal-
+overflow-changed`/`vertical-overflow-changed` (actual dimensional overflow,
+reusing the existing `deriveOverflowEvidence` helper - never inferred from
+a CSS declaration alone), `containment-changed` (reusing existing v0.2
+`TargetContainment` evidence), `page-size-changed`, `scroll-owner-changed`
+(comparing `scrollScenarioEvidence.scrollOwner` only when scenario
+*configuration* already matched), `relative-position-changed` (a relation
+in the horizontal-order/vertical-order/area-overlap families changed - kept
+distinct from plain absolute target movement) and `relationship-changed`
+(every other relationship-family transition). Relationship changes are
+matched by structural identity (family + subject/related target, or the
+page-level key), never by array position.
+
+**Explicit dependency evidence**: `ComparisonConfig.expectedDependencies`
+lets a caller declare an expected relationship between two targets' numeric
+properties (`x`/`y`/`width`/`height`) and directions (`increase`/
+`decrease`/`change`/`unchanged`), always carrying `source:
+"explicit-config"`. The observer never synthesizes a declaration from
+observed co-change. Each declaration evaluates independently to exactly one
+of `consistent`/`not-observed`/`contradictory-to-declaration`/
+`unavailable` - never a causal claim (no `causedBy`/`causalConfidence`/
+`causalScore`/`dependencyStrength`) and never a PASS/FAIL/approval verdict.
+That distinction (evidence vs. contract verdict) is the boundary between
+v0.4 and v0.5+.
+
+**Comparison identity**: `comparisonRequestId` is a pure, deterministic
+function of `{beforeObservationId, afterObservationId, normalized
+ComparisonConfig}` - direction-sensitive (`compare(A, B) !==
+compare(B, A)`), and never includes an operational filesystem path.
+`comparisonId` is fresh per execution (same pattern as `observationId`).
+
+**Source references**: the comparison artifact retains enough logical
+identity to trace back to its authoritative source observations
+(`observationId`, `requestId`, `producer`, `observationSchemaVersion`, and
+the source `screenshot.path`) without embedding the full
+`ObservationArtifact` or copying screenshot bytes. The persisted comparison
+directory contains `manifest.json` only.
+
+The public entry point is `my-frontend-observer compare --before <root>
+--after <root> --output <directory> [--config-file <json-file>]` (see
+`docs/COMMANDS.md`) - comparison itself never launches a browser.
+
 ## Approved v0.1 design inputs
 
 The historical greenfield scaffold plan recorded these v0.1 design decisions:

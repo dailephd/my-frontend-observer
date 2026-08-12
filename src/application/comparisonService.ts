@@ -1,3 +1,4 @@
+import path from 'node:path';
 import type { ObservationArtifact } from '../domain/schema.js';
 import type { ComparabilityState, ComparisonConfig } from '../domain/comparison.js';
 import { compareObservations } from '../domain/comparisonEngine.js';
@@ -6,6 +7,8 @@ import { DIAGNOSTIC_SEVERITY } from '../domain/diagnostics.js';
 import { normalizeOutputLocation } from '../request/paths.js';
 import { writeComparisonArtifact } from '../artifacts/comparisonArtifactWriter.js';
 import type { WriteComparisonArtifactOptions } from '../artifacts/comparisonArtifactWriter.js';
+import { readObservationArtifact } from '../artifacts/artifactReader.js';
+import { MANIFEST_FILENAME as OBSERVATION_MANIFEST_FILENAME } from '../artifacts/artifactWriter.js';
 
 export type { PersistedComparisonResult } from '../artifacts/comparisonArtifactWriter.js';
 
@@ -35,6 +38,7 @@ export type ApplicationComparisonResult =
       manifestPath: string;
       differenceCount: number;
       relationshipChangeCount: number;
+      diagnosticsCount: number;
     }
   | {
       ok: false;
@@ -82,5 +86,43 @@ export async function compareAndPersist(
     manifestPath: persisted.manifestPath,
     differenceCount: result.artifact.differences.length,
     relationshipChangeCount: result.artifact.relationshipChanges.length,
+    diagnosticsCount: result.artifact.diagnostics.length,
   };
+}
+
+/**
+ * The canonical Batch 4 CLI-facing orchestration: reads two already-persisted
+ * observation artifacts by their root directory (each expected to contain
+ * `manifest.json`, mirroring `writeObservationArtifact`'s own layout) through
+ * the existing `readObservationArtifact` reader, then delegates to
+ * `compareAndPersist` exactly once. A thin wrapper only - artifact reading
+ * stays owned by `artifacts/artifactReader.ts`, comparison stays owned by
+ * `domain/comparisonEngine.ts`, and persistence stays owned by
+ * `artifacts/comparisonArtifactWriter.ts`. Kept in `application/` (not
+ * `artifacts/`) so `src/cli.ts` can depend on it without importing the
+ * artifacts layer directly - see `tests/unit/cli.test.ts`'s import-boundary
+ * assertion. Never launches a browser, never re-resolves targets.
+ */
+export async function compareAndPersistFromArtifactRoots(
+  beforeRoot: string,
+  afterRoot: string,
+  options: CompareAndPersistOptions = {},
+): Promise<ApplicationComparisonResult> {
+  const beforeRead = await readObservationArtifact(path.join(beforeRoot, OBSERVATION_MANIFEST_FILENAME));
+  if (!beforeRead.ok) {
+    return {
+      ok: false,
+      diagnostics: [{ code: 'invalid-request', severity: DIAGNOSTIC_SEVERITY['invalid-request'], message: `--before observation artifact: ${beforeRead.reason}` }],
+    };
+  }
+
+  const afterRead = await readObservationArtifact(path.join(afterRoot, OBSERVATION_MANIFEST_FILENAME));
+  if (!afterRead.ok) {
+    return {
+      ok: false,
+      diagnostics: [{ code: 'invalid-request', severity: DIAGNOSTIC_SEVERITY['invalid-request'], message: `--after observation artifact: ${afterRead.reason}` }],
+    };
+  }
+
+  return compareAndPersist(beforeRead.artifact, afterRead.artifact, options);
 }

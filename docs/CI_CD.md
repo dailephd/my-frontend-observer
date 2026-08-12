@@ -67,3 +67,18 @@ observations. This was proven on `validation/v0.3-pre-release`
 hash-verified candidate tarball (SHA-256
 `da6cbc18a98d005b84a2f12c06f5c01d390006b53c02176a6c9cdc6d9b9d24d0`) - the
 release candidate for `v0.3.0`.
+
+## v0.4 readiness gap (known, not yet closed)
+
+v0.4's `compare` command is implemented on `feature/v0.4-layout-comparison`
+(source-checkout `npm run build` and the built-CLI dev smoke
+`scripts/dev/builtCliCompareSmoke.mjs` both exercise it directly against
+`dist/cli.js` - see `docs/DEVELOPMENT.md`), but
+`scripts/ci/runPackedObservationSmoke.mjs` has **not** been updated to
+install a candidate tarball and exercise `compare` from within it. This is
+a known, expected pre-release-readiness gap, not an implementation defect:
+the later v0.4 pre-release-readiness workflow must extend the packed smoke
+(or add an equivalent packed-candidate script) to prove `compare` works
+identically to `observe` when installed from a real tarball in a clean
+consumer environment, on every platform in the matrix, before `v0.4.0` is
+tagged.

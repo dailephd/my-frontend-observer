@@ -59,6 +59,163 @@ describe('runCli - top-level', () => {
     expect(out.stdout()).toContain('window-scroll-by');
     expect(out.stdout()).toContain('target-scroll-by');
   });
+
+  it('--help lists both observe and compare as top-level commands', async () => {
+    const out = capture();
+    const code = await runCli(['--help'], out.io);
+    expect(code).toBe(0);
+    expect(out.stdout()).toContain('observe');
+    expect(out.stdout()).toContain('compare');
+  });
+
+  it('compare --help documents --before/--after/--output/--config-file and states it never launches a browser', async () => {
+    const out = capture();
+    const code = await runCli(['compare', '--help'], out.io);
+    expect(code).toBe(0);
+    for (const flag of ['--before', '--after', '--output', '--config-file']) {
+      expect(out.stdout()).toContain(flag);
+    }
+    expect(out.stdout()).toContain('never launches a browser');
+  });
+
+  it('observe --help never mentions compare-only flags', async () => {
+    const out = capture();
+    const code = await runCli(['observe', '--help'], out.io);
+    expect(code).toBe(0);
+    expect(out.stdout()).not.toContain('--before');
+    expect(out.stdout()).not.toContain('--after');
+    expect(out.stdout()).not.toContain('--config-file');
+  });
+});
+
+describe('runCli compare - argument parsing (CLI-syntax boundary only)', () => {
+  it('requires --before, --after, and --output before any artifact is read', async () => {
+    const out = capture();
+    const code = await runCli(['compare'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--before is required');
+    expect(out.stderr()).toContain('--after is required');
+    expect(out.stderr()).toContain('--output is required');
+  });
+
+  it('rejects a bare --before with no value', async () => {
+    const out = capture();
+    const code = await runCli(['compare', '--before'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--before requires a path argument');
+  });
+
+  it('rejects a bare --after with no value', async () => {
+    const out = capture();
+    const code = await runCli(['compare', '--before', 'b', '--after'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--after requires a path argument');
+  });
+
+  it('rejects a bare --output with no value', async () => {
+    const out = capture();
+    const code = await runCli(['compare', '--before', 'b', '--after', 'a', '--output'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--output requires a directory argument');
+  });
+
+  it('rejects a bare --config-file with no value', async () => {
+    const out = capture();
+    const code = await runCli(['compare', '--before', 'b', '--after', 'a', '--output', 'o', '--config-file'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--config-file requires a file path argument');
+  });
+
+  it('rejects a duplicate --before flag', async () => {
+    const out = capture();
+    const code = await runCli(['compare', '--before', 'b1', '--before', 'b2', '--after', 'a', '--output', 'o'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--before may only be specified once');
+  });
+
+  it('rejects a duplicate --after flag', async () => {
+    const out = capture();
+    const code = await runCli(['compare', '--before', 'b', '--after', 'a1', '--after', 'a2', '--output', 'o'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--after may only be specified once');
+  });
+
+  it('rejects a duplicate --output flag', async () => {
+    const out = capture();
+    const code = await runCli(['compare', '--before', 'b', '--after', 'a', '--output', 'o1', '--output', 'o2'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--output may only be specified once');
+  });
+
+  it('rejects a duplicate --config-file flag', async () => {
+    const out = capture();
+    const code = await runCli(
+      ['compare', '--before', 'b', '--after', 'a', '--output', 'o', '--config-file', 'c1.json', '--config-file', 'c2.json'],
+      out.io,
+    );
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--config-file may only be specified once');
+  });
+
+  it('rejects an unrecognized argument', async () => {
+    const out = capture();
+    const code = await runCli(['compare', '--before', 'b', '--after', 'a', '--output', 'o', '--bogus'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('unrecognized argument: --bogus');
+  });
+});
+
+describe('runCli compare - invalid source artifacts fail before persistence (real, unmocked reader)', () => {
+  it('reports a clear error for a missing --before root and exits nonzero', async () => {
+    const out = capture();
+    const code = await runCli(['compare', '--before', '/does/not/exist-before', '--after', '/does/not/exist-after', '--output', 'o'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--before observation artifact');
+  });
+});
+
+describe('runCli compare --config-file - CLI-syntax boundary only', () => {
+  const tempDirs: string[] = [];
+
+  afterEach(async () => {
+    await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+  });
+
+  async function writeConfigFile(content: string): Promise<string> {
+    const dir = await mkdtemp(path.join(tmpdir(), 'mfo-cli-compare-config-syntax-'));
+    tempDirs.push(dir);
+    const filePath = path.join(dir, 'config.json');
+    await writeFile(filePath, content, 'utf8');
+    return filePath;
+  }
+
+  it('reports a clear error for a missing/unreadable config file', async () => {
+    const out = capture();
+    const code = await runCli(
+      ['compare', '--before', '/does/not/exist-before', '--after', '/does/not/exist-after', '--output', 'o', '--config-file', '/does/not/exist-config.json'],
+      out.io,
+    );
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--config-file could not be read');
+  });
+
+  it('reports a clear error for invalid JSON', async () => {
+    const filePath = await writeConfigFile('{ not valid json');
+    const out = capture();
+    const code = await runCli(['compare', '--before', 'b', '--after', 'a', '--output', 'o', '--config-file', filePath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--config-file is not valid JSON');
+  });
+
+  it('rejects a non-object root (array, null)', async () => {
+    for (const content of ['[]', 'null']) {
+      const filePath = await writeConfigFile(content);
+      const out = capture();
+      const code = await runCli(['compare', '--before', 'b', '--after', 'a', '--output', 'o', '--config-file', filePath], out.io);
+      expect(code).toBe(1);
+      expect(out.stderr()).toContain('--config-file root must be a JSON object');
+    }
+  });
 });
 
 describe('runCli observe - argument parsing (B5-TST-002..006)', () => {

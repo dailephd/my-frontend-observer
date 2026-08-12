@@ -67,6 +67,29 @@ in
 [docs/COMMANDS.md](docs/COMMANDS.md#scroll-scenario---scroll-scenario-file)
 for the exact JSON format and flag reference.
 
+### v0.4 comparison (current source, unreleased)
+
+The published package is still `0.3.0` and does not include `compare`.
+`feature/v0.4-layout-comparison` (this source checkout, once built) adds a
+second command that reads two already-persisted observation artifacts and
+derives before/after evidence purely from their existing content - it never
+launches a browser:
+
+```powershell
+node dist/cli.js compare `
+  --before observations/<before-observation-id> `
+  --after observations/<after-observation-id> `
+  --output comparisons
+```
+
+This prints a concise result (`Comparison:`/`State:`/`Artifact:`/
+`Differences:`/`Relationship changes:`/`Diagnostics:`) and exits `0` -
+including when the two observations turn out to be `incomparable`, which is
+itself a successful comparison outcome. See
+[docs/COMMANDS.md](docs/COMMANDS.md) for the full flag reference. Once v0.4
+is released, this section will move above and `npm install
+my-frontend-observer` will ship `compare` directly - it does not yet.
+
 Validation:
 
 ```powershell

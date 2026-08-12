@@ -108,6 +108,79 @@ is still one canonical `observe()` application use case and one artifact
 writer; `scrollScenarioEvidence` is simply one more optional field on the
 same `ObservationArtifact`.
 
+## Current v0.4 architecture (implemented on feature branch, unreleased)
+
+v0.4 adds one new downstream pipeline that consumes `ObservationArtifact`
+values rather than producing them - it never adds a second browser lifecycle,
+target resolver, or observation engine:
+
+```text
+ObservationArtifact before  ObservationArtifact after
+        \                          /
+         `--------.       .-------'
+                    \     /
+              artifact reader (src/artifacts/artifactReader.ts)
+                       ↓
+              comparability evaluation (src/domain/comparisonEngine.ts)
+                       ↓
+    canonical relationship derivation, called for each side independently
+              (src/domain/relationships.ts#deriveLayoutRelationships)
+                       ↓
+              canonical comparison derivation
+              (src/domain/comparisonEngine.ts#compareObservations)
+                       ↓
+                ComparisonArtifact
+                       ↓
+    atomic comparison writer (src/artifacts/comparisonArtifactWriter.ts)
+
+CLI `compare`
+        ↓
+application service only (src/application/comparisonService.ts)
+        ↓
+[reader → domain comparison → writer, as above]
+```
+
+`src/domain/relationships.ts` froze the layout-relationship contract and
+implements the one canonical pure derivation,
+`deriveLayoutRelationships(observation, options?)`: horizontal/vertical
+order, area overlap, relative width, geometric fit, vertical sequencing,
+page-width fit/exceeds, and a standalone `deriveTargetClipping(record)` -
+all computed only from an already-captured `ObservationArtifact`'s own
+`targetEvidence`/`pageEvidence`, never from a second browser query. DOM
+containment is read directly from the existing v0.2 `TargetContainment`
+evidence rather than re-derived, and stays a distinct concept from
+geometric fit.
+
+`src/domain/comparisonEngine.ts` implements the one canonical pure
+before/after engine, `compareObservations(before, after, config?)`:
+validates both source artifacts, evaluates comparability *before* any
+rendered difference is calculated, calls `deriveLayoutRelationships` once
+per side with the same tolerance, and derives target/page differences and
+relationship changes. `src/artifacts/comparisonArtifactWriter.ts` persists
+the result atomically (sibling temp directory, then one rename) as
+`<outputLocation>/<comparisonId>/manifest.json` only - no screenshot is
+copied; the manifest's `before`/`after` references point back to the
+source observations' own `screenshot.path`. `src/application/
+comparisonService.ts` is the one application-layer seam: `compareAndPersist`
+takes two in-memory `ObservationArtifact`s and does exactly one comparison
+plus exactly one persist; `compareAndPersistFromArtifactRoots` is a thin
+wrapper that additionally reads both sides from disk via the existing
+`src/artifacts/artifactReader.ts#readObservationArtifact` reader (itself
+just a `manifest.json` parse plus the same `isValidObservationArtifact`
+structural gate the writer uses).
+
+`src/cli.ts` gained one new top-level command, `compare`
+(`--before`/`--after`/`--output`/`--config-file`), implemented with the same
+thin-CLI-boundary discipline as `observe`: `parseCompareArgs` handles only
+argument shape/duplication, an optional `loadComparisonConfigFile` reads and
+validates only file readability/JSON-validity/non-array-object-root (exactly
+like `--targets-file`/`--scroll-scenario-file`), and the command body calls
+`compareAndPersistFromArtifactRoots` exactly once. **The CLI's comparison
+path never launches Chromium** - `src/cli.ts` imports nothing from
+`src/browser/` or `src/artifacts/` (it only reaches persistence and artifact
+reading indirectly, through the application-layer seam above), matching the
+same import-boundary discipline already enforced for `observe`.
+
 ## Planned v0.1 architecture constraints
 
 v0.1 planning must preserve these approved boundaries without treating module

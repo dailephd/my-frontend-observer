@@ -94,11 +94,33 @@ locally after `npm run build`:
 node scripts/dev/builtCliScrollScenarioSmoke.mjs
 ```
 
-Unlike `scripts/ci/runPackedObservationSmoke.mjs`, neither of these dev
+`scripts/dev/builtCliCompareSmoke.mjs` is the v0.4 equivalent, added
+alongside the `compare` command implementation (current source, unreleased -
+see `docs/CURRENT_STATE.md`): it runs the built `dist/cli.js` twice as
+`observe` against an inline disposable local HTTP fixture whose served
+content changes deterministically between the two runs (a real moved/
+resized target, and a page-width transition from fitting to exceeding the
+viewport), then runs the built `dist/cli.js compare` against the two
+resulting persisted observation artifacts. It validates artifact kind/
+schema `1.0.0`, `comparability: "comparable"`, source observation
+references, at least one real `moved` difference and one real page-width
+relationship change, that the comparison directory contains `manifest.json`
+only, that no operational filesystem path leaked into the persisted
+manifest, and that both source observation manifests are byte-identical
+before and after the comparison ran. Run it locally after `npm run build`:
+
+```powershell
+node scripts/dev/builtCliCompareSmoke.mjs
+```
+
+Unlike `scripts/ci/runPackedObservationSmoke.mjs`, none of these three dev
 smokes is wired into any CI workflow or is a release gate - they are
 source-checkout development evidence only, proving the built CLI's
-`--targets-file`/`--scroll-scenario-file` behavior without installing a
-packed tarball or requiring cross-platform infrastructure. Neither is part
-of the published package. Cross-platform packed validation of the v0.3
-scroll-scenario behavior is `scripts/ci/runPackedObservationSmoke.mjs`'s
-responsibility (see `docs/CI_CD.md`), and has been completed.
+`--targets-file`/`--scroll-scenario-file`/`compare` behavior without
+installing a packed tarball or requiring cross-platform infrastructure.
+None is part of the published package. Cross-platform packed validation of
+the v0.3 scroll-scenario behavior is `scripts/ci/runPackedObservationSmoke.mjs`'s
+responsibility (see `docs/CI_CD.md`), and has been completed; packed
+validation of the v0.4 `compare` command has **not** been added there yet -
+that remains a pre-release-readiness requirement, tracked in
+`docs/CI_CD.md`, not part of v0.4 implementation.

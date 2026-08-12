@@ -190,4 +190,4 @@ export type { ReadObservationArtifactResult } from './artifacts/artifactReader.j
 export { readObservationArtifact } from './artifacts/artifactReader.js';
 
 export type { CompareAndPersistOptions, ApplicationComparisonResult } from './application/comparisonService.js';
-export { DEFAULT_COMPARISON_OUTPUT_LOCATION, compareAndPersist } from './application/comparisonService.js';
+export { DEFAULT_COMPARISON_OUTPUT_LOCATION, compareAndPersist, compareAndPersistFromArtifactRoots } from './application/comparisonService.js';

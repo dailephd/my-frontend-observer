@@ -5,7 +5,9 @@ import { normalizeRequest } from './request/request.js';
 import type { RawObservationRequest } from './request/request.js';
 import type { Diagnostic } from './domain/diagnostics.js';
 import { getProducerInfo } from './domain/schema.js';
+import type { ComparisonConfig } from './domain/comparison.js';
 import { observe } from './application/observationPersistence.js';
+import { compareAndPersistFromArtifactRoots } from './application/comparisonService.js';
 
 export interface CliIO {
   stdout: (text: string) => void;
@@ -29,12 +31,15 @@ Usage:
 Commands:
   observe    Capture one bounded browser observation and persist it as a
              portable artifact.
+  compare    Compare two persisted observations and write a structured
+             comparison artifact.
 
 Options:
   --help     Show this help.
   --version  Print the package version.
 
-Run "my-frontend-observer observe --help" for observe command options.
+Run "my-frontend-observer observe --help" or "my-frontend-observer compare
+--help" for command-specific options.
 `;
 
 const OBSERVE_HELP = `Usage:
@@ -82,6 +87,45 @@ On success, prints a concise result and exits 0. On invalid syntax, invalid
 request, unsafe/failed navigation, or a failed artifact write, prints
 structured diagnostics to stderr and exits nonzero. No progress output is
 printed during a normal capture.
+`;
+
+const COMPARE_HELP = `Usage:
+  my-frontend-observer compare --before <observation-artifact-root> --after <observation-artifact-root> --output <directory> [options]
+
+Required:
+  --before <path>           Root directory of the "before" persisted
+                             observation artifact (the directory containing
+                             its manifest.json).
+  --after <path>             Root directory of the "after" persisted
+                             observation artifact.
+  --output <directory>      Portable, relative output location for the
+                            comparison artifact.
+
+Options:
+  --config-file <json-file> Loads a comparison configuration from a local
+                            JSON file: { "geometryTolerancePx": <0-10>,
+                            "expectedDependencies": [ { "cause": { "target":
+                            "...", "property": "x"|"y"|"width"|"height",
+                            "direction": "increase"|"decrease"|"change"|
+                            "unchanged" }, "effect": { ... same shape ... },
+                            "source": "explicit-config" } ] }. Relative
+                            paths resolve from the current working
+                            directory; the file path itself is never
+                            persisted into the artifact or included in the
+                            comparison request identity. Without
+                            --config-file, geometryTolerancePx defaults to
+                            0.5 with no declared dependencies.
+  --help                    Show this help.
+
+Comparison reads two already-persisted observation artifacts and derives
+evidence purely from their existing content - it never launches a browser
+and never re-observes either target. On success, prints a concise result
+and exits 0, including when the two observations are found to be
+"incomparable" (that is itself a successful comparison outcome, not a
+failure). On invalid syntax, an unreadable or structurally invalid source
+artifact, invalid configuration, or a failed artifact write, prints
+structured diagnostics to stderr and exits nonzero. No progress output is
+printed during a normal comparison.
 `;
 
 function parseViewport(raw: string): { width: number; height: number } | undefined {
@@ -290,6 +334,131 @@ function loadScrollScenarioFile(filePath: string): LoadScrollScenarioFileResult 
   return { ok: true, scenario: parsed };
 }
 
+type ParsedCompareArgs =
+  | { ok: true; beforeRoot: string; afterRoot: string; outputLocation: string; configFilePath?: string }
+  | { ok: false; errors: string[] };
+
+/** CLI-syntax-only parsing, mirroring `parseObserveArgs`: shape/presence/duplication errors only. Comparison-config semantics stay owned by the existing domain validator. */
+function parseCompareArgs(argv: readonly string[]): ParsedCompareArgs {
+  const errors: string[] = [];
+  let beforeRoot: string | undefined;
+  let beforeFlagCount = 0;
+  let afterRoot: string | undefined;
+  let afterFlagCount = 0;
+  let outputLocation: string | undefined;
+  let outputFlagCount = 0;
+  let configFilePath: string | undefined;
+  let configFileFlagCount = 0;
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    switch (arg) {
+      case '--before': {
+        const value = argv[(i += 1)];
+        beforeFlagCount += 1;
+        if (value === undefined) {
+          errors.push('--before requires a path argument');
+        } else if (beforeFlagCount > 1) {
+          errors.push('--before may only be specified once');
+        } else {
+          beforeRoot = value;
+        }
+        break;
+      }
+      case '--after': {
+        const value = argv[(i += 1)];
+        afterFlagCount += 1;
+        if (value === undefined) {
+          errors.push('--after requires a path argument');
+        } else if (afterFlagCount > 1) {
+          errors.push('--after may only be specified once');
+        } else {
+          afterRoot = value;
+        }
+        break;
+      }
+      case '--output': {
+        const value = argv[(i += 1)];
+        outputFlagCount += 1;
+        if (value === undefined) {
+          errors.push('--output requires a directory argument');
+        } else if (outputFlagCount > 1) {
+          errors.push('--output may only be specified once');
+        } else {
+          outputLocation = value;
+        }
+        break;
+      }
+      case '--config-file': {
+        const value = argv[(i += 1)];
+        configFileFlagCount += 1;
+        if (value === undefined) {
+          errors.push('--config-file requires a file path argument');
+        } else if (configFileFlagCount > 1) {
+          errors.push('--config-file may only be specified once');
+        } else {
+          configFilePath = value;
+        }
+        break;
+      }
+      default:
+        errors.push(`unrecognized argument: ${arg}`);
+    }
+  }
+
+  if (beforeRoot === undefined) errors.push('--before is required');
+  if (afterRoot === undefined) errors.push('--after is required');
+  if (outputLocation === undefined) errors.push('--output is required');
+
+  if (errors.length > 0) return { ok: false, errors };
+
+  return {
+    ok: true,
+    beforeRoot: beforeRoot as string,
+    afterRoot: afterRoot as string,
+    outputLocation: outputLocation as string,
+    ...(configFilePath === undefined ? {} : { configFilePath }),
+  };
+}
+
+type LoadComparisonConfigFileResult = { ok: true; config: unknown } | { ok: false; error: string };
+
+/**
+ * CLI/input-boundary-only responsibility, mirroring `loadScrollScenarioFile`:
+ * read one local JSON file and validate only the root shape this file format
+ * owns (plain, non-array object) - the file supplies the value of
+ * `ComparisonConfig` directly (no wrapper field). Every semantic rule
+ * (geometry tolerance bounds, dependency property/direction vocabulary,
+ * dependency source/provenance) stays owned by the existing comparison
+ * domain validator (`isValidComparisonConfig`, invoked inside
+ * `compareObservations`), not duplicated here. The file path itself is
+ * never returned to the caller beyond this function, so it can never reach
+ * the persisted comparison artifact or its request identity.
+ */
+function loadComparisonConfigFile(filePath: string): LoadComparisonConfigFileResult {
+  let rawText: string;
+  try {
+    rawText = readFileSync(filePath, 'utf8');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `--config-file could not be read: ${message}` };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `--config-file is not valid JSON: ${message}` };
+  }
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return { ok: false, error: '--config-file root must be a JSON object' };
+  }
+
+  return { ok: true, config: parsed };
+}
+
 function formatDiagnostic(diagnostic: Diagnostic): string {
   const target = diagnostic.targetName === undefined ? '' : ` (target: ${diagnostic.targetName})`;
   return `[${diagnostic.code}] ${diagnostic.message}${target}`;
@@ -353,6 +522,60 @@ async function runObserveCommand(argv: readonly string[], io: CliIO): Promise<nu
   return NON_SUCCESS_COMPLETION_STATES.has(result.completion.state) ? 1 : 0;
 }
 
+/**
+ * Thin orchestration only: parse args, optionally load a config file, then
+ * delegate to the existing `compareAndPersistFromArtifactRoots` application
+ * function exactly once. No comparability/geometry/relationship/dependency
+ * logic lives here - see `src/domain/comparisonEngine.ts`. `incomparable` is
+ * a successful comparison outcome (the operation determined the two
+ * observations should not be treated as equivalent frontend states), so it
+ * exits 0 exactly like `comparable`/`comparable-with-warnings`; only a
+ * genuine parse/read/domain/persistence failure exits nonzero.
+ */
+async function runCompareCommand(argv: readonly string[], io: CliIO): Promise<number> {
+  if (argv.includes('--help')) {
+    io.stdout(COMPARE_HELP);
+    return 0;
+  }
+
+  const parsedArgs = parseCompareArgs(argv);
+  if (!parsedArgs.ok) {
+    for (const error of parsedArgs.errors) io.stderr(`error: ${error}\n`);
+    io.stderr(COMPARE_HELP);
+    return 1;
+  }
+
+  let config: Partial<ComparisonConfig> | undefined;
+  if (parsedArgs.configFilePath !== undefined) {
+    const loaded = loadComparisonConfigFile(parsedArgs.configFilePath);
+    if (!loaded.ok) {
+      io.stderr(`error: ${loaded.error}\n`);
+      io.stderr(COMPARE_HELP);
+      return 1;
+    }
+    config = loaded.config as Partial<ComparisonConfig>;
+  }
+
+  // Exactly one application comparison attempt: two artifact reads, one pure comparison, persisted at most once.
+  const result = await compareAndPersistFromArtifactRoots(parsedArgs.beforeRoot, parsedArgs.afterRoot, {
+    ...(config === undefined ? {} : { config }),
+    outputLocation: parsedArgs.outputLocation,
+  });
+  if (!result.ok) {
+    for (const diagnostic of result.diagnostics) io.stderr(`${formatDiagnostic(diagnostic)}\n`);
+    return 1;
+  }
+
+  io.stdout(`Comparison: ${result.comparisonId}\n`);
+  io.stdout(`State: ${result.comparability}\n`);
+  io.stdout(`Artifact: ${result.artifactRoot}\n`);
+  io.stdout(`Differences: ${result.differenceCount}\n`);
+  io.stdout(`Relationship changes: ${result.relationshipChangeCount}\n`);
+  io.stdout(`Diagnostics: ${result.diagnosticsCount}\n`);
+
+  return 0;
+}
+
 /** Testable CLI entry point: pure function of argv (+ injectable IO), no direct process.exit. */
 export async function runCli(argv: readonly string[], io: CliIO = defaultIO): Promise<number> {
   const [command, ...rest] = argv;
@@ -374,6 +597,10 @@ export async function runCli(argv: readonly string[], io: CliIO = defaultIO): Pr
 
   if (command === 'observe') {
     return runObserveCommand(rest, io);
+  }
+
+  if (command === 'compare') {
+    return runCompareCommand(rest, io);
   }
 
   io.stderr(`error: unrecognized command "${command}"\n`);

@@ -221,10 +221,11 @@ consumer environment on Windows, Linux, and macOS before release.
   unchanged. Proven via real Chromium (`tests/browser/cliObserve.test.ts`)
   and the built `dist/cli.js` (`scripts/dev/builtCliScrollScenarioSmoke.mjs`).
 
-## v0.4 status (Layout Relationships, Dependency Evidence, and Before/After Comparison) - in progress, unreleased
+## v0.4 status (Layout Relationships, Dependency Evidence, and Before/After Comparison) - implementation feature-complete, unreleased
 
-v0.4 is in progress on `feature/v0.4-layout-comparison`, not yet released.
-Package version remains `0.3.0`; observation schema remains `1.2.0`.
+v0.4 Batches 1-4 are implemented on `feature/v0.4-layout-comparison` and not
+yet released. Package version remains `0.3.0`; observation schema remains
+`1.2.0`; comparison schema is `1.0.0`.
 
 - **Batch 1** froze the `my-frontend-observer/comparison` artifact contract
   (schema `1.0.0`, independent of and never reused for the observation
@@ -273,11 +274,47 @@ Package version remains `0.3.0`; observation schema remains `1.2.0`.
   (`src/application/comparisonService.ts`) are implemented; a narrow
   `readObservationArtifact` reader
   (`src/artifacts/artifactReader.ts`) is established ahead of the Batch 4
-  CLI. A public `compare` CLI remains unimplemented.
+  CLI.
+- **Batch 4** exposed the existing comparison workflow through the real
+  public CLI: `my-frontend-observer compare --before <observation-artifact-
+  root> --after <observation-artifact-root> --output <directory>
+  [--config-file <json-file>]` (see `docs/COMMANDS.md`). The CLI stays thin
+  - `src/cli.ts` parses arguments, optionally loads a config file (file
+  readability/JSON validity/object-root only, exactly like
+  `--targets-file`/`--scroll-scenario-file`), and delegates to one new
+  thin application-layer orchestration function,
+  `compareAndPersistFromArtifactRoots`
+  (`src/application/comparisonService.ts`), which reads both observation
+  roots through the existing `readObservationArtifact` reader and calls the
+  existing `compareAndPersist` exactly once - no comparability/geometry/
+  relationship/dependency logic lives in the CLI, and comparison itself
+  never launches Chromium (`src/cli.ts` still imports nothing from
+  `src/artifacts/` or `src/browser/`, matching the pre-existing observe-CLI
+  import-boundary test). `comparable`, `comparable-with-warnings`, and
+  `incomparable` all exit `0` - each is a successful comparison outcome;
+  only a genuine parse/read/domain/persistence failure exits nonzero.
+  Operational paths (`--before`/`--after`/`--config-file`/`--output`) never
+  affect `comparisonRequestId` and are never written into the persisted
+  manifest. Proven end-to-end via real Chromium
+  (`tests/browser/cliCompare.test.ts`) and the built `dist/cli.js`
+  (`scripts/dev/builtCliCompareSmoke.mjs`): unchanged/moved/resized/
+  appeared/disappeared/configuration-only-change/overlap/geometric-fit/
+  page-overflow/clipping/scroll-owner cases, plus an explicit
+  `--config-file` dependency-evidence case, all through the public command
+  surface.
+
+v0.4's canonical relationship derivation, before/after comparison,
+comparability, differences, relationship changes, explicit dependency
+evidence, comparison persistence, and public `compare` CLI are all
+implemented and exercised end-to-end. Not yet done: the hardened
+repository-wide v0.4 documentation reconciliation, pre-release readiness
+(including packed-tarball `compare` validation - see `docs/CI_CD.md`), and
+release preparation/publication itself.
 
 ## Not implemented
 
-- A `compare` CLI, v0.5+ frontend contracts/change scope, source ownership,
+- v0.5+ frontend contracts/change scope (baseline approval, requested/
+  protected/preserved change scope, PASS/FAIL verdicts), source ownership,
   my-dev-kit runtime/static integration, orchestrator/lab product
   integration, viewer, and annotation all remain unimplemented.
 
@@ -285,5 +322,6 @@ Package version remains `0.3.0`; observation schema remains `1.2.0`.
 
 v0.1, v0.2, and v0.3 are implemented, validated, and released (`0.1.0`,
 `0.2.0`, `0.3.0`). v0.4 (Layout Relationships, Dependency Evidence, and
-Before/After Comparison) is in progress on `feature/v0.4-layout-comparison`,
-unreleased.
+Before/After Comparison) implementation is feature-complete on
+`feature/v0.4-layout-comparison`, unreleased; hardened documentation
+reconciliation and pre-release readiness remain before release.

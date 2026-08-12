@@ -62,11 +62,61 @@ temporary consumer directory outside the repository, on Windows, Linux, and
 macOS (`scripts/ci/runPackedObservationSmoke.mjs`) - the same workflow,
 independent of the source checkout.
 
-The future dependency order after observation is:
+## Current comparison workflow (implemented on feature branch, unreleased v0.4)
+
+**Current status: implemented on `feature/v0.4-layout-comparison`, not yet
+released.** This is a separate workflow from the published v0.3 observation
+workflow above - it consumes two already-persisted observation artifacts
+rather than producing one, and it never launches a browser:
+
+```text
+two prior real "observe" invocations, each producing its own persisted
+  ObservationArtifact (before, after) - unrelated to this workflow itself
+→ CLI arguments (--before <root>, --after <root>, --output <directory>,
+  optionally --config-file <json-file>)
+→ (--config-file only: read + validate the local JSON root shape - a
+  non-array object; the file supplies ComparisonConfig directly, with no
+  wrapper field)
+→ read + validate both observation artifacts (src/artifacts/artifactReader.ts,
+  the same isValidObservationArtifact structural gate the writer uses)
+→ application comparison use case
+  (src/application/comparisonService.ts#compareAndPersistFromArtifactRoots
+  → compareAndPersist)
+→ pure comparison derivation (src/domain/comparisonEngine.ts#compareObservations):
+  comparability first, then - only if comparable/comparable-with-warnings -
+  deriveLayoutRelationships for each side plus target/page differences,
+  relationship changes, and explicit non-causal dependency evidence
+→ atomic comparison-artifact persistence (manifest.json only, no copied
+  screenshots), schema 1.0.0 - exactly once, for every comparability
+  outcome including "incomparable"
+→ concise CLI result (Comparison/State/Artifact/Differences/Relationship
+  changes/Diagnostics)
+→ process exit status (0 for any successfully computed and persisted
+  comparison, including "incomparable"; nonzero only for invalid
+  syntax/unreadable or invalid source artifacts/invalid configuration/a
+  failed write)
+```
+
+Source observations are never modified by this workflow. Operational paths
+(`--before`/`--after`/`--config-file`/`--output`) never affect
+`comparisonRequestId` and are never written into the persisted manifest.
+
+This is exercised by `runCli()`-level tests
+(`tests/unit/cli.test.ts`, `tests/unit/cliCompareOrchestration.test.ts`,
+`tests/unit/cliCompareEndToEnd.test.ts`), a real-Chromium end-to-end test
+(`tests/browser/cliCompare.test.ts`), and built `node dist/cli.js compare
+...` runs against real persisted observations from the deterministic local
+fixture (`scripts/dev/builtCliCompareSmoke.mjs`). Packed-tarball validation
+of `compare` has not yet been added to `scripts/ci/runPackedObservationSmoke.mjs`
+- see `docs/CI_CD.md`; that is pre-release-readiness work, not part of
+implementation.
+
+## Future workflows
 
 ```text
 stable targets and bounded runtime behavior
-→ relationships, comparison, and safe-change contracts
+→ relationships and before/after comparison (implemented, unreleased - see above)
+→ safe-change contracts
 → bounded agent context plus runtime/static ecosystem integration
 → text/config-driven coding-agent change review
 → interactive viewer
@@ -74,5 +124,6 @@ stable targets and bounded runtime behavior
 → full visual human–LLM workflow
 ```
 
-None of these later workflows is implemented. The v0.7 coding-agent workflow
-must work without the v0.8 viewer or v0.9 annotation system.
+Safe-change contracts (v0.5+) and everything after remain unimplemented. The
+v0.7 coding-agent workflow must work without the v0.8 viewer or v0.9
+annotation system.
