@@ -134,6 +134,23 @@ describe('chromiumAdapter (Batch 2 browser boundary)', () => {
     expect(browserConnected).toBe(false);
   });
 
+  it('v0.3 Batch 3: target-scroll-by now executes through the normal single-lifecycle capture (no pre-launch rejection)', async () => {
+    const request = baseRequest({
+      targetUrl: `${fixtures.baseUrl}/normal`,
+      targets: [{ name: 'workspace', locators: [{ kind: 'css', selector: 'body' }] }],
+      scrollScenario: { action: { kind: 'target-scroll-by', target: 'workspace', deltaX: 0, deltaY: 400 } },
+    });
+
+    const { result, browserConnected } = await captureViewportInternal(request);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.scrollScenarioEvidence).toBeDefined();
+
+    // Same one-lifecycle guarantee as every other request: cleanly closed after the one capture.
+    expect(browserConnected).toBe(false);
+  });
+
   // B2-TST-009 Redirect enforcement.
   it('B2-TST-009: blocks a redirect to a non-loopback target', async () => {
     const request = baseRequest({ targetUrl: `${fixtures.baseUrl}/redirect-remote` });

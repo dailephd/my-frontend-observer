@@ -397,7 +397,7 @@ async function evaluateLocatorAttempt(page: Page, locator: TargetLocator): Promi
   }
 }
 
-interface ResolvedTargetInfo {
+export interface ResolvedTargetInfo {
   name: string;
   attempts: TargetLocatorAttempt[];
   status: TargetResolution['selectionStatus'];
@@ -408,28 +408,29 @@ interface ResolvedTargetInfo {
 }
 
 /**
- * Observes every explicitly configured target from the same live page,
- * honoring the frozen ordered-locator resolution contract: 0 matches tries
- * the next locator; exactly 1 match selects and stops; more than 1 match is
- * ambiguous and stops (never falls through); an unevaluable locator is
- * unavailable and stops (never falls through). Ambiguity never triggers
- * fallback.
- *
- * Batch 3 restructures this into three phases over one resolved set: (1)
- * resolve every configured target exactly once, keeping a live
- * `{locator, handle}` for each match; (2) compute bounded pairwise DOM
- * containment among only the resolved configured targets, reusing those
- * same handles (never re-resolving, never a second/independent resolution
- * algorithm); (3) measure every resolved target and assemble its evidence,
- * attaching the phase-2 containment result. Every handle is disposed once,
- * after all three phases, regardless of outcome.
+ * Looks up one already-resolved configured target by its stable observer
+ * name (case-insensitively, matching the same case-insensitive comparison
+ * `request.ts#normalizeRequest` already uses for target-name uniqueness) -
+ * never a second locator/resolution algorithm, just a lookup into the
+ * `resolveConfiguredTargets` result already computed once for this
+ * observation.
  */
-export async function captureTargetEvidence(page: Page, targets: readonly NamedTarget[]): Promise<TargetEvidenceCaptureResult> {
-  const targetEvidence: Record<string, TargetEvidenceRecord> = {};
-  const diagnostics: Diagnostic[] = [];
+export function findResolvedTarget(resolved: readonly ResolvedTargetInfo[], name: string): ResolvedTargetInfo | undefined {
+  const lower = name.toLowerCase();
+  return resolved.find((info) => info.name.toLowerCase() === lower);
+}
+
+/**
+ * The one canonical target-resolution algorithm (Phase 1 of the v0.2 Batch 3
+ * three-phase design below), exported so v0.3 Batch 2 scroll-scenario
+ * runtime-snapshot capture can resolve configured targets exactly once and
+ * reuse the same live `{locator, handle}` pairs across its initial/final
+ * snapshots, instead of re-implementing resolution with different locator
+ * semantics. Callers own disposing any returned `handle`.
+ */
+export async function resolveConfiguredTargets(page: Page, targets: readonly NamedTarget[]): Promise<ResolvedTargetInfo[]> {
   const infos: ResolvedTargetInfo[] = [];
 
-  // Phase 1: resolve every configured target exactly once.
   for (const target of targets) {
     const attempts: TargetLocatorAttempt[] = [];
     let stopStatus: 'matched' | 'ambiguous' | 'unavailable' | undefined;
@@ -491,6 +492,33 @@ export async function captureTargetEvidence(page: Page, targets: readonly NamedT
       infos.push({ name: target.name, attempts, status: 'not-found' });
     }
   }
+
+  return infos;
+}
+
+/**
+ * Observes every explicitly configured target from the same live page,
+ * honoring the frozen ordered-locator resolution contract: 0 matches tries
+ * the next locator; exactly 1 match selects and stops; more than 1 match is
+ * ambiguous and stops (never falls through); an unevaluable locator is
+ * unavailable and stops (never falls through). Ambiguity never triggers
+ * fallback.
+ *
+ * Batch 3 restructures this into three phases over one resolved set: (1)
+ * resolve every configured target exactly once, keeping a live
+ * `{locator, handle}` for each match; (2) compute bounded pairwise DOM
+ * containment among only the resolved configured targets, reusing those
+ * same handles (never re-resolving, never a second/independent resolution
+ * algorithm); (3) measure every resolved target and assemble its evidence,
+ * attaching the phase-2 containment result. Every handle is disposed once,
+ * after all three phases, regardless of outcome.
+ */
+export async function captureTargetEvidence(page: Page, targets: readonly NamedTarget[]): Promise<TargetEvidenceCaptureResult> {
+  const targetEvidence: Record<string, TargetEvidenceRecord> = {};
+  const diagnostics: Diagnostic[] = [];
+
+  // Phase 1: resolve every configured target exactly once.
+  const infos = await resolveConfiguredTargets(page, targets);
 
   try {
     // Phase 2: bounded pairwise DOM containment among the configured targets

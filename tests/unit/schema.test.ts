@@ -36,9 +36,9 @@ describe('isValidObservationArtifact', () => {
     expect(isValidObservationArtifact({ ...minimalValidArtifact(), schemaVersion: '1.0.1' }).valid).toBe(false);
   });
 
-  it('TST-018: schemaVersion is fixed at "1.1.0" independent of the package version', () => {
+  it('TST-018: schemaVersion is fixed at "1.2.0" independent of the package version', () => {
     const producerInfo = getProducerInfo();
-    expect(SCHEMA_VERSION).toBe('1.1.0');
+    expect(SCHEMA_VERSION).toBe('1.2.0');
     expect(typeof producerInfo.version).toBe('string');
     expect(producerInfo.version.length).toBeGreaterThan(0);
   });
@@ -101,8 +101,8 @@ describe('isValidObservationArtifact', () => {
       };
     }
 
-    it('produces schemaVersion 1.1.0 for a freshly built artifact', () => {
-      expect(minimalValidArtifact().schemaVersion).toBe('1.1.0');
+    it('produces schemaVersion 1.2.0 for a freshly built artifact', () => {
+      expect(minimalValidArtifact().schemaVersion).toBe('1.2.0');
     });
 
     it('accepts a valid matched resolution with a selected locator', () => {
@@ -203,6 +203,159 @@ describe('isValidObservationArtifact', () => {
       });
       expect(isValidObservationArtifact(badStatus).valid).toBe(false);
       expect(isValidObservationArtifact(badOrder).valid).toBe(false);
+    });
+  });
+
+  describe('v0.3 scrollScenario evidence', () => {
+    const metrics = { scrollTop: 0, scrollLeft: 0, scrollWidth: 1000, scrollHeight: 2000, clientWidth: 1280, clientHeight: 720 };
+    const overflow = { horizontalOverflow: false, verticalOverflow: true, overflowX: 'visible', overflowY: 'auto' };
+    const boundingRect = { x: 0, y: 800, width: 200, height: 100, right: 200, bottom: 900 };
+    const viewportRelationBelow = { vertical: 'below', intersectsViewport: false, fullyWithinViewport: false };
+    const viewportRelationIntersecting = { vertical: 'intersecting', intersectsViewport: true, fullyWithinViewport: true };
+
+    function targetRuntimeState(viewportRelation: unknown) {
+      return {
+        metrics: { state: 'available', source: 'browser', value: metrics },
+        overflow: { state: 'available', source: 'computed-browser', value: overflow },
+        boundingRect: { state: 'available', source: 'browser', value: boundingRect },
+        viewportRelation: { state: 'available', source: 'derived', value: viewportRelation, derivedFrom: ['bounding-rect', 'viewport'] },
+      };
+    }
+
+    function snapshot(viewportRelation: unknown) {
+      return {
+        window: { scrollX: 0, scrollY: 0 },
+        document: { root: metrics, rootOverflow: overflow },
+        targets: { workspace: targetRuntimeState(viewportRelation) },
+      };
+    }
+
+    function validScrollScenarioEvidence() {
+      return {
+        initial: snapshot(viewportRelationBelow),
+        final: snapshot(viewportRelationIntersecting),
+        transition: {
+          windowScrollX: { before: 0, after: 0, changed: false },
+          windowScrollY: { before: 0, after: 400, changed: true },
+          targets: {
+            workspace: {
+              scrollTop: { before: 0, after: 0, changed: false },
+              scrollLeft: { before: 0, after: 0, changed: false },
+              boundingRectPosition: { before: { x: 0, y: 800 }, after: { x: 0, y: 400 }, changed: true },
+              viewportRelation: { before: 'below', after: 'intersecting', changed: true },
+              enteredViewport: true,
+              leftViewport: false,
+            },
+          },
+        },
+        scrollOwner: { state: 'available', source: 'derived', value: { kind: 'document' }, derivedFrom: ['window.scrollY'] },
+      };
+    }
+
+    function artifactWithScrollEvidence(overrides: Record<string, unknown> = {}) {
+      return {
+        ...minimalValidArtifact(),
+        scrollScenarioEvidence: { ...validScrollScenarioEvidence(), ...overrides },
+      };
+    }
+
+    it('is absent for an ordinary observation with no scenario', () => {
+      const artifact = minimalValidArtifact();
+      expect('scrollScenarioEvidence' in artifact).toBe(false);
+      expect(isValidObservationArtifact(artifact)).toEqual({ valid: true });
+    });
+
+    it('accepts a fully valid scrollScenarioEvidence with a document scroll owner', () => {
+      expect(isValidObservationArtifact(artifactWithScrollEvidence())).toEqual({ valid: true });
+    });
+
+    it('accepts a valid target scroll owner', () => {
+      const artifact = artifactWithScrollEvidence({
+        scrollOwner: { state: 'available', source: 'derived', value: { kind: 'target', target: 'workspace' }, derivedFrom: ['workspace.scrollTop'] },
+      });
+      expect(isValidObservationArtifact(artifact)).toEqual({ valid: true });
+    });
+
+    it('accepts a valid "none" scroll owner', () => {
+      const artifact = artifactWithScrollEvidence({
+        scrollOwner: { state: 'available', source: 'derived', value: { kind: 'none' }, derivedFrom: ['window.scrollY', 'workspace.scrollTop'] },
+      });
+      expect(isValidObservationArtifact(artifact)).toEqual({ valid: true });
+    });
+
+    it('accepts a valid "indeterminate" scroll owner', () => {
+      const artifact = artifactWithScrollEvidence({
+        scrollOwner: { state: 'available', source: 'derived', value: { kind: 'indeterminate' }, derivedFrom: ['window.scrollY', 'workspace.scrollTop'] },
+      });
+      expect(isValidObservationArtifact(artifact)).toEqual({ valid: true });
+    });
+
+    it('rejects an unrecognized scroll-owner kind vocabulary', () => {
+      const artifact = artifactWithScrollEvidence({
+        scrollOwner: { state: 'available', source: 'derived', value: { kind: 'nearest-ancestor' }, derivedFrom: ['x'] },
+      });
+      expect(isValidObservationArtifact(artifact).valid).toBe(false);
+    });
+
+    it('rejects a derived scroll owner missing required provenance (derivedFrom)', () => {
+      const artifact = artifactWithScrollEvidence({
+        scrollOwner: { state: 'available', source: 'derived', value: { kind: 'document' } },
+      });
+      expect(isValidObservationArtifact(artifact).valid).toBe(false);
+    });
+
+    it('rejects a scroll owner reported as direct browser evidence instead of derived', () => {
+      const artifact = artifactWithScrollEvidence({
+        scrollOwner: { state: 'available', source: 'browser', value: { kind: 'document' } },
+      });
+      expect(isValidObservationArtifact(artifact).valid).toBe(false);
+    });
+
+    it('rejects an invalid viewport-relation vocabulary value', () => {
+      const artifact = artifactWithScrollEvidence();
+      (artifact.scrollScenarioEvidence.initial.targets.workspace.viewportRelation.value as { vertical: string }).vertical = 'sideways';
+      expect(isValidObservationArtifact(artifact).valid).toBe(false);
+    });
+
+    it('rejects invalid overflow evidence (non-boolean overflow flag)', () => {
+      const artifact = artifactWithScrollEvidence();
+      (artifact.scrollScenarioEvidence.initial.document.rootOverflow as { verticalOverflow: unknown }).verticalOverflow = 'yes';
+      expect(isValidObservationArtifact(artifact).valid).toBe(false);
+    });
+
+    it('rejects a runtime snapshot missing required window scroll fields', () => {
+      const artifact = artifactWithScrollEvidence();
+      // @ts-expect-error deliberately malformed for the negative test
+      delete artifact.scrollScenarioEvidence.initial.window.scrollY;
+      expect(isValidObservationArtifact(artifact).valid).toBe(false);
+    });
+
+    it('rejects transition evidence with both enteredViewport and leftViewport true', () => {
+      const artifact = artifactWithScrollEvidence();
+      artifact.scrollScenarioEvidence.transition.targets.workspace.leftViewport = true;
+      expect(isValidObservationArtifact(artifact).valid).toBe(false);
+    });
+
+    it('accepts a valid requestConfig.scrollScenario shape', () => {
+      const artifact = {
+        ...minimalValidArtifact(),
+        requestConfig: {
+          ...minimalValidArtifact().requestConfig,
+          scrollScenario: { action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 400 } },
+        },
+      };
+      expect(isValidObservationArtifact(artifact)).toEqual({ valid: true });
+    });
+
+    it('rejects an invalid requestConfig.scrollScenario shape (out-of-bound delta)', () => {
+      const artifact = {
+        ...minimalValidArtifact(),
+        requestConfig: {
+          ...minimalValidArtifact().requestConfig,
+          scrollScenario: { action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 999999 } },
+        },
+      };
+      expect(isValidObservationArtifact(artifact).valid).toBe(false);
     });
   });
 });

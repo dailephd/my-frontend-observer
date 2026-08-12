@@ -49,13 +49,15 @@ describe('runCli - top-level', () => {
     expect(out.stderr()).toContain('observe');
   });
 
-  it('observe --help documents --url/--viewport/--target/--targets-file/--output/--timeout', async () => {
+  it('observe --help documents --url/--viewport/--target/--targets-file/--scroll-scenario-file/--output/--timeout', async () => {
     const out = capture();
     const code = await runCli(['observe', '--help'], out.io);
     expect(code).toBe(0);
-    for (const flag of ['--url', '--viewport', '--target', '--targets-file', '--output', '--timeout']) {
+    for (const flag of ['--url', '--viewport', '--target', '--targets-file', '--scroll-scenario-file', '--output', '--timeout']) {
       expect(out.stdout()).toContain(flag);
     }
+    expect(out.stdout()).toContain('window-scroll-by');
+    expect(out.stdout()).toContain('target-scroll-by');
   });
 });
 
@@ -217,6 +219,116 @@ describe('runCli observe --targets-file (v0.2 Batch 4 CLI/input boundary)', () =
     // --url deliberately points nowhere reachable; this only proves the file itself parses
     // and reaches domain validation (a safe non-loopback URL still fails first, deterministically).
     const code = await runCli(['observe', '--url', 'http://example.com/', '--targets-file', relativePath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('[unsafe-url]');
+  });
+});
+
+describe('runCli observe --scroll-scenario-file (v0.3 Batch 4 CLI/input boundary)', () => {
+  const tempDirs: string[] = [];
+
+  afterEach(async () => {
+    await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+  });
+
+  async function writeScenarioFile(content: string): Promise<string> {
+    const dir = await mkdtemp(path.join(tmpdir(), 'mfo-cli-scroll-scenario-'));
+    tempDirs.push(dir);
+    const filePath = path.join(dir, 'scroll.json');
+    await writeFile(filePath, content, 'utf8');
+    return filePath;
+  }
+
+  it('requires a value: bare --scroll-scenario-file fails before browser launch', async () => {
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--scroll-scenario-file'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--scroll-scenario-file requires a file path argument');
+  });
+
+  it('rejects a second --scroll-scenario-file flag', async () => {
+    const filePath = await writeScenarioFile(JSON.stringify({ action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 100 } }));
+    const out = capture();
+    const code = await runCli(
+      ['observe', '--url', 'http://127.0.0.1/x', '--scroll-scenario-file', filePath, '--scroll-scenario-file', filePath],
+      out.io,
+    );
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--scroll-scenario-file may only be specified once');
+  });
+
+  it('reports a clear error for a missing/unreadable file', async () => {
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--scroll-scenario-file', '/does/not/exist-scroll.json'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--scroll-scenario-file could not be read');
+  });
+
+  it('reports a clear error for invalid JSON', async () => {
+    const filePath = await writeScenarioFile('{ not valid json');
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--scroll-scenario-file', filePath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--scroll-scenario-file is not valid JSON');
+  });
+
+  it('rejects a non-object root (array, null, string)', async () => {
+    for (const content of ['[]', 'null', '"scroll"']) {
+      const filePath = await writeScenarioFile(content);
+      const out = capture();
+      const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--scroll-scenario-file', filePath], out.io);
+      expect(code).toBe(1);
+      expect(out.stderr()).toContain('--scroll-scenario-file root must be a JSON object');
+    }
+  });
+
+  it('is compatible with both --target and --targets-file (not another mutually-exclusive target mode)', async () => {
+    const scenarioPath = await writeScenarioFile(JSON.stringify({ action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 100 } }));
+    const out = capture();
+    // --url deliberately points nowhere reachable; this only proves the flag combination itself
+    // parses and reaches domain validation, not a full browser observation.
+    const code = await runCli(
+      ['observe', '--url', 'http://example.com/', '--target', 'a=b', '--scroll-scenario-file', scenarioPath],
+      out.io,
+    );
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('[unsafe-url]');
+    expect(out.stderr()).not.toContain('cannot be combined');
+  });
+
+  it('passes an invalid action kind through to the existing domain validator, not an ad hoc CLI error', async () => {
+    const filePath = await writeScenarioFile(JSON.stringify({ action: { kind: 'unsupported-action', deltaX: 0, deltaY: 500 } }));
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--scroll-scenario-file', filePath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('[invalid-request]');
+  });
+
+  it('passes a both-zero delta through to the existing domain validator', async () => {
+    const filePath = await writeScenarioFile(JSON.stringify({ action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 0 } }));
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--scroll-scenario-file', filePath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('[invalid-request]');
+  });
+
+  it('passes an unknown target-scroll-by target through to the existing domain validator', async () => {
+    const filePath = await writeScenarioFile(
+      JSON.stringify({ action: { kind: 'target-scroll-by', target: 'does-not-exist', deltaX: 0, deltaY: 400 } }),
+    );
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--scroll-scenario-file', filePath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('[invalid-request]');
+  });
+
+  it('accepts a relative scenario-file path resolved from the current working directory', async () => {
+    const filePath = await writeScenarioFile(JSON.stringify({ action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 200 } }));
+    const relativePath = path.relative(process.cwd(), filePath);
+    const out = capture();
+    // --url deliberately points nowhere reachable; this only proves the file itself parses
+    // and reaches domain validation (a safe non-loopback URL still fails first, deterministically).
+    const code = await runCli(['observe', '--url', 'http://example.com/', '--scroll-scenario-file', relativePath], out.io);
     expect(code).toBe(1);
     expect(out.stderr()).toContain('[unsafe-url]');
   });

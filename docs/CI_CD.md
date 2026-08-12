@@ -16,14 +16,20 @@ by a pull request into `master`). It has two phases:
    ever builds its own tarball), installs Chromium via the installed
    package's own Playwright dependency, and runs
    `scripts/ci/runPackedObservationSmoke.mjs` against the installed
-   tarball: real Chromium observations against a disposable local HTTP
-   target, covering both the legacy `--target` CSS shorthand and the
-   structured `--targets-file` semantic-target path (`role`+accessible-name
-   and `text` locators, schema `1.1.0`, landmark evidence,
-   targets-file-path privacy, and target immutability).
+   tarball: four real Chromium observations against a disposable local HTTP
+   target - the legacy `--target` CSS shorthand, the structured
+   `--targets-file` semantic-target path (`role`+accessible-name and `text`
+   locators, landmark evidence), a `--scroll-scenario-file` `window-scroll-by`
+   scenario, and a combined `--targets-file` + `--scroll-scenario-file`
+   `target-scroll-by` scenario against a nested scrollable container - all
+   asserting schema `1.2.0`, real scroll-position movement, derived
+   scroll-owner evidence (`document`/`target:<name>`), scenario transition
+   evidence, targets-file/scroll-scenario-file path privacy, and target
+   immutability.
 
 This proves the same packaged candidate installs and performs a real
-observation - CSS-shorthand and semantic alike - on Windows, Linux, and
+observation - CSS-shorthand, semantic-target, and v0.3 scroll-scenario alike
+(both `window-scroll-by` and `target-scroll-by`) - on Windows, Linux, and
 macOS, not just in the source checkout.
 
 There is no automated npm publication and no automated GitHub Release
@@ -40,3 +46,24 @@ matrix. This was proven on `validation/v0.2-pre-release`
 (`2a0718c37cfe6988fc5d9852db455b99aa8238af`), GitHub Actions run
 `31537578062`, which passed on Windows, Linux, and macOS using one
 hash-verified candidate tarball.
+
+## v0.3 readiness coverage
+
+The packed-candidate readiness gap that previously existed for the v0.3
+`--scroll-scenario-file` public interface - identified during the v0.3
+implementation-completeness audit as `V0_3_READINESS_VALIDATION_GAP_EXISTS`
+- has been closed: `scripts/ci/runPackedObservationSmoke.mjs` now also
+performs a real `window-scroll-by` observation and a real `target-scroll-by`
+observation (against a nested scrollable fixture container, combined with
+`--targets-file`) through the installed tarball, asserting schema `1.2.0`,
+actual scroll movement, `document`/`target:<name>` scroll-owner evidence
+with `derivedFrom` provenance, scenario transition evidence, and that
+neither the `--targets-file` nor the `--scroll-scenario-file` local path is
+ever persisted into the manifest - on every platform in the matrix, using
+the same single hash-verified candidate tarball as the legacy/semantic
+observations. This was proven on `validation/v0.3-pre-release`
+(`e59621c2fb5a6d74f491a63dc79ebe6e8b62c175`), GitHub Actions run
+`31591920744`, which passed on Windows, Linux, and macOS using one
+hash-verified candidate tarball (SHA-256
+`da6cbc18a98d005b84a2f12c06f5c01d390006b53c02176a6c9cdc6d9b9d24d0`) - the
+release candidate for `v0.3.0`.

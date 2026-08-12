@@ -1,6 +1,6 @@
 import type { Diagnostic } from '../domain/diagnostics.js';
 import type { EvidenceField } from '../domain/evidence.js';
-import type { TargetEvidenceRecord } from '../domain/schema.js';
+import type { TargetEvidenceRecord, ScrollScenarioEvidence } from '../domain/schema.js';
 
 export interface BrowserProvenance {
   engine: string;
@@ -19,6 +19,8 @@ export type BrowserCaptureResult =
       pageEvidence: Record<string, EvidenceField<unknown>>;
       targetEvidence: Record<string, TargetEvidenceRecord>;
       diagnostics: Diagnostic[];
+      /** v0.3 Batch 2: present only when the request configured a scrollScenario. */
+      scrollScenarioEvidence?: ScrollScenarioEvidence;
     }
   | {
       ok: false;

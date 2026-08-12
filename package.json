@@ -1,6 +1,6 @@
 {
   "name": "my-frontend-observer",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Local-first browser runtime evidence producer",
   "type": "module",
   "repository": {

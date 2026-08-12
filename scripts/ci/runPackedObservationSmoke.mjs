@@ -121,10 +121,16 @@ async function main() {
     if (observeHelpRes.code !== 0) fail(`observe --help failed:\n${observeHelpRes.stderr}`);
 
     const html =
-      '<!doctype html><html><head><title>ci smoke fixture</title></head><body>' +
+      '<!doctype html><html><head><title>ci smoke fixture</title><style>' +
+      'html,body{margin:0;padding:0}' +
+      'body{width:100%;height:2000px}' +
+      '#panel{position:absolute;top:20px;left:300px;width:200px;height:150px;overflow:auto}' +
+      '#panel-content{width:180px;height:900px}' +
+      '</style></head><body>' +
       '<header id="header">Header</header><main id="main">Main</main>' +
       '<nav aria-label="Primary"><a href="#">Home</a></nav>' +
       '<button type="button">Run</button>' +
+      '<div id="panel"><div id="panel-content">Panel scrollable content</div></div>' +
       '</body></html>';
     const server = createServer((req, res) => {
       if (req.url === '/smoke') {
@@ -175,7 +181,7 @@ async function main() {
     const cssManifest = JSON.parse(await readFile(path.join(cssArtifactRoot, 'manifest.json'), 'utf8'));
     const cssScreenshot = await readFile(path.join(cssArtifactRoot, 'screenshot.png'));
 
-    if (cssManifest.schemaVersion !== '1.1.0') fail(`unexpected schemaVersion (css observation): ${cssManifest.schemaVersion}`);
+    if (cssManifest.schemaVersion !== '1.2.0') fail(`unexpected schemaVersion (css observation): ${cssManifest.schemaVersion}`);
     if (cssManifest.artifactKind !== 'my-frontend-observer/observation') fail(`unexpected artifactKind (css observation): ${cssManifest.artifactKind}`);
     if (typeof cssManifest.observationId !== 'string' || cssManifest.observationId.length === 0) fail('missing observationId (css observation)');
     if (typeof cssManifest.requestId !== 'string' || cssManifest.requestId.length === 0) fail('missing requestId (css observation)');
@@ -211,12 +217,6 @@ async function main() {
       '--output', semanticOutputSubdir,
     ]);
 
-    const afterHtml = await fetch(targetUrl).then((r) => r.text());
-    server.close();
-
-    summary.targetImmutable = beforeHtml === afterHtml;
-    if (!summary.targetImmutable) fail('observed target content changed after observation');
-
     summary.observeExitCode = semanticObserveRes.code;
     summary.observeStdout = semanticObserveRes.stdout;
     summary.observeStderr = semanticObserveRes.stderr;
@@ -240,7 +240,7 @@ async function main() {
     const manifest = JSON.parse(await readFile(path.join(artifactRoot, 'manifest.json'), 'utf8'));
     const screenshot = await readFile(path.join(artifactRoot, 'screenshot.png'));
 
-    if (manifest.schemaVersion !== '1.1.0') fail(`unexpected schemaVersion: ${manifest.schemaVersion}`);
+    if (manifest.schemaVersion !== '1.2.0') fail(`unexpected schemaVersion: ${manifest.schemaVersion}`);
     if (manifest.artifactKind !== 'my-frontend-observer/observation') fail(`unexpected artifactKind: ${manifest.artifactKind}`);
     if (typeof manifest.observationId !== 'string' || manifest.observationId.length === 0) fail('missing observationId');
     if (typeof manifest.requestId !== 'string' || manifest.requestId.length === 0) fail('missing requestId');
@@ -275,6 +275,125 @@ async function main() {
     if (serializedManifest.includes(targetsFilePath) || serializedManifest.includes('targets.json')) {
       fail('targets-file path leaked into persisted manifest');
     }
+
+    // --- Observation 3: v0.3 --scroll-scenario-file, window-scroll-by (packed-candidate proof). ---
+    const windowScenarioPath = path.join(consumerDir, 'window-scroll.json');
+    await writeFile(windowScenarioPath, JSON.stringify({ action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 500 } }), 'utf8');
+    const windowOutputSubdir = `ci-smoke-output-window-scroll-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, windowOutputSubdir), { recursive: true });
+
+    const windowObserveRes = await runBin([
+      'observe',
+      '--url', targetUrl,
+      '--viewport', '1024x768',
+      '--scroll-scenario-file', windowScenarioPath,
+      '--output', windowOutputSubdir,
+    ]);
+    console.log('--- window-scroll observe stdout ---');
+    console.log(windowObserveRes.stdout);
+    console.log(`--- window-scroll observe exit code: ${windowObserveRes.code} ---`);
+    if (windowObserveRes.code !== 0) fail(`window-scroll-by observe failed (exit ${windowObserveRes.code}):\n${windowObserveRes.stdout}\n${windowObserveRes.stderr}`);
+    for (const prefix of requiredLines) {
+      if (!windowObserveRes.stdout.includes(prefix)) fail(`window-scroll observe stdout missing expected "${prefix}" line`);
+    }
+
+    const windowArtifactLine = windowObserveRes.stdout.split('\n').find((l) => l.startsWith('Artifact: '));
+    const windowArtifactRoot = windowArtifactLine.slice('Artifact: '.length).trim();
+    const windowManifest = JSON.parse(await readFile(path.join(windowArtifactRoot, 'manifest.json'), 'utf8'));
+    const windowScreenshot = await readFile(path.join(windowArtifactRoot, 'screenshot.png'));
+
+    if (windowManifest.schemaVersion !== '1.2.0') fail(`unexpected schemaVersion (window scenario): ${windowManifest.schemaVersion}`);
+    if (windowManifest.requestConfig?.scrollScenario?.action?.kind !== 'window-scroll-by') fail('window-scroll-by scenario not persisted into requestConfig');
+    const windowEvidence = windowManifest.scrollScenarioEvidence;
+    if (!windowEvidence) fail('scrollScenarioEvidence missing from window-scroll-by manifest');
+    if (typeof windowEvidence.initial?.window?.scrollY !== 'number') fail('missing initial.window.scrollY (window scenario)');
+    if (typeof windowEvidence.final?.window?.scrollY !== 'number') fail('missing final.window.scrollY (window scenario)');
+    if (windowEvidence.final.window.scrollY === windowEvidence.initial.window.scrollY) fail('window.scrollY did not change after window-scroll-by');
+    if (!windowEvidence.transition) fail('missing scenario transition evidence (window scenario)');
+    if (windowEvidence.scrollOwner?.value?.kind !== 'document') fail(`expected scrollOwner document, got ${JSON.stringify(windowEvidence.scrollOwner)}`);
+    if (windowEvidence.scrollOwner?.source !== 'derived') fail('window scrollOwner source is not "derived"');
+    if (!Array.isArray(windowEvidence.scrollOwner?.derivedFrom) || windowEvidence.scrollOwner.derivedFrom.length === 0) fail('window scrollOwner derivedFrom is empty');
+    if (windowManifest.pageEvidence?.windowScrollY?.value !== windowEvidence.final.window.scrollY) {
+      fail('ordinary pageEvidence.windowScrollY does not agree with scrollScenarioEvidence.final.window.scrollY');
+    }
+    const windowScreenshotRef = windowManifest.artifactReferences?.find((r) => r.kind === 'screenshot');
+    if (!windowScreenshotRef || path.isAbsolute(windowScreenshotRef.path) || windowScreenshotRef.path.includes(':')) fail('window screenshot artifact reference is not relative');
+    if (windowScreenshot.length === 0 || !isPngSignature(new Uint8Array(windowScreenshot))) fail('window scenario screenshot.png is missing/invalid');
+    const serializedWindowManifest = JSON.stringify(windowManifest);
+    if (serializedWindowManifest.includes(windowScenarioPath) || serializedWindowManifest.includes('window-scroll.json')) {
+      fail('scroll-scenario-file path leaked into persisted window-scroll manifest');
+    }
+
+    // --- Observation 4: v0.3 --targets-file + --scroll-scenario-file, target-scroll-by (packed-candidate proof). ---
+    const scrollTargetsFilePath = path.join(consumerDir, 'scroll-targets.json');
+    await writeFile(scrollTargetsFilePath, JSON.stringify({ targets: [{ name: 'tool-workspace', locators: [{ kind: 'id', value: 'panel' }] }] }), 'utf8');
+    const targetScenarioPath = path.join(consumerDir, 'target-scroll.json');
+    await writeFile(targetScenarioPath, JSON.stringify({ action: { kind: 'target-scroll-by', target: 'tool-workspace', deltaX: 0, deltaY: 300 } }), 'utf8');
+    const targetScrollOutputSubdir = `ci-smoke-output-target-scroll-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, targetScrollOutputSubdir), { recursive: true });
+
+    const targetScrollObserveRes = await runBin([
+      'observe',
+      '--url', targetUrl,
+      '--viewport', '1024x768',
+      '--targets-file', scrollTargetsFilePath,
+      '--scroll-scenario-file', targetScenarioPath,
+      '--output', targetScrollOutputSubdir,
+    ]);
+    console.log('--- target-scroll observe stdout ---');
+    console.log(targetScrollObserveRes.stdout);
+    console.log(`--- target-scroll observe exit code: ${targetScrollObserveRes.code} ---`);
+    if (targetScrollObserveRes.code !== 0) fail(`target-scroll-by observe failed (exit ${targetScrollObserveRes.code}):\n${targetScrollObserveRes.stdout}\n${targetScrollObserveRes.stderr}`);
+    for (const prefix of requiredLines) {
+      if (!targetScrollObserveRes.stdout.includes(prefix)) fail(`target-scroll observe stdout missing expected "${prefix}" line`);
+    }
+
+    const targetScrollArtifactLine = targetScrollObserveRes.stdout.split('\n').find((l) => l.startsWith('Artifact: '));
+    const targetScrollArtifactRoot = targetScrollArtifactLine.slice('Artifact: '.length).trim();
+    const targetScrollManifest = JSON.parse(await readFile(path.join(targetScrollArtifactRoot, 'manifest.json'), 'utf8'));
+    const targetScrollScreenshot = await readFile(path.join(targetScrollArtifactRoot, 'screenshot.png'));
+
+    if (targetScrollManifest.schemaVersion !== '1.2.0') fail(`unexpected schemaVersion (target scenario): ${targetScrollManifest.schemaVersion}`);
+    if (targetScrollManifest.requestConfig?.scrollScenario?.action?.target !== 'tool-workspace') fail('target-scroll-by stable target name not persisted');
+    const targetScrollEvidence = targetScrollManifest.scrollScenarioEvidence;
+    if (!targetScrollEvidence) fail('scrollScenarioEvidence missing from target-scroll-by manifest');
+    const twInitial = targetScrollEvidence.initial?.targets?.['tool-workspace'];
+    const twFinal = targetScrollEvidence.final?.targets?.['tool-workspace'];
+    if (typeof twInitial?.metrics?.value?.scrollTop !== 'number') fail('missing initial target scrollTop (target scenario)');
+    if (typeof twFinal?.metrics?.value?.scrollTop !== 'number') fail('missing final target scrollTop (target scenario)');
+    if (twFinal.metrics.value.scrollTop === twInitial.metrics.value.scrollTop) fail('target scrollTop did not change after target-scroll-by');
+    if (twInitial?.overflow?.value?.verticalOverflow !== true) fail('expected actual vertical overflow on the nested scroll target');
+    if (targetScrollEvidence.final?.window?.scrollY !== targetScrollEvidence.initial?.window?.scrollY) fail('window.scrollY changed for a target-only scroll');
+    if (targetScrollEvidence.scrollOwner?.value?.kind !== 'target' || targetScrollEvidence.scrollOwner?.value?.target !== 'tool-workspace') {
+      fail(`expected scrollOwner target:tool-workspace, got ${JSON.stringify(targetScrollEvidence.scrollOwner)}`);
+    }
+    if (targetScrollEvidence.scrollOwner?.source !== 'derived') fail('target scrollOwner source is not "derived"');
+    if (!targetScrollEvidence.transition) fail('missing scenario transition evidence (target scenario)');
+    if (!targetScrollManifest.targetEvidence?.['tool-workspace']) fail('final ordinary targetEvidence missing for tool-workspace');
+    const targetScrollScreenshotRef = targetScrollManifest.artifactReferences?.find((r) => r.kind === 'screenshot');
+    if (!targetScrollScreenshotRef || path.isAbsolute(targetScrollScreenshotRef.path) || targetScrollScreenshotRef.path.includes(':')) fail('target-scroll screenshot artifact reference is not relative');
+    if (targetScrollScreenshot.length === 0 || !isPngSignature(new Uint8Array(targetScrollScreenshot))) fail('target scenario screenshot.png is missing/invalid');
+    const serializedTargetScrollManifest = JSON.stringify(targetScrollManifest);
+    if (
+      serializedTargetScrollManifest.includes(scrollTargetsFilePath) ||
+      serializedTargetScrollManifest.includes('scroll-targets.json') ||
+      serializedTargetScrollManifest.includes(targetScenarioPath) ||
+      serializedTargetScrollManifest.includes('target-scroll.json')
+    ) {
+      fail('targets-file or scroll-scenario-file path leaked into persisted target-scroll manifest');
+    }
+
+    // Target application immutability across all four observations (served content, not browser-local scroll state).
+    const afterHtml = await fetch(targetUrl).then((r) => r.text());
+    server.close();
+    summary.targetImmutable = beforeHtml === afterHtml;
+    if (!summary.targetImmutable) fail('observed target content changed after observation');
+
+    summary.windowScrollScenarioPassed = true;
+    summary.targetScrollScenarioPassed = true;
+    summary.windowScrollOwner = windowEvidence.scrollOwner.value;
+    summary.targetScrollOwner = targetScrollEvidence.scrollOwner.value;
+    summary.scrollScenarioSchemaVersion = windowManifest.schemaVersion;
 
     summary.schemaVersion = manifest.schemaVersion;
     summary.artifactKind = manifest.artifactKind;

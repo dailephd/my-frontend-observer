@@ -26,6 +26,19 @@ export type {
   TargetLandmarkRole,
   TargetContainment,
   SchemaValidationResult,
+  ScrollableMetrics,
+  OverflowEvidence,
+  WindowScrollSnapshot,
+  DocumentScrollSnapshot,
+  VerticalViewportRelation,
+  ViewportRelationEvidence,
+  TargetScrollRuntimeState,
+  ScrollRuntimeSnapshot,
+  ScrollValueChange,
+  TargetScrollTransition,
+  ScrollScenarioTransition,
+  ScrollOwnerInterpretation,
+  ScrollScenarioEvidence,
 } from './domain/schema.js';
 export {
   ARTIFACT_KIND,
@@ -48,8 +61,10 @@ export type {
   NormalizedObservationRequest,
   RawObservationRequest,
   NormalizeRequestResult,
+  ScrollAction,
+  ScrollScenario,
 } from './request/request.js';
-export { normalizeRequest } from './request/request.js';
+export { normalizeRequest, SCROLL_DELTA_MAX_ABS } from './request/request.js';
 
 export type { NormalizeOutputLocationResult } from './request/paths.js';
 export { normalizeOutputLocation } from './request/paths.js';

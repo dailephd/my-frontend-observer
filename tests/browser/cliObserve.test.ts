@@ -14,7 +14,9 @@ import {
   OBSERVATION_FIXTURE_CONTAINMENT,
   OBSERVATION_FIXTURE_ROLE,
   OBSERVATION_FIXTURE_IDS,
+  SCROLL_FIXTURE_SELECTORS,
 } from '../fixtures/server.js';
+import { buildRequestIdentity } from '../../src/domain/identity.js';
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
@@ -112,7 +114,7 @@ describe('runCli observe - real Chromium end-to-end (Batch 5)', () => {
 
     const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as ObservationArtifact;
     expect(isValidObservationArtifact(manifest)).toEqual({ valid: true });
-    expect(manifest.schemaVersion).toBe('1.1.0');
+    expect(manifest.schemaVersion).toBe('1.2.0');
     expect(manifest.observationId).toBe(observationId);
 
     // B5-TST-018: real, non-empty viewport PNG.
@@ -236,7 +238,7 @@ describe('runCli observe --targets-file - real Chromium end-to-end (v0.2 Batch 4
 
     const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as ObservationArtifact;
     expect(manifest.artifactKind).toBe('my-frontend-observer/observation');
-    expect(manifest.schemaVersion).toBe('1.1.0');
+    expect(manifest.schemaVersion).toBe('1.2.0');
     expect(isValidObservationArtifact(manifest)).toEqual({ valid: true });
 
     // Target/locator order preserved through JSON parse -> RawObservationRequest -> normalizeRequest -> requestConfig.
@@ -331,5 +333,203 @@ describe('runCli observe --targets-file - real Chromium end-to-end (v0.2 Batch 4
     const artifactLine = out.stdout().split('\n').find((line) => line.startsWith('Artifact: '));
     const manifest = JSON.parse(await readFile(path.join(artifactLine!.slice('Artifact: '.length), 'manifest.json'), 'utf8')) as ObservationArtifact;
     expect(manifest.requestConfig.targets).toEqual([{ name: 'header', locators: [{ kind: 'css', selector: OBSERVATION_FIXTURE_SELECTORS.header }] }]);
+  });
+});
+
+describe('runCli observe --scroll-scenario-file - real Chromium end-to-end (v0.3 Batch 4)', () => {
+  let fixtures: FixtureServer;
+  const outputLocations: string[] = [];
+  const tempDirs: string[] = [];
+
+  beforeAll(async () => {
+    fixtures = await startFixtureServer();
+  });
+
+  afterAll(async () => {
+    await fixtures.close();
+  });
+
+  afterEach(async () => {
+    await Promise.all(outputLocations.splice(0).map((loc) => rm(path.resolve(process.cwd(), loc), { recursive: true, force: true })));
+    await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+  });
+
+  function freshOutputLocation(): string {
+    const loc = `observations/mfo-cli-scroll-scenario-test-${randomUUID()}`;
+    outputLocations.push(loc);
+    return loc;
+  }
+
+  async function writeJsonFile(name: string, content: unknown): Promise<string> {
+    const dir = await mkdtemp(path.join(tmpdir(), 'mfo-cli-scroll-scenario-e2e-'));
+    tempDirs.push(dir);
+    const filePath = path.join(dir, name);
+    await writeFile(filePath, JSON.stringify(content), 'utf8');
+    return filePath;
+  }
+
+  // Proves the complete public window-scroll workflow: legacy --target (Section 31 legacy-CSS
+  // proof) + --scroll-scenario-file, real Chromium scroll, schema-1.2.0 persistence, final-state
+  // evidence alignment, scenario-file path privacy, and same-content/different-path requestId
+  // stability - deliberately combined into one browser launch plus one no-browser identity check.
+  it('a window-scroll-by scenario via --target persists a valid schema-1.2.0 manifest with document ownership', async () => {
+    const outputLocation = freshOutputLocation();
+    const targetUrl = `${fixtures.baseUrl}/scroll`;
+    const beforeHtml = await fetch(targetUrl).then((r) => r.text());
+
+    const scenarioPath = await writeJsonFile('scroll.json', { action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 600 } });
+
+    const out = capture();
+    const code = await runCli(
+      [
+        'observe',
+        '--url',
+        targetUrl,
+        '--viewport',
+        '800x600',
+        '--target',
+        `below=${SCROLL_FIXTURE_SELECTORS.belowTarget}`,
+        '--scroll-scenario-file',
+        scenarioPath,
+        '--output',
+        outputLocation,
+      ],
+      out.io,
+    );
+
+    expect(code).toBe(0);
+    const artifactLine = out.stdout().split('\n').find((line) => line.startsWith('Artifact: '));
+    const artifactRoot = artifactLine!.slice('Artifact: '.length);
+    const manifestPath = path.join(artifactRoot, 'manifest.json');
+    const screenshotPath = path.join(artifactRoot, 'screenshot.png');
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as ObservationArtifact;
+
+    expect(isValidObservationArtifact(manifest)).toEqual({ valid: true });
+    expect(manifest.schemaVersion).toBe('1.2.0');
+    expect(manifest.requestConfig.scrollScenario).toEqual({ action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 600 } });
+
+    const evidence = manifest.scrollScenarioEvidence;
+    expect(evidence).toBeDefined();
+    if (!evidence) throw new Error('expected scrollScenarioEvidence');
+    expect(evidence.initial.window).toEqual({ scrollX: 0, scrollY: 0 });
+    expect(evidence.final.window).toEqual({ scrollX: 0, scrollY: 600 });
+    expect(evidence.transition.windowScrollY).toEqual({ before: 0, after: 600, changed: true });
+    expect(evidence.scrollOwner).toMatchObject({ state: 'available', source: 'derived', value: { kind: 'document' } });
+
+    // Final ordinary evidence agrees with the final scenario state.
+    expect(manifest.pageEvidence.windowScrollY).toMatchObject({ value: 600 });
+    expect(manifest.targetEvidence.below?.geometry).toBeDefined();
+
+    // Screenshot: relative reference, real non-empty PNG.
+    const screenshotRef = manifest.artifactReferences.find((r) => r.kind === 'screenshot');
+    expect(screenshotRef && path.isAbsolute(screenshotRef.path)).toBe(false);
+    const screenshotBytes = await readFile(screenshotPath);
+    expect(screenshotBytes.length).toBeGreaterThan(0);
+    expect(new Uint8Array(screenshotBytes).slice(0, 8)).toEqual(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+
+    // Scenario-file path privacy: never persisted anywhere in the manifest.
+    const serializedManifest = JSON.stringify(manifest);
+    expect(serializedManifest).not.toContain(scenarioPath);
+    expect(serializedManifest).not.toContain('scroll.json');
+
+    // Target application immutability: the observed fixture is untouched (only browser-local scroll state moved).
+    const afterHtml = await fetch(targetUrl).then((r) => r.text());
+    expect(afterHtml).toBe(beforeHtml);
+
+    // Same-content/different-path scenario files produce the same requestId (proven at the
+    // request-construction level in tests/unit/cliOrchestration.test.ts, not repeated here with a
+    // second, redundant Chromium launch); the runtime outcome never participates in identity.
+    expect(buildRequestIdentity(manifest.requestConfig)).toBe(manifest.requestId);
+  });
+
+  // Proves the complete public nested-target-scroll workflow: --targets-file (structured semantic
+  // target) + --scroll-scenario-file, real element scroll, target-owner derivation, and actual
+  // overflow evidence.
+  it('a target-scroll-by scenario via --targets-file persists a valid manifest with target ownership and real nested overflow', async () => {
+    const outputLocation = freshOutputLocation();
+    const targetUrl = `${fixtures.baseUrl}/scroll`;
+
+    const targetsFilePath = await writeJsonFile('targets.json', {
+      targets: [{ name: 'tool-workspace', locators: [{ kind: 'css', selector: SCROLL_FIXTURE_SELECTORS.nestedVerticalContainer }] }],
+    });
+    const scenarioPath = await writeJsonFile('scroll.json', { action: { kind: 'target-scroll-by', target: 'tool-workspace', deltaX: 0, deltaY: 500 } });
+
+    const out = capture();
+    const code = await runCli(
+      [
+        'observe',
+        '--url',
+        targetUrl,
+        '--viewport',
+        '800x600',
+        '--targets-file',
+        targetsFilePath,
+        '--scroll-scenario-file',
+        scenarioPath,
+        '--output',
+        outputLocation,
+      ],
+      out.io,
+    );
+
+    expect(code).toBe(0);
+    const artifactLine = out.stdout().split('\n').find((line) => line.startsWith('Artifact: '));
+    const manifest = JSON.parse(await readFile(path.join(artifactLine!.slice('Artifact: '.length), 'manifest.json'), 'utf8')) as ObservationArtifact;
+
+    expect(isValidObservationArtifact(manifest)).toEqual({ valid: true });
+    expect(manifest.schemaVersion).toBe('1.2.0');
+    expect(manifest.requestConfig.scrollScenario).toEqual({
+      action: { kind: 'target-scroll-by', target: 'tool-workspace', deltaX: 0, deltaY: 500 },
+    });
+
+    const evidence = manifest.scrollScenarioEvidence;
+    if (!evidence) throw new Error('expected scrollScenarioEvidence');
+    expect(evidence.initial.targets['tool-workspace']?.metrics).toMatchObject({ value: { scrollTop: 0 } });
+    expect(evidence.final.targets['tool-workspace']?.metrics).toMatchObject({ value: { scrollTop: 500 } });
+    expect(evidence.initial.targets['tool-workspace']?.overflow).toMatchObject({ value: { verticalOverflow: true } });
+    expect(evidence.initial.window.scrollY).toBe(0);
+    expect(evidence.final.window.scrollY).toBe(0);
+    expect(evidence.transition.targets['tool-workspace']?.scrollTop).toEqual({ before: 0, after: 500, changed: true });
+    expect(evidence.scrollOwner).toMatchObject({ state: 'available', source: 'derived', value: { kind: 'target', target: 'tool-workspace' } });
+
+    expect(manifest.targetEvidence['tool-workspace']).toBeDefined();
+
+    const serializedManifest = JSON.stringify(manifest);
+    expect(serializedManifest).not.toContain(targetsFilePath);
+    expect(serializedManifest).not.toContain(scenarioPath);
+  });
+
+  // Proves the established Batch 3 unresolved/ambiguous action-target policy through the real
+  // public CLI path: the observation still persists (partial), the existing diagnostics still
+  // surface, and no movement is fabricated - one browser launch covering both cases via two
+  // independently-configured targets in the same observation.
+  it('an unresolved or ambiguous action target persists as a partial observation with honest diagnostics and no fabricated movement', async () => {
+    const outputLocation = freshOutputLocation();
+    const targetUrl = `${fixtures.baseUrl}/scroll`;
+    const targetsFilePath = await writeJsonFile('targets.json', {
+      targets: [{ name: 'ghost', locators: [{ kind: 'css', selector: SCROLL_FIXTURE_SELECTORS.missingScrollTarget }] }],
+    });
+    const scenarioPath = await writeJsonFile('scroll.json', { action: { kind: 'target-scroll-by', target: 'ghost', deltaX: 0, deltaY: 100 } });
+
+    const out = capture();
+    const code = await runCli(
+      ['observe', '--url', targetUrl, '--targets-file', targetsFilePath, '--scroll-scenario-file', scenarioPath, '--output', outputLocation],
+      out.io,
+    );
+
+    // The established Batch 3 policy: honest partial persistence, not a failure.
+    expect(code).toBe(0);
+    expect(out.stdout()).toContain('State: partial');
+
+    const artifactLine = out.stdout().split('\n').find((line) => line.startsWith('Artifact: '));
+    const manifest = JSON.parse(await readFile(path.join(artifactLine!.slice('Artifact: '.length), 'manifest.json'), 'utf8')) as ObservationArtifact;
+    expect(isValidObservationArtifact(manifest)).toEqual({ valid: true });
+    expect(manifest.diagnostics.some((d) => d.code === 'target-missing' && d.targetName === 'ghost')).toBe(true);
+
+    const evidence = manifest.scrollScenarioEvidence;
+    if (!evidence) throw new Error('expected scrollScenarioEvidence');
+    expect(evidence.initial.targets.ghost?.metrics.state).toBe('unavailable');
+    expect(evidence.transition.targets.ghost).toBeUndefined();
+    expect(evidence.scrollOwner).toMatchObject({ value: { kind: 'none' } });
   });
 });

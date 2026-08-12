@@ -60,6 +60,19 @@ Options:
                             itself is never persisted into the artifact or
                             included in the observation's request identity.
                             Cannot be combined with --target.
+  --scroll-scenario-file <json-file>
+                            Loads one bounded runtime scroll scenario from a
+                            local JSON file: { "action": { "kind":
+                            "window-scroll-by"|"target-scroll-by", ...,
+                            "deltaX": <int>, "deltaY": <int> } }.
+                            "target-scroll-by" additionally requires a
+                            "target" naming a configured stable target.
+                            Exactly zero or one scenario per observation.
+                            Relative paths resolve from the current working
+                            directory; the file path itself is never
+                            persisted into the artifact or included in the
+                            observation's request identity. May be combined
+                            with either --target or --targets-file.
   --output <directory>      Portable, relative output location for the
                             observation artifact.
   --timeout <ms>            Overall request timeout in milliseconds.
@@ -85,7 +98,9 @@ function parseTarget(raw: string): { name: string; selector: string } | undefine
   return { name: raw.slice(0, eq), selector: raw.slice(eq + 1) };
 }
 
-type ParsedObserveArgs = { ok: true; raw: RawObservationRequest; targetsFilePath?: string } | { ok: false; errors: string[] };
+type ParsedObserveArgs =
+  | { ok: true; raw: RawObservationRequest; targetsFilePath?: string; scrollScenarioFilePath?: string }
+  | { ok: false; errors: string[] };
 
 /** CLI-syntax-only parsing: shape/format errors only. Domain bounds and policy are Batch 1's job, not this function's. */
 function parseObserveArgs(argv: readonly string[]): ParsedObserveArgs {
@@ -97,6 +112,8 @@ function parseObserveArgs(argv: readonly string[]): ParsedObserveArgs {
   let timeoutMs: number | undefined;
   let targetsFilePath: string | undefined;
   let targetsFileFlagCount = 0;
+  let scrollScenarioFilePath: string | undefined;
+  let scrollScenarioFileFlagCount = 0;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -136,6 +153,18 @@ function parseObserveArgs(argv: readonly string[]): ParsedObserveArgs {
         }
         break;
       }
+      case '--scroll-scenario-file': {
+        const value = argv[(i += 1)];
+        scrollScenarioFileFlagCount += 1;
+        if (value === undefined) {
+          errors.push('--scroll-scenario-file requires a file path argument');
+        } else if (scrollScenarioFileFlagCount > 1) {
+          errors.push('--scroll-scenario-file may only be specified once');
+        } else {
+          scrollScenarioFilePath = value;
+        }
+        break;
+      }
       case '--output':
         outputLocation = argv[(i += 1)];
         break;
@@ -168,7 +197,12 @@ function parseObserveArgs(argv: readonly string[]): ParsedObserveArgs {
     ...(outputLocation === undefined ? {} : { outputLocation }),
     ...(timeoutMs === undefined ? {} : { timeoutMs }),
   };
-  return { ok: true, raw, ...(targetsFilePath === undefined ? {} : { targetsFilePath }) };
+  return {
+    ok: true,
+    raw,
+    ...(targetsFilePath === undefined ? {} : { targetsFilePath }),
+    ...(scrollScenarioFilePath === undefined ? {} : { scrollScenarioFilePath }),
+  };
 }
 
 const TARGETS_FILE_ALLOWED_ROOT_FIELDS = new Set(['targets']);
@@ -217,6 +251,45 @@ function loadTargetsFile(filePath: string): LoadTargetsFileResult {
   return { ok: true, targets: record.targets };
 }
 
+type LoadScrollScenarioFileResult = { ok: true; scenario: unknown } | { ok: false; error: string };
+
+/**
+ * CLI/input-boundary-only responsibility, mirroring `loadTargetsFile`: read
+ * one local JSON file and validate only the root shape this file format
+ * owns (plain, non-array object) - the file supplies the value of
+ * `RawObservationRequest.scrollScenario` directly (no wrapper field), so
+ * there is no root-field allowlist to enforce here the way
+ * `loadTargetsFile` enforces `{ "targets": [...] }`. Every scenario/action
+ * rule (supported kind, required action, delta types/bounds, the both-zero
+ * rule, stable target reference, unknown fields) stays owned by
+ * `normalizeRequest()`, not duplicated here. The file path itself is never
+ * returned to the caller beyond this function, so it can never reach the
+ * persisted request/artifact.
+ */
+function loadScrollScenarioFile(filePath: string): LoadScrollScenarioFileResult {
+  let rawText: string;
+  try {
+    rawText = readFileSync(filePath, 'utf8');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `--scroll-scenario-file could not be read: ${message}` };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `--scroll-scenario-file is not valid JSON: ${message}` };
+  }
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return { ok: false, error: '--scroll-scenario-file root must be a JSON object' };
+  }
+
+  return { ok: true, scenario: parsed };
+}
+
 function formatDiagnostic(diagnostic: Diagnostic): string {
   const target = diagnostic.targetName === undefined ? '' : ` (target: ${diagnostic.targetName})`;
   return `[${diagnostic.code}] ${diagnostic.message}${target}`;
@@ -247,6 +320,15 @@ async function runObserveCommand(argv: readonly string[], io: CliIO): Promise<nu
       return 1;
     }
     raw = { ...raw, targets: loaded.targets };
+  }
+  if (parsedArgs.scrollScenarioFilePath !== undefined) {
+    const loaded = loadScrollScenarioFile(parsedArgs.scrollScenarioFilePath);
+    if (!loaded.ok) {
+      io.stderr(`error: ${loaded.error}\n`);
+      io.stderr(OBSERVE_HELP);
+      return 1;
+    }
+    raw = { ...raw, scrollScenario: loaded.scenario };
   }
 
   const normalized = normalizeRequest(raw);

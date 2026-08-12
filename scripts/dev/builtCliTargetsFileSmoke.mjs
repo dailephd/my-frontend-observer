@@ -2,7 +2,7 @@
 // v0.2 Batch 4: proves the actual *built* dist/cli.js - not the imported
 // runCli() function under vitest - recognizes --targets-file, launches real
 // Chromium, resolves a structured semantic target through the existing
-// resolver, and persists a valid schema-1.1.0 artifact. This is dev/
+// resolver, and persists a valid schema-1.2.0 artifact. This is dev/
 // readiness infrastructure only: never imported by production code and not
 // part of the npm package. Requires `npm run build` to have already run.
 //
@@ -110,7 +110,7 @@ async function main() {
     const manifest = JSON.parse(await readFile(path.join(artifactRoot, 'manifest.json'), 'utf8'));
     const screenshot = await readFile(path.join(artifactRoot, 'screenshot.png'));
 
-    if (manifest.schemaVersion !== '1.1.0') fail(`unexpected schemaVersion: ${manifest.schemaVersion}`);
+    if (manifest.schemaVersion !== '1.2.0') fail(`unexpected schemaVersion: ${manifest.schemaVersion}`);
     if (manifest.artifactKind !== 'my-frontend-observer/observation') fail(`unexpected artifactKind: ${manifest.artifactKind}`);
     if (manifest.targetEvidence?.['primary-navigation']?.resolution?.value?.selectionStatus !== 'matched') {
       fail('primary-navigation (role locator) did not resolve through the built CLI');

@@ -116,7 +116,7 @@ describe('artifactWriter', () => {
 
     const manifestRaw = await readFile(result.manifestPath, 'utf8');
     const manifest = JSON.parse(manifestRaw) as ObservationArtifact;
-    expect(manifest.schemaVersion).toBe('1.1.0');
+    expect(manifest.schemaVersion).toBe('1.2.0');
     expect(isValidObservationArtifact(manifest)).toEqual({ valid: true });
 
     for (const ref of manifest.artifactReferences) {

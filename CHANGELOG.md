@@ -1,5 +1,55 @@
 # Changelog
 
+## 0.3.0 - 2026-08-12
+
+Runtime Scrolling, Overflow, and Visibility Behavior.
+
+- Bounded runtime scroll scenarios: an observation may configure zero or
+  one scroll action, `window-scroll-by` or `target-scroll-by` (signed
+  integer `deltaX`/`deltaY`, bounded to `[-20000, 20000]`, at least one
+  non-zero). Not a generic interaction recorder or browser automation
+  framework - exactly one bounded action per observation.
+- Real `window-scroll-by` execution: vertical and horizontal document
+  scrolling, with browser-authoritative (not calculated) final position,
+  including natural boundary clamping and valid no-movement scenarios.
+- Real `target-scroll-by` execution against the existing stable configured
+  target identity and the same canonical target-resolution path every
+  locator kind already uses: real nested vertical/horizontal element
+  scrolling, boundary clamping, and non-scrollable/no-movement targets. An
+  action target that cannot be uniquely resolved at runtime is never
+  scrolled and never fabricated as moved - the existing target-missing/
+  target-ambiguous/target-hidden diagnostics explain it honestly.
+- Initial/final bounded runtime snapshots (window scroll position, the
+  browser's own scrolling-root/`documentElement`/`body` metrics, and
+  per-configured-target scroll metrics) around an immediate, non-smooth
+  scroll action and an exact two-`requestAnimationFrame` stabilization
+  wait.
+- Actual dimensional overflow (`scrollWidth`/`scrollHeight` vs.
+  `clientWidth`/`clientHeight`) kept explicitly distinct from the computed
+  `overflow-x`/`overflow-y` CSS declaration.
+- Real viewport-relation evidence (`above`/`intersecting`/`below`,
+  `intersectsViewport`, `fullyWithinViewport`) and `enteredViewport`/
+  `leftViewport` scenario transitions; a hidden/non-rendered target's
+  viewport relation is honestly `not-applicable`, never fabricated
+  geometry - hidden and offscreen remain distinct.
+- Bounded before/after scenario transition evidence for window and
+  per-target scroll position, geometry, and viewport relation - not a
+  generic comparison/diff engine.
+- Derived scroll-owner interpretation (`document` /
+  `target:<stable-target-name>` / `none` / `indeterminate`), always
+  traceable (`derivedFrom`) to the underlying observed scroll-position
+  measurements only - never from CSS overflow, bounding-rectangle movement
+  alone, target name, or DOM hierarchy.
+- New `--scroll-scenario-file <json-file>` CLI input, usable together with
+  either `--target` or `--targets-file`; the file path is operational input
+  only, never persisted and never part of request identity, exactly like
+  `--targets-file`'s path.
+- Observation schema `1.2.0` (additive over `1.1.0`).
+- Cross-platform packed-candidate validation: one hash-verified npm
+  candidate tarball proven on Windows, Linux, and macOS, covering the
+  legacy `--target` CSS shorthand, the structured `--targets-file`
+  semantic-target path, and both `--scroll-scenario-file` action kinds.
+
 ## 0.2.0 - 2026-08-11
 
 Stable Semantic Targets and Region Identity.
