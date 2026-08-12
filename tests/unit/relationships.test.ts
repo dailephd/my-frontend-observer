@@ -7,7 +7,7 @@ import {
   GEOMETRIC_FIT_RELATIONSHIPS,
   VERTICAL_SEQUENCE_RELATIONSHIPS,
   PAGE_WIDTH_RELATIONSHIPS,
-  MAX_PAIRWISE_RELATIONSHIP_PAIRS,
+  MAX_PAIRWISE_RELATIONSHIP_RECORDS,
   isValidPairwiseLayoutRelationship,
   isValidPageLevelLayoutRelationship,
   isValidLayoutRelationshipGraph,
@@ -129,9 +129,9 @@ describe('isValidLayoutRelationshipGraph', () => {
     expect(isValidLayoutRelationshipGraph(baseGraph({ geometryTolerancePx: Number.NaN }))).toBe(false);
   });
 
-  it('rejects more pairwise relationships than the 190-pair bound for 20 targets allows', () => {
+  it('rejects more pairwise relationships than the 1140-record bound (190 pairs * 6 families) allows', () => {
     const targets = Array.from({ length: 2 }, (_, i) => `t${i}`);
-    const relationships = Array.from({ length: MAX_PAIRWISE_RELATIONSHIP_PAIRS + 1 }, () => ({
+    const relationships = Array.from({ length: MAX_PAIRWISE_RELATIONSHIP_RECORDS + 1 }, () => ({
       kind: 'left-of' as const,
       subjectTarget: 't0',
       relatedTarget: 't1',

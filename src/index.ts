@@ -99,6 +99,8 @@ export type {
   ClippingState,
   ClippingOverflowStyle,
   TargetClippingEvidence,
+  DeriveLayoutRelationshipsOptions,
+  DeriveLayoutRelationshipsResult,
 } from './domain/relationships.js';
 export {
   HORIZONTAL_ORDER_RELATIONSHIPS,
@@ -112,6 +114,8 @@ export {
   PAGE_LEVEL_RELATIONSHIP_KINDS,
   MAX_CONFIGURED_TARGETS_FOR_RELATIONSHIPS,
   MAX_PAIRWISE_RELATIONSHIP_PAIRS,
+  PAIRWISE_RELATIONSHIP_FAMILY_COUNT,
+  MAX_PAIRWISE_RELATIONSHIP_RECORDS,
   CLIPPING_STATES,
   CLIPPING_OVERFLOW_STYLES,
   isValidEvidenceReference,
@@ -120,6 +124,8 @@ export {
   isValidUnresolvedRelationshipTarget,
   isValidLayoutRelationshipGraph,
   isValidTargetClippingEvidence,
+  deriveTargetClipping,
+  deriveLayoutRelationships,
 } from './domain/relationships.js';
 
 export type {

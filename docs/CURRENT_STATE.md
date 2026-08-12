@@ -221,15 +221,49 @@ consumer environment on Windows, Linux, and macOS before release.
   unchanged. Proven via real Chromium (`tests/browser/cliObserve.test.ts`)
   and the built `dist/cli.js` (`scripts/dev/builtCliScrollScenarioSmoke.mjs`).
 
+## v0.4 status (Layout Relationships, Dependency Evidence, and Before/After Comparison) - in progress, unreleased
+
+v0.4 is in progress on `feature/v0.4-layout-comparison`, not yet released.
+Package version remains `0.3.0`; observation schema remains `1.2.0`.
+
+- **Batch 1** froze the `my-frontend-observer/comparison` artifact contract
+  (schema `1.0.0`, independent of and never reused for the observation
+  schema): `ComparisonConfig` (geometry tolerance, default `0.5`px, bounded
+  `[0, 10]`px), the bounded layout-relationship vocabulary (horizontal/
+  vertical order, area overlap, relative width, geometric fit, vertical
+  sequencing, page-width fit, clipping), comparability states, the
+  before/after difference vocabulary, and the non-causal explicit
+  dependency-evidence contract, plus `comparisonRequestId`/`comparisonId`
+  identity (`src/domain/relationships.ts`, `src/domain/comparison.ts`,
+  `src/domain/comparisonIdentity.ts`). No derivation, comparison, or
+  persistence.
+- **Batch 2** implemented the one canonical pure derivation engine,
+  `deriveLayoutRelationships(observation, options?)`
+  (`src/domain/relationships.ts`): consumes an existing `ObservationArtifact`
+  only (no Chromium, no re-resolution, no DOM access) and derives a bounded,
+  traceable `LayoutRelationshipGraph` among configured targets - stable
+  target identity, deterministic configured-target ordering, honest
+  unresolved-target handling (not-found/ambiguous/unavailable/hidden, never
+  a fabricated zero-sized region), and evidence-reference provenance for
+  every derived relationship. DOM containment is read directly from the
+  existing `TargetContainment` evidence rather than re-derived, and stays
+  distinct from geometric fit. A standalone `deriveTargetClipping(record)`
+  derives the frozen clipping concept per target from existing layout/style
+  evidence. Before/after comparison itself
+  (`compareObservations()`), comparison persistence, and a `compare` CLI
+  remain unimplemented.
+
 ## Not implemented
 
-- Layout/spatial relationship engine, before/after comparison, frontend
-  contracts/change scope, source ownership, my-dev-kit runtime/static
-  integration, orchestrator/lab product integration, viewer, and annotation
-  all remain unimplemented (v0.4+).
+- Before/after comparison (`compareObservations()`), comparability
+  evaluation between two real observations, comparison-artifact
+  persistence, a `compare` CLI, v0.5+ frontend contracts/change scope,
+  source ownership, my-dev-kit runtime/static integration, orchestrator/lab
+  product integration, viewer, and annotation all remain unimplemented.
 
 ## Next target
 
 v0.1, v0.2, and v0.3 are implemented, validated, and released (`0.1.0`,
 `0.2.0`, `0.3.0`). v0.4 (Layout Relationships, Dependency Evidence, and
-Before/After Comparison) is the next planned version.
+Before/After Comparison) is in progress on `feature/v0.4-layout-comparison`,
+unreleased.

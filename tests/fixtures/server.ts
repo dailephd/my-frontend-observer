@@ -109,6 +109,88 @@ export const OBSERVATION_FIXTURE_SEMANTIC_STATE = {
 export const OBSERVATION_DISAPPEARING_FIXTURE_SELECTOR = '#disappearing-target';
 
 /**
+ * v0.4 Batch 2: deterministic fixture for the `/relationships` route,
+ * against an 800x600 test viewport. Every region is absolutely positioned
+ * against the initial containing block (or, for the two DOM-nested pairs,
+ * against their own positioned parent) so `getBoundingClientRect()` always
+ * returns these exact values. Document width is exactly 800px (matching
+ * `#right-region`'s right edge), so the page-width relationship is
+ * deterministically "fits viewport" here - `/scroll` remains the fixture for
+ * "exceeds viewport". `#nav-region`/`#workspace-region`/`#right-region`/
+ * `#footer-region` prove the ordinary left-of/wider-than/follows-vertically
+ * family; `#workspace-child` is a real DOM-contained, geometrically-fitting
+ * child. `#overlap-a`/`#overlap-b` prove real area overlap. `#escape-parent`/
+ * `#escape-child` is a DOM-contained child that visually escapes its
+ * parent's box (containment true, geometric fit false). `#outer-unrelated`/
+ * `#inner-unrelated` are DOM siblings where one nonetheless geometrically
+ * fits inside the other's box (containment false, geometric fit true).
+ * `#hidden-relationship-target` is `display: none`.
+ */
+export const RELATIONSHIPS_FIXTURE_SELECTORS = {
+  leftRegion: '#left-region',
+  navigation: '#nav-region',
+  workspace: '#workspace-region',
+  workspaceChild: '#workspace-child',
+  rightRegion: '#right-region',
+  footer: '#footer-region',
+  overlapA: '#overlap-a',
+  overlapB: '#overlap-b',
+  escapeParent: '#escape-parent',
+  escapeChild: '#escape-child',
+  outerUnrelated: '#outer-unrelated',
+  innerUnrelated: '#inner-unrelated',
+  hiddenTarget: '#hidden-relationship-target',
+  duplicateTarget: '.duplicate-relationship-target',
+  missingTarget: '#does-not-exist-relationship-target',
+} as const;
+
+const RELATIONSHIPS_FIXTURE_HTML = `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>relationships fixture</title>
+<style>
+  html, body { margin: 0; padding: 0; }
+  #left-region { position: absolute; top: 0; left: 0; width: 100px; height: 500px; }
+  #nav-region { position: absolute; top: 0; left: 100px; width: 140px; height: 40px; }
+  #workspace-region { position: absolute; top: 0; left: 250px; width: 400px; height: 400px; }
+  #workspace-child { position: absolute; top: 10px; left: 10px; width: 50px; height: 50px; }
+  #right-region { position: absolute; top: 0; left: 660px; width: 140px; height: 500px; }
+  #footer-region { position: absolute; top: 450px; left: 100px; width: 400px; height: 50px; }
+  #overlap-a { position: absolute; top: 520px; left: 20px; width: 100px; height: 100px; }
+  #overlap-b { position: absolute; top: 560px; left: 70px; width: 100px; height: 100px; }
+  #escape-parent { position: absolute; top: 520px; left: 300px; width: 60px; height: 20px; overflow: visible; }
+  #escape-child { position: absolute; top: -10px; left: -10px; width: 100px; height: 60px; }
+  #outer-unrelated { position: absolute; top: 520px; left: 450px; width: 200px; height: 100px; }
+  #inner-unrelated { position: absolute; top: 530px; left: 470px; width: 50px; height: 50px; }
+  #hidden-relationship-target { display: none; }
+  .duplicate-relationship-target { position: absolute; top: 700px; left: 20px; width: 40px; height: 20px; }
+</style>
+</head>
+<body>
+  <div id="left-region">Left</div>
+  <div id="nav-region">Nav</div>
+  <div id="workspace-region">
+    Workspace
+    <div id="workspace-child">Child</div>
+  </div>
+  <div id="right-region">Right</div>
+  <div id="footer-region">Footer</div>
+  <div id="overlap-a">Overlap A</div>
+  <div id="overlap-b">Overlap B</div>
+  <div id="escape-parent">
+    Escape Parent
+    <div id="escape-child">Escape Child</div>
+  </div>
+  <div id="outer-unrelated">Outer</div>
+  <div id="inner-unrelated">Inner</div>
+  <div id="hidden-relationship-target">Hidden</div>
+  <div class="duplicate-relationship-target">Dup A</div>
+  <div class="duplicate-relationship-target">Dup B</div>
+</body>
+</html>`;
+
+/**
  * v0.3 Batch 2/3: deterministic fixture for the `/scroll` route. `body` is
  * 3000x3000px against an 800x600 test viewport, giving real, measurable
  * horizontal and vertical document overflow. `#above-target` starts inside
@@ -337,6 +419,12 @@ export async function startFixtureServer(): Promise<FixtureServer> {
     if (url === '/scroll') {
       res.writeHead(200, { 'content-type': 'text/html' });
       res.end(SCROLL_FIXTURE_HTML);
+      return;
+    }
+
+    if (url === '/relationships') {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end(RELATIONSHIPS_FIXTURE_HTML);
       return;
     }
 

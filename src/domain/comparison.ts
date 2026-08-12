@@ -21,7 +21,13 @@ import type {
   PageLevelRelationshipKind,
   PairwiseRelationshipKind,
 } from './relationships.js';
-import { PAGE_LEVEL_RELATIONSHIP_KINDS, PAIRWISE_RELATIONSHIP_KINDS, isValidEvidenceReference, isValidLayoutRelationshipGraph } from './relationships.js';
+import {
+  PAGE_LEVEL_RELATIONSHIP_KINDS,
+  PAIRWISE_RELATIONSHIP_KINDS,
+  isValidEvidenceReference,
+  isValidLayoutRelationshipGraph,
+  isValidGeometryTolerancePx,
+} from './relationships.js';
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -34,16 +40,14 @@ function isEvidenceReferenceArray(value: unknown): value is EvidenceReference[] 
 export const COMPARISON_ARTIFACT_KIND = 'my-frontend-observer/comparison' as const;
 export const COMPARISON_SCHEMA_VERSION = '1.0.0' as const;
 
-// --- Geometry tolerance -----------------------------------------------------
-
-/** Suppresses insignificant geometry noise only - never a design contract, never permission for changes. */
-export const GEOMETRY_TOLERANCE_DEFAULT_PX = 0.5;
-export const GEOMETRY_TOLERANCE_MIN_PX = 0;
-export const GEOMETRY_TOLERANCE_MAX_PX = 10;
-
-export function isValidGeometryTolerancePx(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value) && value >= GEOMETRY_TOLERANCE_MIN_PX && value <= GEOMETRY_TOLERANCE_MAX_PX;
-}
+/**
+ * Geometry tolerance is owned by domain/relationships.ts (the relationship
+ * derivation engine needs it directly, and that module must not import this
+ * one back - relationships.ts is the lower-level module). Re-exported here
+ * unchanged so every pre-Batch-2 consumer of these names from
+ * domain/comparison.ts keeps working.
+ */
+export { GEOMETRY_TOLERANCE_DEFAULT_PX, GEOMETRY_TOLERANCE_MIN_PX, GEOMETRY_TOLERANCE_MAX_PX, isValidGeometryTolerancePx } from './relationships.js';
 
 // --- Expected dependency declarations (explicit, non-causal) ---------------
 
