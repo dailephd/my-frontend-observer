@@ -186,5 +186,5 @@ schema `1.1.0`.
 
 ## Next target
 
-v0.2 is implemented, validated, and released as `0.2.0`. v0.3 (Controlled
-Scroll and Overflow Scenarios) is the next planned version.
+v0.2 is implemented, validated, and released as `0.2.0`. v0.3 (Runtime
+Scrolling, Overflow, and Visibility Behavior) is the next planned version.

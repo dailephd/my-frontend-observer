@@ -134,6 +134,23 @@ describe('chromiumAdapter (Batch 2 browser boundary)', () => {
     expect(browserConnected).toBe(false);
   });
 
+  it('v0.3 Batch 1: a request with a scrollScenario fails honestly (unsupported-configuration) without launching a browser', async () => {
+    const request = baseRequest({
+      targetUrl: `${fixtures.baseUrl}/normal`,
+      scrollScenario: { action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 400 } },
+    });
+
+    const { result, browserConnected } = await captureViewportInternal(request);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected failure result');
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0]?.code).toBe('unsupported-configuration');
+
+    // Not silently ignored and not partially executed - no browser launched.
+    expect(browserConnected).toBe(false);
+  });
+
   // B2-TST-009 Redirect enforcement.
   it('B2-TST-009: blocks a redirect to a non-loopback target', async () => {
     const request = baseRequest({ targetUrl: `${fixtures.baseUrl}/redirect-remote` });

@@ -74,6 +74,59 @@ describe('buildRequestIdentity', () => {
   });
 });
 
+describe('v0.3 scrollScenario request identity', () => {
+  it('a no-scenario request keeps the same requestId as the pre-v0.3 legacy fixture', () => {
+    // Frozen regression vector: buildRequestIdentity(baseRequest()) as computed
+    // before this batch introduced scrollScenario. Must never change for a
+    // request with no scrollScenario.
+    expect(buildRequestIdentity(baseRequest())).toBe('e37e913c07056ef1d4a9d4dce2762dd7b07cabfe51742cad4e6d4ec5a7d23d9d');
+  });
+
+  it('the same scenario (same targets/url/viewport/readiness/scrollScenario) produces the same requestId', () => {
+    const a = baseRequest({ scrollScenario: { action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 400 } } });
+    const b = baseRequest({ scrollScenario: { action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 400 } } });
+    expect(buildRequestIdentity(a)).toBe(buildRequestIdentity(b));
+  });
+
+  it('a request with a scenario differs from the same request without one', () => {
+    const withScenario = baseRequest({ scrollScenario: { action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 400 } } });
+    const withoutScenario = baseRequest();
+    expect(buildRequestIdentity(withScenario)).not.toBe(buildRequestIdentity(withoutScenario));
+  });
+
+  it('a different delta produces a different requestId', () => {
+    const a = baseRequest({ scrollScenario: { action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 400 } } });
+    const b = baseRequest({ scrollScenario: { action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 500 } } });
+    expect(buildRequestIdentity(a)).not.toBe(buildRequestIdentity(b));
+  });
+
+  it('a different action kind produces a different requestId', () => {
+    const targets = [{ name: 'workspace', locators: [{ kind: 'css' as const, selector: '.workspace' }] }];
+    const a = baseRequest({ targets, scrollScenario: { action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 400 } } });
+    const b = baseRequest({
+      targets,
+      scrollScenario: { action: { kind: 'target-scroll-by', target: 'workspace', deltaX: 0, deltaY: 400 } },
+    });
+    expect(buildRequestIdentity(a)).not.toBe(buildRequestIdentity(b));
+  });
+
+  it('a different target produces a different requestId', () => {
+    const targets = [
+      { name: 'workspace', locators: [{ kind: 'css' as const, selector: '.workspace' }] },
+      { name: 'navigation', locators: [{ kind: 'css' as const, selector: '.nav' }] },
+    ];
+    const a = baseRequest({
+      targets,
+      scrollScenario: { action: { kind: 'target-scroll-by', target: 'workspace', deltaX: 0, deltaY: 100 } },
+    });
+    const b = baseRequest({
+      targets,
+      scrollScenario: { action: { kind: 'target-scroll-by', target: 'navigation', deltaX: 0, deltaY: 100 } },
+    });
+    expect(buildRequestIdentity(a)).not.toBe(buildRequestIdentity(b));
+  });
+});
+
 describe('buildObservationIdentity', () => {
   it('TST-026: never collides and is never timestamp-shaped, across 1000 calls', () => {
     const requestIdentity = buildRequestIdentity(baseRequest());

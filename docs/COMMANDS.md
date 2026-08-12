@@ -146,8 +146,10 @@ my-frontend-observer observe `
 - `npm run build` — clean and compile `src/` (including `src/cli.ts`) to
   `dist/`.
 - `npm run check:docs` — validate canonical documents and roadmap structure.
-- `npm pack --dry-run` — inspect the private package inventory without
-  publishing. The real tarball has been installed and exercised in a clean
-  temporary consumer directory (real Chromium install, real `observe` run,
-  real artifact) as part of v0.1 validation; this is local package
-  validation, not a release/publication step.
+- `npm pack --dry-run` — inspect the public package's tarball inventory
+  before publishing. The real tarball has been installed and exercised in a
+  clean temporary consumer directory (real Chromium install, real `observe`
+  run, real artifact) on Windows, Linux, and macOS as part of v0.1
+  validation, and again for v0.2's packed semantic `--targets-file`
+  behavior (`scripts/dev/builtCliTargetsFileSmoke.mjs`); this is local
+  package validation, not a release/publication step.

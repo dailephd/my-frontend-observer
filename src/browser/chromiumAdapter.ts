@@ -44,6 +44,21 @@ export async function captureViewportInternal(request: NormalizedObservationRequ
     return { result: { ok: false, diagnostics: [initialDecision.diagnostic] }, browserConnected: false };
   }
 
+  // v0.3 Batch 1 froze the scrollScenario request contract but does not yet
+  // execute it (Batch 2/3 add real window/target scroll execution). A
+  // request that configures one must fail honestly here - before any
+  // browser/page is even launched - rather than silently ignoring the
+  // scenario and running an ordinary observation as if it had been applied.
+  if (request.scrollScenario) {
+    return {
+      result: {
+        ok: false,
+        diagnostics: [{ code: 'unsupported-configuration', severity: 'error', message: 'scrollScenario execution is not yet supported' }],
+      },
+      browserConnected: false,
+    };
+  }
+
   let browser: Browser | undefined;
   let result: BrowserCaptureResult;
   try {

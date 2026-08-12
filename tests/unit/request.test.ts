@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeRequest } from '../../src/request/request.js';
+import { normalizeRequest, SCROLL_DELTA_MAX_ABS } from '../../src/request/request.js';
 
 describe('normalizeRequest', () => {
   it('TST-001: applies documented defaults when only targetUrl is supplied', () => {
@@ -198,6 +198,144 @@ describe('normalizeRequest', () => {
         ],
       });
       expect(dup.ok).toBe(false);
+    });
+  });
+
+  describe('v0.3 scrollScenario contract', () => {
+    it('accepts a request with no scrollScenario, unchanged from v0.2', () => {
+      const result = normalizeRequest({ targetUrl: 'http://localhost:3000/' });
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error('expected ok');
+      expect('scrollScenario' in result.request).toBe(false);
+    });
+
+    it('accepts a valid window-scroll-by scenario', () => {
+      const result = normalizeRequest({
+        targetUrl: 'http://localhost/',
+        scrollScenario: { action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 400 } },
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error('expected ok');
+      expect(result.request.scrollScenario).toEqual({ action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 400 } });
+    });
+
+    it('accepts a valid target-scroll-by scenario referencing a configured target', () => {
+      const result = normalizeRequest({
+        targetUrl: 'http://localhost/',
+        targets: [{ name: 'workspace', selector: '.workspace' }],
+        scrollScenario: { action: { kind: 'target-scroll-by', target: 'workspace', deltaX: 0, deltaY: 200 } },
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error('expected ok');
+      expect(result.request.scrollScenario).toEqual({ action: { kind: 'target-scroll-by', target: 'workspace', deltaX: 0, deltaY: 200 } });
+    });
+
+    it('rejects an unsupported action kind', () => {
+      const result = normalizeRequest({
+        targetUrl: 'http://localhost/',
+        scrollScenario: { action: { kind: 'scroll-into-view', deltaX: 0, deltaY: 100 } },
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error('expected failure');
+      expect(result.diagnostics[0]?.code).toBe('invalid-request');
+    });
+
+    it('rejects a scenario missing deltaX', () => {
+      const result = normalizeRequest({
+        targetUrl: 'http://localhost/',
+        scrollScenario: { action: { kind: 'window-scroll-by', deltaY: 100 } },
+      });
+      expect(result.ok).toBe(false);
+    });
+
+    it('rejects a scenario missing deltaY', () => {
+      const result = normalizeRequest({
+        targetUrl: 'http://localhost/',
+        scrollScenario: { action: { kind: 'window-scroll-by', deltaX: 100 } },
+      });
+      expect(result.ok).toBe(false);
+    });
+
+    it('rejects a fractional delta', () => {
+      const result = normalizeRequest({
+        targetUrl: 'http://localhost/',
+        scrollScenario: { action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 100.5 } },
+      });
+      expect(result.ok).toBe(false);
+    });
+
+    it('rejects non-number deltas (NaN, Infinity, string, null)', () => {
+      const invalidDeltas: unknown[] = [NaN, Infinity, -Infinity, 'ten', null];
+      for (const deltaY of invalidDeltas) {
+        const result = normalizeRequest({
+          targetUrl: 'http://localhost/',
+          scrollScenario: { action: { kind: 'window-scroll-by', deltaX: 0, deltaY } },
+        });
+        expect(result.ok).toBe(false);
+      }
+    });
+
+    it('rejects both deltas zero', () => {
+      const result = normalizeRequest({
+        targetUrl: 'http://localhost/',
+        scrollScenario: { action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 0 } },
+      });
+      expect(result.ok).toBe(false);
+    });
+
+    it('rejects out-of-bound deltas and accepts the exact boundary', () => {
+      const tooLarge = normalizeRequest({
+        targetUrl: 'http://localhost/',
+        scrollScenario: { action: { kind: 'window-scroll-by', deltaX: 0, deltaY: SCROLL_DELTA_MAX_ABS + 1 } },
+      });
+      const atLimit = normalizeRequest({
+        targetUrl: 'http://localhost/',
+        scrollScenario: { action: { kind: 'window-scroll-by', deltaX: 0, deltaY: SCROLL_DELTA_MAX_ABS } },
+      });
+      expect(tooLarge.ok).toBe(false);
+      expect(atLimit.ok).toBe(true);
+    });
+
+    it('rejects target-scroll-by without a target', () => {
+      const result = normalizeRequest({
+        targetUrl: 'http://localhost/',
+        targets: [{ name: 'workspace', selector: '.workspace' }],
+        scrollScenario: { action: { kind: 'target-scroll-by', deltaX: 0, deltaY: 100 } },
+      });
+      expect(result.ok).toBe(false);
+    });
+
+    it('rejects target-scroll-by referencing an unknown configured target', () => {
+      const result = normalizeRequest({
+        targetUrl: 'http://localhost/',
+        targets: [{ name: 'workspace', selector: '.workspace' }],
+        scrollScenario: { action: { kind: 'target-scroll-by', target: 'navigation', deltaX: 0, deltaY: 100 } },
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error('expected failure');
+      expect(result.diagnostics[0]?.code).toBe('invalid-request');
+    });
+
+    it('rejects unknown fields on the scenario or action object', () => {
+      const extraScenarioField = normalizeRequest({
+        targetUrl: 'http://localhost/',
+        scrollScenario: { action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 100 }, waitMs: 500 },
+      });
+      const extraActionField = normalizeRequest({
+        targetUrl: 'http://localhost/',
+        scrollScenario: { action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 100, behavior: 'smooth' } },
+      });
+      expect(extraScenarioField.ok).toBe(false);
+      expect(extraActionField.ok).toBe(false);
+    });
+
+    it('resolves a target-scroll-by target case-insensitively against the configured target name', () => {
+      const result = normalizeRequest({
+        targetUrl: 'http://localhost/',
+        targets: [{ name: 'Workspace', selector: '.workspace' }],
+        scrollScenario: { action: { kind: 'target-scroll-by', target: 'workspace', deltaX: 0, deltaY: 100 } },
+      });
+      expect(result.ok).toBe(true);
     });
   });
 });

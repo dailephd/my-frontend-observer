@@ -3,7 +3,7 @@
 ## Current scaffold architecture
 
 The current repository is one published TypeScript ESM package
-(`my-frontend-observer@0.1.0`):
+(`my-frontend-observer@0.2.0`):
 
 - `src/cli.ts` is the real, thin `observe` command entry point (argument
   parsing/output only).
@@ -48,7 +48,7 @@ packed npm tarball end to end in a clean consumer environment, independent
 of the source checkout. There is still no controlled-scroll/comparison
 behavior.
 
-## Current v0.2 architecture (implemented on the current branch, not yet released)
+## Current v0.2 architecture (released/current architecture)
 
 v0.2 extends the same architecture rather than adding a parallel one.
 `src/request/request.ts` now owns a canonical `{name, locators}` target

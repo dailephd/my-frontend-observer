@@ -35,6 +35,20 @@ export interface ReadinessConfig {
   timeoutMs: number;
 }
 
+/**
+ * v0.3 Batch 1 canonical scroll-action shape. Exactly the two bounded action
+ * kinds below are supported; `target` on `target-scroll-by` refers to the
+ * existing stable observer-owned target `name` (see `NamedTarget`), never a
+ * CSS selector, Playwright locator, or DOM id evaluated directly.
+ */
+export type ScrollAction =
+  | { kind: 'window-scroll-by'; deltaX: number; deltaY: number }
+  | { kind: 'target-scroll-by'; target: string; deltaX: number; deltaY: number };
+
+export interface ScrollScenario {
+  action: ScrollAction;
+}
+
 export interface NormalizedObservationRequest {
   targetUrl: string;
   viewport: Viewport;
@@ -42,6 +56,7 @@ export interface NormalizedObservationRequest {
   outputLocation: string;
   timeoutMs: number;
   readiness: ReadinessConfig;
+  scrollScenario?: ScrollScenario;
 }
 
 export interface RawObservationRequest {
@@ -51,6 +66,7 @@ export interface RawObservationRequest {
   outputLocation?: unknown;
   timeoutMs?: unknown;
   readiness?: unknown;
+  scrollScenario?: unknown;
 }
 
 export type NormalizeRequestResult = { ok: true; request: NormalizedObservationRequest } | { ok: false; diagnostics: Diagnostic[] };
@@ -88,6 +104,15 @@ const SUPPORTED_SEMANTIC_ELEMENT_TAGS = new Set([
   'dialog',
 ]);
 const SUPPORTED_LOCATOR_KINDS = new Set(['role', 'id', 'data-attribute', 'semantic-element', 'css', 'text']);
+const SUPPORTED_SCROLL_ACTION_KINDS = new Set(['window-scroll-by', 'target-scroll-by']);
+/**
+ * Conservative bound for a single controlled-observation scroll action. No
+ * existing repository precedent for a scroll-delta magnitude; chosen large
+ * enough to reach realistic overflow content (documents/containers well
+ * beyond one viewport) while staying far short of a pathological/runaway
+ * request - see docs/CONTRACTS.md and tests/unit/request.test.ts.
+ */
+export const SCROLL_DELTA_MAX_ABS = 20000;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -207,6 +232,105 @@ function validateLocator(raw: unknown, targetName: string, index: number): { ok:
     default:
       return { ok: false, diagnostics: [{ code: 'invalid-request', severity: 'error', message: `locator at index ${index} has an unsupported kind`, targetName }] };
   }
+}
+
+function isFiniteInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value);
+}
+
+/**
+ * Validates the optional v0.3 scrollScenario request shape. `configuredTargetNames`
+ * is the lowercase set of already-normalized target names so `target-scroll-by`
+ * can only reference an existing stable observer target (never a new/implicit
+ * one). Total: collects every applicable diagnostic before returning; never
+ * throws.
+ */
+function validateScrollScenario(
+  raw: unknown,
+  configuredTargetNames: ReadonlySet<string>,
+): { ok: true; scenario: ScrollScenario } | { ok: false; diagnostics: Diagnostic[] } {
+  if (!isPlainObject(raw)) {
+    return { ok: false, diagnostics: [{ code: 'invalid-request', severity: 'error', message: 'scrollScenario must be an object' }] };
+  }
+  const extraScenarioKeys = Object.keys(raw).filter((key) => key !== 'action');
+  if (extraScenarioKeys.length > 0) {
+    return {
+      ok: false,
+      diagnostics: [{ code: 'invalid-request', severity: 'error', message: `scrollScenario has unsupported field(s): ${extraScenarioKeys.join(', ')}` }],
+    };
+  }
+
+  const action = raw.action;
+  if (!isPlainObject(action)) {
+    return { ok: false, diagnostics: [{ code: 'invalid-request', severity: 'error', message: 'scrollScenario.action must be an object' }] };
+  }
+  const kind = action.kind;
+  if (typeof kind !== 'string' || !SUPPORTED_SCROLL_ACTION_KINDS.has(kind)) {
+    return {
+      ok: false,
+      diagnostics: [
+        { code: 'invalid-request', severity: 'error', message: `scrollScenario.action.kind must be one of ${[...SUPPORTED_SCROLL_ACTION_KINDS].join(', ')}` },
+      ],
+    };
+  }
+
+  const allowedActionKeys = kind === 'target-scroll-by' ? ['kind', 'target', 'deltaX', 'deltaY'] : ['kind', 'deltaX', 'deltaY'];
+  const extraActionKeys = Object.keys(action).filter((key) => !allowedActionKeys.includes(key));
+  if (extraActionKeys.length > 0) {
+    return {
+      ok: false,
+      diagnostics: [{ code: 'invalid-request', severity: 'error', message: `scrollScenario.action has unsupported field(s): ${extraActionKeys.join(', ')}` }],
+    };
+  }
+
+  const deltaDiagnostics: Diagnostic[] = [];
+  if (!isFiniteInteger(action.deltaX) || Math.abs(action.deltaX) > SCROLL_DELTA_MAX_ABS) {
+    deltaDiagnostics.push({
+      code: 'invalid-request',
+      severity: 'error',
+      message: `scrollScenario.action.deltaX must be an integer in [-${SCROLL_DELTA_MAX_ABS}, ${SCROLL_DELTA_MAX_ABS}]`,
+    });
+  }
+  if (!isFiniteInteger(action.deltaY) || Math.abs(action.deltaY) > SCROLL_DELTA_MAX_ABS) {
+    deltaDiagnostics.push({
+      code: 'invalid-request',
+      severity: 'error',
+      message: `scrollScenario.action.deltaY must be an integer in [-${SCROLL_DELTA_MAX_ABS}, ${SCROLL_DELTA_MAX_ABS}]`,
+    });
+  }
+  if (deltaDiagnostics.length > 0) {
+    return { ok: false, diagnostics: deltaDiagnostics };
+  }
+
+  const deltaX = action.deltaX as number;
+  const deltaY = action.deltaY as number;
+  if (deltaX === 0 && deltaY === 0) {
+    return {
+      ok: false,
+      diagnostics: [{ code: 'invalid-request', severity: 'error', message: 'scrollScenario.action requires a non-zero deltaX or deltaY' }],
+    };
+  }
+
+  if (kind === 'window-scroll-by') {
+    return { ok: true, scenario: { action: { kind: 'window-scroll-by', deltaX, deltaY } } };
+  }
+
+  if (typeof action.target !== 'string' || action.target.length === 0) {
+    return {
+      ok: false,
+      diagnostics: [{ code: 'invalid-request', severity: 'error', message: 'scrollScenario.action.target is required for target-scroll-by' }],
+    };
+  }
+  if (!configuredTargetNames.has(action.target.toLowerCase())) {
+    return {
+      ok: false,
+      diagnostics: [
+        { code: 'invalid-request', severity: 'error', message: 'scrollScenario.action.target must reference a configured target', targetName: action.target },
+      ],
+    };
+  }
+
+  return { ok: true, scenario: { action: { kind: 'target-scroll-by', target: action.target, deltaX, deltaY } } };
 }
 
 /**
@@ -389,6 +513,17 @@ export function normalizeRequest(raw: RawObservationRequest): NormalizeRequestRe
     }
   }
 
+  let scrollScenario: ScrollScenario | undefined;
+  if (raw.scrollScenario !== undefined) {
+    const configuredTargetNames = new Set(targets.map((target) => target.name.toLowerCase()));
+    const validated = validateScrollScenario(raw.scrollScenario, configuredTargetNames);
+    if (validated.ok) {
+      scrollScenario = validated.scenario;
+    } else {
+      diagnostics.push(...validated.diagnostics);
+    }
+  }
+
   if (diagnostics.length > 0 || targetUrl === undefined) {
     return { ok: false, diagnostics: orderDiagnostics(diagnostics) };
   }
@@ -402,6 +537,7 @@ export function normalizeRequest(raw: RawObservationRequest): NormalizeRequestRe
       outputLocation,
       timeoutMs,
       readiness: { condition: readinessCondition, timeoutMs: readinessTimeoutMs },
+      ...(scrollScenario ? { scrollScenario } : {}),
     },
   };
 }

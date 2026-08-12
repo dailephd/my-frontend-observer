@@ -112,7 +112,7 @@ describe('runCli observe - real Chromium end-to-end (Batch 5)', () => {
 
     const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as ObservationArtifact;
     expect(isValidObservationArtifact(manifest)).toEqual({ valid: true });
-    expect(manifest.schemaVersion).toBe('1.1.0');
+    expect(manifest.schemaVersion).toBe('1.2.0');
     expect(manifest.observationId).toBe(observationId);
 
     // B5-TST-018: real, non-empty viewport PNG.
@@ -236,7 +236,7 @@ describe('runCli observe --targets-file - real Chromium end-to-end (v0.2 Batch 4
 
     const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as ObservationArtifact;
     expect(manifest.artifactKind).toBe('my-frontend-observer/observation');
-    expect(manifest.schemaVersion).toBe('1.1.0');
+    expect(manifest.schemaVersion).toBe('1.2.0');
     expect(isValidObservationArtifact(manifest)).toEqual({ valid: true });
 
     // Target/locator order preserved through JSON parse -> RawObservationRequest -> normalizeRequest -> requestConfig.

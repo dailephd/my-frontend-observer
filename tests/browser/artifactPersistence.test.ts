@@ -150,7 +150,7 @@ describe('artifact persistence (Batch 4, real Chromium capture to disk)', () => 
     if (!persisted.ok) throw new Error('expected persistence to succeed');
 
     const manifest = JSON.parse(await readFile(persisted.manifestPath, 'utf8')) as ObservationArtifact;
-    expect(manifest.schemaVersion).toBe('1.1.0');
+    expect(manifest.schemaVersion).toBe('1.2.0');
     expect(isValidObservationArtifact(manifest)).toEqual({ valid: true });
 
     // Semantic state survives: nav has no supported semantic state -> not-applicable, not an empty available object.
