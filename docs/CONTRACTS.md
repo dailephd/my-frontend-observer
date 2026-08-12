@@ -81,9 +81,13 @@ supplies the structured `{ "targets": [...] }` collection (see
 existing `--target id=css-selector` shorthand - the two are mutually
 exclusive per invocation, and both converge on the same
 `normalizeRequest()`/browser-resolver/artifact path, so a semantic
-observation produces exactly the same `manifest.json` shape (schema `1.1.0`)
-as a CSS-shorthand one. `--targets-file`'s local input path is never part of
-the persisted request identity or artifact.
+observation produces exactly the same `manifest.json` shape as a
+CSS-shorthand one. Schema `1.1.0` was the v0.2 published artifact schema;
+the current v0.3 package emits schema `1.2.0` for both target-input modes
+(target semantics are unchanged from v0.2 - see the v0.3 scroll scenario
+contract below for what schema `1.2.0` actually adds). `--targets-file`'s
+local input path is never part of the persisted request identity or
+artifact.
 
 ## v0.3 scroll scenario contract (shipped as part of this release)
 

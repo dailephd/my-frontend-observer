@@ -62,10 +62,11 @@ It is what `.github/workflows/pre-release-readiness.yml` runs identically on
 Windows, Linux, and macOS against one shared candidate tarball (see
 `docs/CI_CD.md`); it can also be run locally the same way the workflow runs
 it. It is readiness/CI infrastructure only, not part of the published
-package and never imported by production code. It exercises both the
-legacy CSS-shorthand `--target` packed-observation shape and the
-structured semantic `--targets-file` shape in the same run - see
-`docs/CI_CD.md` for the current v0.2 readiness coverage.
+package and never imported by production code. In the same run it
+exercises the legacy CSS-shorthand `--target` packed-observation shape,
+the structured semantic `--targets-file` shape, a `window-scroll-by`
+scroll scenario, and a `target-scroll-by` scroll scenario - see
+`docs/CI_CD.md` for the current readiness coverage.
 
 `scripts/dev/builtCliTargetsFileSmoke.mjs` is a separate, narrower v0.2
 development smoke, added alongside the `--targets-file` implementation: it

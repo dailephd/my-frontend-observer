@@ -45,8 +45,8 @@ Playwright or the filesystem-write path directly. Batch 6 closed the
 remaining real-Chromium coverage gap (a genuine navigation failure, distinct
 from a readiness timeout or a pre-launch safety rejection) and validated the
 packed npm tarball end to end in a clean consumer environment, independent
-of the source checkout. There is still no controlled-scroll/comparison
-behavior.
+of the source checkout. At the end of the v0.1 implementation there was no
+controlled-scroll or comparison behavior.
 
 ## Current v0.2 architecture (released/current architecture)
 

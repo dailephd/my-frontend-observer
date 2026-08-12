@@ -52,8 +52,8 @@ Repository-local authorities and navigation:
   capability plan and cross-milestone rules.
 - [ROADMAP.md](ROADMAP.md) owns version-level direction without prewritten
   implementation batches.
-- [CURRENT_STATE.md](CURRENT_STATE.md) records only current scaffold and release
-  state.
+- [CURRENT_STATE.md](CURRENT_STATE.md) records current implementation and
+  release state.
 
 Historical greenfield artifacts and reports are retained as evidence that an
 earlier run overreached into v0.1; they are not current-state authority.
