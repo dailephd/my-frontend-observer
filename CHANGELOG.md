@@ -1,10 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 - 2026-08-12
 
-Runtime Scrolling, Overflow, and Visibility Behavior (v0.3). Implemented on
-the current source branch; **not yet published to npm** - the published
-package remains `0.2.0`.
+Runtime Scrolling, Overflow, and Visibility Behavior.
 
 - Bounded runtime scroll scenarios: an observation may configure zero or
   one scroll action, `window-scroll-by` or `target-scroll-by` (signed
@@ -46,8 +44,11 @@ package remains `0.2.0`.
   either `--target` or `--targets-file`; the file path is operational input
   only, never persisted and never part of request identity, exactly like
   `--targets-file`'s path.
-- Observation schema `1.2.0` (additive over `1.1.0`); package version
-  unchanged.
+- Observation schema `1.2.0` (additive over `1.1.0`).
+- Cross-platform packed-candidate validation: one hash-verified npm
+  candidate tarball proven on Windows, Linux, and macOS, covering the
+  legacy `--target` CSS shorthand, the structured `--targets-file`
+  semantic-target path, and both `--scroll-scenario-file` action kinds.
 
 ## 0.2.0 - 2026-08-11
 

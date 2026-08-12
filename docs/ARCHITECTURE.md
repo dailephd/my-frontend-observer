@@ -3,7 +3,7 @@
 ## Current scaffold architecture
 
 The current repository is one published TypeScript ESM package
-(`my-frontend-observer@0.2.0`):
+(`my-frontend-observer@0.3.0`):
 
 - `src/cli.ts` is the real, thin `observe` command entry point (argument
   parsing/output only).
@@ -75,7 +75,7 @@ observation use case, and Playwright objects still never leave
 overall boundary chain (`CLI → normalizeRequest → observe() →
 runBrowserCapture → artifact writer`) are unchanged from v0.1.
 
-## Current v0.3 architecture (implemented on the current branch, not yet released)
+## Current v0.3 architecture (released/current architecture)
 
 v0.3 extends the same single-observation architecture again; it does not add
 a second browser lifecycle, target resolver, or artifact path.

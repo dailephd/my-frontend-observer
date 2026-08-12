@@ -79,16 +79,15 @@ locally after `npm run build`:
 node scripts/dev/builtCliTargetsFileSmoke.mjs
 ```
 
-`scripts/dev/builtCliScrollScenarioSmoke.mjs` is the v0.3 (source-branch,
-not yet released) equivalent, added alongside the
-`--scroll-scenario-file` implementation: it runs the built `dist/cli.js`
-directly against an inline disposable local HTTP fixture, once with a
-temporary `window-scroll-by` scenario file and once with a temporary
-structured `--targets-file` plus a `target-scroll-by` scenario file,
-proving both real runtime scroll actions persist a valid schema-`1.2.0`
-artifact with populated `scrollScenarioEvidence`, scenario-file path
-privacy, and target-application immutability. Run it locally after
-`npm run build`:
+`scripts/dev/builtCliScrollScenarioSmoke.mjs` is the v0.3 equivalent, added
+alongside the `--scroll-scenario-file` implementation: it runs the built
+`dist/cli.js` directly against an inline disposable local HTTP fixture,
+once with a temporary `window-scroll-by` scenario file and once with a
+temporary structured `--targets-file` plus a `target-scroll-by` scenario
+file, proving both real runtime scroll actions persist a valid
+schema-`1.2.0` artifact with populated `scrollScenarioEvidence`,
+scenario-file path privacy, and target-application immutability. Run it
+locally after `npm run build`:
 
 ```powershell
 node scripts/dev/builtCliScrollScenarioSmoke.mjs
@@ -99,5 +98,6 @@ smokes is wired into any CI workflow or is a release gate - they are
 source-checkout development evidence only, proving the built CLI's
 `--targets-file`/`--scroll-scenario-file` behavior without installing a
 packed tarball or requiring cross-platform infrastructure. Neither is part
-of the published package. Cross-platform packed validation of v0.3 scenario
-behavior is pre-release readiness's responsibility, not this batch's.
+of the published package. Cross-platform packed validation of the v0.3
+scroll-scenario behavior is `scripts/ci/runPackedObservationSmoke.mjs`'s
+responsibility (see `docs/CI_CD.md`), and has been completed.

@@ -15,18 +15,18 @@ The responsibility split is stable:
 
 ## Current repository state
 
-v0.1, Runtime Observation Foundation, and v0.2, Stable Semantic Targets and
-Region Identity, are released, published to npm (current version `0.2.0`,
-observation schema `1.1.0`) and validated as a packed npm tarball in a
+v0.1, Runtime Observation Foundation; v0.2, Stable Semantic Targets and
+Region Identity; and v0.3, Runtime Scrolling, Overflow, and Visibility
+Behavior, are released, published to npm (current version `0.3.0`,
+observation schema `1.2.0`) and validated as a packed npm tarball in a
 clean consumer environment across Windows, Linux, and macOS: a real
 `observe` CLI command launches Chromium, enforces loopback-only safety,
-captures bounded page/target evidence via either legacy CSS-shorthand
-targets or structured semantic `--targets-file` targets, and persists one
-portable local artifact - see `docs/CURRENT_STATE.md` for the
-implementation summary. v0.3, Runtime Scrolling, Overflow, and Visibility
-Behavior, is implemented on the current source branch (observation schema
-`1.2.0`) but not yet released - the published npm package remains `0.2.0`
-without v0.3 behavior. v0.4–v0.10 remain future and unimplemented.
+captures bounded page/target evidence via legacy CSS-shorthand targets,
+structured semantic `--targets-file` targets, or a bounded
+`--scroll-scenario-file` runtime scroll scenario (`window-scroll-by` or
+`target-scroll-by`), and persists one portable local artifact - see
+`docs/CURRENT_STATE.md` for the implementation summary. v0.4–v0.10 remain
+future and unimplemented.
 
 The revised dependency path reaches practical coding-agent use before graphical
 interaction:

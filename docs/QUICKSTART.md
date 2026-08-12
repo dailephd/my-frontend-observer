@@ -22,9 +22,8 @@ node dist/cli.js observe `
 This launches Chromium, captures a screenshot plus bounded page/target
 evidence, and writes one portable artifact under `observations/<observation-id>/`.
 See [COMMANDS.md](COMMANDS.md) for the full flag reference, including the
-`--targets-file` structured semantic-target input and (current source
-branch only, not yet published) the `--scroll-scenario-file` bounded
-runtime scroll scenario input.
+`--targets-file` structured semantic-target input and the
+`--scroll-scenario-file` bounded runtime scroll scenario input.
 
 To validate the repository itself instead:
 

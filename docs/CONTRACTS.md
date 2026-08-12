@@ -2,12 +2,12 @@
 
 ## Current contracts
 
-The observation artifact contract is published as `my-frontend-observer@0.2.0`
+The observation artifact contract is published as `my-frontend-observer@0.3.0`
 and proven both from the source checkout and from the packed npm tarball,
-on Windows, Linux, and macOS. The observation schema is `1.1.0` (see "v0.2
-target contract" below, shipped as part of this release):
+on Windows, Linux, and macOS. The observation schema is `1.2.0` (see "v0.2
+target contract" and "v0.3 scroll scenario contract" below):
 
-- artifact kind `my-frontend-observer/observation`, schema version `1.1.0`
+- artifact kind `my-frontend-observer/observation`, schema version `1.2.0`
   (independent of the package version);
 - one artifact root per observation, `<outputLocation>/<observationId>/`,
   containing exactly `manifest.json` (the full `ObservationArtifact`, with
@@ -85,12 +85,10 @@ observation produces exactly the same `manifest.json` shape (schema `1.1.0`)
 as a CSS-shorthand one. `--targets-file`'s local input path is never part of
 the persisted request identity or artifact.
 
-## v0.3 scroll scenario contract (implemented on the current branch, not yet released)
+## v0.3 scroll scenario contract (shipped as part of this release)
 
 v0.3 introduces one optional, additive request/evidence concern: a bounded
-runtime scroll scenario, schema `1.2.0`. Package version stays `0.2.0`; this
-contract is implemented and validated on `feature/v0.3-runtime-scrolling`
-but not yet published.
+runtime scroll scenario, schema `1.2.0`.
 
 A normalized request may carry `scrollScenario: { action }` with exactly one
 of two frozen action kinds:

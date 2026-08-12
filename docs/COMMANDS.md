@@ -63,7 +63,7 @@ diagnostics print one per line as `[code] message`.
 
 ### Structured semantic targets (`--targets-file`)
 
-**Current status: shipped as part of the published `my-frontend-observer@0.2.0`
+**Current status: shipped as part of the published `my-frontend-observer@0.3.0`
 package.** `--target` (CSS shorthand) remains fully supported alongside it.
 
 `--targets-file <json-file>` is the public entry point to the v0.2 canonical
@@ -130,9 +130,8 @@ my-frontend-observer observe `
 
 ### Scroll scenario (`--scroll-scenario-file`)
 
-**Current status: implemented on the current source branch (v0.3 Batches
-1-4), not yet released.** Package version remains `0.2.0`; the published
-package does not yet expose this flag. Observation schema is `1.2.0`.
+**Current status: shipped as part of the published `my-frontend-observer@0.3.0`
+package.** Observation schema is `1.2.0`.
 
 `--scroll-scenario-file <json-file>` is the public entry point to the v0.3
 runtime scroll-scenario contract established in `src/request/request.ts`
@@ -252,6 +251,7 @@ that any other unresolved configured target would produce.
   before publishing. The real tarball has been installed and exercised in a
   clean temporary consumer directory (real Chromium install, real `observe`
   run, real artifact) on Windows, Linux, and macOS as part of v0.1
-  validation, and again for v0.2's packed semantic `--targets-file`
-  behavior (`scripts/dev/builtCliTargetsFileSmoke.mjs`); this is local
+  validation, again for v0.2's packed semantic `--targets-file` behavior,
+  and again for v0.3's packed `--scroll-scenario-file` window/target scroll
+  behavior (`scripts/ci/runPackedObservationSmoke.mjs`); this is local
   package validation, not a release/publication step.

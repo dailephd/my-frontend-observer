@@ -61,4 +61,9 @@ with `derivedFrom` provenance, scenario transition evidence, and that
 neither the `--targets-file` nor the `--scroll-scenario-file` local path is
 ever persisted into the manifest - on every platform in the matrix, using
 the same single hash-verified candidate tarball as the legacy/semantic
-observations. Package version remains `0.2.0`; v0.3 is not yet released.
+observations. This was proven on `validation/v0.3-pre-release`
+(`e59621c2fb5a6d74f491a63dc79ebe6e8b62c175`), GitHub Actions run
+`31591920744`, which passed on Windows, Linux, and macOS using one
+hash-verified candidate tarball (SHA-256
+`da6cbc18a98d005b84a2f12c06f5c01d390006b53c02176a6c9cdc6d9b9d24d0`) - the
+release candidate for `v0.3.0`.

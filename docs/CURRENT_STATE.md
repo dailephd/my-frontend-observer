@@ -1,7 +1,7 @@
 # Current State
 
-The project is published at package version `0.2.0` (roadmap v0.2, Stable
-Semantic Targets and Region Identity; observation schema `1.1.0`).
+The project is published at package version `0.3.0` (roadmap v0.3, Runtime
+Scrolling, Overflow, and Visibility Behavior; observation schema `1.2.0`).
 
 ## Greenfield foundation established
 
@@ -175,11 +175,11 @@ schema `1.1.0`.
   `dist/cli.js` (not just the imported `runCli()` function) performs a real
   semantic `--targets-file` observation end to end.
 
-## v0.3 status (Runtime Scrolling, Overflow, and Visibility Behavior) - implemented on this branch, not yet released
+## v0.3 status (Runtime Scrolling, Overflow, and Visibility Behavior) - released as 0.3.0
 
-v0.3 (Batches 1-4) is feature-complete on `feature/v0.3-runtime-scrolling`.
-Package version remains `0.2.0`; observation schema is `1.2.0`. v0.3 has not
-been released/published.
+v0.3 is implemented and released as package version `0.3.0`, observation
+schema `1.2.0`. It was validated as a packed npm tarball in a clean
+consumer environment on Windows, Linux, and macOS before release.
 
 - **Batch 1** froze the `scrollScenario` request/identity/schema contract:
   `ScrollScenario { action }` with exactly two action kinds
@@ -230,5 +230,6 @@ been released/published.
 
 ## Next target
 
-v0.2 is implemented, validated, and released as `0.2.0`. v0.3 (Runtime
-Scrolling, Overflow, and Visibility Behavior) is the next planned version.
+v0.1, v0.2, and v0.3 are implemented, validated, and released (`0.1.0`,
+`0.2.0`, `0.3.0`). v0.4 (Layout Relationships, Dependency Evidence, and
+Before/After Comparison) is the next planned version.
