@@ -105,29 +105,50 @@ export function deriveScrollScenarioTransition(initial: ScrollRuntimeSnapshot, f
 }
 
 /**
- * Conservative window-scenario-only scroll-owner derivation (Batch 2 scope):
- * relies solely on observed scroll-*position* changes, never on a target's
- * bounding-rectangle movement (which moves for every configured target
- * whenever the document scrolls, regardless of who "owns" scrolling - using
- * it here would falsely attribute document scrolling to every visible
- * target). Because Batch 2 never executes `target-scroll-by`, a competing
- * target scroll-position change cannot actually occur yet; the
- * `indeterminate` branch exists only so the pure helper already honors the
- * full frozen `ScrollOwnerInterpretation` vocabulary ahead of Batch 3, which
- * proves real nested/target ownership.
+ * Conservative scroll-owner derivation, shared by both `window-scroll-by`
+ * and `target-scroll-by` scenarios: relies solely on observed scroll
+ * *position* changes (`scrollTop`/`scrollLeft`/`window.scrollX`/
+ * `window.scrollY`), never on a target's bounding-rectangle movement (which
+ * moves for every configured target whenever the document scrolls,
+ * regardless of who "owns" scrolling - using it here would falsely
+ * attribute document scrolling to every visible target) and never on
+ * computed overflow, `position: fixed`/`sticky`, target name, locator kind,
+ * or DOM hierarchy.
+ *
+ * Rules (frozen Batch 1 vocabulary):
+ * - no window movement, no target movement -> `none`;
+ * - window movement, no competing target movement -> `document`;
+ * - no window movement, exactly one target's own scroll position moved
+ *   (on either or both axes - two axes of the *same* target is still one
+ *   owner) -> `target:<name>`;
+ * - anything else (window plus a target, or more than one target) ->
+ *   `indeterminate` - multiple plausible owners, never forced to pick one.
  */
-export function deriveWindowScrollOwner(transition: ScrollScenarioTransition): EvidenceField<ScrollOwnerInterpretation> {
+export function deriveScrollOwner(transition: ScrollScenarioTransition): EvidenceField<ScrollOwnerInterpretation> {
   const windowMoved = transition.windowScrollX.changed || transition.windowScrollY.changed;
-  const competingTargets = Object.entries(transition.targets).filter(([, t]) => t.scrollTop.changed || t.scrollLeft.changed);
+  const changedTargetNames = Object.entries(transition.targets)
+    .filter(([, t]) => t.scrollTop.changed || t.scrollLeft.changed)
+    .map(([name]) => name);
 
   let value: ScrollOwnerInterpretation;
-  const derivedFrom = ['window.scrollX', 'window.scrollY', ...competingTargets.map(([name]) => `${name}.scrollTop`)];
-  if (!windowMoved && competingTargets.length === 0) {
+  let derivedFrom: string[];
+
+  if (!windowMoved && changedTargetNames.length === 0) {
     value = { kind: 'none' };
-  } else if (windowMoved && competingTargets.length === 0) {
+    derivedFrom = ['window.scrollX', 'window.scrollY', ...Object.keys(transition.targets).flatMap((name) => [`${name}.scrollTop`, `${name}.scrollLeft`])];
+  } else if (windowMoved && changedTargetNames.length === 0) {
     value = { kind: 'document' };
+    derivedFrom = ['window.scrollX', 'window.scrollY'];
+  } else if (!windowMoved && changedTargetNames.length === 1) {
+    const target = changedTargetNames[0] as string;
+    value = { kind: 'target', target };
+    derivedFrom = [`${target}.scrollTop`, `${target}.scrollLeft`];
   } else {
     value = { kind: 'indeterminate' };
+    derivedFrom = [
+      ...(windowMoved ? ['window.scrollX', 'window.scrollY'] : []),
+      ...changedTargetNames.flatMap((name) => [`${name}.scrollTop`, `${name}.scrollLeft`]),
+    ];
   }
 
   return { state: 'available', source: 'derived', value, derivedFrom };

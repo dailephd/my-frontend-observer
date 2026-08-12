@@ -5,9 +5,9 @@ import { DIAGNOSTIC_SEVERITY } from '../domain/diagnostics.js';
 import type { EvidenceField } from '../domain/evidence.js';
 import type { ScrollScenarioEvidence, TargetEvidenceRecord } from '../domain/schema.js';
 import { classifyUrl, classifyRedirect, classifySubresource, classifyPopup, classifyDownload } from '../safety/policy.js';
-import { capturePageEvidence, captureTargetEvidence, resolveConfiguredTargets } from './evidenceCapture.js';
-import { captureScrollRuntimeSnapshot, performWindowScrollBy, waitTwoAnimationFrames } from './scrollCapture.js';
-import { deriveScrollScenarioTransition, deriveWindowScrollOwner } from '../domain/scrollEvidence.js';
+import { capturePageEvidence, captureTargetEvidence, resolveConfiguredTargets, findResolvedTarget } from './evidenceCapture.js';
+import { captureScrollRuntimeSnapshot, performWindowScrollBy, performTargetScrollBy, waitTwoAnimationFrames } from './scrollCapture.js';
+import { deriveScrollScenarioTransition, deriveScrollOwner } from '../domain/scrollEvidence.js';
 import type { BrowserCaptureResult, BrowserProvenance } from './types.js';
 
 export type { BrowserCaptureResult, BrowserProvenance } from './types.js';
@@ -44,21 +44,6 @@ export async function captureViewportInternal(request: NormalizedObservationRequ
   const initialDecision = classifyUrl(request.targetUrl);
   if (!initialDecision.allowed) {
     return { result: { ok: false, diagnostics: [initialDecision.diagnostic] }, browserConnected: false };
-  }
-
-  // v0.3 Batch 2 implements real window-scroll-by execution below.
-  // target-scroll-by remains Batch 3's responsibility, so a request
-  // configuring it must still fail honestly here - before any browser/page
-  // is even launched - rather than silently ignoring it or reinterpreting it
-  // as a window scroll.
-  if (request.scrollScenario && request.scrollScenario.action.kind === 'target-scroll-by') {
-    return {
-      result: {
-        ok: false,
-        diagnostics: [{ code: 'unsupported-configuration', severity: 'error', message: 'target-scroll-by execution is not yet supported' }],
-      },
-      browserConnected: false,
-    };
   }
 
   let browser: Browser | undefined;
@@ -143,26 +128,44 @@ export async function captureViewportInternal(request: NormalizedObservationRequ
     } else if (navigationError) {
       result = { ok: false, diagnostics: [...diagnostics, classifyNavigationError(navigationError, request.readiness.timeoutMs)] };
     } else {
-      // v0.3 Batch 2: for a window-scroll-by request, resolve configured
-      // targets exactly once (reusing the same canonical
-      // resolveConfiguredTargets algorithm captureTargetEvidence uses below),
-      // capture the initial runtime snapshot, perform the immediate window
-      // scroll, wait the frozen two-animation-frame stabilization, and
-      // capture the final runtime snapshot - all before the screenshot and
-      // ordinary page/target evidence below, so every one of those
-      // downstream captures describes only the final post-action state. No
-      // second navigation, page, or observation ever happens.
+      // v0.3 Batch 2/3: for a scenario request, resolve configured targets
+      // exactly once (reusing the same canonical resolveConfiguredTargets
+      // algorithm captureTargetEvidence uses below), capture the initial
+      // runtime snapshot, perform the one immediate scroll action (window or
+      // the uniquely-resolved action target - same two-animation-frame
+      // stabilization either way), and capture the final runtime snapshot -
+      // all before the screenshot and ordinary page/target evidence below,
+      // so every one of those downstream captures describes only the final
+      // post-action state. No second navigation, page, or observation ever
+      // happens.
       let scrollScenarioEvidence: ScrollScenarioEvidence | undefined;
       if (request.scrollScenario) {
         const action = request.scrollScenario.action;
         const resolvedForScenario = await resolveConfiguredTargets(page, request.targets);
         try {
           const initial = await captureScrollRuntimeSnapshot(page, resolvedForScenario, request.viewport);
-          await performWindowScrollBy(page, action.deltaX, action.deltaY);
+
+          if (action.kind === 'window-scroll-by') {
+            await performWindowScrollBy(page, action.deltaX, action.deltaY);
+          } else {
+            const actionTarget = findResolvedTarget(resolvedForScenario, action.target);
+            if (actionTarget?.status === 'matched' && actionTarget.handle) {
+              await performTargetScrollBy(actionTarget.handle, action.deltaX, action.deltaY);
+            }
+            // else: the configured action target could not be uniquely
+            // resolved at runtime (not-found/ambiguous/unavailable) - no
+            // scroll is performed and no movement is fabricated. The
+            // existing target-missing/target-ambiguous/target-hidden/
+            // browser-evidence-unavailable diagnostic for this same target
+            // name still surfaces below from the ordinary
+            // captureTargetEvidence pass, so the unresolved action target
+            // remains honestly explained rather than silently ignored.
+          }
+
           await waitTwoAnimationFrames(page);
           const final = await captureScrollRuntimeSnapshot(page, resolvedForScenario, request.viewport);
           const transition = deriveScrollScenarioTransition(initial, final);
-          const scrollOwner = deriveWindowScrollOwner(transition);
+          const scrollOwner = deriveScrollOwner(transition);
           scrollScenarioEvidence = { initial, final, transition, scrollOwner };
         } finally {
           await Promise.all(resolvedForScenario.filter((info) => info.handle).map((info) => info.handle!.dispose()));

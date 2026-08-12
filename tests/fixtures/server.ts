@@ -109,21 +109,31 @@ export const OBSERVATION_FIXTURE_SEMANTIC_STATE = {
 export const OBSERVATION_DISAPPEARING_FIXTURE_SELECTOR = '#disappearing-target';
 
 /**
- * v0.3 Batch 2: deterministic fixture for the `/scroll` route. `body` is
+ * v0.3 Batch 2/3: deterministic fixture for the `/scroll` route. `body` is
  * 3000x3000px against an 800x600 test viewport, giving real, measurable
  * horizontal and vertical document overflow. `#above-target` starts inside
  * the viewport and leaves it after a large downward scroll; `#below-target`
  * starts below the viewport and enters it. `#no-overflow-box` deliberately
  * declares `overflow: auto` while its content fits exactly, proving actual
  * dimensional overflow is measured, never inferred from the CSS declaration
- * alone. `#hidden-scroll-target` is `display: none`, for the hidden-vs-
- * offscreen viewport-relation case.
+ * alone (also reused as Batch 3's non-scrollable `target-scroll-by` action
+ * target). `#hidden-scroll-target` is `display: none`, for the hidden-vs-
+ * offscreen viewport-relation case (also reused as Batch 3's hidden action
+ * target). `#nested-v-container`/`#nested-h-container` are Batch 3's
+ * independently-scrollable nested containers - each with its own
+ * `overflow: auto` and content taller/wider than its own box, entirely
+ * separate from the document's own scroll position.
  */
 export const SCROLL_FIXTURE_SELECTORS = {
   aboveTarget: '#above-target',
   belowTarget: '#below-target',
   hiddenTarget: '#hidden-scroll-target',
   noOverflowBox: '#no-overflow-box',
+  nestedVerticalContainer: '#nested-v-container',
+  nestedVerticalChild: '#nested-v-child',
+  nestedHorizontalContainer: '#nested-h-container',
+  duplicateScrollTarget: '.duplicate-scroll-target',
+  missingScrollTarget: '#does-not-exist-scroll-target',
 } as const;
 
 /** `above-target`'s initial (unscrolled) viewport-relative geometry against the fixture's own CSS. */
@@ -132,6 +142,18 @@ export const SCROLL_FIXTURE_ABOVE_TARGET_INITIAL_TOP = 20;
 export const SCROLL_FIXTURE_BELOW_TARGET_INITIAL_TOP = 1400;
 /** Total scrollable document height/width for the `/scroll` fixture body. */
 export const SCROLL_FIXTURE_DOCUMENT_SIZE = 3000;
+
+/** `#nested-v-container`'s own box size and total scrollable content height (independent of the document's own 3000x3000 scroll range). */
+export const SCROLL_FIXTURE_NESTED_V_CONTAINER = { width: 300, height: 200 };
+export const SCROLL_FIXTURE_NESTED_V_CONTENT_HEIGHT = 1000;
+/** `#nested-v-child`'s offset from the top of `#nested-v-content`, chosen so the child sits below the browser viewport at container.scrollTop=0 and inside it once the container scrolls far enough. */
+export const SCROLL_FIXTURE_NESTED_V_CHILD_CONTENT_OFFSET_TOP = 600;
+export const SCROLL_FIXTURE_NESTED_V_CONTAINER_TOP = 20;
+export const SCROLL_FIXTURE_NESTED_V_CONTAINER_LEFT = 200;
+
+/** `#nested-h-container`'s own box size and total scrollable content width. */
+export const SCROLL_FIXTURE_NESTED_H_CONTAINER = { width: 200, height: 100 };
+export const SCROLL_FIXTURE_NESTED_H_CONTENT_WIDTH = 1000;
 
 const SCROLL_FIXTURE_HTML = `<!doctype html>
 <html>
@@ -146,6 +168,33 @@ const SCROLL_FIXTURE_HTML = `<!doctype html>
   #hidden-scroll-target { display: none; }
   #no-overflow-box { position: absolute; top: 2000px; left: 20px; width: 200px; height: 100px; overflow: auto; }
   #no-overflow-content { width: 100px; height: 50px; }
+  #nested-v-container {
+    position: absolute;
+    top: ${SCROLL_FIXTURE_NESTED_V_CONTAINER_TOP}px;
+    left: ${SCROLL_FIXTURE_NESTED_V_CONTAINER_LEFT}px;
+    width: ${SCROLL_FIXTURE_NESTED_V_CONTAINER.width}px;
+    height: ${SCROLL_FIXTURE_NESTED_V_CONTAINER.height}px;
+    overflow: auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  #nested-v-content { width: 280px; height: ${SCROLL_FIXTURE_NESTED_V_CONTENT_HEIGHT}px; margin: 0; padding: 0; }
+  #nested-v-spacer { height: ${SCROLL_FIXTURE_NESTED_V_CHILD_CONTENT_OFFSET_TOP}px; }
+  #nested-v-child { width: 100px; height: 50px; background: #ddd; }
+  #nested-h-container {
+    position: absolute;
+    top: 250px;
+    left: ${SCROLL_FIXTURE_NESTED_V_CONTAINER_LEFT}px;
+    width: ${SCROLL_FIXTURE_NESTED_H_CONTAINER.width}px;
+    height: ${SCROLL_FIXTURE_NESTED_H_CONTAINER.height}px;
+    overflow: auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  #nested-h-content { width: ${SCROLL_FIXTURE_NESTED_H_CONTENT_WIDTH}px; height: 80px; margin: 0; padding: 0; }
+  .duplicate-scroll-target { position: absolute; top: 400px; left: 500px; width: 40px; height: 20px; }
 </style>
 </head>
 <body>
@@ -153,6 +202,17 @@ const SCROLL_FIXTURE_HTML = `<!doctype html>
   <div id="below-target">Below</div>
   <div id="hidden-scroll-target">Hidden</div>
   <div id="no-overflow-box"><div id="no-overflow-content"></div></div>
+  <div id="nested-v-container">
+    <div id="nested-v-content">
+      <div id="nested-v-spacer"></div>
+      <div id="nested-v-child">Nested Child</div>
+    </div>
+  </div>
+  <div id="nested-h-container">
+    <div id="nested-h-content">Wide nested content</div>
+  </div>
+  <div class="duplicate-scroll-target">Dup A</div>
+  <div class="duplicate-scroll-target">Dup B</div>
 </body>
 </html>`;
 

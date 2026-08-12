@@ -4,7 +4,7 @@ import {
   deriveOverflowEvidence,
   deriveTargetScrollTransition,
   deriveScrollScenarioTransition,
-  deriveWindowScrollOwner,
+  deriveScrollOwner,
 } from '../../src/domain/scrollEvidence.js';
 import type { TargetGeometry, ScrollableMetrics, TargetScrollRuntimeState, ScrollRuntimeSnapshot, ViewportRelationEvidence } from '../../src/domain/schema.js';
 
@@ -134,20 +134,93 @@ describe('deriveScrollScenarioTransition', () => {
   });
 });
 
-describe('deriveWindowScrollOwner', () => {
+function unwrapAvailable(field: ReturnType<typeof deriveScrollOwner>) {
+  if (field.state !== 'available') throw new Error('expected available');
+  return field;
+}
+
+describe('deriveScrollOwner', () => {
   it('derives "none" when nothing relevant changed', () => {
-    const owner = deriveWindowScrollOwner(deriveScrollScenarioTransition(snapshot(0, 0), snapshot(0, 0)));
-    expect(owner.state).toBe('available');
-    if (owner.state !== 'available') throw new Error('expected available');
+    const owner = unwrapAvailable(deriveScrollOwner(deriveScrollScenarioTransition(snapshot(0, 0), snapshot(0, 0))));
     expect(owner.source).toBe('derived');
     expect(owner.value).toEqual({ kind: 'none' });
     expect(owner.derivedFrom).toContain('window.scrollX');
   });
 
   it('derives "document" when only the window/document moved', () => {
-    const owner = deriveWindowScrollOwner(deriveScrollScenarioTransition(snapshot(0, 0), snapshot(0, 400)));
-    if (owner.state !== 'available') throw new Error('expected available');
+    const owner = unwrapAvailable(deriveScrollOwner(deriveScrollScenarioTransition(snapshot(0, 0), snapshot(0, 400))));
     expect(owner.value).toEqual({ kind: 'document' });
     expect(owner.source).toBe('derived');
+    expect(owner.derivedFrom).toEqual(['window.scrollX', 'window.scrollY']);
+  });
+
+  it('derives "target:<name>" when exactly one configured target\'s scroll position changed and the window did not', () => {
+    const relation: ViewportRelationEvidence = { vertical: 'intersecting', intersectsViewport: true, fullyWithinViewport: true };
+    const initialTargets = { workspace: targetState(metrics({ scrollTop: 0, scrollLeft: 0 }), rect(), relation) };
+    const finalTargets = { workspace: targetState(metrics({ scrollTop: 200, scrollLeft: 0 }), rect(), relation) };
+    const owner = unwrapAvailable(deriveScrollOwner(deriveScrollScenarioTransition(snapshot(0, 0, initialTargets), snapshot(0, 0, finalTargets))));
+    expect(owner.value).toEqual({ kind: 'target', target: 'workspace' });
+    expect(owner.source).toBe('derived');
+    expect(owner.derivedFrom).toEqual(['workspace.scrollTop', 'workspace.scrollLeft']);
+  });
+
+  it('is still one target owner when both scrollTop and scrollLeft change on the same target', () => {
+    const relation: ViewportRelationEvidence = { vertical: 'intersecting', intersectsViewport: true, fullyWithinViewport: true };
+    const initialTargets = { panel: targetState(metrics({ scrollTop: 0, scrollLeft: 0 }), rect(), relation) };
+    const finalTargets = { panel: targetState(metrics({ scrollTop: 150, scrollLeft: 75 }), rect(), relation) };
+    const owner = unwrapAvailable(deriveScrollOwner(deriveScrollScenarioTransition(snapshot(0, 0, initialTargets), snapshot(0, 0, finalTargets))));
+    expect(owner.value).toEqual({ kind: 'target', target: 'panel' });
+  });
+
+  it('derives "indeterminate" when more than one configured target\'s scroll position changed', () => {
+    const relation: ViewportRelationEvidence = { vertical: 'intersecting', intersectsViewport: true, fullyWithinViewport: true };
+    const initialTargets = {
+      a: targetState(metrics({ scrollTop: 0 }), rect(), relation),
+      b: targetState(metrics({ scrollTop: 0 }), rect(), relation),
+    };
+    const finalTargets = {
+      a: targetState(metrics({ scrollTop: 50 }), rect(), relation),
+      b: targetState(metrics({ scrollTop: 30 }), rect(), relation),
+    };
+    const owner = unwrapAvailable(deriveScrollOwner(deriveScrollScenarioTransition(snapshot(0, 0, initialTargets), snapshot(0, 0, finalTargets))));
+    expect(owner.value).toEqual({ kind: 'indeterminate' });
+    expect(owner.derivedFrom).toEqual(expect.arrayContaining(['a.scrollTop', 'a.scrollLeft', 'b.scrollTop', 'b.scrollLeft']));
+  });
+
+  it('derives "indeterminate" when both the window and a configured target scroll position changed', () => {
+    const relation: ViewportRelationEvidence = { vertical: 'intersecting', intersectsViewport: true, fullyWithinViewport: true };
+    const initialTargets = { workspace: targetState(metrics({ scrollTop: 0 }), rect(), relation) };
+    const finalTargets = { workspace: targetState(metrics({ scrollTop: 50 }), rect(), relation) };
+    const owner = unwrapAvailable(deriveScrollOwner(deriveScrollScenarioTransition(snapshot(0, 0, initialTargets), snapshot(0, 400, finalTargets))));
+    expect(owner.value).toEqual({ kind: 'indeterminate' });
+    expect(owner.derivedFrom).toEqual(expect.arrayContaining(['window.scrollX', 'window.scrollY', 'workspace.scrollTop', 'workspace.scrollLeft']));
+  });
+
+  it('does not attribute target ownership from bounding-rectangle movement alone (document scroll moves every target\'s geometry)', () => {
+    // window scrolled; the target's own scrollTop/scrollLeft never changed, only its
+    // viewport-relative bounding rectangle (as document scrolling naturally does for
+    // every configured target) - ownership must still resolve to "document", not "target".
+    const initial = targetState(metrics({ scrollTop: 0, scrollLeft: 0 }), rect({ y: 1400 }), {
+      vertical: 'below',
+      intersectsViewport: false,
+      fullyWithinViewport: false,
+    });
+    const final = targetState(metrics({ scrollTop: 0, scrollLeft: 0 }), rect({ y: 400 }), {
+      vertical: 'intersecting',
+      intersectsViewport: true,
+      fullyWithinViewport: true,
+    });
+    const owner = unwrapAvailable(
+      deriveScrollOwner(deriveScrollScenarioTransition(snapshot(0, 0, { below: initial }), snapshot(0, 1000, { below: final }))),
+    );
+    expect(owner.value).toEqual({ kind: 'document' });
+  });
+
+  it('does not attribute document ownership from nested-target scrolling alone (window unchanged)', () => {
+    const relation: ViewportRelationEvidence = { vertical: 'intersecting', intersectsViewport: true, fullyWithinViewport: true };
+    const initialTargets = { container: targetState(metrics({ scrollTop: 0 }), rect(), relation) };
+    const finalTargets = { container: targetState(metrics({ scrollTop: 300 }), rect(), relation) };
+    const owner = unwrapAvailable(deriveScrollOwner(deriveScrollScenarioTransition(snapshot(0, 0, initialTargets), snapshot(0, 0, finalTargets))));
+    expect(owner.value).toEqual({ kind: 'target', target: 'container' });
   });
 });

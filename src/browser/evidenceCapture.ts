@@ -408,6 +408,19 @@ export interface ResolvedTargetInfo {
 }
 
 /**
+ * Looks up one already-resolved configured target by its stable observer
+ * name (case-insensitively, matching the same case-insensitive comparison
+ * `request.ts#normalizeRequest` already uses for target-name uniqueness) -
+ * never a second locator/resolution algorithm, just a lookup into the
+ * `resolveConfiguredTargets` result already computed once for this
+ * observation.
+ */
+export function findResolvedTarget(resolved: readonly ResolvedTargetInfo[], name: string): ResolvedTargetInfo | undefined {
+  const lower = name.toLowerCase();
+  return resolved.find((info) => info.name.toLowerCase() === lower);
+}
+
+/**
  * The one canonical target-resolution algorithm (Phase 1 of the v0.2 Batch 3
  * three-phase design below), exported so v0.3 Batch 2 scroll-scenario
  * runtime-snapshot capture can resolve configured targets exactly once and

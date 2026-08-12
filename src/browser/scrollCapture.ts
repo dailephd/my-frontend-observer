@@ -181,6 +181,24 @@ export async function performWindowScrollBy(page: Page, deltaX: number, deltaY: 
   );
 }
 
+/**
+ * Immediate, non-smooth scroll of one uniquely-resolved configured target
+ * element, using the same `behavior: 'instant'` primitive as
+ * {@link performWindowScrollBy} - one stabilization/execution contract for
+ * both action kinds, never a forked one. `element.scrollBy` is a real,
+ * browser-native immediate-scroll method on every `Element` (no dependency
+ * on the target actually being scrollable - a non-overflowing target simply
+ * produces no position change, which is a valid, honestly-reported outcome).
+ */
+export async function performTargetScrollBy(handle: NonNullable<ResolvedTargetInfo['handle']>, deltaX: number, deltaY: number): Promise<void> {
+  await handle.evaluate(
+    (el: Element, { deltaX, deltaY }: { deltaX: number; deltaY: number }) => {
+      el.scrollBy({ left: deltaX, top: deltaY, behavior: 'instant' });
+    },
+    { deltaX, deltaY },
+  );
+}
+
 /** The Batch 1 frozen stabilization contract: exactly two `requestAnimationFrame` cycles on the live page, no timers/sleeps/network-idle substitutes. */
 export async function waitTwoAnimationFrames(page: Page): Promise<void> {
   await page.evaluate(

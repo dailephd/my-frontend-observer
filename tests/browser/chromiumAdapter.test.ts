@@ -134,7 +134,7 @@ describe('chromiumAdapter (Batch 2 browser boundary)', () => {
     expect(browserConnected).toBe(false);
   });
 
-  it('v0.3 Batch 2: target-scroll-by remains honestly unsupported (unsupported-configuration) without launching a browser', async () => {
+  it('v0.3 Batch 3: target-scroll-by now executes through the normal single-lifecycle capture (no pre-launch rejection)', async () => {
     const request = baseRequest({
       targetUrl: `${fixtures.baseUrl}/normal`,
       targets: [{ name: 'workspace', locators: [{ kind: 'css', selector: 'body' }] }],
@@ -143,13 +143,11 @@ describe('chromiumAdapter (Batch 2 browser boundary)', () => {
 
     const { result, browserConnected } = await captureViewportInternal(request);
 
-    expect(result.ok).toBe(false);
-    if (result.ok) throw new Error('expected failure result');
-    expect(result.diagnostics).toHaveLength(1);
-    expect(result.diagnostics[0]?.code).toBe('unsupported-configuration');
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.scrollScenarioEvidence).toBeDefined();
 
-    // Not silently ignored, not reinterpreted as a window scroll, and not
-    // partially executed - no browser launched.
+    // Same one-lifecycle guarantee as every other request: cleanly closed after the one capture.
     expect(browserConnected).toBe(false);
   });
 
