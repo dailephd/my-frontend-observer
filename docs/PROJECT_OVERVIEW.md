@@ -23,7 +23,10 @@ clean consumer environment across Windows, Linux, and macOS: a real
 captures bounded page/target evidence via either legacy CSS-shorthand
 targets or structured semantic `--targets-file` targets, and persists one
 portable local artifact - see `docs/CURRENT_STATE.md` for the
-implementation summary. v0.3–v0.10 remain future and unimplemented.
+implementation summary. v0.3, Runtime Scrolling, Overflow, and Visibility
+Behavior, is implemented on the current source branch (observation schema
+`1.2.0`) but not yet released - the published npm package remains `0.2.0`
+without v0.3 behavior. v0.4–v0.10 remain future and unimplemented.
 
 The revised dependency path reaches practical coding-agent use before graphical
 interaction:

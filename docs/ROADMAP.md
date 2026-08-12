@@ -60,6 +60,10 @@ identity persistence rules from current evidence.
 
 ## v0.3 — Runtime Scrolling, Overflow, and Visibility Behavior
 
+Current status: implemented on the current feature branch (observation
+schema `1.2.0`); not yet released or published to npm. See
+`docs/CURRENT_STATE.md` for the implementation summary.
+
 Objective/problem: show which container actually scrolls and what becomes
 visible, clipped, or overflowing after controlled actions. Required capabilities
 are bounded action scenarios, before/after window and target scroll positions,
