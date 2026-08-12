@@ -25,8 +25,11 @@ captures bounded page/target evidence via legacy CSS-shorthand targets,
 structured semantic `--targets-file` targets, or a bounded
 `--scroll-scenario-file` runtime scroll scenario (`window-scroll-by` or
 `target-scroll-by`), and persists one portable local artifact - see
-`docs/CURRENT_STATE.md` for the implementation summary. v0.4–v0.10 remain
-future and unimplemented.
+`docs/CURRENT_STATE.md` for the implementation summary. v0.4, Layout
+Relationships, Dependency Evidence, and Before/After Comparison, is
+implementation feature-complete on `feature/v0.4-layout-comparison` but not
+yet released - the published npm package remains `0.3.0` and does not
+include `compare`. v0.5–v0.10 remain future and unimplemented.
 
 The revised dependency path reaches practical coding-agent use before graphical
 interaction:

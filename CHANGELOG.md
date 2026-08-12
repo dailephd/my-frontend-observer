@@ -1,5 +1,59 @@
 # Changelog
 
+## Unreleased
+
+Layout Relationships, Dependency Evidence, and Before/After Comparison
+(v0.4). Implemented on `feature/v0.4-layout-comparison`; not yet published -
+the package version below remains the current published release.
+
+- New comparison artifact kind `my-frontend-observer/comparison`, schema
+  `1.0.0` - independent of and never reused for the observation schema.
+- Canonical layout-relationship derivation from a single observation:
+  horizontal order (`left-of`/`right-of`/`horizontally-overlapping`),
+  vertical order (`above`/`below`/`vertically-overlapping`), area overlap,
+  relative width, geometric fit (kept explicitly distinct from DOM
+  containment), vertical sequencing (`follows-vertically`), and document-
+  width fit/exceeds-viewport - bounded to configured targets, with explicit
+  evidence-path provenance and honest unresolved-target handling.
+- Comparability analysis, evaluated before any rendered difference:
+  `comparable` / `comparable-with-warnings` / `incomparable`, with
+  structured reasons (hard mismatches on page URL, viewport, browser
+  engine, or scroll-scenario configuration; warnings for producer/browser
+  version and target-configuration differences; theme/authenticated-state/
+  application-state recorded as unassessed, never silently equal).
+- Before/after target and page differences: appeared/disappeared (never
+  confused with a target added/removed from configuration), moved, resized,
+  visibility changes, clipping changes (reusing one canonical clipping
+  derivation), actual horizontal/vertical dimensional-overflow changes, DOM
+  containment changes, page-size changes, and scroll-owner changes - each a
+  structured record with before/after values, deltas where meaningful, and
+  supporting evidence references.
+- Relationship-change detection between two observations, matched by
+  relationship family and subject/related target (never array position),
+  including a `relative-position-changed` distinction from plain absolute
+  target movement.
+- Explicit, non-causal expected-dependency evidence: a caller may declare an
+  expected relationship between two targets' `x`/`y`/`width`/`height`
+  properties and `increase`/`decrease`/`change`/`unchanged` directions; each
+  declaration evaluates independently to `consistent` / `not-observed` /
+  `contradictory-to-declaration` / `unavailable`. The observer never infers
+  a dependency from observed co-change and never produces a causal claim.
+- Deterministic, direction-sensitive comparison identity
+  (`comparisonRequestId`) plus a fresh `comparisonId` per execution;
+  operational filesystem paths never affect identity and are never written
+  into the persisted manifest.
+- Atomic comparison-artifact persistence: `<outputLocation>/<comparisonId>/
+  manifest.json` only - no screenshot bytes are copied; the manifest
+  retains logical references to the source observations' own
+  `screenshot.path`. Source observations are never modified.
+- New public `compare` command: `my-frontend-observer compare --before
+  <observation-artifact-root> --after <observation-artifact-root> --output
+  <directory> [--config-file <json-file>]`. Reads two already-persisted
+  observation artifacts and never launches a browser. `comparable`,
+  `comparable-with-warnings`, and `incomparable` all persist successfully
+  and exit `0`; only invalid syntax, an unreadable/invalid source artifact,
+  invalid configuration, or a failed write exits nonzero.
+
 ## 0.3.0 - 2026-08-12
 
 Runtime Scrolling, Overflow, and Visibility Behavior.

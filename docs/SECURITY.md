@@ -24,6 +24,19 @@ tests:
   unexpected internal error);
 - the observed target's own content/source is never modified by observation.
 
+## Comparison (`compare`, current source, unreleased v0.4)
+
+`my-frontend-observer compare` (implemented on `feature/v0.4-layout-comparison`,
+not yet published) introduces no new network or browser surface: it never
+launches Chromium, never navigates, and never re-observes a target - it only
+reads two local, already-persisted observation-artifact `manifest.json`
+files (`src/artifacts/artifactReader.ts`) through the same structural
+validator the observation writer uses, computes a pure in-memory
+comparison, and writes one local comparison `manifest.json`
+(`src/artifacts/comparisonArtifactWriter.ts`). Manifest content is parsed
+as JSON only and is never executed (no `eval`, no dynamic code loading from
+a manifest).
+
 ## Not yet addressed
 
 Certificate-failure-specific handling, permission-prompt-specific handling

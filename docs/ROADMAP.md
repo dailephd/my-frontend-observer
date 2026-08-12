@@ -77,6 +77,11 @@ syntax, stabilization, and visibility thresholds.
 
 ## v0.4 — Layout Relationships, Dependency Evidence, and Before/After Comparison
 
+Current status: implementation is feature-complete on
+`feature/v0.4-layout-comparison`; pre-release readiness and publication
+remain pending. Published npm remains `0.3.0`. See `docs/CURRENT_STATE.md`
+for the implementation summary.
+
 Objective/problem: explain whole-layout consequences rather than isolated
 numbers. Required capabilities are containment/order/overlap/fit relationships,
 comparable observation identity, before/after differences, appearance and
