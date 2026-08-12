@@ -119,8 +119,7 @@ source-checkout development evidence only, proving the built CLI's
 `--targets-file`/`--scroll-scenario-file`/`compare` behavior without
 installing a packed tarball or requiring cross-platform infrastructure.
 None is part of the published package. Cross-platform packed validation of
-the v0.3 scroll-scenario behavior is `scripts/ci/runPackedObservationSmoke.mjs`'s
-responsibility (see `docs/CI_CD.md`), and has been completed; packed
-validation of the v0.4 `compare` command has **not** been added there yet -
-that remains a pre-release-readiness requirement, tracked in
-`docs/CI_CD.md`, not part of v0.4 implementation.
+both the v0.1-v0.3 observation behavior and the v0.4 `compare` command is
+`scripts/ci/runPackedObservationSmoke.mjs`'s responsibility (see
+`docs/CI_CD.md`) - the same script, against the same single candidate
+tarball per platform.
