@@ -175,16 +175,54 @@ schema `1.1.0`.
   `dist/cli.js` (not just the imported `runCli()` function) performs a real
   semantic `--targets-file` observation end to end.
 
+## v0.3 status (Runtime Scrolling, Overflow, and Visibility Behavior) - implemented on this branch, not yet released
+
+v0.3 (Batches 1-4) is feature-complete on `feature/v0.3-runtime-scrolling`.
+Package version remains `0.2.0`; observation schema is `1.2.0`. v0.3 has not
+been released/published.
+
+- **Batch 1** froze the `scrollScenario` request/identity/schema contract:
+  `ScrollScenario { action }` with exactly two action kinds
+  (`window-scroll-by`, `target-scroll-by`), signed-integer deltas bounded to
+  `[-20000, 20000]`, `target-scroll-by.target` referencing an existing stable
+  configured target name, scenario configuration participating in
+  `requestId` (runtime results never do), and the full bounded runtime
+  evidence model (`ScrollRuntimeSnapshot`, `ViewportRelationEvidence`,
+  `OverflowEvidence`, scenario transitions, `ScrollOwnerInterpretation`) in
+  schema `1.2.0` (up from `1.1.0`).
+- **Batch 2** implemented real `window-scroll-by` execution
+  (`src/browser/scrollCapture.ts`, `src/domain/scrollEvidence.ts`): initial/
+  final runtime snapshots around an immediate `window.scrollBy({behavior:
+  'instant'})` and exactly two `requestAnimationFrame` cycles, real vertical/
+  horizontal document scrolling, actual-vs-computed overflow, real viewport
+  relation, `enteredViewport`/`leftViewport`, and `document`/`none`
+  scroll-owner evidence - with ordinary final `pageEvidence`/`targetEvidence`
+  and the screenshot always describing the same final post-action state.
+- **Batch 3** implemented real `target-scroll-by` execution against the same
+  canonical `resolveConfiguredTargets` resolution already used by every v0.2
+  locator kind: real nested vertical/horizontal element scrolling, boundary
+  clamping, non-scrollable/no-movement targets, and the completed
+  `document`/`target:<name>`/`none`/`indeterminate` scroll-owner derivation
+  (`src/domain/scrollEvidence.ts#deriveScrollOwner`) - proven never to
+  attribute ownership from bounding-rectangle movement alone in either
+  direction. An unresolved/ambiguous/hidden action target is never scrolled
+  and never fabricated as moved; the existing target diagnostics explain it
+  honestly and the observation still persists.
+- **Batch 4** exposed the existing contract through the real public CLI:
+  `my-frontend-observer observe --scroll-scenario-file <json-file>` (see
+  `docs/COMMANDS.md`). The file supplies the `scrollScenario` value directly
+  (no wrapper field); the CLI/input layer only validates file readability,
+  JSON validity, and a non-array object root - every scenario/action rule
+  stays owned by the existing `normalizeRequest()`. Usable with either
+  `--target` or `--targets-file` (independent of target configuration, never
+  a third mutually-exclusive mode); the scenario-file path is operational
+  input only, never persisted and never part of request identity, exactly
+  like `--targets-file`'s path. CLI output/exit-code semantics are
+  unchanged. Proven via real Chromium (`tests/browser/cliObserve.test.ts`)
+  and the built `dist/cli.js` (`scripts/dev/builtCliScrollScenarioSmoke.mjs`).
+
 ## Not implemented
 
-- v0.3 Batch 1 (scroll scenario request/identity/schema contract), Batch 2
-  (real `window-scroll-by` execution and before/after runtime capture), and
-  Batch 3 (real `target-scroll-by`/nested-element scroll execution and full
-  document/target/none/indeterminate scroll-owner derivation) are
-  implemented on this branch, not yet released. See
-  `docs/CONTRACTS.md`/`src/domain/schema.ts` for the current schema-`1.2.0`
-  scroll-scenario evidence shape. No public CLI exposure of scroll scenarios
-  exists yet (v0.3 Batch 4).
 - Layout/spatial relationship engine, before/after comparison, frontend
   contracts/change scope, source ownership, my-dev-kit runtime/static
   integration, orchestrator/lab product integration, viewer, and annotation

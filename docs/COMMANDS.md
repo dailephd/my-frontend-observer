@@ -29,6 +29,10 @@ Options:
 - `--targets-file <json-file>` — loads structured semantic observation
   targets from a local JSON file instead of `--target`. Cannot be combined
   with `--target`. See "Structured semantic targets" below.
+- `--scroll-scenario-file <json-file>` — loads one bounded runtime scroll
+  scenario from a local JSON file. May be combined with either `--target` or
+  `--targets-file` (it is independent of target configuration). See "Scroll
+  scenario (`--scroll-scenario-file`)" below.
 - `--output <directory>` — portable, relative output location for the
   observation artifact (same contract as the request's `outputLocation`; no
   drive letter, no leading `/`, no `..` segments).
@@ -123,6 +127,104 @@ my-frontend-observer observe `
   --targets-file .\targets.json `
   --output observations
 ```
+
+### Scroll scenario (`--scroll-scenario-file`)
+
+**Current status: implemented on the current source branch (v0.3 Batches
+1-4), not yet released.** Package version remains `0.2.0`; the published
+package does not yet expose this flag. Observation schema is `1.2.0`.
+
+`--scroll-scenario-file <json-file>` is the public entry point to the v0.3
+runtime scroll-scenario contract established in `src/request/request.ts`
+(`ScrollScenario`/`ScrollAction`) and executed in `src/browser/`. It supplies
+exactly the value of the normalized request's `scrollScenario` field - the
+file root *is* the scenario object itself, with no wrapper field (unlike
+`--targets-file`'s `{ "targets": [...] }` root).
+
+A request supports **zero or one** scroll scenario. There are exactly two
+supported action kinds:
+
+Window scrolling:
+
+```json
+{
+  "action": {
+    "kind": "window-scroll-by",
+    "deltaX": 0,
+    "deltaY": 600
+  }
+}
+```
+
+Target scrolling (the `target` value must be the stable `name` of one of the
+observation's own configured targets - never a CSS selector, DOM id, or
+source symbol):
+
+```json
+{
+  "action": {
+    "kind": "target-scroll-by",
+    "target": "tool-workspace",
+    "deltaX": 0,
+    "deltaY": 400
+  }
+}
+```
+
+`deltaX`/`deltaY` are signed integers bounded to `[-20000, 20000]`; at least
+one must be non-zero (both zero is rejected). Every scroll/action rule -
+supported action kind, required fields, delta types/bounds, the both-zero
+rule, and the stable-target-name reference for `target-scroll-by` - is
+enforced by the same `normalizeRequest()` validator used everywhere else, not
+duplicated in CLI code; `--scroll-scenario-file` itself only validates that
+the file is readable, is valid JSON, and has a non-array object root.
+
+The observer performs the requested scroll immediately (no smooth-scroll
+animation), waits exactly two `requestAnimationFrame` cycles, and captures a
+final runtime snapshot - the same final state that the observation's ordinary
+`pageEvidence`, `targetEvidence`, and `screenshot.png` describe. The actual
+resulting scroll position is browser-authoritative and may be clamped by
+document/element boundaries; a scenario that produces no movement (already at
+a boundary, or a non-scrollable target) is still a valid, successfully
+persisted observation, never a fabricated failure.
+
+Usable with either target input mode:
+
+```powershell
+my-frontend-observer observe `
+  --url http://localhost:3000/ `
+  --target workspace=.workspace `
+  --scroll-scenario-file .\scroll.json `
+  --output observations
+```
+
+```powershell
+my-frontend-observer observe `
+  --url http://localhost:3000/ `
+  --targets-file .\targets.json `
+  --scroll-scenario-file .\scroll.json `
+  --output observations
+```
+
+`--target` and `--targets-file` remain mutually exclusive with each other,
+exactly as before; `--scroll-scenario-file` is independent of both and is
+never itself a third mutually-exclusive target mode. `window-scroll-by`
+requires no configured target at all.
+
+The path may be relative (resolved from the current working directory) or
+absolute; it is operational input only - like `--targets-file`'s path, it
+never affects the observation's request identity and is never written into
+`manifest.json`. Two different scenario files with identical content produce
+the same `requestId`; only the requested scenario *configuration*
+participates in identity, never the runtime outcome (actual scroll
+distance, clamping, or scroll-owner result).
+
+If a `target-scroll-by` scenario's configured action target cannot be
+uniquely resolved at runtime (missing, ambiguous, or otherwise unavailable),
+the scroll is not performed, no movement is fabricated, and the observation
+persists honestly - typically as `partial` - carrying the same
+`target-missing`/`target-ambiguous`/`browser-evidence-unavailable` diagnostic
+that any other unresolved configured target would produce.
 
 ## Foundation commands
 

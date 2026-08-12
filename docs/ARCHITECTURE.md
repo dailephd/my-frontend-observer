@@ -75,6 +75,39 @@ observation use case, and Playwright objects still never leave
 overall boundary chain (`CLI → normalizeRequest → observe() →
 runBrowserCapture → artifact writer`) are unchanged from v0.1.
 
+## Current v0.3 architecture (implemented on the current branch, not yet released)
+
+v0.3 extends the same single-observation architecture again; it does not add
+a second browser lifecycle, target resolver, or artifact path.
+`src/request/request.ts` adds one optional `scrollScenario` field to
+`NormalizedObservationRequest` (`ScrollScenario { action }`, exactly
+`window-scroll-by` or `target-scroll-by`); `src/domain/schema.ts` adds the
+matching bounded runtime evidence types (`ScrollRuntimeSnapshot`,
+`ViewportRelationEvidence`, `OverflowEvidence`, `ScrollScenarioTransition`,
+`ScrollOwnerInterpretation`) and structural validation for schema `1.2.0`
+(additive over `1.1.0`). `src/domain/scrollEvidence.ts` holds the pure,
+browser-independent derivations (viewport relation, actual overflow,
+transitions, and `deriveScrollOwner`) so they are unit-testable without
+Chromium. `src/browser/scrollCapture.ts` holds the one browser-side scenario
+capture module: it reuses `evidenceCapture.ts#resolveConfiguredTargets` (now
+exported) to resolve configured targets exactly once, captures an initial
+`ScrollRuntimeSnapshot`, performs the one immediate scroll
+(`window.scrollBy`/`element.scrollBy`, both `behavior: 'instant'`), waits
+exactly two `requestAnimationFrame` cycles, and captures a final snapshot -
+all inside `chromiumAdapter.ts#captureViewportInternal`'s existing single
+navigate → ready → capture flow, strictly before the unchanged
+screenshot/`capturePageEvidence`/`captureTargetEvidence` calls, so every
+downstream capture (including a no-scenario request, which skips this block
+entirely) describes only the final state. `src/cli.ts` gained one CLI/input-
+boundary-only addition, `--scroll-scenario-file`: mirroring
+`--targets-file`, it reads and validates only the file readability/JSON-
+validity/non-array-object-root shape and hands the parsed value straight
+into `RawObservationRequest.scrollScenario` - every scenario/action rule
+(kind, deltas, target reference) stays owned by `normalizeRequest()`. There
+is still one canonical `observe()` application use case and one artifact
+writer; `scrollScenarioEvidence` is simply one more optional field on the
+same `ObservationArtifact`.
+
 ## Planned v0.1 architecture constraints
 
 v0.1 planning must preserve these approved boundaries without treating module

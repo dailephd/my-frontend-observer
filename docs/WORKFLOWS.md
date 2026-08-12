@@ -44,6 +44,47 @@ from a clean temporary consumer directory outside the repository, on
 Windows, Linux, and macOS - the same workflow, independent of the source
 checkout.
 
+## Current source-branch v0.3 scroll-scenario workflow (implemented, not yet published)
+
+`feature/v0.3-runtime-scrolling` extends the same workflow with one optional
+input; it is not part of the published `0.2.0` package. Package version
+remains `0.2.0`; observation schema is `1.2.0`.
+
+```text
+CLI arguments, as above, plus optionally exactly one:
+  --scroll-scenario-file <json-file>
+→ (--scroll-scenario-file only: read + validate the local JSON root shape -
+  a non-array object; the file supplies RawObservationRequest.scrollScenario
+  directly, with no wrapper field)
+→ request construction (same RawObservationRequest either way)
+→ normalizeRequest() - validating the optional scrollScenario alongside
+  targets/viewport/readiness (supported action kind, delta bounds/both-zero
+  rule, stable target-name reference)
+→ application observation use case (unchanged - observe())
+→ Chromium capture: navigate, ready, then - only if a scenario was
+  configured - resolve configured targets once, capture an initial
+  ScrollRuntimeSnapshot, perform the one immediate scroll
+  (window.scrollBy/element.scrollBy, behavior: "instant"), wait exactly two
+  requestAnimationFrame cycles, capture a final ScrollRuntimeSnapshot and
+  derive transition/scroll-owner evidence - all before the unchanged
+  screenshot/page-evidence/target-evidence capture, so every downstream
+  capture (scenario or not) describes only the final state
+→ atomic artifact persistence (manifest.json + screenshot.png), schema
+  1.2.0 - exactly once, only on a successful capture; scrollScenarioEvidence
+  is simply one more optional manifest field, never a separate file
+→ concise CLI result (Observation/State/Artifact/Targets/Diagnostics,
+  unchanged in shape) → process exit status (unchanged semantics)
+```
+
+A request with no scroll scenario is unaffected: no extra snapshots, no
+scroll, no extra animation-frame wait, unchanged request identity. This is
+exercised by `runCli()`-level tests, real-Chromium end-to-end tests
+(`tests/browser/cliObserve.test.ts`, `tests/browser/windowScrollScenario.test.ts`,
+`tests/browser/targetScrollScenario.test.ts`), and a built
+`node dist/cli.js observe ...` run
+(`scripts/dev/builtCliScrollScenarioSmoke.mjs`) - source-checkout
+development evidence only, not cross-platform packed-release validation.
+
 The future dependency order after observation is:
 
 ```text

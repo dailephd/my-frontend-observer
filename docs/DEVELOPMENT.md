@@ -21,9 +21,9 @@ npm run check:docs
 npm pack --dry-run
 ```
 
-`npm test` runs the fast unit suite only (`tests/unit/`, currently 106
+`npm test` runs the fast unit suite only (`tests/unit/`, currently 176
 passing tests). `npm run test:browser` runs the real-Chromium integration
-suite (`tests/browser/`, currently 69 passing tests) against deterministic
+suite (`tests/browser/`, currently 88 passing tests) against deterministic
 local fixtures under `tests/fixtures/` and requires the Chromium binary
 above to be installed first; it is kept out of `npm test` because it
 launches a real browser and is slower.
@@ -72,15 +72,32 @@ development smoke, added alongside the `--targets-file` implementation: it
 runs the built `dist/cli.js` directly (`node dist/cli.js observe
 --targets-file ...`) against an inline disposable local HTTP fixture and a
 temporary JSON target file, proving a real semantic observation persists a
-valid schema-`1.1.0` artifact with no packed-tarball step involved. Run it
+valid schema-`1.2.0` artifact with no packed-tarball step involved. Run it
 locally after `npm run build`:
 
 ```powershell
 node scripts/dev/builtCliTargetsFileSmoke.mjs
 ```
 
-Unlike `scripts/ci/runPackedObservationSmoke.mjs`, it is not wired into any
-CI workflow and is not a release gate - it is source-checkout development
-evidence only, proving the built CLI's `--targets-file` behavior without
-installing a packed tarball or requiring cross-platform infrastructure. It
-is not part of the published package.
+`scripts/dev/builtCliScrollScenarioSmoke.mjs` is the v0.3 (source-branch,
+not yet released) equivalent, added alongside the
+`--scroll-scenario-file` implementation: it runs the built `dist/cli.js`
+directly against an inline disposable local HTTP fixture, once with a
+temporary `window-scroll-by` scenario file and once with a temporary
+structured `--targets-file` plus a `target-scroll-by` scenario file,
+proving both real runtime scroll actions persist a valid schema-`1.2.0`
+artifact with populated `scrollScenarioEvidence`, scenario-file path
+privacy, and target-application immutability. Run it locally after
+`npm run build`:
+
+```powershell
+node scripts/dev/builtCliScrollScenarioSmoke.mjs
+```
+
+Unlike `scripts/ci/runPackedObservationSmoke.mjs`, neither of these dev
+smokes is wired into any CI workflow or is a release gate - they are
+source-checkout development evidence only, proving the built CLI's
+`--targets-file`/`--scroll-scenario-file` behavior without installing a
+packed tarball or requiring cross-platform infrastructure. Neither is part
+of the published package. Cross-platform packed validation of v0.3 scenario
+behavior is pre-release readiness's responsibility, not this batch's.

@@ -247,3 +247,119 @@ describe('runCli observe --targets-file - canonical passthrough (v0.2 Batch 4)',
     expect(buildRequestIdentity(requestA)).toBe(buildRequestIdentity(requestB));
   });
 });
+
+describe('runCli observe --scroll-scenario-file - canonical passthrough (v0.3 Batch 4)', () => {
+  const tempDirs: string[] = [];
+
+  beforeEach(() => {
+    observeMock.mockReset();
+  });
+
+  afterEach(async () => {
+    await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+  });
+
+  async function writeScenarioFile(content: unknown): Promise<string> {
+    const dir = await mkdtemp(path.join(tmpdir(), 'mfo-cli-orch-scroll-scenario-'));
+    tempDirs.push(dir);
+    const filePath = path.join(dir, 'scroll.json');
+    await writeFile(filePath, JSON.stringify(content), 'utf8');
+    return filePath;
+  }
+
+  it('passes the window-scroll-by scenario from the file into normalizeRequest unchanged', async () => {
+    observeMock.mockResolvedValue(okResult());
+    const filePath = await writeScenarioFile({ action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 600 } });
+    const out = capture();
+
+    await runCli(['observe', '--url', 'http://127.0.0.1/observation', '--scroll-scenario-file', filePath], out.io);
+
+    expect(observeMock).toHaveBeenCalledTimes(1);
+    const request = observeMock.mock.calls[0]?.[0];
+    expect(request?.scrollScenario).toEqual({ action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 600 } });
+  });
+
+  it('passes a target-scroll-by scenario through together with a configured target from --targets-file', async () => {
+    observeMock.mockResolvedValue(okResult());
+    const targetsPath = await writeScenarioFile({ targets: [{ name: 'tool-workspace', locators: [{ kind: 'css', selector: '.workspace' }] }] });
+    const scenarioPath = await writeScenarioFile({ action: { kind: 'target-scroll-by', target: 'tool-workspace', deltaX: 0, deltaY: 400 } });
+    const out = capture();
+
+    await runCli(
+      ['observe', '--url', 'http://127.0.0.1/observation', '--targets-file', targetsPath, '--scroll-scenario-file', scenarioPath],
+      out.io,
+    );
+
+    expect(observeMock).toHaveBeenCalledTimes(1);
+    const request = observeMock.mock.calls[0]?.[0];
+    expect(request?.targets).toEqual([{ name: 'tool-workspace', locators: [{ kind: 'css', selector: '.workspace' }] }]);
+    expect(request?.scrollScenario).toEqual({ action: { kind: 'target-scroll-by', target: 'tool-workspace', deltaX: 0, deltaY: 400 } });
+  });
+
+  it('is compatible with legacy --target as well as --targets-file', async () => {
+    observeMock.mockResolvedValue(okResult());
+    const scenarioPath = await writeScenarioFile({ action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 100 } });
+    const out = capture();
+
+    await runCli(
+      ['observe', '--url', 'http://127.0.0.1/observation', '--target', 'header=header', '--scroll-scenario-file', scenarioPath],
+      out.io,
+    );
+
+    expect(observeMock).toHaveBeenCalledTimes(1);
+    const request = observeMock.mock.calls[0]?.[0];
+    expect(request?.targets).toEqual([{ name: 'header', locators: [{ kind: 'css', selector: 'header' }] }]);
+    expect(request?.scrollScenario).toEqual({ action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 100 } });
+  });
+
+  it('never propagates the scenario-file path into the normalized request passed to the application layer', async () => {
+    observeMock.mockResolvedValue(okResult());
+    const filePath = await writeScenarioFile({ action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 300 } });
+    const out = capture();
+
+    await runCli(['observe', '--url', 'http://127.0.0.1/observation', '--scroll-scenario-file', filePath], out.io);
+
+    const request = observeMock.mock.calls[0]?.[0];
+    const serialized = JSON.stringify(request);
+    expect(serialized).not.toContain(filePath);
+    expect(serialized).not.toContain('scroll.json');
+  });
+
+  it('never propagates either file path when --targets-file and --scroll-scenario-file are combined', async () => {
+    observeMock.mockResolvedValue(okResult());
+    const targetsPath = await writeScenarioFile({ targets: [{ name: 'header', locators: [{ kind: 'css', selector: 'header' }] }] });
+    const scenarioPath = await writeScenarioFile({ action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 300 } });
+    const out = capture();
+
+    await runCli(
+      ['observe', '--url', 'http://127.0.0.1/observation', '--targets-file', targetsPath, '--scroll-scenario-file', scenarioPath],
+      out.io,
+    );
+
+    const request = observeMock.mock.calls[0]?.[0];
+    const serialized = JSON.stringify(request);
+    expect(serialized).not.toContain(targetsPath);
+    expect(serialized).not.toContain(scenarioPath);
+  });
+
+  it('two different scenario-file paths with identical content produce equivalent normalized requests, and therefore the same requestId', async () => {
+    observeMock.mockResolvedValue(okResult());
+    const scenarioContent = { action: { kind: 'window-scroll-by' as const, deltaX: 0, deltaY: 500 } };
+    const filePathA = await writeScenarioFile(scenarioContent);
+    const filePathB = await writeScenarioFile(scenarioContent);
+    expect(filePathA).not.toBe(filePathB);
+
+    const outA = capture();
+    await runCli(['observe', '--url', 'http://127.0.0.1/observation', '--scroll-scenario-file', filePathA], outA.io);
+    const requestA = observeMock.mock.calls[0]?.[0] as NormalizedObservationRequest;
+
+    observeMock.mockReset();
+    observeMock.mockResolvedValue(okResult());
+    const outB = capture();
+    await runCli(['observe', '--url', 'http://127.0.0.1/observation', '--scroll-scenario-file', filePathB], outB.io);
+    const requestB = observeMock.mock.calls[0]?.[0] as NormalizedObservationRequest;
+
+    expect(requestA).toEqual(requestB);
+    expect(buildRequestIdentity(requestA)).toBe(buildRequestIdentity(requestB));
+  });
+});

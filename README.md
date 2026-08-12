@@ -53,6 +53,18 @@ between several of those. See "Structured semantic targets" in
 [docs/COMMANDS.md](docs/COMMANDS.md#structured-semantic-targets-targets-file)
 for the exact JSON format.
 
+### Current source-branch development state (not yet published)
+
+The `feature/v0.3-runtime-scrolling` branch additionally implements v0.3
+(Runtime Scrolling, Overflow, and Visibility Behavior): a real, bounded
+`--scroll-scenario-file <json-file>` input performs one immediate
+`window-scroll-by` or `target-scroll-by` action and captures before/after
+runtime evidence (schema `1.2.0`). **This is not part of the published
+`0.2.0` package** - `npm install my-frontend-observer` today gives you the
+`v0.2.0` behavior described above. See "Scroll scenario" in
+[docs/COMMANDS.md](docs/COMMANDS.md#scroll-scenario---scroll-scenario-file)
+for the current source-branch flag reference.
+
 Validation:
 
 ```powershell

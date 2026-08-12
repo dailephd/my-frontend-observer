@@ -110,7 +110,7 @@ async function main() {
     const manifest = JSON.parse(await readFile(path.join(artifactRoot, 'manifest.json'), 'utf8'));
     const screenshot = await readFile(path.join(artifactRoot, 'screenshot.png'));
 
-    if (manifest.schemaVersion !== '1.1.0') fail(`unexpected schemaVersion: ${manifest.schemaVersion}`);
+    if (manifest.schemaVersion !== '1.2.0') fail(`unexpected schemaVersion: ${manifest.schemaVersion}`);
     if (manifest.artifactKind !== 'my-frontend-observer/observation') fail(`unexpected artifactKind: ${manifest.artifactKind}`);
     if (manifest.targetEvidence?.['primary-navigation']?.resolution?.value?.selectionStatus !== 'matched') {
       fail('primary-navigation (role locator) did not resolve through the built CLI');
