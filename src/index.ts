@@ -1,5 +1,5 @@
 export type { EvidenceState, EvidenceSource, EvidenceField } from './domain/evidence.js';
-export { isValidEvidenceField } from './domain/evidence.js';
+export { isValidEvidenceField, evidenceValue } from './domain/evidence.js';
 
 export type { DiagnosticCode, DiagnosticSeverity, Diagnostic } from './domain/diagnostics.js';
 export { DIAGNOSTIC_CODES, DIAGNOSTIC_SEVERITY, orderDiagnostics } from './domain/diagnostics.js';
@@ -179,3 +179,15 @@ export {
 } from './domain/comparison.js';
 
 export { buildComparisonRequestIdentity, buildComparisonIdentity } from './domain/comparisonIdentity.js';
+
+export type { CompareObservationsResult } from './domain/comparisonEngine.js';
+export { compareObservations, evaluateComparability, evaluateExpectedDependencies, compareTargetConfiguration } from './domain/comparisonEngine.js';
+
+export type { PersistedComparisonResult, WriteComparisonArtifactOptions } from './artifacts/comparisonArtifactWriter.js';
+export { COMPARISON_MANIFEST_FILENAME, writeComparisonArtifact } from './artifacts/comparisonArtifactWriter.js';
+
+export type { ReadObservationArtifactResult } from './artifacts/artifactReader.js';
+export { readObservationArtifact } from './artifacts/artifactReader.js';
+
+export type { CompareAndPersistOptions, ApplicationComparisonResult } from './application/comparisonService.js';
+export { DEFAULT_COMPARISON_OUTPUT_LOCATION, compareAndPersist } from './application/comparisonService.js';

@@ -249,17 +249,37 @@ Package version remains `0.3.0`; observation schema remains `1.2.0`.
   existing `TargetContainment` evidence rather than re-derived, and stays
   distinct from geometric fit. A standalone `deriveTargetClipping(record)`
   derives the frozen clipping concept per target from existing layout/style
-  evidence. Before/after comparison itself
-  (`compareObservations()`), comparison persistence, and a `compare` CLI
-  remain unimplemented.
+  evidence.
+- **Batch 3** implemented the pure before/after comparison engine,
+  `compareObservations(before, after, config?)`
+  (`src/domain/comparisonEngine.ts`): validates both source observations,
+  evaluates comparability before any rendered difference is calculated
+  (hard page-URL/viewport/browser-engine/scroll-scenario mismatches;
+  producer/browser-version and target-configuration warnings), reuses
+  `deriveLayoutRelationships` unchanged for both sides, and derives target/
+  page differences (appeared/disappeared, moved, resized, visibility,
+  clipping, actual overflow, DOM containment, page size, scroll-owner) and
+  relationship changes (matched by family + subject/related target, never
+  array position) - all without launching Chromium, re-resolving targets, or
+  mutating either input observation. Explicit `ComparisonConfig.
+  expectedDependencies` are evaluated into non-causal
+  consistent/not-observed/contradictory-to-declaration/unavailable outcomes
+  only; the observer never infers a dependency from co-change. Comparison
+  identity reuses the existing Batch 1 `buildComparisonRequestIdentity`/
+  `buildComparisonIdentity` verbatim. Persistence
+  (`src/artifacts/comparisonArtifactWriter.ts#writeComparisonArtifact`,
+  atomic, `<outputLocation>/<comparisonId>/manifest.json` only, no copied
+  screenshots) and the application-level `compareAndPersist` use case
+  (`src/application/comparisonService.ts`) are implemented; a narrow
+  `readObservationArtifact` reader
+  (`src/artifacts/artifactReader.ts`) is established ahead of the Batch 4
+  CLI. A public `compare` CLI remains unimplemented.
 
 ## Not implemented
 
-- Before/after comparison (`compareObservations()`), comparability
-  evaluation between two real observations, comparison-artifact
-  persistence, a `compare` CLI, v0.5+ frontend contracts/change scope,
-  source ownership, my-dev-kit runtime/static integration, orchestrator/lab
-  product integration, viewer, and annotation all remain unimplemented.
+- A `compare` CLI, v0.5+ frontend contracts/change scope, source ownership,
+  my-dev-kit runtime/static integration, orchestrator/lab product
+  integration, viewer, and annotation all remain unimplemented.
 
 ## Next target
 
