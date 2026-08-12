@@ -2,7 +2,7 @@
 // v0.2 Batch 4: proves the actual *built* dist/cli.js - not the imported
 // runCli() function under vitest - recognizes --targets-file, launches real
 // Chromium, resolves a structured semantic target through the existing
-// resolver, and persists a valid schema-1.1.0 artifact. This is dev/
+// resolver, and persists a valid schema-1.2.0 artifact. This is dev/
 // readiness infrastructure only: never imported by production code and not
 // part of the npm package. Requires `npm run build` to have already run.
 //
