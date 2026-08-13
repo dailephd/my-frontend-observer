@@ -58,6 +58,17 @@ async function main() {
   const consumerDir = await mkdtemp(path.join(tmpdir(), 'mfo-ci-smoke-'));
   const summary = { platform: process.platform, arch: process.arch, nodeVersion: process.version };
 
+  // Hoisted so the outer `finally` can always close it, even if a fail()
+  // throws before reaching the original inline `server.close()` call below -
+  // otherwise a still-listening HTTP server keeps the process alive
+  // indefinitely on any failure path between server startup and that line.
+  let server;
+  // Snapshotted before any smoke work touches the current working directory,
+  // so the v0.5 repo-root-leak check below can prove this run itself wrote
+  // nothing new there, rather than asserting the repo root is pristine
+  // (which would false-fail on unrelated pre-existing local directories).
+  const initialCwdEntries = new Set(await readdir(process.cwd()).catch(() => []));
+
   try {
     await writeFile(path.join(consumerDir, 'package.json'), JSON.stringify({ name: 'mfo-ci-smoke-consumer', version: '0.0.0', private: true }, null, 2));
 
@@ -129,6 +140,36 @@ async function main() {
       if (!compareHelpRes.stdout.includes(flag)) fail(`compare --help missing expected flag documentation: ${flag}`);
     }
 
+    // v0.5: the installed candidate must expose the frontend-contract commands too.
+    const approveBaselineHelpRes = await runBin(['approve-baseline', '--help']);
+    console.log(`[t+${Date.now() - t0}ms] approve-baseline --help exit=${approveBaselineHelpRes.code} stdoutLength=${approveBaselineHelpRes.stdout.length}`);
+    if (approveBaselineHelpRes.code !== 0) fail(`approve-baseline --help failed:\n${approveBaselineHelpRes.stderr}`);
+    for (const flag of ['--observation', '--contract-file', '--output']) {
+      if (!approveBaselineHelpRes.stdout.includes(flag)) fail(`approve-baseline --help missing expected flag documentation: ${flag}`);
+    }
+
+    const saveChangeContractHelpRes = await runBin(['save-change-contract', '--help']);
+    console.log(`[t+${Date.now() - t0}ms] save-change-contract --help exit=${saveChangeContractHelpRes.code} stdoutLength=${saveChangeContractHelpRes.stdout.length}`);
+    if (saveChangeContractHelpRes.code !== 0) fail(`save-change-contract --help failed:\n${saveChangeContractHelpRes.stderr}`);
+    for (const flag of ['--contract-file', '--output']) {
+      if (!saveChangeContractHelpRes.stdout.includes(flag)) fail(`save-change-contract --help missing expected flag documentation: ${flag}`);
+    }
+
+    const evaluateContractHelpRes = await runBin(['evaluate-contract', '--help']);
+    console.log(`[t+${Date.now() - t0}ms] evaluate-contract --help exit=${evaluateContractHelpRes.code} stdoutLength=${evaluateContractHelpRes.stdout.length}`);
+    if (evaluateContractHelpRes.code !== 0) fail(`evaluate-contract --help failed:\n${evaluateContractHelpRes.stderr}`);
+    for (const flag of ['--before', '--after', '--comparison', '--baseline', '--change', '--output', '--enforce']) {
+      if (!evaluateContractHelpRes.stdout.includes(flag)) fail(`evaluate-contract --help missing expected flag documentation: ${flag}`);
+    }
+    summary.v05HelpCommandsExposed = true;
+
+    // v0.5 purity check: the resolved bin path must come from this temporary
+    // consumer's own installed node_modules, never the repository checkout
+    // this script itself lives in.
+    if (binAbsolutePath.includes(path.resolve('.')) || binAbsolutePath.includes('src' + path.sep)) {
+      fail('resolved installed bin unexpectedly points at the source checkout rather than the installed candidate');
+    }
+
     const html =
       '<!doctype html><html><head><title>ci smoke fixture</title><style>' +
       'html,body{margin:0;padding:0}' +
@@ -162,7 +203,40 @@ async function main() {
       );
     }
 
-    const server = createServer((req, res) => {
+    // v0.5: same-logical-URL, in-process-toggleable fixture for the packed
+    // frontend-contract smoke below. Deliberately spaced (workspace ends at
+    // 210+560=770, well left of rail's fixed left:800) so only the intended
+    // navigation/workspace/rail resized/clipping-changed differences occur -
+    // never an incidental relationship-family change - mirroring
+    // tests/fixtures/server.ts's `/contract` route design. "navigation"
+    // contains a fixed 190px-wide inner element inside an
+    // "overflow:hidden" outer box, so shrinking the outer box below 190px
+    // produces genuine v0.4 clipping (scrollWidth > clientWidth AND
+    // overflow:hidden), never a fabricated clipping claim.
+    const CONTRACT_NAV_WIDTH = { baseline: 200, success: 195, 'protected-regression': 140 };
+    const CONTRACT_WORKSPACE_WIDTH = { baseline: 500, success: 560, 'protected-regression': 560 };
+    const CONTRACT_RAIL_WIDTH = { baseline: 150, success: 150, 'protected-regression': 130 };
+    let contractVariant = 'baseline';
+    function contractFixtureHtml() {
+      const navWidth = CONTRACT_NAV_WIDTH[contractVariant];
+      const workspaceWidth = CONTRACT_WORKSPACE_WIDTH[contractVariant];
+      const railWidth = CONTRACT_RAIL_WIDTH[contractVariant];
+      return (
+        '<!doctype html><html><head><title>contract smoke fixture</title><style>' +
+        'html,body{margin:0;padding:0}' +
+        `#cp-nav{position:absolute;top:0;left:0;width:${navWidth}px;height:80px;overflow:hidden;}` +
+        '#cp-nav-inner{width:190px;height:20px;}' +
+        `#cp-workspace{position:absolute;top:0;left:210px;width:${workspaceWidth}px;height:80px;}` +
+        `#cp-rail{position:absolute;top:0;left:800px;width:${railWidth}px;height:80px;}` +
+        '</style></head><body>' +
+        '<div id="cp-nav"><div id="cp-nav-inner">Nav</div></div>' +
+        '<div id="cp-workspace">Workspace</div>' +
+        '<div id="cp-rail">Rail</div>' +
+        '</body></html>'
+      );
+    }
+
+    server = createServer((req, res) => {
       if (req.url === '/smoke') {
         res.writeHead(200, { 'content-type': 'text/html' });
         res.end(html);
@@ -173,6 +247,11 @@ async function main() {
         res.end(compareFixtureHtml());
         return;
       }
+      if (req.url === '/contract-smoke') {
+        res.writeHead(200, { 'content-type': 'text/html' });
+        res.end(contractFixtureHtml());
+        return;
+      }
       res.writeHead(404);
       res.end();
     });
@@ -180,6 +259,7 @@ async function main() {
     const port = server.address().port;
     const targetUrl = `http://127.0.0.1:${port}/smoke`;
     const compareTargetUrl = `http://127.0.0.1:${port}/compare-smoke`;
+    const contractTargetUrl = `http://127.0.0.1:${port}/contract-smoke`;
 
     const beforeHtml = await fetch(targetUrl).then((r) => r.text());
 
@@ -609,6 +689,247 @@ async function main() {
     summary.comparisonIncomparableReasonPresent = true;
     summary.incomparableCompareOk = true;
 
+    // --- v0.5: installed "approve-baseline"/"save-change-contract"/"evaluate-contract"
+    // against real installed-candidate observe/compare evidence (comparable pair). ---
+    const contractTargetArgs = ['--target', 'navigation=#cp-nav', '--target', 'workspace=#cp-workspace', '--target', 'rail=#cp-rail'];
+
+    contractVariant = 'baseline';
+    const cpBaselineOutputSubdir = `ci-smoke-output-cp-baseline-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, cpBaselineOutputSubdir), { recursive: true });
+    const cpBaselineObserveRes = await runBin(['observe', '--url', contractTargetUrl, '--viewport', '1000x700', ...contractTargetArgs, '--output', cpBaselineOutputSubdir]);
+    if (cpBaselineObserveRes.code !== 0) fail(`contract-fixture baseline observe failed (exit ${cpBaselineObserveRes.code}):\n${cpBaselineObserveRes.stdout}\n${cpBaselineObserveRes.stderr}`);
+    const cpBaselineObsRoot = cpBaselineObserveRes.stdout.split('\n').find((l) => l.startsWith('Artifact: ')).slice('Artifact: '.length).trim();
+    const cpBaselineManifestRaw0 = await readFile(path.join(cpBaselineObsRoot, 'manifest.json'));
+    const cpBaselineScreenshotRaw0 = await readFile(path.join(cpBaselineObsRoot, 'screenshot.png'));
+    const cpBaselineManifest = JSON.parse(cpBaselineManifestRaw0.toString('utf8'));
+
+    const baselineContract = {
+      artifactKind: 'my-frontend-observer/frontend-contract',
+      schemaVersion: '1.0.0',
+      contractClass: 'baseline',
+      baselineId: 'baseline-1',
+      sourceObservation: {
+        observationId: cpBaselineManifest.observationId,
+        requestId: cpBaselineManifest.requestId,
+        producer: cpBaselineManifest.producer,
+        observationSchemaVersion: cpBaselineManifest.schemaVersion,
+      },
+      clauses: [{ clauseId: 'baseline-nav-unclipped', primitive: { kind: 'target-not-clipped', target: 'navigation' }, supportingEvidence: [] }],
+      provenance: { approvedAt: new Date(0).toISOString() },
+    };
+    const baselineContractFilePath = path.join(consumerDir, 'cp-baseline-contract.json');
+    await writeFile(baselineContractFilePath, JSON.stringify(baselineContract, null, 2), 'utf8');
+
+    const cpApproveOutputSubdir = `ci-smoke-output-cp-approve-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, cpApproveOutputSubdir), { recursive: true });
+    const cpApproveRes = await runBin(['approve-baseline', '--observation', cpBaselineObsRoot, '--contract-file', baselineContractFilePath, '--output', cpApproveOutputSubdir]);
+    console.log('--- approve-baseline stdout ---');
+    console.log(cpApproveRes.stdout);
+    if (cpApproveRes.code !== 0) fail(`installed approve-baseline failed (exit ${cpApproveRes.code}):\n${cpApproveRes.stdout}\n${cpApproveRes.stderr}`);
+    if (!cpApproveRes.stdout.includes('State: approved')) fail(`expected "State: approved" from approve-baseline:\n${cpApproveRes.stdout}`);
+    const cpBaselineArtifactRoot = cpApproveRes.stdout.split('\n').find((l) => l.startsWith('Artifact: ')).slice('Artifact: '.length).trim();
+    summary.packedApproveBaselineOk = true;
+
+    const changeContract = {
+      artifactKind: 'my-frontend-observer/frontend-contract',
+      schemaVersion: '1.0.0',
+      contractClass: 'change',
+      contractId: 'change-1',
+      contractRequestId: 'change-request-1',
+      activeBaselineIds: ['baseline-1'],
+      clauses: [
+        { clauseId: 'requested-nav-shrink', primitive: { kind: 'property-decreases', target: 'navigation', property: 'width' }, category: 'requested', supportingEvidence: [] },
+        {
+          clauseId: 'expected-workspace-grow',
+          primitive: { kind: 'property-increases', target: 'workspace', property: 'width' },
+          category: 'expected-dependent',
+          expectedDependentMode: 'required',
+          supportingEvidence: [],
+        },
+        {
+          clauseId: 'protected-rail-width',
+          primitive: { kind: 'property-unchanged-within-tolerance', target: 'rail', property: 'width', tolerance: { kind: 'exact' } },
+          category: 'protected',
+          supportingEvidence: [],
+        },
+        { clauseId: 'preserved-nav-unclipped', primitive: { kind: 'target-not-clipped', target: 'navigation' }, category: 'preserved', supportingEvidence: [] },
+      ],
+    };
+    const changeContractFilePath = path.join(consumerDir, 'cp-change-contract.json');
+    await writeFile(changeContractFilePath, JSON.stringify(changeContract, null, 2), 'utf8');
+
+    const cpSaveOutputSubdir = `ci-smoke-output-cp-save-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, cpSaveOutputSubdir), { recursive: true });
+    const cpSaveRes = await runBin(['save-change-contract', '--contract-file', changeContractFilePath, '--output', cpSaveOutputSubdir]);
+    console.log('--- save-change-contract stdout ---');
+    console.log(cpSaveRes.stdout);
+    if (cpSaveRes.code !== 0) fail(`installed save-change-contract failed (exit ${cpSaveRes.code}):\n${cpSaveRes.stdout}\n${cpSaveRes.stderr}`);
+    const cpChangeArtifactRoot = cpSaveRes.stdout.split('\n').find((l) => l.startsWith('Artifact: ')).slice('Artifact: '.length).trim();
+    summary.packedSaveChangeContractOk = true;
+
+    // Scenario A: candidate change succeeds fully -> overall PASS, --enforce still exits 0.
+    contractVariant = 'success';
+    const cpSuccessOutputSubdir = `ci-smoke-output-cp-success-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, cpSuccessOutputSubdir), { recursive: true });
+    const cpSuccessObserveRes = await runBin(['observe', '--url', contractTargetUrl, '--viewport', '1000x700', ...contractTargetArgs, '--output', cpSuccessOutputSubdir]);
+    if (cpSuccessObserveRes.code !== 0) fail(`contract-fixture success observe failed (exit ${cpSuccessObserveRes.code}):\n${cpSuccessObserveRes.stdout}\n${cpSuccessObserveRes.stderr}`);
+    const cpSuccessObsRoot = cpSuccessObserveRes.stdout.split('\n').find((l) => l.startsWith('Artifact: ')).slice('Artifact: '.length).trim();
+
+    const cpCompareSuccessOutputSubdir = `ci-smoke-output-cp-compare-success-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, cpCompareSuccessOutputSubdir), { recursive: true });
+    const cpCompareSuccessRes = await runBin(['compare', '--before', cpBaselineObsRoot, '--after', cpSuccessObsRoot, '--output', cpCompareSuccessOutputSubdir]);
+    if (cpCompareSuccessRes.code !== 0) fail(`contract-fixture success compare failed (exit ${cpCompareSuccessRes.code}):\n${cpCompareSuccessRes.stdout}\n${cpCompareSuccessRes.stderr}`);
+    const cpCompareSuccessRoot = cpCompareSuccessRes.stdout.split('\n').find((l) => l.startsWith('Artifact: ')).slice('Artifact: '.length).trim();
+    const cpCompareSuccessManifest = JSON.parse(await readFile(path.join(cpCompareSuccessRoot, 'manifest.json'), 'utf8'));
+    if (cpCompareSuccessManifest.comparability.state !== 'comparable') fail(`expected comparable for contract-fixture success pair, got ${cpCompareSuccessManifest.comparability.state}`);
+    summary.packedComparableUsedForContractOk = true;
+
+    const cpEvalPassOutputSubdir = `ci-smoke-output-cp-eval-pass-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, cpEvalPassOutputSubdir), { recursive: true });
+    const cpEvalPassRes = await runBin([
+      'evaluate-contract',
+      '--before', cpBaselineObsRoot,
+      '--after', cpSuccessObsRoot,
+      '--comparison', cpCompareSuccessRoot,
+      '--baseline', cpBaselineArtifactRoot,
+      '--change', cpChangeArtifactRoot,
+      '--output', cpEvalPassOutputSubdir,
+      '--enforce',
+    ]);
+    console.log('--- evaluate-contract (PASS, --enforce) stdout ---');
+    console.log(cpEvalPassRes.stdout);
+    console.log(`--- evaluate-contract (PASS, --enforce) exit code: ${cpEvalPassRes.code} ---`);
+    if (cpEvalPassRes.code !== 0) fail(`packed PASS evaluate-contract with --enforce expected exit 0, got ${cpEvalPassRes.code}:\n${cpEvalPassRes.stdout}\n${cpEvalPassRes.stderr}`);
+    if (!cpEvalPassRes.stdout.includes('Verdict: PASS')) fail(`expected "Verdict: PASS" from packed evaluate-contract:\n${cpEvalPassRes.stdout}`);
+    const cpEvalPassRoot = cpEvalPassRes.stdout.split('\n').find((l) => l.startsWith('Artifact: ')).slice('Artifact: '.length).trim();
+    const cpEvalPassManifest = JSON.parse(await readFile(path.join(cpEvalPassRoot, 'manifest.json'), 'utf8'));
+    if (cpEvalPassManifest.overallVerdict !== 'PASS') fail(`expected persisted overallVerdict PASS, got ${cpEvalPassManifest.overallVerdict}`);
+    if ((cpEvalPassManifest.unexpectedChanges ?? []).length !== 0) fail(`expected zero unexpected changes for the packed PASS scenario, got ${JSON.stringify(cpEvalPassManifest.unexpectedChanges)}`);
+    summary.packedEvaluatePassOk = true;
+    summary.packedEvaluatePassEnforceExitCode = cpEvalPassRes.code;
+
+    // Scenario B: the real-browser milestone signature (requested/expected-dependent PASS,
+    // protected/preserved FAIL) - installed candidate, real observed geometry.
+    contractVariant = 'protected-regression';
+    const cpRegressionOutputSubdir = `ci-smoke-output-cp-regression-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, cpRegressionOutputSubdir), { recursive: true });
+    const cpRegressionObserveRes = await runBin(['observe', '--url', contractTargetUrl, '--viewport', '1000x700', ...contractTargetArgs, '--output', cpRegressionOutputSubdir]);
+    if (cpRegressionObserveRes.code !== 0) fail(`contract-fixture regression observe failed (exit ${cpRegressionObserveRes.code}):\n${cpRegressionObserveRes.stdout}\n${cpRegressionObserveRes.stderr}`);
+    const cpRegressionObsRoot = cpRegressionObserveRes.stdout.split('\n').find((l) => l.startsWith('Artifact: ')).slice('Artifact: '.length).trim();
+    const cpRegressionManifestRaw0 = await readFile(path.join(cpRegressionObsRoot, 'manifest.json'));
+    const cpRegressionScreenshotRaw0 = await readFile(path.join(cpRegressionObsRoot, 'screenshot.png'));
+
+    const cpCompareRegressionOutputSubdir = `ci-smoke-output-cp-compare-regression-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, cpCompareRegressionOutputSubdir), { recursive: true });
+    const cpCompareRegressionRes = await runBin(['compare', '--before', cpBaselineObsRoot, '--after', cpRegressionObsRoot, '--output', cpCompareRegressionOutputSubdir]);
+    if (cpCompareRegressionRes.code !== 0) fail(`contract-fixture regression compare failed (exit ${cpCompareRegressionRes.code}):\n${cpCompareRegressionRes.stdout}\n${cpCompareRegressionRes.stderr}`);
+    const cpCompareRegressionRoot = cpCompareRegressionRes.stdout.split('\n').find((l) => l.startsWith('Artifact: ')).slice('Artifact: '.length).trim();
+    const cpCompareRegressionManifestRaw0 = await readFile(path.join(cpCompareRegressionRoot, 'manifest.json'));
+    const cpCompareRegressionManifest = JSON.parse(cpCompareRegressionManifestRaw0.toString('utf8'));
+    if (cpCompareRegressionManifest.comparability.state !== 'comparable') fail(`expected comparable for contract-fixture regression pair, got ${cpCompareRegressionManifest.comparability.state}`);
+    const cpClipDiff = cpCompareRegressionManifest.differences.find((d) => d.kind === 'clipping-changed' && d.subject.type === 'target' && d.subject.target === 'navigation');
+    if (!cpClipDiff || cpClipDiff.before !== 'not-clipped' || cpClipDiff.after !== 'clipped') fail('expected a real installed-candidate navigation clipping-changed difference (not-clipped -> clipped)');
+    const cpRailResized = cpCompareRegressionManifest.differences.find((d) => d.kind === 'resized' && d.subject?.type === 'target' && d.subject?.target === 'rail');
+    if (!cpRailResized) fail('expected a real installed-candidate resized difference for target "rail"');
+
+    const cpBaselineContractArtifactRaw0 = await readFile(path.join(cpBaselineArtifactRoot, 'manifest.json'));
+    const cpChangeContractArtifactRaw0 = await readFile(path.join(cpChangeArtifactRoot, 'manifest.json'));
+
+    const cpEvalFailNoEnforceOutputSubdir = `ci-smoke-output-cp-eval-fail-noenforce-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, cpEvalFailNoEnforceOutputSubdir), { recursive: true });
+    const cpEvalFailNoEnforceRes = await runBin([
+      'evaluate-contract',
+      '--before', cpBaselineObsRoot,
+      '--after', cpRegressionObsRoot,
+      '--comparison', cpCompareRegressionRoot,
+      '--baseline', cpBaselineArtifactRoot,
+      '--change', cpChangeArtifactRoot,
+      '--output', cpEvalFailNoEnforceOutputSubdir,
+    ]);
+    console.log('--- evaluate-contract (FAIL, no --enforce) stdout ---');
+    console.log(cpEvalFailNoEnforceRes.stdout);
+    console.log(`--- evaluate-contract (FAIL, no --enforce) exit code: ${cpEvalFailNoEnforceRes.code} ---`);
+    if (cpEvalFailNoEnforceRes.code !== 0) fail(`packed FAIL evaluate-contract without --enforce expected exit 0, got ${cpEvalFailNoEnforceRes.code}:\n${cpEvalFailNoEnforceRes.stdout}\n${cpEvalFailNoEnforceRes.stderr}`);
+    if (!cpEvalFailNoEnforceRes.stdout.includes('Verdict: FAIL')) fail(`expected "Verdict: FAIL" from packed evaluate-contract:\n${cpEvalFailNoEnforceRes.stdout}`);
+    const cpEvalFailNoEnforceRoot = cpEvalFailNoEnforceRes.stdout.split('\n').find((l) => l.startsWith('Artifact: ')).slice('Artifact: '.length).trim();
+    const cpEvalFailNoEnforceManifest = JSON.parse(await readFile(path.join(cpEvalFailNoEnforceRoot, 'manifest.json'), 'utf8'));
+    const cpClauseById = new Map(cpEvalFailNoEnforceManifest.clauseResults.map((r) => [r.clauseId, r]));
+    if (cpClauseById.get('requested-nav-shrink')?.status !== 'pass') fail(`expected requested-nav-shrink = pass, got ${JSON.stringify(cpClauseById.get('requested-nav-shrink'))}`);
+    if (cpClauseById.get('expected-workspace-grow')?.status !== 'pass') fail(`expected expected-workspace-grow = pass, got ${JSON.stringify(cpClauseById.get('expected-workspace-grow'))}`);
+    if (cpClauseById.get('protected-rail-width')?.status !== 'fail') fail(`expected protected-rail-width = fail, got ${JSON.stringify(cpClauseById.get('protected-rail-width'))}`);
+    if (cpClauseById.get('preserved-nav-unclipped')?.status !== 'fail') fail(`expected preserved-nav-unclipped = fail, got ${JSON.stringify(cpClauseById.get('preserved-nav-unclipped'))}`);
+    if (cpEvalFailNoEnforceManifest.overallVerdict !== 'FAIL') fail(`expected persisted overallVerdict FAIL, got ${cpEvalFailNoEnforceManifest.overallVerdict}`);
+    summary.packedEvaluateFailNoEnforceExitCode = cpEvalFailNoEnforceRes.code;
+    summary.packedRequestedResult = cpClauseById.get('requested-nav-shrink')?.status;
+    summary.packedExpectedDependentResult = cpClauseById.get('expected-workspace-grow')?.status;
+    summary.packedProtectedResult = cpClauseById.get('protected-rail-width')?.status;
+    summary.packedPreservedResult = cpClauseById.get('preserved-nav-unclipped')?.status;
+    summary.packedOverallFailVerdict = cpEvalFailNoEnforceManifest.overallVerdict;
+
+    const cpEvalFailNoEnforceEntries = await readdir(cpEvalFailNoEnforceRoot);
+    if (cpEvalFailNoEnforceEntries.length !== 1 || cpEvalFailNoEnforceEntries[0] !== 'manifest.json') {
+      fail(`expected packed evaluation directory to contain only manifest.json, got: ${cpEvalFailNoEnforceEntries.join(', ')}`);
+    }
+    summary.packedEvaluationNoScreenshotCopied = true;
+
+    const cpEvalFailEnforceOutputSubdir = `ci-smoke-output-cp-eval-fail-enforce-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, cpEvalFailEnforceOutputSubdir), { recursive: true });
+    const cpEvalFailEnforceRes = await runBin([
+      'evaluate-contract',
+      '--before', cpBaselineObsRoot,
+      '--after', cpRegressionObsRoot,
+      '--comparison', cpCompareRegressionRoot,
+      '--baseline', cpBaselineArtifactRoot,
+      '--change', cpChangeArtifactRoot,
+      '--output', cpEvalFailEnforceOutputSubdir,
+      '--enforce',
+    ]);
+    console.log('--- evaluate-contract (FAIL, --enforce) stdout ---');
+    console.log(cpEvalFailEnforceRes.stdout);
+    console.log(`--- evaluate-contract (FAIL, --enforce) exit code: ${cpEvalFailEnforceRes.code} ---`);
+    if (cpEvalFailEnforceRes.code === 0) fail('packed FAIL evaluate-contract with --enforce was expected to exit nonzero');
+    if (!cpEvalFailEnforceRes.stdout.includes('Verdict: FAIL')) fail(`expected "Verdict: FAIL" from packed evaluate-contract (--enforce):\n${cpEvalFailEnforceRes.stdout}`);
+    const cpEvalFailEnforceRoot = cpEvalFailEnforceRes.stdout.split('\n').find((l) => l.startsWith('Artifact: ')).slice('Artifact: '.length).trim();
+    const cpEvalFailEnforceManifest = JSON.parse(await readFile(path.join(cpEvalFailEnforceRoot, 'manifest.json'), 'utf8'));
+    summary.packedEvaluateFailEnforceExitCode = cpEvalFailEnforceRes.code;
+
+    if (cpEvalFailEnforceManifest.evaluationRequestId !== cpEvalFailNoEnforceManifest.evaluationRequestId) {
+      fail('--enforce must not change the deterministic evaluationRequestId');
+    }
+    if (JSON.stringify(cpEvalFailEnforceManifest.clauseResults) !== JSON.stringify(cpEvalFailNoEnforceManifest.clauseResults)) {
+      fail('--enforce must not change clause result contents');
+    }
+    summary.packedEvaluationRequestIdEqual = true;
+    summary.packedClauseResultsEqual = true;
+
+    // Source-evidence immutability across the whole v0.5 packed scenario.
+    if (!(await readFile(path.join(cpBaselineObsRoot, 'manifest.json'))).equals(cpBaselineManifestRaw0)) fail('packed baseline observation manifest changed');
+    if (!(await readFile(path.join(cpBaselineObsRoot, 'screenshot.png'))).equals(cpBaselineScreenshotRaw0)) fail('packed baseline observation screenshot changed');
+    if (!(await readFile(path.join(cpRegressionObsRoot, 'manifest.json'))).equals(cpRegressionManifestRaw0)) fail('packed regression observation manifest changed');
+    if (!(await readFile(path.join(cpRegressionObsRoot, 'screenshot.png'))).equals(cpRegressionScreenshotRaw0)) fail('packed regression observation screenshot changed');
+    if (!(await readFile(path.join(cpCompareRegressionRoot, 'manifest.json'))).equals(cpCompareRegressionManifestRaw0)) fail('packed comparison manifest changed after evaluation');
+    if (!(await readFile(path.join(cpBaselineArtifactRoot, 'manifest.json'))).equals(cpBaselineContractArtifactRaw0)) fail('packed baseline contract artifact changed after evaluation');
+    if (!(await readFile(path.join(cpChangeArtifactRoot, 'manifest.json'))).equals(cpChangeContractArtifactRaw0)) fail('packed per-change contract artifact changed after evaluation');
+    summary.packedSourceArtifactsImmutable = true;
+
+    // Path privacy across the v0.5 packed scenario.
+    const cpSerializedEvalManifests = JSON.stringify(cpEvalFailNoEnforceManifest) + JSON.stringify(cpEvalFailEnforceManifest) + JSON.stringify(cpEvalPassManifest);
+    for (const leaked of [consumerDir, cpBaselineObsRoot, cpRegressionObsRoot, cpCompareRegressionRoot, cpBaselineArtifactRoot, cpChangeArtifactRoot, baselineContractFilePath, changeContractFilePath]) {
+      if (cpSerializedEvalManifests.includes(leaked)) fail(`operational filesystem path leaked into a packed evaluation manifest: ${leaked}`);
+    }
+    summary.packedEvaluationPathPrivacyPassed = true;
+
+    // Target/output isolation: this run must not have written anything new
+    // into the repository root - compared against the entries already
+    // present before this smoke started (never a fixed-name assertion,
+    // which would false-fail on unrelated pre-existing local directories).
+    const finalCwdEntries = await readdir(process.cwd()).catch(() => []);
+    const newCwdEntries = finalCwdEntries.filter((entry) => !initialCwdEntries.has(entry));
+    if (newCwdEntries.length > 0) {
+      fail(`repository-root artifact leak detected - new entries appeared in ${process.cwd()}: ${newCwdEntries.join(', ')}`);
+    }
+    summary.packedNoRepoRootLeak = true;
+
     // Target application immutability across all observations (served content, not browser-local scroll state).
     const afterHtml = await fetch(targetUrl).then((r) => r.text());
     server.close();
@@ -654,6 +975,7 @@ async function main() {
     console.log('SMOKE PASS');
     console.log(JSON.stringify(summary, null, 2));
   } finally {
+    if (server && server.listening) server.close();
     await rm(consumerDir, { recursive: true, force: true }).catch(() => undefined);
   }
 

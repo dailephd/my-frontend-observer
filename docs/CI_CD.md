@@ -96,3 +96,50 @@ observations. This preserves every pre-existing v0.1-v0.3 packed
 observation proof unchanged and adds the v0.4 proof additively, in the same
 script and the same candidate, per the established same-candidate
 architecture (no second `npm pack`, no per-platform rebuild).
+
+## v0.5 readiness coverage
+
+The packed-readiness coverage gap identified during the v0.5 implementation-
+completeness audit as `V0_5_READINESS_VALIDATION_GAP_EXISTS` - the packed
+candidate smoke exercised `observe`/`compare` but not `approve-baseline`/
+`save-change-contract`/`evaluate-contract` - has been **corrected locally**:
+`scripts/ci/runPackedObservationSmoke.mjs` now also installs the same
+candidate tarball, observes a deterministic navigation/workspace/rail
+fixture through the installed `observe`, and drives the complete installed
+`approve-baseline` → `save-change-contract` → `observe` (candidate) →
+`compare` → `evaluate-contract` sequence, proving both a fully successful
+contract change (overall `PASS`, `--enforce` still exits `0`) and the
+milestone-signature failure (a locally successful requested/expected-
+dependent change alongside a real protected right-rail regression and a
+real preserved navigation-clipping regression, overall `FAIL`) - including
+`--enforce` producing a nonzero exit for the identical `FAIL` evidence
+(`evaluationRequestId` and `clauseResults` unchanged), full source
+observation/comparison/contract-artifact immutability, no copied
+screenshots, and no repository-root artifact leakage. All product behavior
+under test is invoked through the installed tarball's own executable, never
+imported from the source checkout. This addition is exercised in every
+existing matrix lane (`windows-latest`, `ubuntu-latest`, `macos-latest`)
+because all three already invoke this same script against the same
+candidate tarball - no workflow YAML change was required.
+
+This correction has since been proven cross-platform on the validation
+branch `validation/v0.5-pre-release`, first tested at commit
+`90255a9175503664f3e65d4114ee205176b7040a`: GitHub Actions run
+[`31727856546`](https://github.com/dailephd/my-frontend-observer/actions/runs/31727856546)
+passed completely - the candidate job (Linux, Node 24) and all three
+`matrix-smoke` lanes (`windows-latest` Node v24.18.1, `ubuntu-latest` Node
+v24.19.0, `macos-latest` Node v24.18.0) - using one shared candidate
+tarball, `my-frontend-observer-0.4.0.tgz`, SHA-256
+`9533a53e475614cd80a29dfa8b0f85e533e3ad736596579f559479e90e78941a`,
+independently hash-verified by each of the three matrix lanes before any of
+them ran the smoke (no lane built its own tarball). Every lane's
+`smoke-summary.json` reported byte-identical v0.5 evidence: the installed
+candidate's `approve-baseline`/`save-change-contract`/`evaluate-contract`
+`--help` all present, a real successful contract change (overall `PASS`,
+`--enforce` exits `0`), and the real milestone-signature failure (requested/
+expected-dependent `pass`, protected/preserved `fail`, overall `FAIL`,
+identical `evaluationRequestId`/`clauseResults` with `--enforce` exiting `1`
+and without it exiting `0`), plus source-artifact immutability, no copied
+screenshot, no path leakage, and no repository-root leakage - alongside
+every pre-existing v0.1-v0.4 packed observe/compare/scroll assertion, still
+passing unchanged on all three platforms.

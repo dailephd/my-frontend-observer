@@ -21,9 +21,9 @@ npm run check:docs
 npm pack --dry-run
 ```
 
-`npm test` runs the fast unit suite only (`tests/unit/`, currently 176
+`npm test` runs the fast unit suite only (`tests/unit/`, currently 515
 passing tests). `npm run test:browser` runs the real-Chromium integration
-suite (`tests/browser/`, currently 88 passing tests) against deterministic
+suite (`tests/browser/`, currently 120 passing tests) against deterministic
 local fixtures under `tests/fixtures/` and requires the Chromium binary
 above to be installed first; it is kept out of `npm test` because it
 launches a real browser and is slower.
@@ -114,13 +114,61 @@ before and after the comparison ran. Run it locally after `npm run build`:
 node scripts/dev/builtCliCompareSmoke.mjs
 ```
 
-Unlike `scripts/ci/runPackedObservationSmoke.mjs`, none of these three dev
+`scripts/dev/builtCliFrontendContractsSmoke.mjs` is the v0.5 equivalent,
+added alongside the `approve-baseline`/`save-change-contract`/
+`evaluate-contract` command implementations (shipped as part of the
+published `0.5.0` package - see `docs/CURRENT_STATE.md`). Unlike the other dev smokes, it needs no Chromium
+at all: it hand-writes deterministic, schema-`1.2.0`-valid observation
+manifests directly to a temporary directory (preserving the public
+observation artifact contract without a real browser capture), then runs
+the built `dist/cli.js` for `compare`, `approve-baseline`,
+`save-change-contract`, and `evaluate-contract` - twice for the final
+step, once without `--enforce` and once with it, against the same
+milestone-signature contract (requested navigation shrink = pass, expected
+workspace expansion = pass, protected right-rail width = fail, preserved
+unclipped navigation = fail, overall = `FAIL`). It validates both exit
+codes (`0` without `--enforce`, nonzero with it), that both invocations
+persist byte-for-byte semantically identical evaluation evidence
+(`evaluationRequestId` and `clauseResults` equal), that the evaluation
+directory contains `manifest.json` only, that no operational filesystem
+path leaked into either persisted evaluation manifest, and that every
+source observation/comparison/contract artifact remains unmodified. Run it
+locally after `npm run build`:
+
+```powershell
+node scripts/dev/builtCliFrontendContractsSmoke.mjs
+```
+
+`scripts/dev/builtCliFrontendContractsBrowserSmoke.mjs` is the v0.5 Batch 5
+real-browser equivalent, added alongside
+`tests/browser/cliFrontendContracts.test.ts`. Unlike the Chromium-free
+`scripts/dev/builtCliFrontendContractsSmoke.mjs` above, this one launches a
+real disposable local HTTP fixture and real Playwright Chromium, then drives
+the built `dist/cli.js` through the complete `observe` → `approve-baseline`
+→ `save-change-contract` → `observe` → `compare` → `evaluate-contract`
+sequence twice: once against a candidate whose served content produces a
+fully successful contract change (all clauses `pass`, overall `PASS`), and
+once against a candidate that reproduces the milestone-signature failure - a
+real observed navigation clipping regression and a real observed right-rail
+width regression alongside an otherwise-successful requested/expected-
+dependent change (overall `FAIL`). It validates the same `--enforce`
+exit-code/identity behavior, screenshot-free evaluation directory, source
+immutability, and path-privacy properties as the Chromium-free smoke, but
+against genuine rendered geometry instead of hand-constructed artifacts. Run
+it locally after `npm run build` (Chromium must already be installed):
+
+```powershell
+node scripts/dev/builtCliFrontendContractsBrowserSmoke.mjs
+```
+
+Unlike `scripts/ci/runPackedObservationSmoke.mjs`, none of these five dev
 smokes is wired into any CI workflow or is a release gate - they are
 source-checkout development evidence only, proving the built CLI's
-`--targets-file`/`--scroll-scenario-file`/`compare` behavior without
-installing a packed tarball or requiring cross-platform infrastructure.
-None is part of the published package. Cross-platform packed validation of
-both the v0.1-v0.3 observation behavior and the v0.4 `compare` command is
-`scripts/ci/runPackedObservationSmoke.mjs`'s responsibility (see
-`docs/CI_CD.md`) - the same script, against the same single candidate
-tarball per platform.
+`--targets-file`/`--scroll-scenario-file`/`compare`/frontend-contract
+command behavior without installing a packed tarball or requiring
+cross-platform infrastructure. None is part of the published package.
+Cross-platform packed validation of the v0.1-v0.5 observation/compare/
+contract behavior is `scripts/ci/runPackedObservationSmoke.mjs`'s
+responsibility (see `docs/CI_CD.md`) - the same script, against the same
+single candidate tarball per platform, now including the v0.5 contract/
+evaluation CLI.

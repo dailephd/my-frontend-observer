@@ -3,7 +3,7 @@
 ## Current scaffold architecture
 
 The current repository is one published TypeScript ESM package
-(`my-frontend-observer@0.4.0`):
+(`my-frontend-observer@0.5.0`):
 
 - `src/cli.ts` is the real, thin `observe` command entry point (argument
   parsing/output only).
@@ -180,6 +180,103 @@ path never launches Chromium** - `src/cli.ts` imports nothing from
 `src/browser/` or `src/artifacts/` (it only reaches persistence and artifact
 reading indirectly, through the application-layer seam above), matching the
 same import-boundary discipline already enforced for `observe`.
+
+## Current v0.5 architecture (released/current architecture)
+
+v0.5 adds one new downstream layer that consumes `ComparisonArtifact` values
+(plus the source `ObservationArtifact` pair) rather than producing them - no
+new browser lifecycle, target resolver, or comparison engine is added:
+
+```text
+ObservationArtifact before + after
+              ↓
+existing v0.4 comparison/relationship pipeline (unchanged)
+              ↓
+        ComparisonArtifact
+              ↓                                PersistentBaselineContract
+              |                                          +
+              `------------------------→   PerChangeContract
+                                                          ↓
+                        canonical contract evaluation
+                        (src/domain/frontendContractEvaluation.ts#evaluateFrontendContract)
+                                                          ↓
+                        clause results + unexpected changes + overall PASS/FAIL
+```
+
+`src/domain/frontendContracts.ts` froze the contract/change-scope type,
+constant, and structural-validator vocabulary (Batch 1); `src/domain/
+frontendContractIdentity.ts` froze deterministic contract/baseline/clause
+identity in the same canonicalize+sha256(+opaque-nonce) style as `src/domain/
+comparisonIdentity.ts`. `src/domain/frontendContractEvaluation.ts#evaluateFrontendContract`
+(Batch 2) is the one canonical pure evaluation entry point: it validates its
+five inputs (before/after `ObservationArtifact`, `ComparisonArtifact`,
+`PersistentBaselineContract`, `PerChangeContract`) are structurally coherent
+and mutually consistent, calculates the active baseline clause set after
+explicit supersession, detects bounded structural conflicts, evaluates every
+active clause via the frozen 15-primitive vocabulary against the existing
+`ComparisonArtifact`/`ObservationArtifact` evidence (never re-deriving
+clipping/relationship/scroll-owner facts), classifies unaccounted-for
+`ComparisonArtifact.differences` entries as `unexpected`, and derives one
+overall `PASS`/`FAIL` verdict. It performs no I/O, launches no browser, and
+persists nothing - `src/domain/frontendContractEvaluation.ts` itself remains
+untouched by the persistence layer below (Batch 3).
+
+Batch 3 adds the persistence/application boundary around this frozen domain,
+without redefining it:
+
+```text
+        ComparisonArtifact (read via new src/artifacts/comparisonArtifactReader.ts)
+              +
+PersistentBaselineContract / PerChangeContract
+(read/written via src/artifacts/frontendContractArtifactReader.ts / ...Writer.ts)
+              ↓
+src/application/frontendContractEvaluationService.ts#evaluateAndPersist
+              ↓
+    evaluateFrontendContract()  [called exactly once, unmodified]
+              ↓
+src/domain/frontendContractEvaluationArtifact.ts
+    (minimal additive persisted envelope around the frozen result)
+              ↓
+src/artifacts/frontendContractEvaluationArtifactWriter.ts
+    (atomic write, exactly once on a structurally constructible result)
+```
+
+`evaluateAndPersistFromArtifactRoots` is the CLI-facing wrapper, reading
+before/after observations through the existing `readObservationArtifact` (no
+second observation reader), the comparison and both contract classes
+through the new readers, then delegating to `evaluateAndPersist` exactly
+once - mirroring `application/comparisonService.ts#compareAndPersistFromArtifactRoots`'s
+own thin-wrapper shape.
+
+Batch 4 exposes this through the same thin-CLI boundary already established
+by `observe`/`compare`:
+
+```text
+src/cli.ts (argument parsing, JSON-file-shape checks, help/output formatting,
+            exit-code selection only)
+        ↓
+src/application/frontendContractPersistenceService.ts#approveAndPersistBaseline
+src/application/frontendContractPersistenceService.ts#persistPerChangeContract
+src/application/frontendContractEvaluationService.ts#evaluateAndPersistFromArtifactRoots
+        ↓
+domain validators (isValidPersistentBaselineContract / isValidPerChangeContract)
++ artifact readers/writers (Batch 3)
++ evaluateFrontendContract() (Batch 2, unmodified)
+```
+
+Three new top-level commands - `approve-baseline`, `save-change-contract`,
+`evaluate-contract` - each parse only CLI-syntax concerns (duplicate/missing
+flags, JSON-file readability/parseability/object-root shape) and delegate to
+exactly one application-layer call; `src/cli.ts` imports no artifact writer/
+reader module and no browser code, matching the existing `observe`/`compare`
+import-boundary discipline exactly. `approveAndPersistBaseline` adds the one
+new coherence check Batch 3 did not need: verifying a baseline contract's
+frozen `sourceObservation` reference actually matches the supplied
+observation artifact before persisting - explicit approval only, never
+inferred from a `compare` or `evaluate-contract` result. `--enforce` on
+`evaluate-contract` is applied only after evaluation and persistence have
+already completed; it selects the process exit status for an already-final
+`FAIL` result and is never part of any identity or persisted field.
 
 ## Planned v0.1 architecture constraints
 

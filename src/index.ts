@@ -180,6 +180,90 @@ export {
 
 export { buildComparisonRequestIdentity, buildComparisonIdentity } from './domain/comparisonIdentity.js';
 
+export type {
+  AuthoredChangeScopeCategory,
+  ChangeScopeClassification,
+  ExpectedDependentMode,
+  ContractTolerance,
+  ContractPrimitiveKind,
+  ContractPrimitive,
+  FrontendContractClauseBase,
+  BaselineClause,
+  PerChangeClause,
+  FrontendContractObservationReference,
+  PersistentBaselineContract,
+  FrontendContractValidationResult,
+  PerChangeContract,
+  ClauseResultStatus,
+  ClauseEvaluationResult,
+  OverallVerdict,
+} from './domain/frontendContracts.js';
+export {
+  CONTRACT_ARTIFACT_KIND,
+  CONTRACT_SCHEMA_VERSION,
+  AUTHORED_CHANGE_SCOPE_CATEGORIES,
+  isAuthoredChangeScopeCategory,
+  CHANGE_SCOPE_CLASSIFICATIONS,
+  EXPECTED_DEPENDENT_MODES,
+  isValidExpectedDependentMode,
+  CONTRACT_TOLERANCE_ABSOLUTE_PX_MIN,
+  CONTRACT_TOLERANCE_ABSOLUTE_PX_MAX,
+  CONTRACT_TOLERANCE_PERCENT_MIN,
+  CONTRACT_TOLERANCE_PERCENT_MAX,
+  isValidContractTolerance,
+  CONTRACT_PRIMITIVE_KINDS,
+  isValidContractPrimitive,
+  isValidBaselineClause,
+  isValidPerChangeClause,
+  isValidFrontendContractObservationReference,
+  isValidPersistentBaselineContract,
+  isValidPerChangeContract,
+  CLAUSE_RESULT_STATUSES,
+  isValidClauseEvaluationResult,
+  OVERALL_VERDICTS,
+} from './domain/frontendContracts.js';
+
+export { buildFrontendContractRequestIdentity, buildFrontendContractInstanceIdentity, buildClauseIdentity } from './domain/frontendContractIdentity.js';
+
+export type { FrontendContractEvaluationInput, UnexpectedChangeResult, FrontendContractEvaluationResult, EvaluateFrontendContractResult } from './domain/frontendContractEvaluation.js';
+export { evaluateFrontendContract } from './domain/frontendContractEvaluation.js';
+
+export { buildFrontendContractEvaluationRequestIdentity } from './domain/frontendContractIdentity.js';
+
+export type {
+  FrontendContractEvaluationSourceReference,
+  FrontendContractEvaluationArtifact,
+  FrontendContractEvaluationArtifactValidationResult,
+  BuildFrontendContractEvaluationArtifactInput,
+} from './domain/frontendContractEvaluationArtifact.js';
+export {
+  EVALUATION_ARTIFACT_KIND,
+  EVALUATION_SCHEMA_VERSION,
+  isValidFrontendContractEvaluationArtifact,
+  buildFrontendContractEvaluationArtifact,
+} from './domain/frontendContractEvaluationArtifact.js';
+
+export type { PersistedFrontendContractResult, WriteFrontendContractArtifactOptions } from './artifacts/frontendContractArtifactWriter.js';
+export { FRONTEND_CONTRACT_MANIFEST_FILENAME, writePersistentBaselineContract, writePerChangeContract } from './artifacts/frontendContractArtifactWriter.js';
+
+export type { ReadPersistentBaselineContractResult, ReadPerChangeContractResult } from './artifacts/frontendContractArtifactReader.js';
+export { readPersistentBaselineContract, readPerChangeContract } from './artifacts/frontendContractArtifactReader.js';
+
+export type { ReadComparisonArtifactResult } from './artifacts/comparisonArtifactReader.js';
+export { readComparisonArtifact } from './artifacts/comparisonArtifactReader.js';
+
+export type { PersistedFrontendContractEvaluationResult, WriteFrontendContractEvaluationArtifactOptions } from './artifacts/frontendContractEvaluationArtifactWriter.js';
+export { EVALUATION_MANIFEST_FILENAME, writeFrontendContractEvaluationArtifact } from './artifacts/frontendContractEvaluationArtifactWriter.js';
+
+export type { ReadFrontendContractEvaluationArtifactResult } from './artifacts/frontendContractEvaluationArtifactReader.js';
+export { readFrontendContractEvaluationArtifact } from './artifacts/frontendContractEvaluationArtifactReader.js';
+
+export type { EvaluateAndPersistOptions, ApplicationFrontendContractEvaluationResult } from './application/frontendContractEvaluationService.js';
+export { DEFAULT_EVALUATION_OUTPUT_LOCATION, evaluateAndPersist, evaluateAndPersistFromArtifactRoots } from './application/frontendContractEvaluationService.js';
+
+export type { PersistFrontendContractOptions, ApplicationApproveBaselineResult, ApplicationPersistChangeContractResult } from './application/frontendContractPersistenceService.js';
+export { approveAndPersistBaseline, persistPerChangeContract } from './application/frontendContractPersistenceService.js';
+
 export type { CompareObservationsResult } from './domain/comparisonEngine.js';
 export { compareObservations, evaluateComparability, evaluateExpectedDependencies, compareTargetConfiguration } from './domain/comparisonEngine.js';
 

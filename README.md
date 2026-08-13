@@ -6,15 +6,21 @@ in [docs/PROJECT_DESCRIPTION.md](docs/PROJECT_DESCRIPTION.md).
 
 ## Current status
 
-`v0.4.0`, Layout Relationships, Dependency Evidence, and Before/After
-Comparison, is the current published release: `my-frontend-observer observe`
-launches a real, sandboxed Chromium browser, enforces a loopback-only safety
-policy, captures a viewport screenshot plus bounded page/target evidence,
-and persists it as one portable `manifest.json` + `screenshot.png` artifact
-(observation schema `1.2.0`). `my-frontend-observer compare` reads two
-already-persisted observation artifacts and derives before/after evidence
-purely from their existing content, persisting a comparison artifact
-(comparison schema `1.0.0`).
+`v0.5.0`, Executable Frontend Contracts and Explicit Change Scope, is the
+current published release: `my-frontend-observer observe` launches a real,
+sandboxed Chromium browser, enforces a loopback-only safety policy, captures
+a viewport screenshot plus bounded page/target evidence, and persists it as
+one portable `manifest.json` + `screenshot.png` artifact (observation schema
+`1.2.0`). `my-frontend-observer compare` reads two already-persisted
+observation artifacts and derives before/after evidence purely from their
+existing content, persisting a comparison artifact (comparison schema
+`1.0.0`). `my-frontend-observer approve-baseline`, `save-change-contract`,
+and `evaluate-contract` turn that evidence into an executable frontend
+contract: an explicitly approved baseline plus a per-change contract
+(requested/expected-dependent/protected/preserved scope) are evaluated
+together into one `PASS`/`FAIL` verdict, so a locally successful requested
+change can never silently hide a protected-region regression (frontend
+contract schema `1.0.0`; evaluation artifact schema `1.0.0`).
 
 Install:
 
@@ -91,6 +97,28 @@ including when the two observations turn out to be `incomparable`, which is
 itself a successful comparison outcome. See
 [docs/COMMANDS.md](docs/COMMANDS.md) for the full flag reference.
 
+### Frontend contracts
+
+`v0.5.0` ships a text/config-driven frontend contract and evaluation
+workflow: approve a baseline against an observation, save a per-change
+contract, then evaluate a candidate change against them plus existing
+before/after/comparison evidence, deriving one `PASS`/`FAIL` verdict:
+
+```powershell
+my-frontend-observer approve-baseline --observation observations/<id> --contract-file baseline.json --output baselines
+my-frontend-observer save-change-contract --contract-file change.json --output contracts
+my-frontend-observer evaluate-contract --before observations/<before-id> --after observations/<after-id> --comparison comparisons/<id> --baseline baselines/<baseline-id> --change contracts/<contract-id> --output evaluations [--enforce]
+```
+
+(From a source checkout, use `node dist/cli.js approve-baseline ...` etc.
+instead.)
+
+`evaluate-contract` never launches a browser or recomputes comparison
+evidence. `--enforce` only changes the process exit status for a `FAIL`
+verdict; the verdict itself, and its persisted evidence, are unaffected. See
+[docs/COMMANDS.md](docs/COMMANDS.md) for the full flag reference and
+[docs/WORKFLOWS.md](docs/WORKFLOWS.md) for the end-to-end flow.
+
 Validation:
 
 ```powershell
@@ -108,8 +136,8 @@ Planning authorities:
   intent and responsibility boundaries.
 - [Project Milestones](docs/PROJECT_MILESTONES.md): complete ordered capability
   design and cross-milestone rules.
-- [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.4 are
-  released, v0.5 is next.
+- [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.5 are
+  released, v0.6 is next.
 - [Current State](docs/CURRENT_STATE.md): retained scaffold and release state.
 
 No sibling ecosystem repository is a runtime dependency of the retained

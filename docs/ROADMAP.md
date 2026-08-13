@@ -94,6 +94,12 @@ Planning must settle comparability and tolerance semantics.
 
 ## v0.5 — Executable Frontend Contracts and Explicit Change Scope
 
+Current status: released as `0.5.0`, published to npm and validated as a
+packed npm tarball in a clean consumer environment on Windows, Linux, and
+macOS (observation schema `1.2.0`, comparison schema `1.0.0`, frontend
+contract schema `1.0.0`, evaluation artifact schema `1.0.0`). See
+`docs/CURRENT_STATE.md` for the implementation summary.
+
 Objective/problem: prevent a requested local fix from silently breaking an
 approved region or invariant. Required capabilities are baseline invariants,
 requested/expected-dependent/protected/preserved classifications, explicit

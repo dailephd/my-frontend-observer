@@ -2,7 +2,7 @@
 
 ## Current contracts
 
-The observation artifact contract is published as `my-frontend-observer@0.4.0`
+The observation artifact contract is published as `my-frontend-observer@0.5.0`
 and proven both from the source checkout and from the packed npm tarball,
 on Windows, Linux, and macOS. The observation schema is `1.2.0` (see "v0.2
 target contract" and "v0.3 scroll scenario contract" below):
@@ -250,6 +250,175 @@ The public entry point is `my-frontend-observer compare --before <root>
 --after <root> --output <directory> [--config-file <json-file>]` (see
 `docs/COMMANDS.md`) - comparison itself never launches a browser.
 
+## v0.5 frontend contract and evaluation (shipped as part of this release)
+
+Downstream of the v0.4 observation/comparison/relationship evidence above,
+`src/domain/frontendContracts.ts` freezes the v0.5 contract/change-scope
+model, `src/domain/frontendContractIdentity.ts` freezes deterministic
+contract/baseline/clause identity, and `src/domain/frontendContractEvaluation.ts`
+implements the one canonical pure evaluation engine. Baseline/per-change
+contract persistence, evaluation-artifact persistence, explicit baseline
+approval, and public CLI exposure are all implemented and shipped (see
+"v0.5 contract and evaluation persistence" and "v0.5 public contract/
+evaluation commands" below).
+
+**Contract classes**: a `PersistentBaselineContract` (append/supersession-based
+history via an optional `supersedesBaselineId`) and a `PerChangeContract`
+(the allowed scope of one requested change). Both share `artifactKind:
+"my-frontend-observer/frontend-contract"` and `schemaVersion: "1.0.0"` - an
+independent family from the observation (`1.2.0`) and comparison (`1.0.0`)
+schemas; the frontend-contract schema constant happens to share the version
+string `1.0.0` with comparison's by coincidence only.
+
+**Four authored categories, one derived classification**: every per-change
+clause is authored as exactly one of `requested`, `expected-dependent`,
+`protected`, or `preserved`. `unexpected` is a fifth, *derived-only*
+classification the evaluator produces for a meaningful rendered difference no
+active clause accounts for - it can never be authored as a permission.
+
+**Bounded contract primitives**: 15 frozen `ContractPrimitive` kinds cover
+visibility, clipping, width bounds, non-overlap, relative width, vertical
+sequence, geometric fit (explicitly distinct from DOM containment),
+document-width-vs-viewport, scroll ownership, initial-viewport position,
+relationship-unchanged, and property-unchanged/increases/decreases - a closed
+vocabulary, never a generic expression language.
+
+**Contract tolerance**: `exact` / `absolute-px` / `percent`, independent of
+`ComparisonConfig.geometryTolerancePx` (which only suppresses insignificant
+comparison noise and is never contract authorization). Percent tolerance's
+denominator is the absolute before-value.
+
+**Required vs. permitted expected-dependent**: `required` clauses must occur
+compliantly to pass; `permitted` clauses accept no change or a compliant
+change, and fail only on a strictly contradictory change.
+
+**Evaluation result vocabulary**: each clause resolves to `pass` / `fail` /
+`unavailable` (with a required non-empty reason - required evidence gaps and
+an `incomparable` source comparison never fabricate a `pass`) / `conflict`
+(with at least two `conflictingClauseIds` - covers both an unresolved
+baseline/per-change contradiction and an unknown `supersedesBaselineClauseIds`
+reference). The overall verdict is `PASS` only when every clause result is
+`pass` and no unexpected change remains; otherwise `FAIL` - there is no
+partial-pass scoring.
+
+**Explicit supersession, never inferred**: a per-change clause may list
+`supersedesBaselineClauseIds` to remove specific baseline clauses from active
+evaluation. Two clauses that structurally contradict each other on the same
+(target, property) without explicit supersession produce a `conflict`, never
+a silent preference for one side.
+
+**Reuses existing v0.4 evidence directly**: the evaluator consumes an
+already-computed `ComparisonArtifact` (`differences`, `relationshipChanges`,
+`relationshipsBefore`/`relationshipsAfter`, `comparability`) and the source
+`ObservationArtifact` pair - it never re-launches a browser, re-resolves a
+target, or reimplements clipping/relationship/scroll-owner derivation.
+Unexpected-change derivation reads `ComparisonArtifact.differences` only
+(which already includes one difference per relationship change), so a single
+logical transition is never double-counted.
+
+## v0.5 contract and evaluation persistence (shipped as part of this release)
+
+Persistence consumes the frozen v0.5 domain above; it never redefines it.
+`src/artifacts/frontendContractArtifactWriter.ts`/`frontendContractArtifactReader.ts`
+persist and read both `PersistentBaselineContract` and `PerChangeContract`
+symmetrically (both already share `CONTRACT_ARTIFACT_KIND`/`CONTRACT_SCHEMA_VERSION`,
+so one writer/reader pair serves both contract classes) as
+`<outputLocation>/<baselineId|contractId>/manifest.json`, following the same
+atomic-write discipline as `artifacts/artifactWriter.ts`/`artifacts/comparisonArtifactWriter.ts`
+(sibling temporary directory, then one atomic rename; an existing directory at
+the final identity is a genuine collision and is rejected, never overwritten -
+prior baseline history is never rewritten). `src/artifacts/comparisonArtifactReader.ts`
+is a new Batch 3 addition (no comparison reader existed before) mirroring
+`artifacts/artifactReader.ts`'s discipline exactly, changing no comparison
+semantics and keeping comparison schema `1.0.0`.
+
+**Evaluation artifact envelope**: Batch 1 froze the evaluation-result
+vocabulary (`ClauseEvaluationResult`, `OverallVerdict`) but not a persistable
+envelope, so `src/domain/frontendContractEvaluationArtifact.ts` adds exactly
+that - `artifactKind: "my-frontend-observer/frontend-contract-evaluation"`,
+`schemaVersion: "1.0.0"` (its own independent family, distinct from
+observation/comparison/frontend-contract), an `evaluationId`/`evaluationRequestId`
+pair, bounded `before`/`after` source-observation references, and
+`comparisonId`/`comparisonRequestId` plus `contracts: {baselineId,
+contractId}` references - never an embedded `ObservationArtifact` or copied
+screenshot. It reuses `ClauseEvaluationResult`/`OverallVerdict`/
+`UnexpectedChangeResult` unchanged and contains no evaluation logic itself.
+`evaluationRequestId` is a deterministic function of `{baselineId,
+contractId, beforeObservationId, afterObservationId, comparisonRequestId}`
+(`frontendContractIdentity.ts#buildFrontendContractEvaluationRequestIdentity` -
+deliberately `comparisonRequestId`, not the fresh-per-execution
+`comparisonId`, so semantically identical evaluations share an identity);
+`evaluationId` reuses the existing generic `buildFrontendContractInstanceIdentity`
+unchanged. `src/artifacts/frontendContractEvaluationArtifactWriter.ts`/
+`frontendContractEvaluationArtifactReader.ts` persist/read it with the same
+atomic-write discipline as above.
+
+**Application seam**: `src/application/frontendContractEvaluationService.ts#evaluateAndPersist`
+calls the existing pure `evaluateFrontendContract` exactly once and - only
+for a structurally constructible result, whether the verdict is `PASS` or
+`FAIL` - persists exactly one evaluation artifact; an `{ok: false}` evaluator
+result (evidence could not be constructed into an evaluation at all) is never
+persisted as a fabricated artifact. `evaluateAndPersistFromArtifactRoots` is
+the future-CLI-facing wrapper: it reads two observations through the existing
+`readObservationArtifact` (never a second observation reader), the
+comparison and the two contracts through the readers above, then delegates
+to `evaluateAndPersist` exactly once.
+
+## v0.5 public contract/evaluation commands (shipped as part of this release)
+
+Three public commands expose the persistence/evaluation contract above (see
+`docs/COMMANDS.md` for exact flags/output/exit behavior, not duplicated
+here):
+
+- `approve-baseline` → `frontendContractPersistenceService.ts#approveAndPersistBaseline`
+  → validates a `PersistentBaselineContract` and its `sourceObservation`
+  coherence against a supplied observation artifact → persists via
+  `frontendContractArtifactWriter.ts`. The only baseline-approval act in the
+  observer.
+- `save-change-contract` → `frontendContractPersistenceService.ts#persistPerChangeContract`
+  → validates a `PerChangeContract` (rejecting a baseline contract, an
+  authored `unexpected` category, or any other structural violation) →
+  persists via the same writer. Persistence only, never approval.
+- `evaluate-contract` → `frontendContractEvaluationService.ts#evaluateAndPersistFromArtifactRoots`
+  → `evaluateFrontendContract` exactly once → `frontendContractEvaluationArtifactWriter.ts`
+  exactly once. `--enforce` affects only the process exit status for an
+  already-persisted `FAIL` verdict.
+
+No command infers baseline approval or supersession automatically - not
+`compare`, not a `PASS` evaluation, not any artifact writer.
+
+This full command sequence is proven against real Chromium observations (not
+hand-constructed artifacts) - see "v0.5 real-browser workflow proof" below.
+
+## v0.5 real-browser workflow proof (shipped as part of this release)
+
+`tests/browser/cliFrontendContracts.test.ts` and
+`scripts/dev/builtCliFrontendContractsBrowserSmoke.mjs` drive the complete
+`observe` → `approve-baseline` → `save-change-contract` → `observe` →
+`compare` → `evaluate-contract` sequence against a real disposable local HTTP
+fixture and real Chromium, proving two scenarios:
+
+- a fully successful contract change - a real observed navigation-width
+  decrease and workspace-width increase, both satisfying their authored
+  `requested`/`expected-dependent` clauses, an unchanged `protected` rail
+  width, and an unclipped `preserved` navigation - overall `PASS`;
+- the "milestone signature" failure - the same locally successful requested
+  change (navigation shrinks, workspace expands, both still `pass`)
+  co-occurring with a genuine `protected` right-rail width regression (a real
+  `resized` comparison difference) and a genuine `preserved` navigation
+  clipping regression (a real `clipping-changed` difference, `not-clipped` →
+  `clipped`) - overall `FAIL`.
+
+Both scenarios confirm: `--enforce` changes only the process exit status
+(`0` without it, nonzero with it) for the identical persisted
+`evaluationRequestId`/`clauseResults`; every source observation and
+comparison artifact is byte-identical before and after evaluation; the
+evaluation directory contains `manifest.json` only (no copied screenshot);
+and no operational filesystem path is ever serialized into a persisted
+manifest. This is real-browser evidence layered on top of the CLI-level
+proof in `tests/unit/cliFrontendContracts.test.ts` and the Chromium-free
+`scripts/dev/builtCliFrontendContractsSmoke.mjs` - it does not replace them.
+
 ## Approved v0.1 design inputs
 
 The historical greenfield scaffold plan recorded these v0.1 design decisions:
@@ -269,7 +438,10 @@ the file layout: there is no separate `evidence.json` - page/target evidence
 is embedded directly inside `manifest.json`.
 
 Comparison and relationship contracts belong to v0.4, and canonical
-change-scope contracts belong to v0.5. Bounded agent-context plus ecosystem
-integration contracts move to v0.6, followed by the text/config-driven
+change-scope contracts belong to v0.5 - see "v0.5 frontend contract and
+evaluation" above for the full shipped contract model, identity, evaluation
+engine, persistence, baseline approval, and CLI exposure.
+Bounded agent-context plus ecosystem integration contracts move to v0.6,
+followed by the text/config-driven
 coding-agent review contract in v0.7. Viewer and annotation contracts follow in
 v0.8 and v0.9 and converge with the existing workflow in v0.10.
