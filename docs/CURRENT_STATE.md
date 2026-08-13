@@ -382,8 +382,18 @@ persists and exits `0` without it, exits nonzero with it, identical
 `evaluationRequestId` and `clauseResults` in both cases), full source
 observation/comparison immutability, no screenshot copied into the
 evaluation artifact, and no operational filesystem path leaked into any
-persisted manifest. The v0.5 public contract CLI is still not part of
-packed-tarball readiness validation (see `docs/CI_CD.md`).
+persisted manifest.
+
+The packed-readiness coverage gap this left (`V0_5_READINESS_VALIDATION_GAP_EXISTS`)
+has since been corrected locally: `scripts/ci/runPackedObservationSmoke.mjs`
+now also exercises the installed packed candidate's `approve-baseline`/
+`save-change-contract`/`evaluate-contract` commands against real installed-
+candidate `observe`/`compare` evidence, proving the same successful-change
+and milestone-signature scenarios through the installed tarball rather than
+the source checkout. This has been validated locally only, on this machine's
+single platform/Node version - the actual Windows/Linux/macOS matrix run and
+the project's security readiness checks remain the responsibility of the
+next pre-release readiness workflow (see `docs/CI_CD.md`).
 
 ## Not implemented
 

@@ -96,3 +96,35 @@ observations. This preserves every pre-existing v0.1-v0.3 packed
 observation proof unchanged and adds the v0.4 proof additively, in the same
 script and the same candidate, per the established same-candidate
 architecture (no second `npm pack`, no per-platform rebuild).
+
+## v0.5 readiness coverage
+
+The packed-readiness coverage gap identified during the v0.5 implementation-
+completeness audit as `V0_5_READINESS_VALIDATION_GAP_EXISTS` - the packed
+candidate smoke exercised `observe`/`compare` but not `approve-baseline`/
+`save-change-contract`/`evaluate-contract` - has been **corrected locally**:
+`scripts/ci/runPackedObservationSmoke.mjs` now also installs the same
+candidate tarball, observes a deterministic navigation/workspace/rail
+fixture through the installed `observe`, and drives the complete installed
+`approve-baseline` → `save-change-contract` → `observe` (candidate) →
+`compare` → `evaluate-contract` sequence, proving both a fully successful
+contract change (overall `PASS`, `--enforce` still exits `0`) and the
+milestone-signature failure (a locally successful requested/expected-
+dependent change alongside a real protected right-rail regression and a
+real preserved navigation-clipping regression, overall `FAIL`) - including
+`--enforce` producing a nonzero exit for the identical `FAIL` evidence
+(`evaluationRequestId` and `clauseResults` unchanged), full source
+observation/comparison/contract-artifact immutability, no copied
+screenshots, and no repository-root artifact leakage. All product behavior
+under test is invoked through the installed tarball's own executable, never
+imported from the source checkout. This addition is exercised in every
+existing matrix lane (`windows-latest`, `ubuntu-latest`, `macos-latest`)
+because all three already invoke this same script against the same
+candidate tarball - no workflow YAML change was required.
+
+**This correction has been validated locally only** (this repository's own
+machine, one platform, one Node version). It does **not** by itself
+constitute `V0_5_PRE_RELEASE_READINESS_PASS`: the actual Windows/Linux/macOS
+matrix run, the required Node-version matrix, and the project's security
+readiness checks remain the responsibility of the next pre-release readiness
+workflow.
