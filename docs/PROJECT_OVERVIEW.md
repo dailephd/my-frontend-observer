@@ -16,20 +16,21 @@ The responsibility split is stable:
 ## Current repository state
 
 v0.1, Runtime Observation Foundation; v0.2, Stable Semantic Targets and
-Region Identity; and v0.3, Runtime Scrolling, Overflow, and Visibility
-Behavior, are released, published to npm (current version `0.3.0`,
-observation schema `1.2.0`) and validated as a packed npm tarball in a
-clean consumer environment across Windows, Linux, and macOS: a real
-`observe` CLI command launches Chromium, enforces loopback-only safety,
-captures bounded page/target evidence via legacy CSS-shorthand targets,
-structured semantic `--targets-file` targets, or a bounded
-`--scroll-scenario-file` runtime scroll scenario (`window-scroll-by` or
-`target-scroll-by`), and persists one portable local artifact - see
-`docs/CURRENT_STATE.md` for the implementation summary. v0.4, Layout
-Relationships, Dependency Evidence, and Before/After Comparison, is
-implementation feature-complete on `feature/v0.4-layout-comparison` but not
-yet released - the published npm package remains `0.3.0` and does not
-include `compare`. v0.5–v0.10 remain future and unimplemented.
+Region Identity; v0.3, Runtime Scrolling, Overflow, and Visibility Behavior;
+and v0.4, Layout Relationships, Dependency Evidence, and Before/After
+Comparison, are released, published to npm (current version `0.4.0`,
+observation schema `1.2.0`, comparison schema `1.0.0`) and validated as a
+packed npm tarball in a clean consumer environment across Windows, Linux,
+and macOS: a real `observe` CLI command launches Chromium, enforces
+loopback-only safety, captures bounded page/target evidence via legacy
+CSS-shorthand targets, structured semantic `--targets-file` targets, or a
+bounded `--scroll-scenario-file` runtime scroll scenario
+(`window-scroll-by` or `target-scroll-by`), and persists one portable local
+artifact; a real `compare` CLI command reads two already-persisted
+observation artifacts and derives before/after layout-relationship and
+difference evidence without launching a browser - see
+`docs/CURRENT_STATE.md` for the implementation summary. v0.5–v0.10 remain
+future and unimplemented.
 
 The revised dependency path reaches practical coding-agent use before graphical
 interaction:

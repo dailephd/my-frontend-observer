@@ -2,7 +2,7 @@
 
 ## Current contracts
 
-The observation artifact contract is published as `my-frontend-observer@0.3.0`
+The observation artifact contract is published as `my-frontend-observer@0.4.0`
 and proven both from the source checkout and from the packed npm tarball,
 on Windows, Linux, and macOS. The observation schema is `1.2.0` (see "v0.2
 target contract" and "v0.3 scroll scenario contract" below):
@@ -83,7 +83,7 @@ exclusive per invocation, and both converge on the same
 `normalizeRequest()`/browser-resolver/artifact path, so a semantic
 observation produces exactly the same `manifest.json` shape as a
 CSS-shorthand one. Schema `1.1.0` was the v0.2 published artifact schema;
-the current v0.3 package emits schema `1.2.0` for both target-input modes
+the current v0.4 package emits schema `1.2.0` for both target-input modes
 (target semantics are unchanged from v0.2 - see the v0.3 scroll scenario
 contract below for what schema `1.2.0` actually adds). `--targets-file`'s
 local input path is never part of the persisted request identity or
@@ -162,12 +162,11 @@ public entry point is `my-frontend-observer observe --scroll-scenario-file
 directly, and its local path is operational input only, exactly like
 `--targets-file`'s path - never persisted, never part of request identity.
 
-## v0.4 comparison contract (implemented on feature branch, unreleased)
+## v0.4 comparison contract (shipped as part of this release)
 
-**Current status: implemented on `feature/v0.4-layout-comparison`, not yet
-released.** Package remains `0.3.0`; observation schema remains `1.2.0`.
-Comparison is a distinct artifact kind and schema, never a bump to the
-observation schema:
+**Current status: shipped as part of the published `my-frontend-observer@0.4.0`
+package.** Observation schema remains `1.2.0`. Comparison is a distinct
+artifact kind and schema, never a bump to the observation schema:
 
 - artifact kind: `my-frontend-observer/comparison`;
 - comparison schema: `1.0.0`.

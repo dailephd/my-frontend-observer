@@ -6,12 +6,15 @@ in [docs/PROJECT_DESCRIPTION.md](docs/PROJECT_DESCRIPTION.md).
 
 ## Current status
 
-`v0.3.0`, Runtime Scrolling, Overflow, and Visibility Behavior, is the
-current published release: `my-frontend-observer observe` launches a real,
-sandboxed Chromium browser, enforces a loopback-only safety policy,
-captures a viewport screenshot plus bounded page/target evidence, and
-persists it as one portable `manifest.json` + `screenshot.png` artifact
-(observation schema `1.2.0`).
+`v0.4.0`, Layout Relationships, Dependency Evidence, and Before/After
+Comparison, is the current published release: `my-frontend-observer observe`
+launches a real, sandboxed Chromium browser, enforces a loopback-only safety
+policy, captures a viewport screenshot plus bounded page/target evidence,
+and persists it as one portable `manifest.json` + `screenshot.png` artifact
+(observation schema `1.2.0`). `my-frontend-observer compare` reads two
+already-persisted observation artifacts and derives before/after evidence
+purely from their existing content, persisting a comparison artifact
+(comparison schema `1.0.0`).
 
 Install:
 
@@ -67,28 +70,26 @@ in
 [docs/COMMANDS.md](docs/COMMANDS.md#scroll-scenario---scroll-scenario-file)
 for the exact JSON format and flag reference.
 
-### v0.4 comparison (current source, unreleased)
+### Comparison
 
-The published package is still `0.3.0` and does not include `compare`.
-`feature/v0.4-layout-comparison` (this source checkout, once built) adds a
-second command that reads two already-persisted observation artifacts and
-derives before/after evidence purely from their existing content - it never
-launches a browser:
+`my-frontend-observer compare` reads two already-persisted observation
+artifacts and derives before/after evidence purely from their existing
+content - it never launches a browser:
 
 ```powershell
-node dist/cli.js compare `
+my-frontend-observer compare `
   --before observations/<before-observation-id> `
   --after observations/<after-observation-id> `
   --output comparisons
 ```
 
+(From a source checkout, use `node dist/cli.js compare ...` instead.)
+
 This prints a concise result (`Comparison:`/`State:`/`Artifact:`/
 `Differences:`/`Relationship changes:`/`Diagnostics:`) and exits `0` -
 including when the two observations turn out to be `incomparable`, which is
 itself a successful comparison outcome. See
-[docs/COMMANDS.md](docs/COMMANDS.md) for the full flag reference. Once v0.4
-is released, this section will move above and `npm install
-my-frontend-observer` will ship `compare` directly - it does not yet.
+[docs/COMMANDS.md](docs/COMMANDS.md) for the full flag reference.
 
 Validation:
 
@@ -107,8 +108,8 @@ Planning authorities:
   intent and responsibility boundaries.
 - [Project Milestones](docs/PROJECT_MILESTONES.md): complete ordered capability
   design and cross-milestone rules.
-- [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1, v0.2, and
-  v0.3 are released, v0.4 is next.
+- [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.4 are
+  released, v0.5 is next.
 - [Current State](docs/CURRENT_STATE.md): retained scaffold and release state.
 
 No sibling ecosystem repository is a runtime dependency of the retained

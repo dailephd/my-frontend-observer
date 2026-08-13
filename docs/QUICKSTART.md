@@ -27,10 +27,8 @@ See [COMMANDS.md](COMMANDS.md) for the full flag reference, including the
 
 Once you have two such artifacts, `node dist/cli.js compare --before
 <root> --after <root> --output comparisons` derives before/after evidence
-between them without launching a browser again. This is current-source
-v0.4 functionality on `feature/v0.4-layout-comparison`, not yet part of the
-published `0.3.0` package - see [COMMANDS.md](COMMANDS.md#compare-current-source-unreleased-v04)
-for details.
+between them without launching a browser again - see
+[COMMANDS.md](COMMANDS.md#compare) for details.
 
 To validate the repository itself instead:
 

@@ -1,7 +1,8 @@
 # Current State
 
-The project is published at package version `0.3.0` (roadmap v0.3, Runtime
-Scrolling, Overflow, and Visibility Behavior; observation schema `1.2.0`).
+The project is published at package version `0.4.0` (roadmap v0.4, Layout
+Relationships, Dependency Evidence, and Before/After Comparison; observation
+schema `1.2.0`; comparison schema `1.0.0`).
 
 ## Greenfield foundation established
 
@@ -221,11 +222,15 @@ consumer environment on Windows, Linux, and macOS before release.
   unchanged. Proven via real Chromium (`tests/browser/cliObserve.test.ts`)
   and the built `dist/cli.js` (`scripts/dev/builtCliScrollScenarioSmoke.mjs`).
 
-## v0.4 status (Layout Relationships, Dependency Evidence, and Before/After Comparison) - implementation feature-complete, unreleased
+## v0.4 status (Layout Relationships, Dependency Evidence, and Before/After Comparison) - released as 0.4.0
 
-v0.4 Batches 1-4 are implemented on `feature/v0.4-layout-comparison` and not
-yet released. Package version remains `0.3.0`; observation schema remains
-`1.2.0`; comparison schema is `1.0.0`.
+v0.4 is implemented and released as package version `0.4.0`; observation
+schema remains `1.2.0`; comparison schema is `1.0.0`. It was validated as a
+packed npm tarball in a clean consumer environment on Windows, Linux, and
+macOS - covering the legacy CSS-shorthand `--target` path, the structured
+`--targets-file` path, both `--scroll-scenario-file` action kinds, and the
+installed `compare` command (comparable and incomparable cases) - before
+release.
 
 - **Batch 1** froze the `my-frontend-observer/comparison` artifact contract
   (schema `1.0.0`, independent of and never reused for the observation
@@ -306,10 +311,8 @@ yet released. Package version remains `0.3.0`; observation schema remains
 v0.4's canonical relationship derivation, before/after comparison,
 comparability, differences, relationship changes, explicit dependency
 evidence, comparison persistence, and public `compare` CLI are all
-implemented and exercised end-to-end. Not yet done: the hardened
-repository-wide v0.4 documentation reconciliation, pre-release readiness
-(including packed-tarball `compare` validation - see `docs/CI_CD.md`), and
-release preparation/publication itself.
+implemented, exercised end-to-end, packed-validated cross-platform, and
+released.
 
 ## Not implemented
 
@@ -320,8 +323,6 @@ release preparation/publication itself.
 
 ## Next target
 
-v0.1, v0.2, and v0.3 are implemented, validated, and released (`0.1.0`,
-`0.2.0`, `0.3.0`). v0.4 (Layout Relationships, Dependency Evidence, and
-Before/After Comparison) implementation is feature-complete on
-`feature/v0.4-layout-comparison`, unreleased; hardened documentation
-reconciliation and pre-release readiness remain before release.
+v0.1-v0.4 are implemented, validated, and released (`0.1.0`, `0.2.0`,
+`0.3.0`, `0.4.0`). v0.5 (Executable Frontend Contracts and Explicit Change
+Scope) is next.

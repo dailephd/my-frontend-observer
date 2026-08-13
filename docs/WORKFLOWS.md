@@ -11,9 +11,9 @@ install dependencies (npm install; npx playwright install chromium)
 → validate documentation (npm run check:docs)
 ```
 
-## Current observation workflow (published as 0.3.0)
+## Current observation workflow (published as 0.4.0)
 
-The real `observe` workflow, part of the published `my-frontend-observer@0.3.0`
+The real `observe` workflow, part of the published `my-frontend-observer@0.4.0`
 package, accepts target configuration through either of two input paths,
 plus one optional runtime scroll scenario:
 
@@ -62,12 +62,12 @@ temporary consumer directory outside the repository, on Windows, Linux, and
 macOS (`scripts/ci/runPackedObservationSmoke.mjs`) - the same workflow,
 independent of the source checkout.
 
-## Current comparison workflow (implemented on feature branch, unreleased v0.4)
+## Current comparison workflow (published as 0.4.0)
 
-**Current status: implemented on `feature/v0.4-layout-comparison`, not yet
-released.** This is a separate workflow from the published v0.3 observation
-workflow above - it consumes two already-persisted observation artifacts
-rather than producing one, and it never launches a browser:
+**Current status: shipped as part of the published `my-frontend-observer@0.4.0`
+package.** This is a separate workflow from the observation workflow above -
+it consumes two already-persisted observation artifacts rather than
+producing one, and it never launches a browser:
 
 ```text
 two prior real "observe" invocations, each producing its own persisted
@@ -104,18 +104,17 @@ Source observations are never modified by this workflow. Operational paths
 This is exercised by `runCli()`-level tests
 (`tests/unit/cli.test.ts`, `tests/unit/cliCompareOrchestration.test.ts`,
 `tests/unit/cliCompareEndToEnd.test.ts`), a real-Chromium end-to-end test
-(`tests/browser/cliCompare.test.ts`), and built `node dist/cli.js compare
-...` runs against real persisted observations from the deterministic local
-fixture (`scripts/dev/builtCliCompareSmoke.mjs`). Packed-tarball validation
-of `compare` has not yet been added to `scripts/ci/runPackedObservationSmoke.mjs`
-- see `docs/CI_CD.md`; that is pre-release-readiness work, not part of
-implementation.
+(`tests/browser/cliCompare.test.ts`), built `node dist/cli.js compare ...`
+runs against real persisted observations from the deterministic local
+fixture (`scripts/dev/builtCliCompareSmoke.mjs`), and packed-tarball
+validation of the installed `compare` command
+(`scripts/ci/runPackedObservationSmoke.mjs` - see `docs/CI_CD.md`).
 
 ## Future workflows
 
 ```text
 stable targets and bounded runtime behavior
-→ relationships and before/after comparison (implemented, unreleased - see above)
+→ relationships and before/after comparison (released - see above)
 → safe-change contracts
 → bounded agent context plus runtime/static ecosystem integration
 → text/config-driven coding-agent change review

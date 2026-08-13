@@ -3,7 +3,7 @@
 ## Current scaffold architecture
 
 The current repository is one published TypeScript ESM package
-(`my-frontend-observer@0.3.0`):
+(`my-frontend-observer@0.4.0`):
 
 - `src/cli.ts` is the real, thin `observe` command entry point (argument
   parsing/output only).
@@ -108,7 +108,7 @@ is still one canonical `observe()` application use case and one artifact
 writer; `scrollScenarioEvidence` is simply one more optional field on the
 same `ObservationArtifact`.
 
-## Current v0.4 architecture (implemented on feature branch, unreleased)
+## Current v0.4 architecture (released/current architecture)
 
 v0.4 adds one new downstream pipeline that consumes `ObservationArtifact`
 values rather than producing them - it never adds a second browser lifecycle,

@@ -1,10 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 - 2026-08-12
 
-Layout Relationships, Dependency Evidence, and Before/After Comparison
-(v0.4). Implemented on `feature/v0.4-layout-comparison`; not yet published -
-the package version below remains the current published release.
+Layout Relationships, Dependency Evidence, and Before/After Comparison.
 
 - New comparison artifact kind `my-frontend-observer/comparison`, schema
   `1.0.0` - independent of and never reused for the observation schema.

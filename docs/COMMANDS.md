@@ -225,17 +225,15 @@ persists honestly - typically as `partial` - carrying the same
 `target-missing`/`target-ambiguous`/`browser-evidence-unavailable` diagnostic
 that any other unresolved configured target would produce.
 
-## `compare` (current source, unreleased v0.4)
+## `compare`
 
-**Current status: implemented on `feature/v0.4-layout-comparison`, not yet
-released.** The published `my-frontend-observer@0.3.0` package does not
-include `compare`. Comparison schema is `1.0.0`, independent of and never
-reused for the observation schema (`1.2.0`).
+**Current status: shipped as part of the published `my-frontend-observer@0.4.0`
+package.** Comparison schema is `1.0.0`, independent of and never reused for
+the observation schema (`1.2.0`).
 
-`node dist/cli.js compare` (or `my-frontend-observer compare` once this
-becomes the published bin) reads two already-persisted observation
-artifacts and derives before/after evidence purely from their existing
-content:
+`my-frontend-observer compare` (or `node dist/cli.js compare` from a source
+checkout) reads two already-persisted observation artifacts and derives
+before/after evidence purely from their existing content:
 
 ```text
 my-frontend-observer compare --before <observation-artifact-root> --after <observation-artifact-root> --output <directory> [options]

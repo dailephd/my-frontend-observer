@@ -95,8 +95,9 @@ node scripts/dev/builtCliScrollScenarioSmoke.mjs
 ```
 
 `scripts/dev/builtCliCompareSmoke.mjs` is the v0.4 equivalent, added
-alongside the `compare` command implementation (current source, unreleased -
-see `docs/CURRENT_STATE.md`): it runs the built `dist/cli.js` twice as
+alongside the `compare` command implementation (shipped as part of the
+published `0.4.0` package - see `docs/CURRENT_STATE.md`): it runs the built
+`dist/cli.js` twice as
 `observe` against an inline disposable local HTTP fixture whose served
 content changes deterministically between the two runs (a real moved/
 resized target, and a page-width transition from fitting to exceeding the
