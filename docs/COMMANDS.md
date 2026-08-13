@@ -362,6 +362,168 @@ node dist/cli.js compare `
   --config-file .\comparison-config.json
 ```
 
+## `approve-baseline`
+
+**Current status: implemented on `feature/v0.5-frontend-contracts`, not yet
+released.** Frontend contract schema is `1.0.0`, independent of the
+observation (`1.2.0`) and comparison (`1.0.0`) schemas.
+
+`my-frontend-observer approve-baseline` is the *only* baseline-approval
+operation in the observer — approval is never inferred from a successful
+comparison or evaluation, and no command automatically supersedes or selects
+a baseline. It explicitly approves and persists one already-authored
+`PersistentBaselineContract` against the observation it claims to approve:
+
+```text
+my-frontend-observer approve-baseline --observation <observation-artifact-root> --contract-file <json-file> --output <directory>
+```
+
+Required:
+
+- `--observation <path>` — root directory of the persisted observation
+  artifact this baseline claims to approve (read through the existing
+  observation-artifact reader).
+- `--contract-file <json-file>` — local JSON file containing one raw
+  `PersistentBaselineContract` (no wrapper field). As with `--config-file`,
+  only file readability/JSON-validity/non-array-object-root is checked here;
+  every structural rule (artifact kind, schema version, clause shape) is
+  enforced by the existing frozen domain validator.
+- `--output <directory>` — portable, relative output location for the
+  baseline artifact.
+
+Before persisting, the application layer verifies the contract's frozen
+`sourceObservation` reference (`observationId`, `requestId`, `producer`,
+`observationSchemaVersion`) actually matches the supplied observation
+artifact's stable identity — approving a baseline against an unrelated
+observation is rejected, even if both artifacts are individually valid. Any
+`supersedesBaselineId` already authored in the contract is preserved exactly
+as supplied; this command never discovers a prior baseline, infers
+supersession, or deletes anything.
+
+On success the command prints exactly:
+
+```text
+Baseline: <baseline-id>
+State: approved
+Artifact: <baseline-artifact-root>
+Clauses: <count>
+Supersedes: <baseline-id|none>
+```
+
+and exits `0`. It exits nonzero for invalid CLI syntax, an unreadable/
+malformed/structurally-invalid contract file, a `PerChangeContract` passed
+where a baseline is expected, a source-observation mismatch, an existing
+artifact collision (baseline identities are never overwritten), or a failed
+artifact write.
+
+## `save-change-contract`
+
+**Current status: implemented on `feature/v0.5-frontend-contracts`, not yet
+released.**
+
+`my-frontend-observer save-change-contract` validates and persists one
+already-authored `PerChangeContract` so it can later be evaluated — this is
+persistence only, never approval:
+
+```text
+my-frontend-observer save-change-contract --contract-file <json-file> --output <directory>
+```
+
+Required:
+
+- `--contract-file <json-file>` — local JSON file containing one raw
+  `PerChangeContract` (no wrapper field).
+- `--output <directory>` — portable, relative output location for the
+  change-contract artifact.
+
+Domain/application validation rejects a `PersistentBaselineContract` passed
+here, malformed clauses, an unsupported authored category, an authored
+`category: "unexpected"` (the derived-only fifth classification can never be
+authored as a permission), and invalid tolerance/mode fields — none of this
+is duplicated in CLI code. Any `supersedesBaselineClauseIds` already
+authored on a clause is preserved exactly; resolving those references
+against a particular baseline remains `evaluate-contract`'s responsibility.
+
+On success the command prints exactly:
+
+```text
+Change contract: <contract-id>
+Artifact: <contract-artifact-root>
+Clauses: <count>
+Supersedes baseline clauses: <count>
+```
+
+and exits `0`. It exits nonzero for invalid CLI syntax, an unreadable/
+malformed/structurally-invalid contract file, a persistent baseline contract
+passed here, an existing artifact collision, or a failed artifact write.
+
+## `evaluate-contract`
+
+**Current status: implemented on `feature/v0.5-frontend-contracts`, not yet
+released.** Frontend contract evaluation artifact schema is `1.0.0`, its own
+independent family.
+
+`my-frontend-observer evaluate-contract` executes the canonical Batch 2
+evaluator against already-persisted evidence/contracts and persists the
+result:
+
+```text
+my-frontend-observer evaluate-contract --before <observation-artifact-root> --after <observation-artifact-root> --comparison <comparison-artifact-root> --baseline <baseline-contract-artifact-root> --change <per-change-contract-artifact-root> --output <directory> [--enforce]
+```
+
+Required:
+
+- `--before <path>` / `--after <path>` — root directories of the persisted
+  before/after observation artifacts.
+- `--comparison <path>` — root directory of the already-persisted comparison
+  artifact for that before/after pair.
+- `--baseline <path>` — root directory of the already-approved baseline
+  contract artifact.
+- `--change <path>` — root directory of the already-persisted per-change
+  contract artifact.
+- `--output <directory>` — portable, relative output location for the
+  evaluation artifact.
+
+Options:
+
+- `--enforce` — makes a `FAIL` verdict produce a nonzero process exit
+  status. A `FAIL` evaluation is always persisted and printed identically
+  with or without this flag; `--enforce` changes only the process exit code
+  — never evaluation identity, contents, or persistence.
+
+**`evaluate-contract` never launches a browser, never re-resolves targets,
+and never recomputes comparison or relationship evidence** — it reads the
+already-persisted before/after observations and comparison exactly as given
+(through the existing observation-artifact reader and a new comparison
+reader) and calls the canonical `evaluateFrontendContract` exactly once.
+
+A `FAIL` verdict (a found regression or unsatisfied contract clause) is a
+successful, persisted evaluation outcome — not an execution error. On
+success (evaluation constructed and persisted, verdict `PASS`, or verdict
+`FAIL` without `--enforce`), the command prints exactly:
+
+```text
+Evaluation: <evaluation-id>
+Verdict: <PASS|FAIL>
+Artifact: <evaluation-artifact-root>
+Clauses: <total-clause-result-count>
+Unexpected: <unexpected-change-count>
+Enforced: <yes|no>
+```
+
+and exits `0`; with `--enforce` and verdict `FAIL`, it prints the same
+result and exits nonzero. It exits nonzero and persists nothing for invalid
+CLI syntax or an unreadable/malformed/incoherent source artifact (evaluation
+could not even be constructed) — distinct from a legitimate persisted `FAIL`.
+
+The evaluation artifact directory contains `manifest.json` only — no
+screenshot is copied. Operational `--before`/`--after`/`--comparison`/
+`--baseline`/`--change`/`--output` paths never enter the persisted
+`evaluationRequestId` or any other semantic field; two semantically
+identical evaluations invoked from different filesystem locations share the
+same `evaluationRequestId` even though each execution gets a fresh
+`evaluationId`.
+
 ## Foundation commands
 
 - `npm install` — install dependencies (includes the `playwright` runtime

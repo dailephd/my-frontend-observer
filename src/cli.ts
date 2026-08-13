@@ -8,6 +8,8 @@ import { getProducerInfo } from './domain/schema.js';
 import type { ComparisonConfig } from './domain/comparison.js';
 import { observe } from './application/observationPersistence.js';
 import { compareAndPersistFromArtifactRoots } from './application/comparisonService.js';
+import { approveAndPersistBaseline, persistPerChangeContract } from './application/frontendContractPersistenceService.js';
+import { evaluateAndPersistFromArtifactRoots } from './application/frontendContractEvaluationService.js';
 
 export interface CliIO {
   stdout: (text: string) => void;
@@ -29,17 +31,25 @@ Usage:
   my-frontend-observer <command> [options]
 
 Commands:
-  observe    Capture one bounded browser observation and persist it as a
-             portable artifact.
-  compare    Compare two persisted observations and write a structured
-             comparison artifact.
+  observe               Capture one bounded browser observation and persist
+                        it as a portable artifact.
+  compare               Compare two persisted observations and write a
+                        structured comparison artifact.
+  approve-baseline      Explicitly approve and persist one already-authored
+                        persistent baseline contract against the observation
+                        it claims to approve.
+  save-change-contract  Validate and persist one already-authored per-change
+                        contract so it can later be evaluated.
+  evaluate-contract     Evaluate a candidate change against an approved
+                        baseline, a per-change contract, and existing
+                        before/after/comparison evidence, and persist the
+                        result.
 
 Options:
   --help     Show this help.
   --version  Print the package version.
 
-Run "my-frontend-observer observe --help" or "my-frontend-observer compare
---help" for command-specific options.
+Run "my-frontend-observer <command> --help" for command-specific options.
 `;
 
 const OBSERVE_HELP = `Usage:
@@ -126,6 +136,108 @@ failure). On invalid syntax, an unreadable or structurally invalid source
 artifact, invalid configuration, or a failed artifact write, prints
 structured diagnostics to stderr and exits nonzero. No progress output is
 printed during a normal comparison.
+`;
+
+const APPROVE_BASELINE_HELP = `Usage:
+  my-frontend-observer approve-baseline --observation <observation-artifact-root> --contract-file <json-file> --output <directory>
+
+Required:
+  --observation <path>      Root directory of the persisted observation
+                             artifact (the directory containing its
+                             manifest.json) that this baseline claims to
+                             approve.
+  --contract-file <json-file> Local JSON file containing one already-authored
+                             persistent baseline contract (the raw contract
+                             value, no wrapper field). Relative paths resolve
+                             from the current working directory; the file
+                             path itself is never persisted or included in
+                             any identity.
+  --output <directory>      Portable, relative output location for the
+                             baseline artifact.
+
+Options:
+  --help                     Show this help.
+
+This command is the only explicit baseline-approval act in the observer -
+approval is never inferred from a successful comparison or evaluation. The
+supplied contract's source-observation reference must match the supplied
+observation artifact's stable identity; a mismatched or unrelated observation
+is rejected. Any \`supersedesBaselineId\` already authored in the contract is
+preserved exactly - this command never discovers, infers, or deletes a prior
+baseline. Remains local and non-mutating: it never launches a browser and
+never modifies the source observation or any existing baseline artifact. On
+success, prints a concise result and exits 0. On invalid syntax, an
+unreadable/malformed contract file, a non-baseline contract, a
+structurally invalid contract, a source-observation mismatch, an existing
+artifact collision, or a persistence failure, prints structured diagnostics
+to stderr and exits nonzero.
+`;
+
+const SAVE_CHANGE_CONTRACT_HELP = `Usage:
+  my-frontend-observer save-change-contract --contract-file <json-file> --output <directory>
+
+Required:
+  --contract-file <json-file> Local JSON file containing one already-authored
+                             per-change contract (the raw contract value, no
+                             wrapper field). Relative paths resolve from the
+                             current working directory; the file path itself
+                             is never persisted or included in any identity.
+  --output <directory>      Portable, relative output location for the
+                             change-contract artifact.
+
+Options:
+  --help                     Show this help.
+
+This command validates and persists a per-change contract only - it does not
+approve anything. Any \`supersedesBaselineClauseIds\` already authored on a
+clause is preserved exactly; resolving those references against a particular
+baseline remains \`evaluate-contract\`'s responsibility, not this command's.
+Remains local and non-mutating. On success, prints a concise result and
+exits 0. On invalid syntax, an unreadable/malformed contract file, a
+non-change contract (e.g. a persistent baseline contract), a structurally
+invalid contract (including an authored \`unexpected\` category, which is
+never a valid authored scope), an existing artifact collision, or a
+persistence failure, prints structured diagnostics to stderr and exits
+nonzero.
+`;
+
+const EVALUATE_CONTRACT_HELP = `Usage:
+  my-frontend-observer evaluate-contract --before <observation-artifact-root> --after <observation-artifact-root> --comparison <comparison-artifact-root> --baseline <baseline-contract-artifact-root> --change <per-change-contract-artifact-root> --output <directory> [--enforce]
+
+Required:
+  --before <path>      Root directory of the "before" persisted observation
+                        artifact.
+  --after <path>        Root directory of the "after" persisted observation
+                        artifact.
+  --comparison <path>   Root directory of the already-persisted comparison
+                        artifact for that before/after pair.
+  --baseline <path>     Root directory of the already-approved persistent
+                        baseline contract artifact.
+  --change <path>       Root directory of the already-persisted per-change
+                        contract artifact.
+  --output <directory>  Portable, relative output location for the
+                        evaluation artifact.
+
+Options:
+  --enforce  Make a FAIL verdict produce a nonzero process exit status. A
+             FAIL evaluation is always persisted and printed identically
+             with or without this flag - it changes only the process exit
+             code, never evaluation identity, contents, or persistence.
+  --help     Show this help.
+
+This command never launches a browser, never re-resolves targets, and never
+recomputes comparison or relationship evidence - it reads the already-
+persisted before/after observations and comparison exactly as given and
+evaluates the supplied baseline/change contracts against them exactly once.
+A FAIL verdict (a found regression or unsatisfied contract clause) is a
+successful, persisted evaluation outcome, not an execution error; without
+--enforce it exits 0 like PASS. On success (evaluation constructed and
+persisted, verdict PASS, or verdict FAIL without --enforce), prints a
+concise result and exits 0. With --enforce and verdict FAIL, prints the same
+result and exits nonzero. On invalid syntax, an unreadable/malformed/
+incoherent source artifact, or a persistence failure (evaluation could not
+even be constructed), prints structured diagnostics to stderr, persists
+nothing, and exits nonzero.
 `;
 
 function parseViewport(raw: string): { width: number; height: number } | undefined {
@@ -459,6 +571,239 @@ function loadComparisonConfigFile(filePath: string): LoadComparisonConfigFileRes
   return { ok: true, config: parsed };
 }
 
+type LoadContractFileResult = { ok: true; contract: unknown } | { ok: false; error: string };
+
+/**
+ * CLI/input-boundary-only responsibility, mirroring `loadComparisonConfigFile`:
+ * read one local JSON file and validate only the root shape this file format
+ * owns (plain, non-array object) - the file supplies the raw contract value
+ * directly (no wrapper field). Every semantic/structural rule (artifact
+ * kind, schema version, contract class, clause shape, authored category
+ * vocabulary) stays owned by the existing frozen domain validators
+ * (`isValidPersistentBaselineContract`/`isValidPerChangeContract`, invoked
+ * inside the application layer), never duplicated here. The file path
+ * itself is never returned to the caller beyond this function, so it can
+ * never reach a persisted artifact or its identity.
+ */
+function loadContractFile(filePath: string, flagLabel: string): LoadContractFileResult {
+  let rawText: string;
+  try {
+    rawText = readFileSync(filePath, 'utf8');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `${flagLabel} could not be read: ${message}` };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `${flagLabel} is not valid JSON: ${message}` };
+  }
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return { ok: false, error: `${flagLabel} root must be a JSON object` };
+  }
+
+  return { ok: true, contract: parsed };
+}
+
+type ParsedApproveBaselineArgs =
+  | { ok: true; observationRoot: string; contractFilePath: string; outputLocation: string }
+  | { ok: false; errors: string[] };
+
+/** CLI-syntax-only parsing, mirroring `parseCompareArgs`. */
+function parseApproveBaselineArgs(argv: readonly string[]): ParsedApproveBaselineArgs {
+  const errors: string[] = [];
+  let observationRoot: string | undefined;
+  let observationFlagCount = 0;
+  let contractFilePath: string | undefined;
+  let contractFileFlagCount = 0;
+  let outputLocation: string | undefined;
+  let outputFlagCount = 0;
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    switch (arg) {
+      case '--observation': {
+        const value = argv[(i += 1)];
+        observationFlagCount += 1;
+        if (value === undefined) errors.push('--observation requires a path argument');
+        else if (observationFlagCount > 1) errors.push('--observation may only be specified once');
+        else observationRoot = value;
+        break;
+      }
+      case '--contract-file': {
+        const value = argv[(i += 1)];
+        contractFileFlagCount += 1;
+        if (value === undefined) errors.push('--contract-file requires a file path argument');
+        else if (contractFileFlagCount > 1) errors.push('--contract-file may only be specified once');
+        else contractFilePath = value;
+        break;
+      }
+      case '--output': {
+        const value = argv[(i += 1)];
+        outputFlagCount += 1;
+        if (value === undefined) errors.push('--output requires a directory argument');
+        else if (outputFlagCount > 1) errors.push('--output may only be specified once');
+        else outputLocation = value;
+        break;
+      }
+      default:
+        errors.push(`unrecognized argument: ${arg}`);
+    }
+  }
+
+  if (observationRoot === undefined) errors.push('--observation is required');
+  if (contractFilePath === undefined) errors.push('--contract-file is required');
+  if (outputLocation === undefined) errors.push('--output is required');
+
+  if (errors.length > 0) return { ok: false, errors };
+  return { ok: true, observationRoot: observationRoot as string, contractFilePath: contractFilePath as string, outputLocation: outputLocation as string };
+}
+
+type ParsedSaveChangeContractArgs = { ok: true; contractFilePath: string; outputLocation: string } | { ok: false; errors: string[] };
+
+/** CLI-syntax-only parsing, mirroring `parseCompareArgs`. */
+function parseSaveChangeContractArgs(argv: readonly string[]): ParsedSaveChangeContractArgs {
+  const errors: string[] = [];
+  let contractFilePath: string | undefined;
+  let contractFileFlagCount = 0;
+  let outputLocation: string | undefined;
+  let outputFlagCount = 0;
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    switch (arg) {
+      case '--contract-file': {
+        const value = argv[(i += 1)];
+        contractFileFlagCount += 1;
+        if (value === undefined) errors.push('--contract-file requires a file path argument');
+        else if (contractFileFlagCount > 1) errors.push('--contract-file may only be specified once');
+        else contractFilePath = value;
+        break;
+      }
+      case '--output': {
+        const value = argv[(i += 1)];
+        outputFlagCount += 1;
+        if (value === undefined) errors.push('--output requires a directory argument');
+        else if (outputFlagCount > 1) errors.push('--output may only be specified once');
+        else outputLocation = value;
+        break;
+      }
+      default:
+        errors.push(`unrecognized argument: ${arg}`);
+    }
+  }
+
+  if (contractFilePath === undefined) errors.push('--contract-file is required');
+  if (outputLocation === undefined) errors.push('--output is required');
+
+  if (errors.length > 0) return { ok: false, errors };
+  return { ok: true, contractFilePath: contractFilePath as string, outputLocation: outputLocation as string };
+}
+
+type ParsedEvaluateContractArgs =
+  | { ok: true; beforeRoot: string; afterRoot: string; comparisonRoot: string; baselineRoot: string; changeRoot: string; outputLocation: string; enforce: boolean }
+  | { ok: false; errors: string[] };
+
+/** CLI-syntax-only parsing. `--enforce` is a boolean switch (no value); repeating it is harmless (idempotent), matching a boolean flag's natural semantics rather than the "may only be specified once" policy used for single-value flags. */
+function parseEvaluateContractArgs(argv: readonly string[]): ParsedEvaluateContractArgs {
+  const errors: string[] = [];
+  let beforeRoot: string | undefined;
+  let beforeFlagCount = 0;
+  let afterRoot: string | undefined;
+  let afterFlagCount = 0;
+  let comparisonRoot: string | undefined;
+  let comparisonFlagCount = 0;
+  let baselineRoot: string | undefined;
+  let baselineFlagCount = 0;
+  let changeRoot: string | undefined;
+  let changeFlagCount = 0;
+  let outputLocation: string | undefined;
+  let outputFlagCount = 0;
+  let enforce = false;
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    switch (arg) {
+      case '--before': {
+        const value = argv[(i += 1)];
+        beforeFlagCount += 1;
+        if (value === undefined) errors.push('--before requires a path argument');
+        else if (beforeFlagCount > 1) errors.push('--before may only be specified once');
+        else beforeRoot = value;
+        break;
+      }
+      case '--after': {
+        const value = argv[(i += 1)];
+        afterFlagCount += 1;
+        if (value === undefined) errors.push('--after requires a path argument');
+        else if (afterFlagCount > 1) errors.push('--after may only be specified once');
+        else afterRoot = value;
+        break;
+      }
+      case '--comparison': {
+        const value = argv[(i += 1)];
+        comparisonFlagCount += 1;
+        if (value === undefined) errors.push('--comparison requires a path argument');
+        else if (comparisonFlagCount > 1) errors.push('--comparison may only be specified once');
+        else comparisonRoot = value;
+        break;
+      }
+      case '--baseline': {
+        const value = argv[(i += 1)];
+        baselineFlagCount += 1;
+        if (value === undefined) errors.push('--baseline requires a path argument');
+        else if (baselineFlagCount > 1) errors.push('--baseline may only be specified once');
+        else baselineRoot = value;
+        break;
+      }
+      case '--change': {
+        const value = argv[(i += 1)];
+        changeFlagCount += 1;
+        if (value === undefined) errors.push('--change requires a path argument');
+        else if (changeFlagCount > 1) errors.push('--change may only be specified once');
+        else changeRoot = value;
+        break;
+      }
+      case '--output': {
+        const value = argv[(i += 1)];
+        outputFlagCount += 1;
+        if (value === undefined) errors.push('--output requires a directory argument');
+        else if (outputFlagCount > 1) errors.push('--output may only be specified once');
+        else outputLocation = value;
+        break;
+      }
+      case '--enforce':
+        enforce = true;
+        break;
+      default:
+        errors.push(`unrecognized argument: ${arg}`);
+    }
+  }
+
+  if (beforeRoot === undefined) errors.push('--before is required');
+  if (afterRoot === undefined) errors.push('--after is required');
+  if (comparisonRoot === undefined) errors.push('--comparison is required');
+  if (baselineRoot === undefined) errors.push('--baseline is required');
+  if (changeRoot === undefined) errors.push('--change is required');
+  if (outputLocation === undefined) errors.push('--output is required');
+
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    beforeRoot: beforeRoot as string,
+    afterRoot: afterRoot as string,
+    comparisonRoot: comparisonRoot as string,
+    baselineRoot: baselineRoot as string,
+    changeRoot: changeRoot as string,
+    outputLocation: outputLocation as string,
+    enforce,
+  };
+}
+
 function formatDiagnostic(diagnostic: Diagnostic): string {
   const target = diagnostic.targetName === undefined ? '' : ` (target: ${diagnostic.targetName})`;
   return `[${diagnostic.code}] ${diagnostic.message}${target}`;
@@ -576,6 +921,134 @@ async function runCompareCommand(argv: readonly string[], io: CliIO): Promise<nu
   return 0;
 }
 
+/**
+ * Thin orchestration only: parse args, load the raw contract JSON file, then
+ * delegate to the existing `approveAndPersistBaseline` application function
+ * exactly once. No contract/coherence validation lives here - see
+ * `src/application/frontendContractPersistenceService.ts`. This is the only
+ * command in the observer that approves a baseline.
+ */
+async function runApproveBaselineCommand(argv: readonly string[], io: CliIO): Promise<number> {
+  if (argv.includes('--help')) {
+    io.stdout(APPROVE_BASELINE_HELP);
+    return 0;
+  }
+
+  const parsedArgs = parseApproveBaselineArgs(argv);
+  if (!parsedArgs.ok) {
+    for (const error of parsedArgs.errors) io.stderr(`error: ${error}\n`);
+    io.stderr(APPROVE_BASELINE_HELP);
+    return 1;
+  }
+
+  const loaded = loadContractFile(parsedArgs.contractFilePath, '--contract-file');
+  if (!loaded.ok) {
+    io.stderr(`error: ${loaded.error}\n`);
+    io.stderr(APPROVE_BASELINE_HELP);
+    return 1;
+  }
+
+  // Exactly one application approval attempt: one observation read, one coherence check, persisted at most once.
+  const result = await approveAndPersistBaseline(loaded.contract, parsedArgs.observationRoot, { outputLocation: parsedArgs.outputLocation });
+  if (!result.ok) {
+    for (const diagnostic of result.diagnostics) io.stderr(`${formatDiagnostic(diagnostic)}\n`);
+    return 1;
+  }
+
+  io.stdout(`Baseline: ${result.baselineId}\n`);
+  io.stdout(`State: approved\n`);
+  io.stdout(`Artifact: ${result.artifactRoot}\n`);
+  io.stdout(`Clauses: ${result.clauseCount}\n`);
+  io.stdout(`Supersedes: ${result.supersedesBaselineId ?? 'none'}\n`);
+
+  return 0;
+}
+
+/**
+ * Thin orchestration only: parse args, load the raw contract JSON file, then
+ * delegate to the existing `persistPerChangeContract` application function
+ * exactly once. Persistence, not approval.
+ */
+async function runSaveChangeContractCommand(argv: readonly string[], io: CliIO): Promise<number> {
+  if (argv.includes('--help')) {
+    io.stdout(SAVE_CHANGE_CONTRACT_HELP);
+    return 0;
+  }
+
+  const parsedArgs = parseSaveChangeContractArgs(argv);
+  if (!parsedArgs.ok) {
+    for (const error of parsedArgs.errors) io.stderr(`error: ${error}\n`);
+    io.stderr(SAVE_CHANGE_CONTRACT_HELP);
+    return 1;
+  }
+
+  const loaded = loadContractFile(parsedArgs.contractFilePath, '--contract-file');
+  if (!loaded.ok) {
+    io.stderr(`error: ${loaded.error}\n`);
+    io.stderr(SAVE_CHANGE_CONTRACT_HELP);
+    return 1;
+  }
+
+  // Exactly one application persistence attempt.
+  const result = await persistPerChangeContract(loaded.contract, { outputLocation: parsedArgs.outputLocation });
+  if (!result.ok) {
+    for (const diagnostic of result.diagnostics) io.stderr(`${formatDiagnostic(diagnostic)}\n`);
+    return 1;
+  }
+
+  io.stdout(`Change contract: ${result.contractId}\n`);
+  io.stdout(`Artifact: ${result.artifactRoot}\n`);
+  io.stdout(`Clauses: ${result.clauseCount}\n`);
+  io.stdout(`Supersedes baseline clauses: ${result.supersedesBaselineClauseCount}\n`);
+
+  return 0;
+}
+
+/**
+ * Thin orchestration only: parse args, then delegate to the existing
+ * `evaluateAndPersistFromArtifactRoots` application function exactly once.
+ * No evaluation/tolerance/conflict/unexpected-classification logic lives
+ * here - see `src/domain/frontendContractEvaluation.ts`. `--enforce` is
+ * applied only after the evaluation has already been constructed and
+ * persisted: it selects the process exit status for an already-final FAIL
+ * result and never affects evaluation identity, contents, or persistence. A
+ * FAIL verdict is a successful, persisted evaluation outcome (a found
+ * regression), never treated as a construction/persistence failure.
+ */
+async function runEvaluateContractCommand(argv: readonly string[], io: CliIO): Promise<number> {
+  if (argv.includes('--help')) {
+    io.stdout(EVALUATE_CONTRACT_HELP);
+    return 0;
+  }
+
+  const parsedArgs = parseEvaluateContractArgs(argv);
+  if (!parsedArgs.ok) {
+    for (const error of parsedArgs.errors) io.stderr(`error: ${error}\n`);
+    io.stderr(EVALUATE_CONTRACT_HELP);
+    return 1;
+  }
+
+  // Exactly one application evaluation attempt: reads before/after/comparison/baseline/change once each,
+  // calls the canonical evaluator exactly once, and persists exactly one evaluation artifact.
+  const result = await evaluateAndPersistFromArtifactRoots(parsedArgs.beforeRoot, parsedArgs.afterRoot, parsedArgs.comparisonRoot, parsedArgs.baselineRoot, parsedArgs.changeRoot, {
+    outputLocation: parsedArgs.outputLocation,
+  });
+  if (!result.ok) {
+    for (const diagnostic of result.diagnostics) io.stderr(`${formatDiagnostic(diagnostic)}\n`);
+    return 1;
+  }
+
+  io.stdout(`Evaluation: ${result.evaluationId}\n`);
+  io.stdout(`Verdict: ${result.overallVerdict}\n`);
+  io.stdout(`Artifact: ${result.artifactRoot}\n`);
+  io.stdout(`Clauses: ${result.clauseResultCount}\n`);
+  io.stdout(`Unexpected: ${result.unexpectedChangeCount}\n`);
+  io.stdout(`Enforced: ${parsedArgs.enforce ? 'yes' : 'no'}\n`);
+
+  if (parsedArgs.enforce && result.overallVerdict === 'FAIL') return 1;
+  return 0;
+}
+
 /** Testable CLI entry point: pure function of argv (+ injectable IO), no direct process.exit. */
 export async function runCli(argv: readonly string[], io: CliIO = defaultIO): Promise<number> {
   const [command, ...rest] = argv;
@@ -601,6 +1074,18 @@ export async function runCli(argv: readonly string[], io: CliIO = defaultIO): Pr
 
   if (command === 'compare') {
     return runCompareCommand(rest, io);
+  }
+
+  if (command === 'approve-baseline') {
+    return runApproveBaselineCommand(rest, io);
+  }
+
+  if (command === 'save-change-contract') {
+    return runSaveChangeContractCommand(rest, io);
+  }
+
+  if (command === 'evaluate-contract') {
+    return runEvaluateContractCommand(rest, io);
   }
 
   io.stderr(`error: unrecognized command "${command}"\n`);

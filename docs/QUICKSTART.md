@@ -30,6 +30,12 @@ Once you have two such artifacts, `node dist/cli.js compare --before
 between them without launching a browser again - see
 [COMMANDS.md](COMMANDS.md#compare) for details.
 
+On `feature/v0.5-frontend-contracts` (implemented, not yet released), you
+can then approve a baseline, save a per-change contract, and evaluate a
+candidate change against them plus the observation/comparison evidence
+above - see [COMMANDS.md](COMMANDS.md#approve-baseline) for the exact flags
+and [WORKFLOWS.md](WORKFLOWS.md) for the full flow.
+
 To validate the repository itself instead:
 
 ```powershell

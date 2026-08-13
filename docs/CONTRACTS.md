@@ -361,7 +361,30 @@ persisted as a fabricated artifact. `evaluateAndPersistFromArtifactRoots` is
 the future-CLI-facing wrapper: it reads two observations through the existing
 `readObservationArtifact` (never a second observation reader), the
 comparison and the two contracts through the readers above, then delegates
-to `evaluateAndPersist` exactly once. No CLI command exists yet.
+to `evaluateAndPersist` exactly once.
+
+## v0.5 public contract/evaluation commands (implemented so far)
+
+Batch 4 exposes the persistence/evaluation contract above through three
+public commands (see `docs/COMMANDS.md` for exact flags/output/exit
+behavior, not duplicated here):
+
+- `approve-baseline` → `frontendContractPersistenceService.ts#approveAndPersistBaseline`
+  → validates a `PersistentBaselineContract` and its `sourceObservation`
+  coherence against a supplied observation artifact → persists via
+  `frontendContractArtifactWriter.ts`. The only baseline-approval act in the
+  observer.
+- `save-change-contract` → `frontendContractPersistenceService.ts#persistPerChangeContract`
+  → validates a `PerChangeContract` (rejecting a baseline contract, an
+  authored `unexpected` category, or any other structural violation) →
+  persists via the same writer. Persistence only, never approval.
+- `evaluate-contract` → `frontendContractEvaluationService.ts#evaluateAndPersistFromArtifactRoots`
+  → `evaluateFrontendContract` exactly once → `frontendContractEvaluationArtifactWriter.ts`
+  exactly once. `--enforce` affects only the process exit status for an
+  already-persisted `FAIL` verdict.
+
+No command infers baseline approval or supersession automatically - not
+`compare`, not a `PASS` evaluation, not any artifact writer.
 
 ## Approved v0.1 design inputs
 

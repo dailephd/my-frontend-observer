@@ -110,12 +110,57 @@ fixture (`scripts/dev/builtCliCompareSmoke.mjs`), and packed-tarball
 validation of the installed `compare` command
 (`scripts/ci/runPackedObservationSmoke.mjs` - see `docs/CI_CD.md`).
 
+## Current frontend contract workflow (implemented on `feature/v0.5-frontend-contracts`, not yet released)
+
+This is a text/config-driven workflow layered downstream of the two
+workflows above - it does not replace them, and it is not yet the complete
+v0.5+ coding-agent workflow (no bounded agent context, no automatic
+baseline selection, no CLI-level approval policy beyond the explicit
+`approve-baseline` act):
+
+```text
+observe before
+observe after
+compare
+        ↓
+approve baseline (approve-baseline --observation <before-root>
+  --contract-file <PersistentBaselineContract.json> --output <dir>)
+        ↓
+save per-change contract (save-change-contract
+  --contract-file <PerChangeContract.json> --output <dir>)
+        ↓
+evaluate contract (evaluate-contract --before <root> --after <root>
+  --comparison <root> --baseline <root> --change <root> --output <dir>
+  [--enforce])
+        ↓
+persisted evaluation artifact (schema 1.0.0, its own independent family):
+  clause results (pass/fail/unavailable/conflict), unexpected changes,
+  overall PASS/FAIL
+```
+
+`approve-baseline` is the only baseline-approval act; a successful `compare`
+or a `PASS` evaluation never approves or supersedes a baseline
+automatically. `evaluate-contract` never launches a browser and never
+recomputes comparison/relationship evidence - it calls the canonical
+`evaluateFrontendContract` exactly once against the supplied evidence and
+persists exactly one evaluation artifact, whether the verdict is `PASS` or
+`FAIL`. `--enforce` affects only the process exit status for a `FAIL`
+verdict, never the persisted evidence itself.
+
+This is exercised by `runCli()`-level tests
+(`tests/unit/cliFrontendContracts.test.ts`) and a built `node dist/cli.js`
+smoke that needs no Chromium
+(`scripts/dev/builtCliFrontendContractsSmoke.mjs` - see
+`docs/DEVELOPMENT.md`). It is not yet part of packed-tarball validation.
+
 ## Future workflows
 
 ```text
 stable targets and bounded runtime behavior
 → relationships and before/after comparison (released - see above)
-→ safe-change contracts
+→ safe-change contracts (contract model, evaluation, persistence, and CLI
+  implemented on feature/v0.5-frontend-contracts - see above; baseline
+  approval remains a single explicit command, not a policy engine)
 → bounded agent context plus runtime/static ecosystem integration
 → text/config-driven coding-agent change review
 → interactive viewer
@@ -123,6 +168,6 @@ stable targets and bounded runtime behavior
 → full visual human–LLM workflow
 ```
 
-Safe-change contracts (v0.5+) and everything after remain unimplemented. The
-v0.7 coding-agent workflow must work without the v0.8 viewer or v0.9
-annotation system.
+Bounded agent context, ecosystem integration, and everything after remain
+unimplemented. The v0.7 coding-agent workflow must work without the v0.8
+viewer or v0.9 annotation system.

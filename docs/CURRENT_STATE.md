@@ -345,18 +345,38 @@ exactly once, persists exactly one evaluation artifact for both `PASS` and
 `FAIL` verdicts, never persists a fabricated artifact when evaluation
 construction itself fails). `evaluateFrontendContract` itself is unmodified.
 
+v0.5 public contract/baseline-approval/evaluation CLI is also implemented on
+`feature/v0.5-frontend-contracts` (not yet released, Batch 4):
+`approve-baseline` (the only baseline-approval act - explicit only, never
+inferred from `compare` or a `PASS` evaluation; verifies the contract's
+`sourceObservation` matches the supplied observation before persisting),
+`save-change-contract` (persistence only), and `evaluate-contract`
+(evaluates already-persisted before/after/comparison/baseline/change
+evidence exactly once and persists exactly one evaluation artifact;
+`--enforce` makes a `FAIL` verdict exit nonzero without changing the
+verdict, its identity, or its persisted content - a `FAIL` without
+`--enforce` still exits `0`). `src/application/frontendContractPersistenceService.ts`
+adds the two new thin application seams (`approveAndPersistBaseline`,
+`persistPerChangeContract`); `src/cli.ts` gained no browser or artifact-
+writer import. Covered by `tests/unit/cliFrontendContracts.test.ts` and the
+Chromium-free `scripts/dev/builtCliFrontendContractsSmoke.mjs` dev smoke.
+Package version unchanged at `0.4.0`; observation schema `1.2.0`; comparison
+schema `1.0.0`; frontend contract schema `1.0.0`; evaluation artifact schema
+`1.0.0` - no schema was bumped to add this CLI.
+
 ## Not implemented
 
-- v0.5 baseline approval workflow and CLI exposure (contract/evaluation
-  persistence exist; a decision of what counts as "approved," automatic
-  baseline selection, and a public command surface do not), source
-  ownership, my-dev-kit runtime/static integration, orchestrator/lab product
-  integration, viewer, and annotation all remain unimplemented.
+- v0.5 baseline-selection/discovery policy (the caller must supply which
+  baseline to approve/evaluate against; there is no "find the current
+  baseline" command), source ownership, my-dev-kit runtime/static
+  integration, orchestrator/lab product integration, viewer, and annotation
+  all remain unimplemented.
 
 ## Next target
 
 v0.1-v0.4 are implemented, validated, and released (`0.1.0`, `0.2.0`,
 `0.3.0`, `0.4.0`). v0.5 (Executable Frontend Contracts and Explicit Change
-Scope) has its contract model, evaluation engine, and persistence/application
-seam implemented on `feature/v0.5-frontend-contracts`; baseline approval and
-CLI exposure are next.
+Scope) has its contract model, evaluation engine, persistence/application
+seam, and public `approve-baseline`/`save-change-contract`/`evaluate-contract`
+CLI implemented on `feature/v0.5-frontend-contracts`; bounded agent-context
+generation and ecosystem integration are next.

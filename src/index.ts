@@ -261,6 +261,9 @@ export { readFrontendContractEvaluationArtifact } from './artifacts/frontendCont
 export type { EvaluateAndPersistOptions, ApplicationFrontendContractEvaluationResult } from './application/frontendContractEvaluationService.js';
 export { DEFAULT_EVALUATION_OUTPUT_LOCATION, evaluateAndPersist, evaluateAndPersistFromArtifactRoots } from './application/frontendContractEvaluationService.js';
 
+export type { PersistFrontendContractOptions, ApplicationApproveBaselineResult, ApplicationPersistChangeContractResult } from './application/frontendContractPersistenceService.js';
+export { approveAndPersistBaseline, persistPerChangeContract } from './application/frontendContractPersistenceService.js';
+
 export type { CompareObservationsResult } from './domain/comparisonEngine.js';
 export { compareObservations, evaluateComparability, evaluateExpectedDependencies, compareTargetConfiguration } from './domain/comparisonEngine.js';
 

@@ -114,13 +114,40 @@ before and after the comparison ran. Run it locally after `npm run build`:
 node scripts/dev/builtCliCompareSmoke.mjs
 ```
 
-Unlike `scripts/ci/runPackedObservationSmoke.mjs`, none of these three dev
+`scripts/dev/builtCliFrontendContractsSmoke.mjs` is the v0.5 Batch 4
+equivalent, added alongside the `approve-baseline`/`save-change-contract`/
+`evaluate-contract` command implementations (implemented on
+`feature/v0.5-frontend-contracts`, not yet released - see
+`docs/CURRENT_STATE.md`). Unlike the other dev smokes, it needs no Chromium
+at all: it hand-writes deterministic, schema-`1.2.0`-valid observation
+manifests directly to a temporary directory (preserving the public
+observation artifact contract without a real browser capture), then runs
+the built `dist/cli.js` for `compare`, `approve-baseline`,
+`save-change-contract`, and `evaluate-contract` - twice for the final
+step, once without `--enforce` and once with it, against the same
+milestone-signature contract (requested navigation shrink = pass, expected
+workspace expansion = pass, protected right-rail width = fail, preserved
+unclipped navigation = fail, overall = `FAIL`). It validates both exit
+codes (`0` without `--enforce`, nonzero with it), that both invocations
+persist byte-for-byte semantically identical evaluation evidence
+(`evaluationRequestId` and `clauseResults` equal), that the evaluation
+directory contains `manifest.json` only, that no operational filesystem
+path leaked into either persisted evaluation manifest, and that every
+source observation/comparison/contract artifact remains unmodified. Run it
+locally after `npm run build`:
+
+```powershell
+node scripts/dev/builtCliFrontendContractsSmoke.mjs
+```
+
+Unlike `scripts/ci/runPackedObservationSmoke.mjs`, none of these four dev
 smokes is wired into any CI workflow or is a release gate - they are
 source-checkout development evidence only, proving the built CLI's
-`--targets-file`/`--scroll-scenario-file`/`compare` behavior without
-installing a packed tarball or requiring cross-platform infrastructure.
-None is part of the published package. Cross-platform packed validation of
-both the v0.1-v0.3 observation behavior and the v0.4 `compare` command is
-`scripts/ci/runPackedObservationSmoke.mjs`'s responsibility (see
+`--targets-file`/`--scroll-scenario-file`/`compare`/frontend-contract
+command behavior without installing a packed tarball or requiring
+cross-platform infrastructure. None is part of the published package.
+Cross-platform packed validation of the v0.1-v0.4 observation/compare
+behavior is `scripts/ci/runPackedObservationSmoke.mjs`'s responsibility (see
 `docs/CI_CD.md`) - the same script, against the same single candidate
-tarball per platform.
+tarball per platform; the v0.5 contract/evaluation CLI is not yet part of
+that packed validation.

@@ -91,6 +91,26 @@ including when the two observations turn out to be `incomparable`, which is
 itself a successful comparison outcome. See
 [docs/COMMANDS.md](docs/COMMANDS.md) for the full flag reference.
 
+### Frontend contracts (source checkout, unreleased)
+
+The `feature/v0.5-frontend-contracts` branch implements a text/config-driven
+frontend contract and evaluation workflow, not yet part of the published
+`0.4.0` package: approve a baseline against an observation, save a per-change
+contract, then evaluate a candidate change against them plus existing
+before/after/comparison evidence, deriving one `PASS`/`FAIL` verdict:
+
+```powershell
+node dist/cli.js approve-baseline --observation observations/<id> --contract-file baseline.json --output baselines
+node dist/cli.js save-change-contract --contract-file change.json --output contracts
+node dist/cli.js evaluate-contract --before observations/<before-id> --after observations/<after-id> --comparison comparisons/<id> --baseline baselines/<baseline-id> --change contracts/<contract-id> --output evaluations [--enforce]
+```
+
+`evaluate-contract` never launches a browser or recomputes comparison
+evidence. `--enforce` only changes the process exit status for a `FAIL`
+verdict; the verdict itself, and its persisted evidence, are unaffected. See
+[docs/COMMANDS.md](docs/COMMANDS.md) for the full flag reference and
+[docs/WORKFLOWS.md](docs/WORKFLOWS.md) for the end-to-end flow.
+
 Validation:
 
 ```powershell

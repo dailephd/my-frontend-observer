@@ -241,13 +241,42 @@ src/artifacts/frontendContractEvaluationArtifactWriter.ts
     (atomic write, exactly once on a structurally constructible result)
 ```
 
-`evaluateAndPersistFromArtifactRoots` is the future-CLI-facing wrapper,
-reading before/after observations through the existing
-`readObservationArtifact` (no second observation reader), the comparison and
-both contract classes through the new readers, then delegating to
-`evaluateAndPersist` exactly once - mirroring `application/comparisonService.ts#compareAndPersistFromArtifactRoots`'s
-own thin-wrapper shape. No CLI command exists yet; baseline approval and
-automatic baseline selection remain unimplemented by design.
+`evaluateAndPersistFromArtifactRoots` is the CLI-facing wrapper, reading
+before/after observations through the existing `readObservationArtifact` (no
+second observation reader), the comparison and both contract classes
+through the new readers, then delegating to `evaluateAndPersist` exactly
+once - mirroring `application/comparisonService.ts#compareAndPersistFromArtifactRoots`'s
+own thin-wrapper shape.
+
+Batch 4 exposes this through the same thin-CLI boundary already established
+by `observe`/`compare`:
+
+```text
+src/cli.ts (argument parsing, JSON-file-shape checks, help/output formatting,
+            exit-code selection only)
+        ↓
+src/application/frontendContractPersistenceService.ts#approveAndPersistBaseline
+src/application/frontendContractPersistenceService.ts#persistPerChangeContract
+src/application/frontendContractEvaluationService.ts#evaluateAndPersistFromArtifactRoots
+        ↓
+domain validators (isValidPersistentBaselineContract / isValidPerChangeContract)
++ artifact readers/writers (Batch 3)
++ evaluateFrontendContract() (Batch 2, unmodified)
+```
+
+Three new top-level commands - `approve-baseline`, `save-change-contract`,
+`evaluate-contract` - each parse only CLI-syntax concerns (duplicate/missing
+flags, JSON-file readability/parseability/object-root shape) and delegate to
+exactly one application-layer call; `src/cli.ts` imports no artifact writer/
+reader module and no browser code, matching the existing `observe`/`compare`
+import-boundary discipline exactly. `approveAndPersistBaseline` adds the one
+new coherence check Batch 3 did not need: verifying a baseline contract's
+frozen `sourceObservation` reference actually matches the supplied
+observation artifact before persisting - explicit approval only, never
+inferred from a `compare` or `evaluate-contract` result. `--enforce` on
+`evaluate-contract` is applied only after evaluation and persistence have
+already completed; it selects the process exit status for an already-final
+`FAIL` result and is never part of any identity or persisted field.
 
 ## Planned v0.1 architecture constraints
 
