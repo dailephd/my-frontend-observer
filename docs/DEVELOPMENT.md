@@ -62,10 +62,11 @@ It is what `.github/workflows/pre-release-readiness.yml` runs identically on
 Windows, Linux, and macOS against one shared candidate tarball (see
 `docs/CI_CD.md`); it can also be run locally the same way the workflow runs
 it. It is readiness/CI infrastructure only, not part of the published
-package and never imported by production code. It exercises both the
-legacy CSS-shorthand `--target` packed-observation shape and the
-structured semantic `--targets-file` shape in the same run - see
-`docs/CI_CD.md` for the current v0.2 readiness coverage.
+package and never imported by production code. In the same run it
+exercises the legacy CSS-shorthand `--target` packed-observation shape,
+the structured semantic `--targets-file` shape, a `window-scroll-by`
+scroll scenario, and a `target-scroll-by` scroll scenario - see
+`docs/CI_CD.md` for the current readiness coverage.
 
 `scripts/dev/builtCliTargetsFileSmoke.mjs` is a separate, narrower v0.2
 development smoke, added alongside the `--targets-file` implementation: it
@@ -93,11 +94,33 @@ locally after `npm run build`:
 node scripts/dev/builtCliScrollScenarioSmoke.mjs
 ```
 
-Unlike `scripts/ci/runPackedObservationSmoke.mjs`, neither of these dev
+`scripts/dev/builtCliCompareSmoke.mjs` is the v0.4 equivalent, added
+alongside the `compare` command implementation (shipped as part of the
+published `0.4.0` package - see `docs/CURRENT_STATE.md`): it runs the built
+`dist/cli.js` twice as
+`observe` against an inline disposable local HTTP fixture whose served
+content changes deterministically between the two runs (a real moved/
+resized target, and a page-width transition from fitting to exceeding the
+viewport), then runs the built `dist/cli.js compare` against the two
+resulting persisted observation artifacts. It validates artifact kind/
+schema `1.0.0`, `comparability: "comparable"`, source observation
+references, at least one real `moved` difference and one real page-width
+relationship change, that the comparison directory contains `manifest.json`
+only, that no operational filesystem path leaked into the persisted
+manifest, and that both source observation manifests are byte-identical
+before and after the comparison ran. Run it locally after `npm run build`:
+
+```powershell
+node scripts/dev/builtCliCompareSmoke.mjs
+```
+
+Unlike `scripts/ci/runPackedObservationSmoke.mjs`, none of these three dev
 smokes is wired into any CI workflow or is a release gate - they are
 source-checkout development evidence only, proving the built CLI's
-`--targets-file`/`--scroll-scenario-file` behavior without installing a
-packed tarball or requiring cross-platform infrastructure. Neither is part
-of the published package. Cross-platform packed validation of the v0.3
-scroll-scenario behavior is `scripts/ci/runPackedObservationSmoke.mjs`'s
-responsibility (see `docs/CI_CD.md`), and has been completed.
+`--targets-file`/`--scroll-scenario-file`/`compare` behavior without
+installing a packed tarball or requiring cross-platform infrastructure.
+None is part of the published package. Cross-platform packed validation of
+both the v0.1-v0.3 observation behavior and the v0.4 `compare` command is
+`scripts/ci/runPackedObservationSmoke.mjs`'s responsibility (see
+`docs/CI_CD.md`) - the same script, against the same single candidate
+tarball per platform.

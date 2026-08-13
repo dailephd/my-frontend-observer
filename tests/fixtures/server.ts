@@ -11,6 +11,21 @@ export interface FixtureServer {
    * anything. Defaults to `true` (target present) on every fresh server.
    */
   setDisappearingTargetPresent: (present: boolean) => void;
+  /**
+   * v0.4 Batch 3: test-only, in-process, synchronous control over the
+   * `/comparison` route's served content - lets a test capture two genuine
+   * real-Chromium observations of the *same logical URL* (satisfying
+   * comparability's page-identity rule) whose actual rendered layout
+   * differs deterministically, without the observer itself mutating
+   * anything. Defaults to `{ layoutVariant: 'before', scrollVariant:
+   * 'no-scroll' }` on every fresh server.
+   */
+  setComparisonFixtureState: (state: Partial<ComparisonFixtureState>) => void;
+}
+
+export interface ComparisonFixtureState {
+  layoutVariant: 'before' | 'after';
+  scrollVariant: 'no-scroll' | 'scrollable';
 }
 
 /**
@@ -107,6 +122,161 @@ export const OBSERVATION_FIXTURE_SEMANTIC_STATE = {
 
 /** v0.2 Batch 3: same URL, same request - the target present at `/disappearing` until the test flips {@link FixtureServer.setDisappearingTargetPresent}. */
 export const OBSERVATION_DISAPPEARING_FIXTURE_SELECTOR = '#disappearing-target';
+
+/**
+ * v0.4 Batch 2: deterministic fixture for the `/relationships` route,
+ * against an 800x600 test viewport. Every region is absolutely positioned
+ * against the initial containing block (or, for the two DOM-nested pairs,
+ * against their own positioned parent) so `getBoundingClientRect()` always
+ * returns these exact values. Document width is exactly 800px (matching
+ * `#right-region`'s right edge), so the page-width relationship is
+ * deterministically "fits viewport" here - `/scroll` remains the fixture for
+ * "exceeds viewport". `#nav-region`/`#workspace-region`/`#right-region`/
+ * `#footer-region` prove the ordinary left-of/wider-than/follows-vertically
+ * family; `#workspace-child` is a real DOM-contained, geometrically-fitting
+ * child. `#overlap-a`/`#overlap-b` prove real area overlap. `#escape-parent`/
+ * `#escape-child` is a DOM-contained child that visually escapes its
+ * parent's box (containment true, geometric fit false). `#outer-unrelated`/
+ * `#inner-unrelated` are DOM siblings where one nonetheless geometrically
+ * fits inside the other's box (containment false, geometric fit true).
+ * `#hidden-relationship-target` is `display: none`.
+ */
+export const RELATIONSHIPS_FIXTURE_SELECTORS = {
+  leftRegion: '#left-region',
+  navigation: '#nav-region',
+  workspace: '#workspace-region',
+  workspaceChild: '#workspace-child',
+  rightRegion: '#right-region',
+  footer: '#footer-region',
+  overlapA: '#overlap-a',
+  overlapB: '#overlap-b',
+  escapeParent: '#escape-parent',
+  escapeChild: '#escape-child',
+  outerUnrelated: '#outer-unrelated',
+  innerUnrelated: '#inner-unrelated',
+  hiddenTarget: '#hidden-relationship-target',
+  duplicateTarget: '.duplicate-relationship-target',
+  missingTarget: '#does-not-exist-relationship-target',
+} as const;
+
+/**
+ * v0.4 Batch 3: deterministic, in-process-toggleable fixture for the
+ * `/comparison` route, against an 800x600 test viewport. `layoutVariant`
+ * controls every rendered-layout fact a real before/after comparison test
+ * needs from one logical URL: `#cf-moved` changes position+size,
+ * `#cf-appear`/`#cf-disappear` are present in exactly one variant (real
+ * not-found <-> matched transitions, never a config change), `#cf-overlap-b`
+ * moves into `#cf-overlap-a` (does-not-overlap -> overlaps, and
+ * left-of -> horizontally-overlapping), `#cf-fit-child` is DOM-nested in
+ * `#cf-fit-container` in both variants but only visually escapes it in
+ * `after` (geometric fit -> does-not-fit-inside while DOM containment stays
+ * true), `#cf-clip-target` only gets real dimensional overflow in `after`
+ * (with `overflow: hidden`, so it becomes actually clipped), and `#cf-wide`
+ * only exists in `after`, pushing document width from fitting the 800px
+ * viewport to exceeding it. `scrollVariant` is independent of
+ * `layoutVariant`: `scrollable` adds a large block-flow filler so the
+ * document actually has vertical overflow to scroll; `no-scroll` does not.
+ */
+export const COMPARISON_FIXTURE_SELECTORS = {
+  moved: '#cf-moved',
+  appear: '#cf-appear',
+  disappear: '#cf-disappear',
+  overlapA: '#cf-overlap-a',
+  overlapB: '#cf-overlap-b',
+  fitContainer: '#cf-fit-container',
+  fitChild: '#cf-fit-child',
+  clipTarget: '#cf-clip-target',
+} as const;
+
+function renderComparisonFixtureHtml(state: ComparisonFixtureState): string {
+  const moved =
+    state.layoutVariant === 'before'
+      ? { top: 0, left: 100, width: 80, height: 40 }
+      : { top: 0, left: 140, width: 140, height: 60 };
+  const overlapB = state.layoutVariant === 'before' ? { top: 150, left: 200 } : { top: 150, left: 40 };
+  const fitChild = state.layoutVariant === 'before' ? { top: 10, left: 10 } : { top: -30, left: -30 };
+
+  return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>comparison fixture</title>
+<style>
+  html, body { margin: 0; padding: 0; }
+  #cf-moved { position: absolute; top: ${moved.top}px; left: ${moved.left}px; width: ${moved.width}px; height: ${moved.height}px; }
+  #cf-appear { position: absolute; top: 0; left: 300px; width: 50px; height: 50px; }
+  #cf-disappear { position: absolute; top: 60px; left: 300px; width: 50px; height: 50px; }
+  #cf-overlap-a { position: absolute; top: 150px; left: 0; width: 80px; height: 80px; }
+  #cf-overlap-b { position: absolute; top: ${overlapB.top}px; left: ${overlapB.left}px; width: 80px; height: 80px; }
+  #cf-fit-container { position: absolute; top: 150px; left: 400px; width: 120px; height: 80px; overflow: visible; }
+  #cf-fit-child { position: absolute; top: ${fitChild.top}px; left: ${fitChild.left}px; width: 50px; height: 30px; }
+  #cf-clip-target { position: absolute; top: 300px; left: 0; width: 100px; height: 50px; overflow: hidden; }
+  #cf-clip-inner { width: ${state.layoutVariant === 'before' ? 60 : 300}px; height: 20px; }
+  #cf-wide { position: absolute; top: 0; left: 0; width: 1200px; height: 1px; }
+  #cf-scroll-filler { height: ${state.scrollVariant === 'scrollable' ? 2000 : 10}px; }
+</style>
+</head>
+<body>
+  <div id="cf-moved">Moved</div>
+  ${state.layoutVariant === 'after' ? '<div id="cf-appear">Appear</div>' : ''}
+  ${state.layoutVariant === 'before' ? '<div id="cf-disappear">Disappear</div>' : ''}
+  <div id="cf-overlap-a">A</div>
+  <div id="cf-overlap-b">B</div>
+  <div id="cf-fit-container">
+    <div id="cf-fit-child">Child</div>
+  </div>
+  <div id="cf-clip-target"><div id="cf-clip-inner"></div></div>
+  ${state.layoutVariant === 'after' ? '<div id="cf-wide"></div>' : ''}
+  <div id="cf-scroll-filler"></div>
+</body>
+</html>`;
+}
+
+const RELATIONSHIPS_FIXTURE_HTML = `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>relationships fixture</title>
+<style>
+  html, body { margin: 0; padding: 0; }
+  #left-region { position: absolute; top: 0; left: 0; width: 100px; height: 500px; }
+  #nav-region { position: absolute; top: 0; left: 100px; width: 140px; height: 40px; }
+  #workspace-region { position: absolute; top: 0; left: 250px; width: 400px; height: 400px; }
+  #workspace-child { position: absolute; top: 10px; left: 10px; width: 50px; height: 50px; }
+  #right-region { position: absolute; top: 0; left: 660px; width: 140px; height: 500px; }
+  #footer-region { position: absolute; top: 450px; left: 100px; width: 400px; height: 50px; }
+  #overlap-a { position: absolute; top: 520px; left: 20px; width: 100px; height: 100px; }
+  #overlap-b { position: absolute; top: 560px; left: 70px; width: 100px; height: 100px; }
+  #escape-parent { position: absolute; top: 520px; left: 300px; width: 60px; height: 20px; overflow: visible; }
+  #escape-child { position: absolute; top: -10px; left: -10px; width: 100px; height: 60px; }
+  #outer-unrelated { position: absolute; top: 520px; left: 450px; width: 200px; height: 100px; }
+  #inner-unrelated { position: absolute; top: 530px; left: 470px; width: 50px; height: 50px; }
+  #hidden-relationship-target { display: none; }
+  .duplicate-relationship-target { position: absolute; top: 700px; left: 20px; width: 40px; height: 20px; }
+</style>
+</head>
+<body>
+  <div id="left-region">Left</div>
+  <div id="nav-region">Nav</div>
+  <div id="workspace-region">
+    Workspace
+    <div id="workspace-child">Child</div>
+  </div>
+  <div id="right-region">Right</div>
+  <div id="footer-region">Footer</div>
+  <div id="overlap-a">Overlap A</div>
+  <div id="overlap-b">Overlap B</div>
+  <div id="escape-parent">
+    Escape Parent
+    <div id="escape-child">Escape Child</div>
+  </div>
+  <div id="outer-unrelated">Outer</div>
+  <div id="inner-unrelated">Inner</div>
+  <div id="hidden-relationship-target">Hidden</div>
+  <div class="duplicate-relationship-target">Dup A</div>
+  <div class="duplicate-relationship-target">Dup B</div>
+</body>
+</html>`;
 
 /**
  * v0.3 Batch 2/3: deterministic fixture for the `/scroll` route. `body` is
@@ -284,6 +454,7 @@ const OBSERVATION_FIXTURE_HTML = `<!doctype html>
  */
 export async function startFixtureServer(): Promise<FixtureServer> {
   let disappearingTargetPresent = true;
+  let comparisonFixtureState: ComparisonFixtureState = { layoutVariant: 'before', scrollVariant: 'no-scroll' };
 
   const server: Server = createServer((req, res) => {
     const url = req.url ?? '/';
@@ -340,6 +511,18 @@ export async function startFixtureServer(): Promise<FixtureServer> {
       return;
     }
 
+    if (url === '/relationships') {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end(RELATIONSHIPS_FIXTURE_HTML);
+      return;
+    }
+
+    if (url === '/comparison') {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end(renderComparisonFixtureHtml(comparisonFixtureState));
+      return;
+    }
+
     res.writeHead(404);
     res.end();
   });
@@ -358,6 +541,9 @@ export async function startFixtureServer(): Promise<FixtureServer> {
       }),
     setDisappearingTargetPresent: (present: boolean) => {
       disappearingTargetPresent = present;
+    },
+    setComparisonFixtureState: (state: Partial<ComparisonFixtureState>) => {
+      comparisonFixtureState = { ...comparisonFixtureState, ...state };
     },
   };
 }

@@ -24,12 +24,25 @@ tests:
   unexpected internal error);
 - the observed target's own content/source is never modified by observation.
 
+## Comparison (`compare`, shipped as part of the published `0.4.0` package)
+
+`my-frontend-observer compare` introduces no new network or browser
+surface: it never
+launches Chromium, never navigates, and never re-observes a target - it only
+reads two local, already-persisted observation-artifact `manifest.json`
+files (`src/artifacts/artifactReader.ts`) through the same structural
+validator the observation writer uses, computes a pure in-memory
+comparison, and writes one local comparison `manifest.json`
+(`src/artifacts/comparisonArtifactWriter.ts`). Manifest content is parsed
+as JSON only and is never executed (no `eval`, no dynamic code loading from
+a manifest).
+
 ## Not yet addressed
 
 Certificate-failure-specific handling, permission-prompt-specific handling
 (Chromium's default deny-all applies; no permission is ever explicitly
 granted), and any non-loopback/remote browsing mode remain unimplemented and
-out of scope. `my-frontend-observer@0.3.0` is published to npm, and a
+out of scope. `my-frontend-observer@0.4.0` is published to npm, and a
 pre-release readiness CI workflow (Windows/Linux/macOS packed-candidate
 validation) already exists (see `docs/CI_CD.md`); these are no longer future
 decisions. Those facts do not expand the security scope above: remote

@@ -225,6 +225,143 @@ persists honestly - typically as `partial` - carrying the same
 `target-missing`/`target-ambiguous`/`browser-evidence-unavailable` diagnostic
 that any other unresolved configured target would produce.
 
+## `compare`
+
+**Current status: shipped as part of the published `my-frontend-observer@0.4.0`
+package.** Comparison schema is `1.0.0`, independent of and never reused for
+the observation schema (`1.2.0`).
+
+`my-frontend-observer compare` (or `node dist/cli.js compare` from a source
+checkout) reads two already-persisted observation artifacts and derives
+before/after evidence purely from their existing content:
+
+```text
+my-frontend-observer compare --before <observation-artifact-root> --after <observation-artifact-root> --output <directory> [options]
+```
+
+Required:
+
+- `--before <path>` — root directory of the "before" persisted observation
+  artifact (the directory containing its `manifest.json`, as produced by
+  `observe`).
+- `--after <path>` — root directory of the "after" persisted observation
+  artifact.
+- `--output <directory>` — portable, relative output location for the
+  comparison artifact (same contract as `observe --output`).
+
+Options:
+
+- `--config-file <json-file>` — loads a comparison configuration directly
+  (no wrapper field): `{ "geometryTolerancePx": <0-10>,
+  "expectedDependencies": [...] }`. Without it, `geometryTolerancePx`
+  defaults to `0.5` CSS px with no declared dependencies. As with
+  `--targets-file`/`--scroll-scenario-file`, `--config-file` only validates
+  file readability, JSON validity, and a non-array object root; every
+  semantic rule (tolerance bounds, dependency property/direction
+  vocabulary, dependency source marker) is enforced by the same domain
+  validator the comparison engine itself uses.
+- `--help` — show `compare` usage.
+
+**Comparison never launches a browser.** It reads two manifests through the
+existing observation-artifact reader, runs the pure comparison engine, and
+persists a portable `manifest.json` — no navigation, no target
+re-resolution, no Chromium process.
+
+On success the command prints exactly:
+
+```text
+Comparison: <comparison-id>
+State: <comparable|comparable-with-warnings|incomparable>
+Artifact: <comparison-artifact-root>
+Differences: <count>
+Relationship changes: <count>
+Diagnostics: <count>
+```
+
+and exits `0` — **including when `State` is `incomparable`**: comparison
+determining that two observations should not be treated as equivalent
+frontend states is itself a successful outcome, not a failure. The command
+exits nonzero only for invalid CLI syntax, an unreadable/malformed/
+structurally-invalid source artifact, invalid comparison configuration, or
+a failed artifact write.
+
+### Comparability
+
+Before any rendered difference is calculated, the engine evaluates whether
+the two observations are comparable at all:
+
+- **Hard incompatibilities** (force `incomparable`): different logical page
+  URL, different viewport, different browser engine, or a mismatched scroll
+  scenario configuration (no scenario vs. a scenario, or two different
+  scenario configurations).
+- **Warnings** (still `comparable-with-warnings`, comparison proceeds):
+  different producer package version, different browser version, or a
+  changed/added/removed configured target.
+- **Unassessed dimensions** the observer does not yet model (theme,
+  authenticated state, application state) are always recorded, never
+  silently claimed identical.
+
+An `incomparable` result still persists a structurally valid
+`ComparisonArtifact`: the comparability reasons are recorded, and ordinary
+rendered differences/relationship changes stay empty rather than fabricated.
+
+### Difference and relationship evidence
+
+For a `comparable`/`comparable-with-warnings` result, the manifest's
+`differences` and `relationshipChanges` arrays carry structured before/
+after evidence: appeared/disappeared targets (only for a stable target name
+configured on both sides — a target added/removed from configuration is
+recorded separately as a `configurationChanges` entry, never fabricated as
+appeared/disappeared), moved/resized targets, visibility changes, clipping
+changes, actual dimensional overflow changes, DOM containment changes,
+page-size changes, scroll-owner changes, and layout-relationship
+transitions (e.g. `does-not-overlap` → `overlaps`, or
+`document-width-fits-viewport` → `document-width-exceeds-viewport`) reused
+verbatim from the same canonical relationship engine `observe` output feeds
+Batch 2's `deriveLayoutRelationships`.
+
+### Explicit dependency evidence (non-causal)
+
+`--config-file`'s `expectedDependencies` lets you declare an expected
+layout relationship such as "`navigation.width` decreases →
+`workspace.width` increases" using only the frozen `x`/`y`/`width`/`height`
+property vocabulary and `increase`/`decrease`/`change`/`unchanged`
+direction vocabulary. Each declaration is evaluated independently against
+the two observations and persists exactly one outcome: `consistent`,
+`not-observed`, `contradictory-to-declaration`, or `unavailable`. **The
+observer never infers a dependency from co-change, and never emits a
+causal claim, a PASS/FAIL verdict, or a change-contract decision** — v0.4
+produces comparison evidence; whether that evidence satisfies some
+contract is v0.5+ scope.
+
+### Path privacy
+
+`--before`, `--after`, `--config-file`, and `--output` are operational
+filesystem input only. None of them affect `comparisonRequestId`, and none
+of them are written into the persisted manifest — the manifest instead
+retains logical source references (`observationId`, `requestId`,
+`producer`, `observationSchemaVersion`, and the source `screenshot.path`).
+Two semantically identical observation/config pairs read from different
+filesystem locations produce the same `comparisonRequestId`; each execution
+still gets a fresh `comparisonId`.
+
+### Source observations remain immutable
+
+Comparison is read-only with respect to its inputs: it never modifies
+either source observation's `manifest.json` or `screenshot.png`, and it
+never copies screenshot bytes into the comparison directory — the
+comparison artifact directory contains `manifest.json` only.
+
+Example:
+
+```powershell
+node dist/cli.js compare `
+  --before observations/<before-id> `
+  --after observations/<after-id> `
+  --output comparisons `
+  --config-file .\comparison-config.json
+```
+
 ## Foundation commands
 
 - `npm install` — install dependencies (includes the `playwright` runtime

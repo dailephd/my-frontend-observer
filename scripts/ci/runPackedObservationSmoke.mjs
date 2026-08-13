@@ -13,10 +13,11 @@
 
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
+import { pathToFileURL } from 'node:url';
 
 function fail(message) {
   console.error(`SMOKE FAILURE: ${message}`);
@@ -120,6 +121,14 @@ async function main() {
     console.log(`[t+${Date.now() - t0}ms] observe --help exit=${observeHelpRes.code} stdoutLength=${observeHelpRes.stdout.length}`);
     if (observeHelpRes.code !== 0) fail(`observe --help failed:\n${observeHelpRes.stderr}`);
 
+    // v0.4: the installed candidate must expose "compare" alongside "observe".
+    const compareHelpRes = await runBin(['compare', '--help']);
+    console.log(`[t+${Date.now() - t0}ms] compare --help exit=${compareHelpRes.code} stdoutLength=${compareHelpRes.stdout.length}`);
+    if (compareHelpRes.code !== 0) fail(`compare --help failed:\n${compareHelpRes.stderr}`);
+    for (const flag of ['--before', '--after', '--output', '--config-file']) {
+      if (!compareHelpRes.stdout.includes(flag)) fail(`compare --help missing expected flag documentation: ${flag}`);
+    }
+
     const html =
       '<!doctype html><html><head><title>ci smoke fixture</title><style>' +
       'html,body{margin:0;padding:0}' +
@@ -132,10 +141,36 @@ async function main() {
       '<button type="button">Run</button>' +
       '<div id="panel"><div id="panel-content">Panel scrollable content</div></div>' +
       '</body></html>';
+
+    // v0.4: same-logical-URL, in-process-toggleable fixture for the compare
+    // smoke below. "navigation" stays fixed; "workspace" moves+resizes
+    // between variants, deterministically crossing from does-not-overlap/
+    // left-of into overlaps/horizontally-overlapping - large enough to
+    // exceed the default 0.5px geometry tolerance on every platform, using
+    // only explicit integer CSS pixel positions (no font-dependent layout).
+    let compareVariant = 'before';
+    function compareFixtureHtml() {
+      const workspace = compareVariant === 'before' ? { left: 200, width: 300, height: 100 } : { left: 100, width: 350, height: 140 };
+      return (
+        '<!doctype html><html><head><title>compare smoke fixture</title><style>' +
+        'html,body{margin:0;padding:0}' +
+        '#navigation{position:absolute;top:0;left:0;width:140px;height:40px;}' +
+        `#workspace{position:absolute;top:0;left:${workspace.left}px;width:${workspace.width}px;height:${workspace.height}px;}` +
+        '</style></head><body>' +
+        '<div id="navigation">Navigation</div><div id="workspace">Workspace</div>' +
+        '</body></html>'
+      );
+    }
+
     const server = createServer((req, res) => {
       if (req.url === '/smoke') {
         res.writeHead(200, { 'content-type': 'text/html' });
         res.end(html);
+        return;
+      }
+      if (req.url === '/compare-smoke') {
+        res.writeHead(200, { 'content-type': 'text/html' });
+        res.end(compareFixtureHtml());
         return;
       }
       res.writeHead(404);
@@ -144,6 +179,7 @@ async function main() {
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     const port = server.address().port;
     const targetUrl = `http://127.0.0.1:${port}/smoke`;
+    const compareTargetUrl = `http://127.0.0.1:${port}/compare-smoke`;
 
     const beforeHtml = await fetch(targetUrl).then((r) => r.text());
 
@@ -383,7 +419,197 @@ async function main() {
       fail('targets-file or scroll-scenario-file path leaked into persisted target-scroll manifest');
     }
 
-    // Target application immutability across all four observations (served content, not browser-local scroll state).
+    // --- v0.4: installed "compare" against two installed-"observe" artifacts (comparable case). ---
+    const compareTargetArgs = ['--target', 'navigation=#navigation', '--target', 'workspace=#workspace'];
+
+    compareVariant = 'before';
+    const cmpBeforeOutputSubdir = `ci-smoke-output-cmp-before-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, cmpBeforeOutputSubdir), { recursive: true });
+    const cmpBeforeObserveRes = await runBin(['observe', '--url', compareTargetUrl, '--viewport', '800x600', ...compareTargetArgs, '--output', cmpBeforeOutputSubdir]);
+    if (cmpBeforeObserveRes.code !== 0) fail(`compare-fixture "before" observe failed (exit ${cmpBeforeObserveRes.code}):\n${cmpBeforeObserveRes.stdout}\n${cmpBeforeObserveRes.stderr}`);
+    const cmpBeforeRoot = cmpBeforeObserveRes.stdout.split('\n').find((l) => l.startsWith('Artifact: ')).slice('Artifact: '.length).trim();
+
+    compareVariant = 'after';
+    const cmpAfterOutputSubdir = `ci-smoke-output-cmp-after-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, cmpAfterOutputSubdir), { recursive: true });
+    const cmpAfterObserveRes = await runBin(['observe', '--url', compareTargetUrl, '--viewport', '800x600', ...compareTargetArgs, '--output', cmpAfterOutputSubdir]);
+    if (cmpAfterObserveRes.code !== 0) fail(`compare-fixture "after" observe failed (exit ${cmpAfterObserveRes.code}):\n${cmpAfterObserveRes.stdout}\n${cmpAfterObserveRes.stderr}`);
+    const cmpAfterRoot = cmpAfterObserveRes.stdout.split('\n').find((l) => l.startsWith('Artifact: ')).slice('Artifact: '.length).trim();
+
+    // Source-immutability baseline: hash both source observations' manifest+screenshot bytes before comparing.
+    const sha256 = (buf) => createHash('sha256').update(buf).digest('hex');
+    const cmpBeforeManifestRaw0 = await readFile(path.join(cmpBeforeRoot, 'manifest.json'));
+    const cmpBeforeScreenshotRaw0 = await readFile(path.join(cmpBeforeRoot, 'screenshot.png'));
+    const cmpAfterManifestRaw0 = await readFile(path.join(cmpAfterRoot, 'manifest.json'));
+    const cmpAfterScreenshotRaw0 = await readFile(path.join(cmpAfterRoot, 'screenshot.png'));
+    const preCompareHashes = {
+      beforeManifest: sha256(cmpBeforeManifestRaw0),
+      beforeScreenshot: sha256(cmpBeforeScreenshotRaw0),
+      afterManifest: sha256(cmpAfterManifestRaw0),
+      afterScreenshot: sha256(cmpAfterScreenshotRaw0),
+    };
+
+    const compareConfigPath = path.join(consumerDir, 'compare-config.json');
+    await writeFile(
+      compareConfigPath,
+      JSON.stringify({
+        geometryTolerancePx: 0.5,
+        expectedDependencies: [
+          {
+            cause: { target: 'navigation', property: 'width', direction: 'unchanged' },
+            effect: { target: 'workspace', property: 'width', direction: 'increase' },
+            source: 'explicit-config',
+          },
+        ],
+      }),
+      'utf8',
+    );
+
+    const cmpOutputSubdir = `ci-smoke-output-cmp-result-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, cmpOutputSubdir), { recursive: true });
+    const cmpRes = await runBin(['compare', '--before', cmpBeforeRoot, '--after', cmpAfterRoot, '--output', cmpOutputSubdir, '--config-file', compareConfigPath]);
+    console.log('--- compare (comparable) stdout ---');
+    console.log(cmpRes.stdout);
+    console.log(`--- compare (comparable) exit code: ${cmpRes.code} ---`);
+    if (cmpRes.code !== 0) fail(`comparable compare failed (exit ${cmpRes.code}):\n${cmpRes.stdout}\n${cmpRes.stderr}`);
+    for (const prefix of ['Comparison:', 'State:', 'Artifact:', 'Differences:', 'Relationship changes:', 'Diagnostics:']) {
+      if (!cmpRes.stdout.includes(prefix)) fail(`comparable compare stdout missing expected "${prefix}" line`);
+    }
+
+    const cmpArtifactRoot = cmpRes.stdout.split('\n').find((l) => l.startsWith('Artifact: ')).slice('Artifact: '.length).trim();
+    const cmpManifest = JSON.parse(await readFile(path.join(cmpArtifactRoot, 'manifest.json'), 'utf8'));
+
+    // Installed-package-independence: resolve isValidComparisonArtifact/isValidObservationArtifact
+    // from the *consumer's own* node_modules, not the source checkout, and validate the real
+    // persisted manifest through it (never manual key inspection only).
+    const installedIndexPath = path.join(consumerDir, 'node_modules', 'my-frontend-observer', 'dist', 'index.js');
+    const installedPackageApi = await import(pathToFileURL(installedIndexPath).href);
+    if (installedIndexPath.includes(path.resolve('.')) || installedIndexPath.includes('src' + path.sep)) {
+      fail('resolved installed package index unexpectedly points at the source checkout');
+    }
+    if (typeof installedPackageApi.isValidComparisonArtifact !== 'function') fail('installed package does not export isValidComparisonArtifact');
+    const cmpValidation = installedPackageApi.isValidComparisonArtifact(cmpManifest);
+    if (!cmpValidation.valid) fail(`comparable ComparisonArtifact failed installed-package structural validation: ${cmpValidation.reason}`);
+    if (typeof installedPackageApi.isValidObservationArtifact !== 'function') fail('installed package does not export isValidObservationArtifact');
+    const cmpBeforeObsValidation = installedPackageApi.isValidObservationArtifact(JSON.parse(cmpBeforeManifestRaw0.toString('utf8')));
+    if (!cmpBeforeObsValidation.valid) fail(`before ObservationArtifact failed installed-package structural validation: ${cmpBeforeObsValidation.reason}`);
+
+    if (cmpManifest.artifactKind !== 'my-frontend-observer/comparison') fail(`unexpected comparison artifactKind: ${cmpManifest.artifactKind}`);
+    if (cmpManifest.schemaVersion !== '1.0.0') fail(`unexpected comparison schemaVersion: ${cmpManifest.schemaVersion}`);
+    if (typeof cmpManifest.comparisonId !== 'string' || cmpManifest.comparisonId.length === 0) fail('missing comparisonId');
+    if (typeof cmpManifest.comparisonRequestId !== 'string' || cmpManifest.comparisonRequestId.length === 0) fail('missing comparisonRequestId');
+    if (cmpManifest.comparability?.state !== 'comparable') fail(`expected comparability "comparable", got ${JSON.stringify(cmpManifest.comparability)}`);
+    if (cmpManifest.before?.observationId !== JSON.parse(cmpBeforeManifestRaw0.toString('utf8')).observationId) fail('before observation reference mismatch');
+    if (cmpManifest.after?.observationId !== JSON.parse(cmpAfterManifestRaw0.toString('utf8')).observationId) fail('after observation reference mismatch');
+    if (cmpManifest.before?.screenshot?.path !== 'screenshot.png') fail('before screenshot reference missing/incorrect');
+    if (cmpManifest.after?.screenshot?.path !== 'screenshot.png') fail('after screenshot reference missing/incorrect');
+
+    // Meaningful target difference: workspace moved AND resized by an explicit, tolerance-exceeding amount.
+    const workspaceMoved = cmpManifest.differences?.find((d) => d.kind === 'moved' && d.subject?.type === 'target' && d.subject?.target === 'workspace');
+    if (!workspaceMoved) fail('expected a "moved" difference for target "workspace"');
+    if (workspaceMoved.before?.x !== 200 || workspaceMoved.after?.x !== 100 || workspaceMoved.delta?.x !== -100) {
+      fail(`unexpected moved-difference values: ${JSON.stringify(workspaceMoved)}`);
+    }
+    const workspaceResized = cmpManifest.differences?.find((d) => d.kind === 'resized' && d.subject?.type === 'target' && d.subject?.target === 'workspace');
+    if (!workspaceResized) fail('expected a "resized" difference for target "workspace"');
+    if (workspaceResized.before?.width !== 300 || workspaceResized.after?.width !== 350 || workspaceResized.delta?.width !== 50) {
+      fail(`unexpected resized-difference values: ${JSON.stringify(workspaceResized)}`);
+    }
+
+    // Meaningful relationship change: navigation/workspace crossed from separated to overlapping
+    // (guards the v0.4 relationship-family matching regression - both the horizontal-order and
+    // area-overlap families change simultaneously for this same pair).
+    const relChange = cmpManifest.relationshipChanges?.find(
+      (c) => c.scope === 'pairwise' && ((c.subjectTarget === 'navigation' && c.relatedTarget === 'workspace') || (c.subjectTarget === 'workspace' && c.relatedTarget === 'navigation')),
+    );
+    if (!relChange) fail('expected at least one pairwise relationshipChanges entry for navigation/workspace');
+    const relDiff = cmpManifest.differences?.find((d) => d.kind === 'relative-position-changed');
+    if (!relDiff) fail('expected a "relative-position-changed" difference for the navigation/workspace transition');
+    if (!Array.isArray(relDiff.evidence) || relDiff.evidence.length === 0) fail('relationship-change difference has no supporting evidence references');
+    summary.relationshipChangeBefore = relChange.before;
+    summary.relationshipChangeAfter = relChange.after;
+
+    // Explicit non-causal dependency evidence: navigation.width unchanged -> workspace.width increases.
+    const depEvidence = cmpManifest.expectedDependencyEvidence?.[0];
+    if (!depEvidence) fail('expected one expectedDependencyEvidence entry from --config-file');
+    if (!['consistent', 'not-observed', 'contradictory-to-declaration', 'unavailable'].includes(depEvidence.outcome)) {
+      fail(`unexpected dependency outcome vocabulary: ${depEvidence.outcome}`);
+    }
+    if (depEvidence.outcome !== 'consistent') fail(`expected dependency outcome "consistent" for this deterministic fixture, got "${depEvidence.outcome}"`);
+    const serializedCmpManifestForCausalCheck = JSON.stringify(cmpManifest);
+    for (const forbidden of ['causedBy', 'causalConfidence', 'causalScore', 'dependencyStrength', '"PASS"', '"FAIL"']) {
+      if (serializedCmpManifestForCausalCheck.includes(forbidden)) fail(`forbidden causal/verdict vocabulary found in comparison manifest: ${forbidden}`);
+    }
+
+    // Path privacy: none of the operational absolute paths may appear in the persisted manifest.
+    for (const leaked of [cmpBeforeRoot, cmpAfterRoot, compareConfigPath, consumerDir]) {
+      if (serializedCmpManifestForCausalCheck.includes(leaked)) fail(`operational filesystem path leaked into comparison manifest: ${leaked}`);
+    }
+
+    // Comparison directory layout: manifest.json only, no copied screenshots/side files.
+    const cmpDirEntries = await readdir(cmpArtifactRoot);
+    if (cmpDirEntries.length !== 1 || cmpDirEntries[0] !== 'manifest.json') {
+      fail(`expected comparison directory to contain only manifest.json, got: ${cmpDirEntries.join(', ')}`);
+    }
+
+    // Source-observation immutability: re-hash both source observations after comparing.
+    const postCompareHashes = {
+      beforeManifest: sha256(await readFile(path.join(cmpBeforeRoot, 'manifest.json'))),
+      beforeScreenshot: sha256(await readFile(path.join(cmpBeforeRoot, 'screenshot.png'))),
+      afterManifest: sha256(await readFile(path.join(cmpAfterRoot, 'manifest.json'))),
+      afterScreenshot: sha256(await readFile(path.join(cmpAfterRoot, 'screenshot.png'))),
+    };
+    if (JSON.stringify(preCompareHashes) !== JSON.stringify(postCompareHashes)) {
+      fail(`source observation(s) were modified by compare: before=${JSON.stringify(preCompareHashes)} after=${JSON.stringify(postCompareHashes)}`);
+    }
+
+    summary.comparisonArtifactKind = cmpManifest.artifactKind;
+    summary.comparisonSchemaVersion = cmpManifest.schemaVersion;
+    summary.comparisonComparableState = cmpManifest.comparability.state;
+    summary.comparisonTargetDifferenceKinds = Array.from(new Set((cmpManifest.differences ?? []).map((d) => d.kind))).sort();
+    summary.comparisonRelationshipChangePresent = true;
+    summary.comparisonDependencyOutcome = depEvidence.outcome;
+    summary.comparisonPathPrivacyPassed = true;
+    summary.comparisonSourceImmutabilityPassed = true;
+    summary.comparisonScreenshotReferencesPresent = true;
+    summary.comparisonDirectoryLayout = cmpDirEntries;
+    summary.comparableCompareOk = true;
+
+    // --- v0.4: installed "compare" for an incompatible pair (incomparable case). ---
+    const cmpIncompatibleOutputSubdir = `ci-smoke-output-cmp-incompatible-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, cmpIncompatibleOutputSubdir), { recursive: true });
+    // compareVariant is still 'after' - deliberately reusing the same rendered content and only
+    // changing viewport, so viewport is the *only* comparability dimension that differs.
+    const cmpIncompatibleObserveRes = await runBin(['observe', '--url', compareTargetUrl, '--viewport', '600x400', ...compareTargetArgs, '--output', cmpIncompatibleOutputSubdir]);
+    if (cmpIncompatibleObserveRes.code !== 0) fail(`incompatible-viewport observe failed (exit ${cmpIncompatibleObserveRes.code}):\n${cmpIncompatibleObserveRes.stdout}\n${cmpIncompatibleObserveRes.stderr}`);
+    const cmpIncompatibleRoot = cmpIncompatibleObserveRes.stdout.split('\n').find((l) => l.startsWith('Artifact: ')).slice('Artifact: '.length).trim();
+
+    const cmpIncomparableOutputSubdir = `ci-smoke-output-cmp-incomparable-result-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, cmpIncomparableOutputSubdir), { recursive: true });
+    const cmpIncomparableRes = await runBin(['compare', '--before', cmpBeforeRoot, '--after', cmpIncompatibleRoot, '--output', cmpIncomparableOutputSubdir]);
+    console.log('--- compare (incomparable) stdout ---');
+    console.log(cmpIncomparableRes.stdout);
+    console.log(`--- compare (incomparable) exit code: ${cmpIncomparableRes.code} ---`);
+    if (cmpIncomparableRes.code !== 0) fail(`incomparable compare unexpectedly exited nonzero (exit ${cmpIncomparableRes.code}):\n${cmpIncomparableRes.stdout}\n${cmpIncomparableRes.stderr}`);
+
+    const cmpIncomparableArtifactRoot = cmpIncomparableRes.stdout.split('\n').find((l) => l.startsWith('Artifact: ')).slice('Artifact: '.length).trim();
+    const cmpIncomparableManifest = JSON.parse(await readFile(path.join(cmpIncomparableArtifactRoot, 'manifest.json'), 'utf8'));
+    const cmpIncomparableValidation = installedPackageApi.isValidComparisonArtifact(cmpIncomparableManifest);
+    if (!cmpIncomparableValidation.valid) fail(`incomparable ComparisonArtifact failed installed-package structural validation: ${cmpIncomparableValidation.reason}`);
+
+    if (cmpIncomparableManifest.artifactKind !== 'my-frontend-observer/comparison') fail('unexpected incomparable artifactKind');
+    if (cmpIncomparableManifest.schemaVersion !== '1.0.0') fail('unexpected incomparable schemaVersion');
+    if (cmpIncomparableManifest.comparability?.state !== 'incomparable') fail(`expected comparability "incomparable", got ${JSON.stringify(cmpIncomparableManifest.comparability)}`);
+    const viewportReason = cmpIncomparableManifest.comparability.reasons?.find((r) => r.code === 'viewport-mismatch');
+    if (!viewportReason || viewportReason.severity !== 'blocking') fail(`expected a blocking "viewport-mismatch" comparability reason, got ${JSON.stringify(cmpIncomparableManifest.comparability.reasons)}`);
+    if ((cmpIncomparableManifest.differences ?? []).length !== 0) fail(`expected no ordinary differences for an incomparable pair, got ${JSON.stringify(cmpIncomparableManifest.differences)}`);
+    if ((cmpIncomparableManifest.relationshipChanges ?? []).length !== 0) fail('expected no relationshipChanges for an incomparable pair');
+
+    summary.comparisonIncomparableState = cmpIncomparableManifest.comparability.state;
+    summary.comparisonIncomparableReasonPresent = true;
+    summary.incomparableCompareOk = true;
+
+    // Target application immutability across all observations (served content, not browser-local scroll state).
     const afterHtml = await fetch(targetUrl).then((r) => r.text());
     server.close();
     summary.targetImmutable = beforeHtml === afterHtml;

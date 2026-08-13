@@ -67,3 +67,32 @@ observations. This was proven on `validation/v0.3-pre-release`
 hash-verified candidate tarball (SHA-256
 `da6cbc18a98d005b84a2f12c06f5c01d390006b53c02176a6c9cdc6d9b9d24d0`) - the
 release candidate for `v0.3.0`.
+
+## v0.4 readiness coverage
+
+The packed-candidate readiness gap that previously existed for the v0.4
+`compare` public command - identified during the v0.4 implementation/
+documentation audit as `V0_4_READINESS_VALIDATION_GAP_EXISTS` - has been
+closed: `scripts/ci/runPackedObservationSmoke.mjs` now also installs the
+candidate tarball, observes a deterministic before/after fixture through
+the installed `observe`, and runs the installed `compare` against both
+resulting artifacts, asserting (through the *installed package's own*
+exported `isValidComparisonArtifact`/`isValidObservationArtifact`, resolved
+from the consumer's own `node_modules` rather than the source checkout):
+comparison artifact kind/schema `1.0.0`, a `comparable` result with a real
+`moved`+`resized` target difference and a real relationship-family
+transition (`does-not-overlap`→`overlaps` and `left-of`→
+`horizontally-overlapping` simultaneously - the same pair the v0.4
+relationship-family matching regression concerns), an explicit
+`--config-file` non-causal dependency-evidence result, an `incomparable`
+result (differing viewport) with the expected blocking comparability
+reason and no fabricated ordinary differences, comparison-manifest path
+privacy (no absolute operational path leakage), retained (never copied)
+before/after screenshot references, a `manifest.json`-only comparison
+directory, and byte-identical source-observation manifests/screenshots
+before and after comparing - on every platform in the matrix, using the
+same single hash-verified candidate tarball as the legacy/semantic/scroll
+observations. This preserves every pre-existing v0.1-v0.3 packed
+observation proof unchanged and adds the v0.4 proof additively, in the same
+script and the same candidate, per the established same-candidate
+architecture (no second `npm pack`, no per-platform rebuild).

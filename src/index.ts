@@ -1,5 +1,5 @@
 export type { EvidenceState, EvidenceSource, EvidenceField } from './domain/evidence.js';
-export { isValidEvidenceField } from './domain/evidence.js';
+export { isValidEvidenceField, evidenceValue } from './domain/evidence.js';
 
 export type { DiagnosticCode, DiagnosticSeverity, Diagnostic } from './domain/diagnostics.js';
 export { DIAGNOSTIC_CODES, DIAGNOSTIC_SEVERITY, orderDiagnostics } from './domain/diagnostics.js';
@@ -79,3 +79,115 @@ export type { PersistedObservationResult } from './artifacts/types.js';
 export { MANIFEST_FILENAME, SCREENSHOT_FILENAME } from './artifacts/artifactWriter.js';
 export type { ApplicationObservationResult } from './application/observationPersistence.js';
 export { buildObservationArtifact, persistBrowserCapture, observe } from './application/observationPersistence.js';
+
+export type {
+  HorizontalOrderRelationship,
+  VerticalOrderRelationship,
+  AreaOverlapRelationship,
+  RelativeWidthRelationship,
+  GeometricFitRelationship,
+  VerticalSequenceRelationship,
+  PageWidthRelationship,
+  PairwiseRelationshipKind,
+  PageLevelRelationshipKind,
+  EvidenceReference,
+  PairwiseLayoutRelationship,
+  PageLevelLayoutRelationship,
+  UnresolvedTargetReason,
+  UnresolvedRelationshipTarget,
+  LayoutRelationshipGraph,
+  ClippingState,
+  ClippingOverflowStyle,
+  TargetClippingEvidence,
+  DeriveLayoutRelationshipsOptions,
+  DeriveLayoutRelationshipsResult,
+} from './domain/relationships.js';
+export {
+  HORIZONTAL_ORDER_RELATIONSHIPS,
+  VERTICAL_ORDER_RELATIONSHIPS,
+  AREA_OVERLAP_RELATIONSHIPS,
+  RELATIVE_WIDTH_RELATIONSHIPS,
+  GEOMETRIC_FIT_RELATIONSHIPS,
+  VERTICAL_SEQUENCE_RELATIONSHIPS,
+  PAGE_WIDTH_RELATIONSHIPS,
+  PAIRWISE_RELATIONSHIP_KINDS,
+  PAGE_LEVEL_RELATIONSHIP_KINDS,
+  MAX_CONFIGURED_TARGETS_FOR_RELATIONSHIPS,
+  MAX_PAIRWISE_RELATIONSHIP_PAIRS,
+  PAIRWISE_RELATIONSHIP_FAMILY_COUNT,
+  MAX_PAIRWISE_RELATIONSHIP_RECORDS,
+  CLIPPING_STATES,
+  CLIPPING_OVERFLOW_STYLES,
+  isValidEvidenceReference,
+  isValidPairwiseLayoutRelationship,
+  isValidPageLevelLayoutRelationship,
+  isValidUnresolvedRelationshipTarget,
+  isValidLayoutRelationshipGraph,
+  isValidTargetClippingEvidence,
+  deriveTargetClipping,
+  deriveLayoutRelationships,
+} from './domain/relationships.js';
+
+export type {
+  DependencyProperty,
+  DependencyDirection,
+  ExpectedDependencySource,
+  DependencyTermDeclaration,
+  ExpectedDependencyDeclaration,
+  DependencyEvidenceOutcome,
+  ExpectedDependencyEvidence,
+  ComparisonConfig,
+  ComparabilityState,
+  ComparabilityReasonCode,
+  ComparabilityReasonSeverity,
+  ComparabilityReason,
+  ComparabilityResult,
+  TargetConfigurationChangeKind,
+  TargetConfigurationChange,
+  DifferenceKind,
+  ComparisonDifferenceSubject,
+  ComparisonDifference,
+  RelationshipChangeRecord,
+  ComparisonSourceObservationReference,
+  ComparisonArtifact,
+  ComparisonSchemaValidationResult,
+} from './domain/comparison.js';
+export {
+  COMPARISON_ARTIFACT_KIND,
+  COMPARISON_SCHEMA_VERSION,
+  GEOMETRY_TOLERANCE_DEFAULT_PX,
+  GEOMETRY_TOLERANCE_MIN_PX,
+  GEOMETRY_TOLERANCE_MAX_PX,
+  isValidGeometryTolerancePx,
+  DEPENDENCY_PROPERTIES,
+  DEPENDENCY_DIRECTIONS,
+  EXPECTED_DEPENDENCY_SOURCES,
+  isValidExpectedDependencyDeclaration,
+  DEPENDENCY_EVIDENCE_OUTCOMES,
+  isValidExpectedDependencyEvidence,
+  isValidComparisonConfig,
+  COMPARABILITY_STATES,
+  COMPARABILITY_REASON_CODES,
+  COMPARABILITY_REASON_SEVERITY,
+  isValidComparabilityResult,
+  TARGET_CONFIGURATION_CHANGE_KINDS,
+  isValidTargetConfigurationChange,
+  DIFFERENCE_KINDS,
+  isValidComparisonDifference,
+  isValidComparisonSourceObservationReference,
+  isValidComparisonArtifact,
+} from './domain/comparison.js';
+
+export { buildComparisonRequestIdentity, buildComparisonIdentity } from './domain/comparisonIdentity.js';
+
+export type { CompareObservationsResult } from './domain/comparisonEngine.js';
+export { compareObservations, evaluateComparability, evaluateExpectedDependencies, compareTargetConfiguration } from './domain/comparisonEngine.js';
+
+export type { PersistedComparisonResult, WriteComparisonArtifactOptions } from './artifacts/comparisonArtifactWriter.js';
+export { COMPARISON_MANIFEST_FILENAME, writeComparisonArtifact } from './artifacts/comparisonArtifactWriter.js';
+
+export type { ReadObservationArtifactResult } from './artifacts/artifactReader.js';
+export { readObservationArtifact } from './artifacts/artifactReader.js';
+
+export type { CompareAndPersistOptions, ApplicationComparisonResult } from './application/comparisonService.js';
+export { DEFAULT_COMPARISON_OUTPUT_LOCATION, compareAndPersist, compareAndPersistFromArtifactRoots } from './application/comparisonService.js';

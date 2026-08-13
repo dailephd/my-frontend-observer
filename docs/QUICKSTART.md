@@ -25,6 +25,11 @@ See [COMMANDS.md](COMMANDS.md) for the full flag reference, including the
 `--targets-file` structured semantic-target input and the
 `--scroll-scenario-file` bounded runtime scroll scenario input.
 
+Once you have two such artifacts, `node dist/cli.js compare --before
+<root> --after <root> --output comparisons` derives before/after evidence
+between them without launching a browser again - see
+[COMMANDS.md](COMMANDS.md#compare) for details.
+
 To validate the repository itself instead:
 
 ```powershell

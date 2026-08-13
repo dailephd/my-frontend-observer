@@ -1,7 +1,8 @@
 # Current State
 
-The project is published at package version `0.3.0` (roadmap v0.3, Runtime
-Scrolling, Overflow, and Visibility Behavior; observation schema `1.2.0`).
+The project is published at package version `0.4.0` (roadmap v0.4, Layout
+Relationships, Dependency Evidence, and Before/After Comparison; observation
+schema `1.2.0`; comparison schema `1.0.0`).
 
 ## Greenfield foundation established
 
@@ -221,15 +222,107 @@ consumer environment on Windows, Linux, and macOS before release.
   unchanged. Proven via real Chromium (`tests/browser/cliObserve.test.ts`)
   and the built `dist/cli.js` (`scripts/dev/builtCliScrollScenarioSmoke.mjs`).
 
+## v0.4 status (Layout Relationships, Dependency Evidence, and Before/After Comparison) - released as 0.4.0
+
+v0.4 is implemented and released as package version `0.4.0`; observation
+schema remains `1.2.0`; comparison schema is `1.0.0`. It was validated as a
+packed npm tarball in a clean consumer environment on Windows, Linux, and
+macOS - covering the legacy CSS-shorthand `--target` path, the structured
+`--targets-file` path, both `--scroll-scenario-file` action kinds, and the
+installed `compare` command (comparable and incomparable cases) - before
+release.
+
+- **Batch 1** froze the `my-frontend-observer/comparison` artifact contract
+  (schema `1.0.0`, independent of and never reused for the observation
+  schema): `ComparisonConfig` (geometry tolerance, default `0.5`px, bounded
+  `[0, 10]`px), the bounded layout-relationship vocabulary (horizontal/
+  vertical order, area overlap, relative width, geometric fit, vertical
+  sequencing, page-width fit, clipping), comparability states, the
+  before/after difference vocabulary, and the non-causal explicit
+  dependency-evidence contract, plus `comparisonRequestId`/`comparisonId`
+  identity (`src/domain/relationships.ts`, `src/domain/comparison.ts`,
+  `src/domain/comparisonIdentity.ts`). No derivation, comparison, or
+  persistence.
+- **Batch 2** implemented the one canonical pure derivation engine,
+  `deriveLayoutRelationships(observation, options?)`
+  (`src/domain/relationships.ts`): consumes an existing `ObservationArtifact`
+  only (no Chromium, no re-resolution, no DOM access) and derives a bounded,
+  traceable `LayoutRelationshipGraph` among configured targets - stable
+  target identity, deterministic configured-target ordering, honest
+  unresolved-target handling (not-found/ambiguous/unavailable/hidden, never
+  a fabricated zero-sized region), and evidence-reference provenance for
+  every derived relationship. DOM containment is read directly from the
+  existing `TargetContainment` evidence rather than re-derived, and stays
+  distinct from geometric fit. A standalone `deriveTargetClipping(record)`
+  derives the frozen clipping concept per target from existing layout/style
+  evidence.
+- **Batch 3** implemented the pure before/after comparison engine,
+  `compareObservations(before, after, config?)`
+  (`src/domain/comparisonEngine.ts`): validates both source observations,
+  evaluates comparability before any rendered difference is calculated
+  (hard page-URL/viewport/browser-engine/scroll-scenario mismatches;
+  producer/browser-version and target-configuration warnings), reuses
+  `deriveLayoutRelationships` unchanged for both sides, and derives target/
+  page differences (appeared/disappeared, moved, resized, visibility,
+  clipping, actual overflow, DOM containment, page size, scroll-owner) and
+  relationship changes (matched by family + subject/related target, never
+  array position) - all without launching Chromium, re-resolving targets, or
+  mutating either input observation. Explicit `ComparisonConfig.
+  expectedDependencies` are evaluated into non-causal
+  consistent/not-observed/contradictory-to-declaration/unavailable outcomes
+  only; the observer never infers a dependency from co-change. Comparison
+  identity reuses the existing Batch 1 `buildComparisonRequestIdentity`/
+  `buildComparisonIdentity` verbatim. Persistence
+  (`src/artifacts/comparisonArtifactWriter.ts#writeComparisonArtifact`,
+  atomic, `<outputLocation>/<comparisonId>/manifest.json` only, no copied
+  screenshots) and the application-level `compareAndPersist` use case
+  (`src/application/comparisonService.ts`) are implemented; a narrow
+  `readObservationArtifact` reader
+  (`src/artifacts/artifactReader.ts`) is established ahead of the Batch 4
+  CLI.
+- **Batch 4** exposed the existing comparison workflow through the real
+  public CLI: `my-frontend-observer compare --before <observation-artifact-
+  root> --after <observation-artifact-root> --output <directory>
+  [--config-file <json-file>]` (see `docs/COMMANDS.md`). The CLI stays thin
+  - `src/cli.ts` parses arguments, optionally loads a config file (file
+  readability/JSON validity/object-root only, exactly like
+  `--targets-file`/`--scroll-scenario-file`), and delegates to one new
+  thin application-layer orchestration function,
+  `compareAndPersistFromArtifactRoots`
+  (`src/application/comparisonService.ts`), which reads both observation
+  roots through the existing `readObservationArtifact` reader and calls the
+  existing `compareAndPersist` exactly once - no comparability/geometry/
+  relationship/dependency logic lives in the CLI, and comparison itself
+  never launches Chromium (`src/cli.ts` still imports nothing from
+  `src/artifacts/` or `src/browser/`, matching the pre-existing observe-CLI
+  import-boundary test). `comparable`, `comparable-with-warnings`, and
+  `incomparable` all exit `0` - each is a successful comparison outcome;
+  only a genuine parse/read/domain/persistence failure exits nonzero.
+  Operational paths (`--before`/`--after`/`--config-file`/`--output`) never
+  affect `comparisonRequestId` and are never written into the persisted
+  manifest. Proven end-to-end via real Chromium
+  (`tests/browser/cliCompare.test.ts`) and the built `dist/cli.js`
+  (`scripts/dev/builtCliCompareSmoke.mjs`): unchanged/moved/resized/
+  appeared/disappeared/configuration-only-change/overlap/geometric-fit/
+  page-overflow/clipping/scroll-owner cases, plus an explicit
+  `--config-file` dependency-evidence case, all through the public command
+  surface.
+
+v0.4's canonical relationship derivation, before/after comparison,
+comparability, differences, relationship changes, explicit dependency
+evidence, comparison persistence, and public `compare` CLI are all
+implemented, exercised end-to-end, packed-validated cross-platform, and
+released.
+
 ## Not implemented
 
-- Layout/spatial relationship engine, before/after comparison, frontend
-  contracts/change scope, source ownership, my-dev-kit runtime/static
-  integration, orchestrator/lab product integration, viewer, and annotation
-  all remain unimplemented (v0.4+).
+- v0.5+ frontend contracts/change scope (baseline approval, requested/
+  protected/preserved change scope, PASS/FAIL verdicts), source ownership,
+  my-dev-kit runtime/static integration, orchestrator/lab product
+  integration, viewer, and annotation all remain unimplemented.
 
 ## Next target
 
-v0.1, v0.2, and v0.3 are implemented, validated, and released (`0.1.0`,
-`0.2.0`, `0.3.0`). v0.4 (Layout Relationships, Dependency Evidence, and
-Before/After Comparison) is the next planned version.
+v0.1-v0.4 are implemented, validated, and released (`0.1.0`, `0.2.0`,
+`0.3.0`, `0.4.0`). v0.5 (Executable Frontend Contracts and Explicit Change
+Scope) is next.

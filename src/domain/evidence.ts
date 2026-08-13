@@ -59,3 +59,8 @@ export function isValidEvidenceField<T = unknown>(field: unknown): field is Evid
 
   return false;
 }
+
+/** Extracts an `EvidenceField<T>`'s value when meaningfully present (`available`/`partial`), `undefined` otherwise - never a fabricated default for `unavailable`/`not-applicable`. */
+export function evidenceValue<T>(field: EvidenceField<T>): T | undefined {
+  return field.state === 'available' || field.state === 'partial' ? field.value : undefined;
+}
