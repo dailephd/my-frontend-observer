@@ -16,13 +16,16 @@ The retained repository contains:
 - a safe `dist/` clean script;
 - documentation validation;
 - package allowlisting;
-- minimal `src/cli.ts` and `src/index.ts` placeholders required by the selected
-  TypeScript CLI starter profile;
+- `src/cli.ts` and `src/index.ts`, the package/library entry points originally
+  established by the selected TypeScript CLI starter profile;
 - complete repository-local Project Description, Project Milestones, ROADMAP,
   and standardized documentation.
 
-The package bin (`src/cli.ts`) now implements the real `observe` command
-described below; it is no longer the not-implemented placeholder.
+The package bin (`src/cli.ts`) now exposes the real current public CLI
+surface described below (`observe`, `compare`, `approve-baseline`,
+`save-change-contract`, `evaluate-contract`), while remaining a thin
+parsing/dispatch/presentation boundary; it is no longer the not-implemented
+placeholder.
 
 ## v0.1 progress (Batch 1–6; implemented and released as 0.1.0)
 

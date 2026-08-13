@@ -83,7 +83,8 @@ exclusive per invocation, and both converge on the same
 `normalizeRequest()`/browser-resolver/artifact path, so a semantic
 observation produces exactly the same `manifest.json` shape as a
 CSS-shorthand one. Schema `1.1.0` was the v0.2 published artifact schema;
-the current v0.4 package emits schema `1.2.0` for both target-input modes
+schema `1.2.0` has been emitted since v0.3 and remains the observation schema
+in the current published v0.5.0 package, for both target-input modes
 (target semantics are unchanged from v0.2 - see the v0.3 scroll scenario
 contract below for what schema `1.2.0` actually adds). `--targets-file`'s
 local input path is never part of the persisted request identity or

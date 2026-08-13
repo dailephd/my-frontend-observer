@@ -40,7 +40,7 @@ my-dev-kit
 → symbols
 → architecture
 → dependencies
-→ source ownership
+→ probable source ownership evidence
 → bounded source retrieval
 
 my-frontend-observer

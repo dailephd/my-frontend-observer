@@ -1,12 +1,15 @@
 # Architecture
 
-## Current scaffold architecture
+## Current package architecture
 
 The current repository is one published TypeScript ESM package
 (`my-frontend-observer@0.5.0`):
 
-- `src/cli.ts` is the real, thin `observe` command entry point (argument
-  parsing/output only).
+- `src/cli.ts` is the real, thin public CLI parsing/dispatch/presentation
+  boundary for the current command surface (`observe`, `compare`,
+  `approve-baseline`, `save-change-contract`, `evaluate-contract`); argument
+  parsing and output formatting only, per command - the commands do not share
+  domain semantics in the CLI.
 - `src/index.ts` is the library entry point re-exporting the observer-owned
   contracts/functions from every layer below.
 - `scripts/clean.mjs` safely removes only the project `dist/` directory.
@@ -278,9 +281,9 @@ inferred from a `compare` or `evaluate-contract` result. `--enforce` on
 already completed; it selects the process exit status for an already-final
 `FAIL` result and is never part of any identity or persisted field.
 
-## Planned v0.1 architecture constraints
+## Retained v0.1 architecture constraints
 
-v0.1 planning must preserve these approved boundaries without treating module
+v0.1 planning preserved these approved boundaries without treating module
 names from the historical run as mandatory:
 
 ```text
