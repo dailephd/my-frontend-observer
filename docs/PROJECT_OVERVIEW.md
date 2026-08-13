@@ -29,7 +29,16 @@ bounded `--scroll-scenario-file` runtime scroll scenario
 artifact; a real `compare` CLI command reads two already-persisted
 observation artifacts and derives before/after layout-relationship and
 difference evidence without launching a browser - see
-`docs/CURRENT_STATE.md` for the implementation summary. v0.5–v0.10 remain
+`docs/CURRENT_STATE.md` for the implementation summary.
+
+v0.5, Executable Frontend Contracts and Explicit Change Scope, is implemented
+in current source on `feature/v0.5-frontend-contracts` - not yet
+version-bumped, release-prepared, or published to npm: persistent baseline
+contracts, per-change contracts, the four authored change-scope categories
+plus the derived-only `unexpected` classification, one canonical evaluation
+engine, and the public `approve-baseline`/`save-change-contract`/
+`evaluate-contract` commands, proven against real Chromium observations. See
+`docs/CURRENT_STATE.md` for the implementation summary. v0.6–v0.10 remain
 future and unimplemented.
 
 The revised dependency path reaches practical coding-agent use before graphical

@@ -37,6 +37,18 @@ comparison, and writes one local comparison `manifest.json`
 as JSON only and is never executed (no `eval`, no dynamic code loading from
 a manifest).
 
+## Frontend contracts (`approve-baseline`/`save-change-contract`/`evaluate-contract`, implemented on `feature/v0.5-frontend-contracts`, not yet released)
+
+These three commands introduce no new browser or network surface:
+`src/application/frontendContractPersistenceService.ts` and
+`src/application/frontendContractEvaluationService.ts` import nothing from
+`src/browser/` and never launch Chromium. `approve-baseline` and
+`save-change-contract` validate and persist a local JSON contract file
+(parsed as JSON only, never executed); `evaluate-contract` reads
+already-persisted local observation/comparison/contract artifacts and runs
+the pure `evaluateFrontendContract` function. None of the three navigates,
+re-observes a target, or contacts a network resource.
+
 ## Not yet addressed
 
 Certificate-failure-specific handling, permission-prompt-specific handling

@@ -1,5 +1,64 @@
 # Changelog
 
+## Unreleased
+
+Executable Frontend Contracts and Explicit Change Scope (v0.5). Implemented
+on `feature/v0.5-frontend-contracts`; not yet version-bumped, release-
+prepared, or published.
+
+- Two related contract classes: a `PersistentBaselineContract` (previously
+  approved frontend behavior that stays active across future changes unless
+  explicitly superseded, with append-based supersession history) and a
+  `PerChangeContract` (the allowed scope of one requested change).
+- Four authored change-scope categories - `requested`, `expected-dependent`
+  (`required` or `permitted`), `protected`, `preserved` - plus a fifth,
+  strictly derived-only classification, `unexpected`, for a meaningful
+  rendered difference no active clause accounts for. `unexpected` can never
+  be authored as a permission.
+- A closed, bounded vocabulary of 15 contract primitives (visibility,
+  clipping, width bounds, non-overlap, relative width, vertical sequence,
+  geometric fit, document-width-vs-viewport, scroll ownership, initial-
+  viewport position, relationship-unchanged, and property-unchanged/
+  increases/decreases) and three contract tolerances (`exact`,
+  `absolute-px`, `percent`) - independent of `compare`'s geometry tolerance,
+  which only suppresses insignificant noise and is never contract
+  authorization.
+- Explicit, never-inferred baseline and per-change clause supersession; two
+  clauses that structurally contradict each other without explicit
+  supersession produce a `conflict` result rather than a silent preference.
+- One canonical evaluation engine (`evaluateFrontendContract`) that owns
+  requested/expected-dependent/protected/preserved evaluation, unexpected-
+  change derivation, and the overall `PASS`/`FAIL` verdict - reusing existing
+  v0.4 observation/comparison evidence directly, never re-launching a
+  browser, re-resolving a target, or reimplementing relationship/clipping
+  derivation.
+- Actionable per-clause results (`pass`/`fail`/`unavailable` with a required
+  reason/`conflict` with at least two conflicting clause identities) - never
+  an opaque score.
+- Atomic, independently-versioned persistence for baseline contracts,
+  per-change contracts, and evaluation results, with no destructive artifact
+  overwrite, no copied screenshots, and full source observation/comparison/
+  contract immutability.
+- Three new public commands: `approve-baseline` (the only baseline-approval
+  act - explicit only, never inferred from `compare` or a `PASS`
+  evaluation), `save-change-contract` (persistence only), and
+  `evaluate-contract` (runs the canonical evaluator against already-
+  persisted evidence and persists exactly one evaluation artifact).
+  `evaluate-contract --enforce` makes an already-persisted `FAIL` verdict
+  produce a nonzero process exit status without changing the verdict, its
+  identity, or its persisted content - a `FAIL` without `--enforce` still
+  exits `0`.
+- Proven against real Chromium observations, not hand-constructed
+  artifacts: a fully successful contract change, and the "milestone
+  signature" case - a locally successful requested change coexisting with a
+  genuine protected-property regression and a genuine preserved-invariant
+  regression - producing overall `FAIL`.
+- Frontend contract schema `1.0.0` and evaluation artifact schema `1.0.0`,
+  each its own independent schema family; observation schema remains
+  `1.2.0` and comparison schema remains `1.0.0`.
+- Packed cross-platform readiness validation does not yet cover this
+  command surface (tracked as a known gap for the next readiness workflow).
+
 ## 0.4.0 - 2026-08-12
 
 Layout Relationships, Dependency Evidence, and Before/After Comparison.

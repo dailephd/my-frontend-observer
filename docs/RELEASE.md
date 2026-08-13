@@ -16,3 +16,10 @@ version is `0.4.0`; observation schema is `1.2.0` and comparison schema is
 Prior releases: `v0.3.0` (Runtime Scrolling, Overflow, and Visibility
 Behavior), `v0.2.0` (Stable Semantic Targets and Region Identity), `v0.1.0`
 (Runtime Observation Foundation) - see `CHANGELOG.md`.
+
+v0.5 (Executable Frontend Contracts and Explicit Change Scope) is implemented
+in current source on `feature/v0.5-frontend-contracts`, proven against real
+Chromium observations, but is not yet version-bumped, release-prepared, or
+published - see the `Unreleased` section of `CHANGELOG.md` and
+`docs/CURRENT_STATE.md`. Packed cross-platform readiness validation does not
+yet cover this command surface (see `docs/CI_CD.md`).
