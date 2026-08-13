@@ -385,15 +385,18 @@ evaluation artifact, and no operational filesystem path leaked into any
 persisted manifest.
 
 The packed-readiness coverage gap this left (`V0_5_READINESS_VALIDATION_GAP_EXISTS`)
-has since been corrected locally: `scripts/ci/runPackedObservationSmoke.mjs`
-now also exercises the installed packed candidate's `approve-baseline`/
-`save-change-contract`/`evaluate-contract` commands against real installed-
-candidate `observe`/`compare` evidence, proving the same successful-change
-and milestone-signature scenarios through the installed tarball rather than
-the source checkout. This has been validated locally only, on this machine's
-single platform/Node version - the actual Windows/Linux/macOS matrix run and
-the project's security readiness checks remain the responsibility of the
-next pre-release readiness workflow (see `docs/CI_CD.md`).
+has been corrected and proven cross-platform:
+`scripts/ci/runPackedObservationSmoke.mjs` now also exercises the installed
+packed candidate's `approve-baseline`/`save-change-contract`/
+`evaluate-contract` commands against real installed-candidate `observe`/
+`compare` evidence, proving the same successful-change and milestone-
+signature scenarios through the installed tarball rather than the source
+checkout. v0.5 pre-release readiness has passed on the validation branch
+`validation/v0.5-pre-release` (GitHub Actions run `31727856546`, one shared
+hash-verified candidate tarball on Windows, Linux, and macOS - see
+`docs/CI_CD.md` for full evidence), and the version is ready for release
+preparation. Package version remains `0.4.0`; v0.5 remains unreleased -
+release preparation itself has not occurred.
 
 ## Not implemented
 
