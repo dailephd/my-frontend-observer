@@ -3,7 +3,7 @@
 ## Current scaffold architecture
 
 The current repository is one published TypeScript ESM package
-(`my-frontend-observer@0.4.0`):
+(`my-frontend-observer@0.5.0`):
 
 - `src/cli.ts` is the real, thin `observe` command entry point (argument
   parsing/output only).
@@ -181,7 +181,7 @@ path never launches Chromium** - `src/cli.ts` imports nothing from
 reading indirectly, through the application-layer seam above), matching the
 same import-boundary discipline already enforced for `observe`.
 
-## Current v0.5 architecture (implemented so far)
+## Current v0.5 architecture (released/current architecture)
 
 v0.5 adds one new downstream layer that consumes `ComparisonArtifact` values
 (plus the source `ObservationArtifact` pair) rather than producing them - no

@@ -364,8 +364,8 @@ node dist/cli.js compare `
 
 ## `approve-baseline`
 
-**Current status: implemented on `feature/v0.5-frontend-contracts`, not yet
-released.** Frontend contract schema is `1.0.0`, independent of the
+**Current status: shipped as part of the published `my-frontend-observer@0.5.0`
+package.** Frontend contract schema is `1.0.0`, independent of the
 observation (`1.2.0`) and comparison (`1.0.0`) schemas.
 
 `my-frontend-observer approve-baseline` is the *only* baseline-approval
@@ -418,8 +418,8 @@ artifact write.
 
 ## `save-change-contract`
 
-**Current status: implemented on `feature/v0.5-frontend-contracts`, not yet
-released.**
+**Current status: shipped as part of the published `my-frontend-observer@0.5.0`
+package.**
 
 `my-frontend-observer save-change-contract` validates and persists one
 already-authored `PerChangeContract` so it can later be evaluated — this is
@@ -459,8 +459,8 @@ passed here, an existing artifact collision, or a failed artifact write.
 
 ## `evaluate-contract`
 
-**Current status: implemented on `feature/v0.5-frontend-contracts`, not yet
-released.** Frontend contract evaluation artifact schema is `1.0.0`, its own
+**Current status: shipped as part of the published `my-frontend-observer@0.5.0`
+package.** Frontend contract evaluation artifact schema is `1.0.0`, its own
 independent family.
 
 `my-frontend-observer evaluate-contract` executes the canonical Batch 2

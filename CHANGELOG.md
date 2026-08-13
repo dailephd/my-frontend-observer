@@ -1,10 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 - 2026-08-13
 
-Executable Frontend Contracts and Explicit Change Scope (v0.5). Implemented
-on `feature/v0.5-frontend-contracts`; not yet version-bumped, release-
-prepared, or published.
+Executable Frontend Contracts and Explicit Change Scope.
 
 - Two related contract classes: a `PersistentBaselineContract` (previously
   approved frontend behavior that stays active across future changes unless
@@ -56,8 +54,11 @@ prepared, or published.
 - Frontend contract schema `1.0.0` and evaluation artifact schema `1.0.0`,
   each its own independent schema family; observation schema remains
   `1.2.0` and comparison schema remains `1.0.0`.
-- Packed cross-platform readiness validation does not yet cover this
-  command surface (tracked as a known gap for the next readiness workflow).
+- Cross-platform packed-candidate validation: one hash-verified npm
+  candidate tarball proven on Windows, Linux, and macOS, covering the
+  installed candidate's `approve-baseline`, `save-change-contract`, and
+  `evaluate-contract` commands alongside every pre-existing v0.1-v0.4
+  packed observation/comparison behavior.
 
 ## 0.4.0 - 2026-08-12
 

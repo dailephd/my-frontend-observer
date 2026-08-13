@@ -17,27 +17,24 @@ The responsibility split is stable:
 
 v0.1, Runtime Observation Foundation; v0.2, Stable Semantic Targets and
 Region Identity; v0.3, Runtime Scrolling, Overflow, and Visibility Behavior;
-and v0.4, Layout Relationships, Dependency Evidence, and Before/After
-Comparison, are released, published to npm (current version `0.4.0`,
-observation schema `1.2.0`, comparison schema `1.0.0`) and validated as a
-packed npm tarball in a clean consumer environment across Windows, Linux,
-and macOS: a real `observe` CLI command launches Chromium, enforces
-loopback-only safety, captures bounded page/target evidence via legacy
-CSS-shorthand targets, structured semantic `--targets-file` targets, or a
-bounded `--scroll-scenario-file` runtime scroll scenario
-(`window-scroll-by` or `target-scroll-by`), and persists one portable local
-artifact; a real `compare` CLI command reads two already-persisted
-observation artifacts and derives before/after layout-relationship and
-difference evidence without launching a browser - see
-`docs/CURRENT_STATE.md` for the implementation summary.
-
-v0.5, Executable Frontend Contracts and Explicit Change Scope, is implemented
-in current source on `feature/v0.5-frontend-contracts` - not yet
-version-bumped, release-prepared, or published to npm: persistent baseline
-contracts, per-change contracts, the four authored change-scope categories
-plus the derived-only `unexpected` classification, one canonical evaluation
-engine, and the public `approve-baseline`/`save-change-contract`/
-`evaluate-contract` commands, proven against real Chromium observations. See
+v0.4, Layout Relationships, Dependency Evidence, and Before/After
+Comparison; and v0.5, Executable Frontend Contracts and Explicit Change
+Scope, are released, published to npm (current version `0.5.0`, observation
+schema `1.2.0`, comparison schema `1.0.0`, frontend contract schema `1.0.0`,
+evaluation artifact schema `1.0.0`) and validated as a packed npm tarball in
+a clean consumer environment across Windows, Linux, and macOS: a real
+`observe` CLI command launches Chromium, enforces loopback-only safety,
+captures bounded page/target evidence via legacy CSS-shorthand targets,
+structured semantic `--targets-file` targets, or a bounded
+`--scroll-scenario-file` runtime scroll scenario (`window-scroll-by` or
+`target-scroll-by`), and persists one portable local artifact; a real
+`compare` CLI command reads two already-persisted observation artifacts and
+derives before/after layout-relationship and difference evidence without
+launching a browser; and the public `approve-baseline`/`save-change-contract`/
+`evaluate-contract` commands turn a persistent baseline contract plus a
+per-change contract (requested/expected-dependent/protected/preserved scope,
+plus the derived-only `unexpected` classification) into one canonical
+`PASS`/`FAIL` evaluation, proven against real Chromium observations - see
 `docs/CURRENT_STATE.md` for the implementation summary. v0.6–v0.10 remain
 future and unimplemented.
 

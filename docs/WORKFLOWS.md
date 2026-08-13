@@ -11,9 +11,9 @@ install dependencies (npm install; npx playwright install chromium)
 → validate documentation (npm run check:docs)
 ```
 
-## Current observation workflow (published as 0.4.0)
+## Current observation workflow (published as 0.5.0)
 
-The real `observe` workflow, part of the published `my-frontend-observer@0.4.0`
+The real `observe` workflow, part of the published `my-frontend-observer@0.5.0`
 package, accepts target configuration through either of two input paths,
 plus one optional runtime scroll scenario:
 
@@ -62,10 +62,10 @@ temporary consumer directory outside the repository, on Windows, Linux, and
 macOS (`scripts/ci/runPackedObservationSmoke.mjs`) - the same workflow,
 independent of the source checkout.
 
-## Current comparison workflow (published as 0.4.0)
+## Current comparison workflow (published as 0.5.0)
 
 **Current status: shipped as part of the published `my-frontend-observer@0.4.0`
-package.** This is a separate workflow from the observation workflow above -
+package (unchanged in `0.5.0`).** This is a separate workflow from the observation workflow above -
 it consumes two already-persisted observation artifacts rather than
 producing one, and it never launches a browser:
 
@@ -110,11 +110,11 @@ fixture (`scripts/dev/builtCliCompareSmoke.mjs`), and packed-tarball
 validation of the installed `compare` command
 (`scripts/ci/runPackedObservationSmoke.mjs` - see `docs/CI_CD.md`).
 
-## Current frontend contract workflow (implemented on `feature/v0.5-frontend-contracts`, not yet released)
+## Current frontend contract workflow (published as 0.5.0)
 
 This is a text/config-driven workflow layered downstream of the two
 workflows above - it does not replace them, and it is not yet the complete
-v0.5+ coding-agent workflow (no bounded agent context, no automatic
+v0.7 coding-agent workflow (no bounded agent context, no automatic
 baseline selection, no CLI-level approval policy beyond the explicit
 `approve-baseline` act):
 
@@ -158,8 +158,12 @@ real-Chromium built-CLI smoke
 successful contract change and the "milestone signature" failure (a locally
 successful requested change coexisting with a genuine protected-property
 regression and a genuine preserved-invariant regression) against actual
-rendered geometry, not hand-constructed artifacts. It is not yet part of
-packed-tarball validation.
+rendered geometry, not hand-constructed artifacts. It is also part of
+packed-tarball validation: `scripts/ci/runPackedObservationSmoke.mjs`
+exercises the installed candidate's `approve-baseline`/`save-change-contract`/
+`evaluate-contract` commands against real installed-candidate `observe`/
+`compare` evidence, proven on Windows, Linux, and macOS (see
+`docs/CI_CD.md`).
 
 ## Future workflows
 
@@ -167,8 +171,8 @@ packed-tarball validation.
 stable targets and bounded runtime behavior
 → relationships and before/after comparison (released - see above)
 → safe-change contracts (contract model, evaluation, persistence, and CLI
-  implemented on feature/v0.5-frontend-contracts - see above; baseline
-  approval remains a single explicit command, not a policy engine)
+  released as 0.5.0 - see above; baseline approval remains a single explicit
+  command, not a policy engine)
 → bounded agent context plus runtime/static ecosystem integration
 → text/config-driven coding-agent change review
 → interactive viewer

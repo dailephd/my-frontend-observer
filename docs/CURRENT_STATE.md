@@ -1,8 +1,9 @@
 # Current State
 
-The project is published at package version `0.4.0` (roadmap v0.4, Layout
-Relationships, Dependency Evidence, and Before/After Comparison; observation
-schema `1.2.0`; comparison schema `1.0.0`).
+The project is published at package version `0.5.0` (roadmap v0.5,
+Executable Frontend Contracts and Explicit Change Scope; observation schema
+`1.2.0`; comparison schema `1.0.0`; frontend contract schema `1.0.0`;
+evaluation artifact schema `1.0.0`).
 
 ## Greenfield foundation established
 
@@ -314,24 +315,22 @@ evidence, comparison persistence, and public `compare` CLI are all
 implemented, exercised end-to-end, packed-validated cross-platform, and
 released.
 
-v0.5 frontend contract model, identity, and evaluation engine are
-implemented on `feature/v0.5-frontend-contracts` (not yet released):
-`src/domain/frontendContracts.ts` (persistent baseline / per-change contract
-types, the four authored change-scope categories plus the derived
-`unexpected` classification, the 15-primitive bounded vocabulary, contract
-tolerance, and the clause-result/overall-verdict vocabulary),
-`src/domain/frontendContractIdentity.ts` (deterministic contract/baseline/
-clause identity), and `src/domain/frontendContractEvaluation.ts#evaluateFrontendContract`
+v0.5 frontend contract model, identity, and evaluation engine are released
+as part of `0.5.0`: `src/domain/frontendContracts.ts` (persistent baseline /
+per-change contract types, the four authored change-scope categories plus
+the derived `unexpected` classification, the 15-primitive bounded
+vocabulary, contract tolerance, and the clause-result/overall-verdict
+vocabulary), `src/domain/frontendContractIdentity.ts` (deterministic
+contract/baseline/clause identity), and
+`src/domain/frontendContractEvaluation.ts#evaluateFrontendContract`
 (the one canonical pure evaluator: active-baseline/supersession calculation,
 bounded conflict detection, per-category clause evaluation, difference-to-
 scope matching, unexpected-change derivation, and overall PASS/FAIL) - all
-covered by focused unit tests, package version unchanged at `0.4.0`,
-observation schema unchanged at `1.2.0`, comparison schema unchanged at
-`1.0.0`.
+covered by focused unit tests. Observation schema stays `1.2.0`, comparison
+schema stays `1.0.0`.
 
-v0.5 contract and evaluation persistence are also implemented on
-`feature/v0.5-frontend-contracts` (not yet released):
-`src/artifacts/frontendContractArtifactWriter.ts`/`frontendContractArtifactReader.ts`
+v0.5 contract and evaluation persistence are also released as part of
+`0.5.0`: `src/artifacts/frontendContractArtifactWriter.ts`/`frontendContractArtifactReader.ts`
 (symmetric baseline/per-change contract persistence, atomic write, no
 overwrite of existing history), `src/artifacts/comparisonArtifactReader.ts`
 (new - no comparison reader existed before this batch; comparison schema
@@ -345,8 +344,8 @@ exactly once, persists exactly one evaluation artifact for both `PASS` and
 `FAIL` verdicts, never persists a fabricated artifact when evaluation
 construction itself fails). `evaluateFrontendContract` itself is unmodified.
 
-v0.5 public contract/baseline-approval/evaluation CLI is also implemented on
-`feature/v0.5-frontend-contracts` (not yet released, Batch 4):
+v0.5 public contract/baseline-approval/evaluation CLI is also released as
+part of `0.5.0`:
 `approve-baseline` (the only baseline-approval act - explicit only, never
 inferred from `compare` or a `PASS` evaluation; verifies the contract's
 `sourceObservation` matches the supplied observation before persisting),
@@ -360,11 +359,11 @@ adds the two new thin application seams (`approveAndPersistBaseline`,
 `persistPerChangeContract`); `src/cli.ts` gained no browser or artifact-
 writer import. Covered by `tests/unit/cliFrontendContracts.test.ts` and the
 Chromium-free `scripts/dev/builtCliFrontendContractsSmoke.mjs` dev smoke.
-Package version unchanged at `0.4.0`; observation schema `1.2.0`; comparison
-schema `1.0.0`; frontend contract schema `1.0.0`; evaluation artifact schema
-`1.0.0` - no schema was bumped to add this CLI.
+Observation schema `1.2.0`; comparison schema `1.0.0`; frontend contract
+schema `1.0.0`; evaluation artifact schema `1.0.0` - no schema was bumped
+to add this CLI.
 
-v0.5 Batch 5 proved the complete public contract workflow (`observe` →
+v0.5 proved the complete public contract workflow (`observe` →
 `approve-baseline` → `save-change-contract` → `observe` → `compare` →
 `evaluate-contract`) against real Chromium observations, not hand-constructed
 artifacts: a fully successful contract change (all clauses `pass`, overall
@@ -385,18 +384,16 @@ evaluation artifact, and no operational filesystem path leaked into any
 persisted manifest.
 
 The packed-readiness coverage gap this left (`V0_5_READINESS_VALIDATION_GAP_EXISTS`)
-has been corrected and proven cross-platform:
-`scripts/ci/runPackedObservationSmoke.mjs` now also exercises the installed
+was corrected and proven cross-platform before release:
+`scripts/ci/runPackedObservationSmoke.mjs` also exercises the installed
 packed candidate's `approve-baseline`/`save-change-contract`/
 `evaluate-contract` commands against real installed-candidate `observe`/
 `compare` evidence, proving the same successful-change and milestone-
 signature scenarios through the installed tarball rather than the source
-checkout. v0.5 pre-release readiness has passed on the validation branch
+checkout. v0.5 pre-release readiness passed on the validation branch
 `validation/v0.5-pre-release` (GitHub Actions run `31727856546`, one shared
 hash-verified candidate tarball on Windows, Linux, and macOS - see
-`docs/CI_CD.md` for full evidence), and the version is ready for release
-preparation. Package version remains `0.4.0`; v0.5 remains unreleased -
-release preparation itself has not occurred.
+`docs/CI_CD.md` for full evidence) before the version `0.5.0` release below.
 
 ## Not implemented
 
@@ -408,9 +405,6 @@ release preparation itself has not occurred.
 
 ## Next target
 
-v0.1-v0.4 are implemented, validated, and released (`0.1.0`, `0.2.0`,
-`0.3.0`, `0.4.0`). v0.5 (Executable Frontend Contracts and Explicit Change
-Scope) has its contract model, evaluation engine, persistence/application
-seam, and public `approve-baseline`/`save-change-contract`/`evaluate-contract`
-CLI implemented on `feature/v0.5-frontend-contracts`; bounded agent-context
-generation and ecosystem integration are next.
+v0.1-v0.5 are implemented, validated, and released (`0.1.0`, `0.2.0`,
+`0.3.0`, `0.4.0`, `0.5.0`). v0.6 (Bounded Agent Context and Native
+my-dev-kit Ecosystem Integration) is next.

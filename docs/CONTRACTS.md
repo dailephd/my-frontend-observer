@@ -2,7 +2,7 @@
 
 ## Current contracts
 
-The observation artifact contract is published as `my-frontend-observer@0.4.0`
+The observation artifact contract is published as `my-frontend-observer@0.5.0`
 and proven both from the source checkout and from the packed npm tarball,
 on Windows, Linux, and macOS. The observation schema is `1.2.0` (see "v0.2
 target contract" and "v0.3 scroll scenario contract" below):
@@ -250,16 +250,17 @@ The public entry point is `my-frontend-observer compare --before <root>
 --after <root> --output <directory> [--config-file <json-file>]` (see
 `docs/COMMANDS.md`) - comparison itself never launches a browser.
 
-## v0.5 frontend contract and evaluation (implemented so far)
+## v0.5 frontend contract and evaluation (shipped as part of this release)
 
 Downstream of the v0.4 observation/comparison/relationship evidence above,
 `src/domain/frontendContracts.ts` freezes the v0.5 contract/change-scope
 model, `src/domain/frontendContractIdentity.ts` freezes deterministic
 contract/baseline/clause identity, and `src/domain/frontendContractEvaluation.ts`
 implements the one canonical pure evaluation engine. Baseline/per-change
-contract persistence and evaluation-artifact persistence are implemented (see
-"v0.5 contract and evaluation persistence" below); baseline approval and CLI
-exposure do not exist yet.
+contract persistence, evaluation-artifact persistence, explicit baseline
+approval, and public CLI exposure are all implemented and shipped (see
+"v0.5 contract and evaluation persistence" and "v0.5 public contract/
+evaluation commands" below).
 
 **Contract classes**: a `PersistentBaselineContract` (append/supersession-based
 history via an optional `supersedesBaselineId`) and a `PerChangeContract`
@@ -315,7 +316,7 @@ Unexpected-change derivation reads `ComparisonArtifact.differences` only
 (which already includes one difference per relationship change), so a single
 logical transition is never double-counted.
 
-## v0.5 contract and evaluation persistence (implemented so far)
+## v0.5 contract and evaluation persistence (shipped as part of this release)
 
 Persistence consumes the frozen v0.5 domain above; it never redefines it.
 `src/artifacts/frontendContractArtifactWriter.ts`/`frontendContractArtifactReader.ts`
@@ -363,11 +364,11 @@ the future-CLI-facing wrapper: it reads two observations through the existing
 comparison and the two contracts through the readers above, then delegates
 to `evaluateAndPersist` exactly once.
 
-## v0.5 public contract/evaluation commands (implemented so far)
+## v0.5 public contract/evaluation commands (shipped as part of this release)
 
-Batch 4 exposes the persistence/evaluation contract above through three
-public commands (see `docs/COMMANDS.md` for exact flags/output/exit
-behavior, not duplicated here):
+Three public commands expose the persistence/evaluation contract above (see
+`docs/COMMANDS.md` for exact flags/output/exit behavior, not duplicated
+here):
 
 - `approve-baseline` → `frontendContractPersistenceService.ts#approveAndPersistBaseline`
   → validates a `PersistentBaselineContract` and its `sourceObservation`
@@ -389,7 +390,7 @@ No command infers baseline approval or supersession automatically - not
 This full command sequence is proven against real Chromium observations (not
 hand-constructed artifacts) - see "v0.5 real-browser workflow proof" below.
 
-## v0.5 real-browser workflow proof (implemented so far)
+## v0.5 real-browser workflow proof (shipped as part of this release)
 
 `tests/browser/cliFrontendContracts.test.ts` and
 `scripts/dev/builtCliFrontendContractsBrowserSmoke.mjs` drive the complete
@@ -437,9 +438,9 @@ the file layout: there is no separate `evidence.json` - page/target evidence
 is embedded directly inside `manifest.json`.
 
 Comparison and relationship contracts belong to v0.4, and canonical
-change-scope contracts belong to v0.5 (contract model, identity, and
-evaluation engine implemented so far - see "v0.5 frontend contract and
-evaluation" above; persistence, baseline approval, and CLI exposure remain).
+change-scope contracts belong to v0.5 - see "v0.5 frontend contract and
+evaluation" above for the full shipped contract model, identity, evaluation
+engine, persistence, baseline approval, and CLI exposure.
 Bounded agent-context plus ecosystem integration contracts move to v0.6,
 followed by the text/config-driven
 coding-agent review contract in v0.7. Viewer and annotation contracts follow in

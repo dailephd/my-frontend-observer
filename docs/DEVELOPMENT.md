@@ -114,11 +114,10 @@ before and after the comparison ran. Run it locally after `npm run build`:
 node scripts/dev/builtCliCompareSmoke.mjs
 ```
 
-`scripts/dev/builtCliFrontendContractsSmoke.mjs` is the v0.5 Batch 4
-equivalent, added alongside the `approve-baseline`/`save-change-contract`/
-`evaluate-contract` command implementations (implemented on
-`feature/v0.5-frontend-contracts`, not yet released - see
-`docs/CURRENT_STATE.md`). Unlike the other dev smokes, it needs no Chromium
+`scripts/dev/builtCliFrontendContractsSmoke.mjs` is the v0.5 equivalent,
+added alongside the `approve-baseline`/`save-change-contract`/
+`evaluate-contract` command implementations (shipped as part of the
+published `0.5.0` package - see `docs/CURRENT_STATE.md`). Unlike the other dev smokes, it needs no Chromium
 at all: it hand-writes deterministic, schema-`1.2.0`-valid observation
 manifests directly to a temporary directory (preserving the public
 observation artifact contract without a real browser capture), then runs
@@ -168,8 +167,8 @@ source-checkout development evidence only, proving the built CLI's
 `--targets-file`/`--scroll-scenario-file`/`compare`/frontend-contract
 command behavior without installing a packed tarball or requiring
 cross-platform infrastructure. None is part of the published package.
-Cross-platform packed validation of the v0.1-v0.4 observation/compare
-behavior is `scripts/ci/runPackedObservationSmoke.mjs`'s responsibility (see
-`docs/CI_CD.md`) - the same script, against the same single candidate
-tarball per platform; the v0.5 contract/evaluation CLI is not yet part of
-that packed validation.
+Cross-platform packed validation of the v0.1-v0.5 observation/compare/
+contract behavior is `scripts/ci/runPackedObservationSmoke.mjs`'s
+responsibility (see `docs/CI_CD.md`) - the same script, against the same
+single candidate tarball per platform, now including the v0.5 contract/
+evaluation CLI.
