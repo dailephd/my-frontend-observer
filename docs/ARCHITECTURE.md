@@ -181,6 +181,46 @@ path never launches Chromium** - `src/cli.ts` imports nothing from
 reading indirectly, through the application-layer seam above), matching the
 same import-boundary discipline already enforced for `observe`.
 
+## Current v0.5 architecture (implemented so far)
+
+v0.5 adds one new downstream layer that consumes `ComparisonArtifact` values
+(plus the source `ObservationArtifact` pair) rather than producing them - no
+new browser lifecycle, target resolver, or comparison engine is added:
+
+```text
+ObservationArtifact before + after
+              ↓
+existing v0.4 comparison/relationship pipeline (unchanged)
+              ↓
+        ComparisonArtifact
+              ↓                                PersistentBaselineContract
+              |                                          +
+              `------------------------→   PerChangeContract
+                                                          ↓
+                        canonical contract evaluation
+                        (src/domain/frontendContractEvaluation.ts#evaluateFrontendContract)
+                                                          ↓
+                        clause results + unexpected changes + overall PASS/FAIL
+```
+
+`src/domain/frontendContracts.ts` froze the contract/change-scope type,
+constant, and structural-validator vocabulary (Batch 1); `src/domain/
+frontendContractIdentity.ts` froze deterministic contract/baseline/clause
+identity in the same canonicalize+sha256(+opaque-nonce) style as `src/domain/
+comparisonIdentity.ts`. `src/domain/frontendContractEvaluation.ts#evaluateFrontendContract`
+(Batch 2) is the one canonical pure evaluation entry point: it validates its
+five inputs (before/after `ObservationArtifact`, `ComparisonArtifact`,
+`PersistentBaselineContract`, `PerChangeContract`) are structurally coherent
+and mutually consistent, calculates the active baseline clause set after
+explicit supersession, detects bounded structural conflicts, evaluates every
+active clause via the frozen 15-primitive vocabulary against the existing
+`ComparisonArtifact`/`ObservationArtifact` evidence (never re-deriving
+clipping/relationship/scroll-owner facts), classifies unaccounted-for
+`ComparisonArtifact.differences` entries as `unexpected`, and derives one
+overall `PASS`/`FAIL` verdict. It performs no I/O, launches no browser, and
+persists nothing - persistence, baseline approval, and CLI exposure remain
+for later v0.5 batches.
+
 ## Planned v0.1 architecture constraints
 
 v0.1 planning must preserve these approved boundaries without treating module

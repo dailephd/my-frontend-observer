@@ -314,15 +314,33 @@ evidence, comparison persistence, and public `compare` CLI are all
 implemented, exercised end-to-end, packed-validated cross-platform, and
 released.
 
+v0.5 frontend contract model, identity, and evaluation engine are
+implemented on `feature/v0.5-frontend-contracts` (not yet released):
+`src/domain/frontendContracts.ts` (persistent baseline / per-change contract
+types, the four authored change-scope categories plus the derived
+`unexpected` classification, the 15-primitive bounded vocabulary, contract
+tolerance, and the clause-result/overall-verdict vocabulary),
+`src/domain/frontendContractIdentity.ts` (deterministic contract/baseline/
+clause identity), and `src/domain/frontendContractEvaluation.ts#evaluateFrontendContract`
+(the one canonical pure evaluator: active-baseline/supersession calculation,
+bounded conflict detection, per-category clause evaluation, difference-to-
+scope matching, unexpected-change derivation, and overall PASS/FAIL) - all
+covered by focused unit tests, package version unchanged at `0.4.0`,
+observation schema unchanged at `1.2.0`, comparison schema unchanged at
+`1.0.0`.
+
 ## Not implemented
 
-- v0.5+ frontend contracts/change scope (baseline approval, requested/
-  protected/preserved change scope, PASS/FAIL verdicts), source ownership,
-  my-dev-kit runtime/static integration, orchestrator/lab product
+- v0.5 baseline persistence/approval workflow, evaluation-result
+  persistence, and CLI exposure (contract model and evaluation engine exist;
+  reading/writing artifacts and a public command surface do not), source
+  ownership, my-dev-kit runtime/static integration, orchestrator/lab product
   integration, viewer, and annotation all remain unimplemented.
 
 ## Next target
 
 v0.1-v0.4 are implemented, validated, and released (`0.1.0`, `0.2.0`,
 `0.3.0`, `0.4.0`). v0.5 (Executable Frontend Contracts and Explicit Change
-Scope) is next.
+Scope) has its contract model and evaluation engine implemented on
+`feature/v0.5-frontend-contracts`; persistence, baseline approval, and CLI
+exposure are next.

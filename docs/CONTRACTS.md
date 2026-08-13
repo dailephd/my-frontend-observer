@@ -250,6 +250,69 @@ The public entry point is `my-frontend-observer compare --before <root>
 --after <root> --output <directory> [--config-file <json-file>]` (see
 `docs/COMMANDS.md`) - comparison itself never launches a browser.
 
+## v0.5 frontend contract and evaluation (implemented so far)
+
+Downstream of the v0.4 observation/comparison/relationship evidence above,
+`src/domain/frontendContracts.ts` freezes the v0.5 contract/change-scope
+model, `src/domain/frontendContractIdentity.ts` freezes deterministic
+contract/baseline/clause identity, and `src/domain/frontendContractEvaluation.ts`
+implements the one canonical pure evaluation engine. Persistence, baseline
+approval, and CLI exposure do not exist yet.
+
+**Contract classes**: a `PersistentBaselineContract` (append/supersession-based
+history via an optional `supersedesBaselineId`) and a `PerChangeContract`
+(the allowed scope of one requested change). Both share `artifactKind:
+"my-frontend-observer/frontend-contract"` and `schemaVersion: "1.0.0"` - an
+independent family from the observation (`1.2.0`) and comparison (`1.0.0`)
+schemas; the frontend-contract schema constant happens to share the version
+string `1.0.0` with comparison's by coincidence only.
+
+**Four authored categories, one derived classification**: every per-change
+clause is authored as exactly one of `requested`, `expected-dependent`,
+`protected`, or `preserved`. `unexpected` is a fifth, *derived-only*
+classification the evaluator produces for a meaningful rendered difference no
+active clause accounts for - it can never be authored as a permission.
+
+**Bounded contract primitives**: 15 frozen `ContractPrimitive` kinds cover
+visibility, clipping, width bounds, non-overlap, relative width, vertical
+sequence, geometric fit (explicitly distinct from DOM containment),
+document-width-vs-viewport, scroll ownership, initial-viewport position,
+relationship-unchanged, and property-unchanged/increases/decreases - a closed
+vocabulary, never a generic expression language.
+
+**Contract tolerance**: `exact` / `absolute-px` / `percent`, independent of
+`ComparisonConfig.geometryTolerancePx` (which only suppresses insignificant
+comparison noise and is never contract authorization). Percent tolerance's
+denominator is the absolute before-value.
+
+**Required vs. permitted expected-dependent**: `required` clauses must occur
+compliantly to pass; `permitted` clauses accept no change or a compliant
+change, and fail only on a strictly contradictory change.
+
+**Evaluation result vocabulary**: each clause resolves to `pass` / `fail` /
+`unavailable` (with a required non-empty reason - required evidence gaps and
+an `incomparable` source comparison never fabricate a `pass`) / `conflict`
+(with at least two `conflictingClauseIds` - covers both an unresolved
+baseline/per-change contradiction and an unknown `supersedesBaselineClauseIds`
+reference). The overall verdict is `PASS` only when every clause result is
+`pass` and no unexpected change remains; otherwise `FAIL` - there is no
+partial-pass scoring.
+
+**Explicit supersession, never inferred**: a per-change clause may list
+`supersedesBaselineClauseIds` to remove specific baseline clauses from active
+evaluation. Two clauses that structurally contradict each other on the same
+(target, property) without explicit supersession produce a `conflict`, never
+a silent preference for one side.
+
+**Reuses existing v0.4 evidence directly**: the evaluator consumes an
+already-computed `ComparisonArtifact` (`differences`, `relationshipChanges`,
+`relationshipsBefore`/`relationshipsAfter`, `comparability`) and the source
+`ObservationArtifact` pair - it never re-launches a browser, re-resolves a
+target, or reimplements clipping/relationship/scroll-owner derivation.
+Unexpected-change derivation reads `ComparisonArtifact.differences` only
+(which already includes one difference per relationship change), so a single
+logical transition is never double-counted.
+
 ## Approved v0.1 design inputs
 
 The historical greenfield scaffold plan recorded these v0.1 design decisions:
@@ -269,7 +332,10 @@ the file layout: there is no separate `evidence.json` - page/target evidence
 is embedded directly inside `manifest.json`.
 
 Comparison and relationship contracts belong to v0.4, and canonical
-change-scope contracts belong to v0.5. Bounded agent-context plus ecosystem
-integration contracts move to v0.6, followed by the text/config-driven
+change-scope contracts belong to v0.5 (contract model, identity, and
+evaluation engine implemented so far - see "v0.5 frontend contract and
+evaluation" above; persistence, baseline approval, and CLI exposure remain).
+Bounded agent-context plus ecosystem integration contracts move to v0.6,
+followed by the text/config-driven
 coding-agent review contract in v0.7. Viewer and annotation contracts follow in
 v0.8 and v0.9 and converge with the existing workflow in v0.10.

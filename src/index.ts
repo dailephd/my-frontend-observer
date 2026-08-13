@@ -180,6 +180,54 @@ export {
 
 export { buildComparisonRequestIdentity, buildComparisonIdentity } from './domain/comparisonIdentity.js';
 
+export type {
+  AuthoredChangeScopeCategory,
+  ChangeScopeClassification,
+  ExpectedDependentMode,
+  ContractTolerance,
+  ContractPrimitiveKind,
+  ContractPrimitive,
+  FrontendContractClauseBase,
+  BaselineClause,
+  PerChangeClause,
+  FrontendContractObservationReference,
+  PersistentBaselineContract,
+  FrontendContractValidationResult,
+  PerChangeContract,
+  ClauseResultStatus,
+  ClauseEvaluationResult,
+  OverallVerdict,
+} from './domain/frontendContracts.js';
+export {
+  CONTRACT_ARTIFACT_KIND,
+  CONTRACT_SCHEMA_VERSION,
+  AUTHORED_CHANGE_SCOPE_CATEGORIES,
+  isAuthoredChangeScopeCategory,
+  CHANGE_SCOPE_CLASSIFICATIONS,
+  EXPECTED_DEPENDENT_MODES,
+  isValidExpectedDependentMode,
+  CONTRACT_TOLERANCE_ABSOLUTE_PX_MIN,
+  CONTRACT_TOLERANCE_ABSOLUTE_PX_MAX,
+  CONTRACT_TOLERANCE_PERCENT_MIN,
+  CONTRACT_TOLERANCE_PERCENT_MAX,
+  isValidContractTolerance,
+  CONTRACT_PRIMITIVE_KINDS,
+  isValidContractPrimitive,
+  isValidBaselineClause,
+  isValidPerChangeClause,
+  isValidFrontendContractObservationReference,
+  isValidPersistentBaselineContract,
+  isValidPerChangeContract,
+  CLAUSE_RESULT_STATUSES,
+  isValidClauseEvaluationResult,
+  OVERALL_VERDICTS,
+} from './domain/frontendContracts.js';
+
+export { buildFrontendContractRequestIdentity, buildFrontendContractInstanceIdentity, buildClauseIdentity } from './domain/frontendContractIdentity.js';
+
+export type { FrontendContractEvaluationInput, UnexpectedChangeResult, FrontendContractEvaluationResult, EvaluateFrontendContractResult } from './domain/frontendContractEvaluation.js';
+export { evaluateFrontendContract } from './domain/frontendContractEvaluation.js';
+
 export type { CompareObservationsResult } from './domain/comparisonEngine.js';
 export { compareObservations, evaluateComparability, evaluateExpectedDependencies, compareTargetConfiguration } from './domain/comparisonEngine.js';
 
