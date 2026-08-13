@@ -218,8 +218,36 @@ active clause via the frozen 15-primitive vocabulary against the existing
 clipping/relationship/scroll-owner facts), classifies unaccounted-for
 `ComparisonArtifact.differences` entries as `unexpected`, and derives one
 overall `PASS`/`FAIL` verdict. It performs no I/O, launches no browser, and
-persists nothing - persistence, baseline approval, and CLI exposure remain
-for later v0.5 batches.
+persists nothing - `src/domain/frontendContractEvaluation.ts` itself remains
+untouched by the persistence layer below (Batch 3).
+
+Batch 3 adds the persistence/application boundary around this frozen domain,
+without redefining it:
+
+```text
+        ComparisonArtifact (read via new src/artifacts/comparisonArtifactReader.ts)
+              +
+PersistentBaselineContract / PerChangeContract
+(read/written via src/artifacts/frontendContractArtifactReader.ts / ...Writer.ts)
+              ↓
+src/application/frontendContractEvaluationService.ts#evaluateAndPersist
+              ↓
+    evaluateFrontendContract()  [called exactly once, unmodified]
+              ↓
+src/domain/frontendContractEvaluationArtifact.ts
+    (minimal additive persisted envelope around the frozen result)
+              ↓
+src/artifacts/frontendContractEvaluationArtifactWriter.ts
+    (atomic write, exactly once on a structurally constructible result)
+```
+
+`evaluateAndPersistFromArtifactRoots` is the future-CLI-facing wrapper,
+reading before/after observations through the existing
+`readObservationArtifact` (no second observation reader), the comparison and
+both contract classes through the new readers, then delegating to
+`evaluateAndPersist` exactly once - mirroring `application/comparisonService.ts#compareAndPersistFromArtifactRoots`'s
+own thin-wrapper shape. No CLI command exists yet; baseline approval and
+automatic baseline selection remain unimplemented by design.
 
 ## Planned v0.1 architecture constraints
 

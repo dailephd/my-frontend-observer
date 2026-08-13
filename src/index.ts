@@ -228,6 +228,39 @@ export { buildFrontendContractRequestIdentity, buildFrontendContractInstanceIden
 export type { FrontendContractEvaluationInput, UnexpectedChangeResult, FrontendContractEvaluationResult, EvaluateFrontendContractResult } from './domain/frontendContractEvaluation.js';
 export { evaluateFrontendContract } from './domain/frontendContractEvaluation.js';
 
+export { buildFrontendContractEvaluationRequestIdentity } from './domain/frontendContractIdentity.js';
+
+export type {
+  FrontendContractEvaluationSourceReference,
+  FrontendContractEvaluationArtifact,
+  FrontendContractEvaluationArtifactValidationResult,
+  BuildFrontendContractEvaluationArtifactInput,
+} from './domain/frontendContractEvaluationArtifact.js';
+export {
+  EVALUATION_ARTIFACT_KIND,
+  EVALUATION_SCHEMA_VERSION,
+  isValidFrontendContractEvaluationArtifact,
+  buildFrontendContractEvaluationArtifact,
+} from './domain/frontendContractEvaluationArtifact.js';
+
+export type { PersistedFrontendContractResult, WriteFrontendContractArtifactOptions } from './artifacts/frontendContractArtifactWriter.js';
+export { FRONTEND_CONTRACT_MANIFEST_FILENAME, writePersistentBaselineContract, writePerChangeContract } from './artifacts/frontendContractArtifactWriter.js';
+
+export type { ReadPersistentBaselineContractResult, ReadPerChangeContractResult } from './artifacts/frontendContractArtifactReader.js';
+export { readPersistentBaselineContract, readPerChangeContract } from './artifacts/frontendContractArtifactReader.js';
+
+export type { ReadComparisonArtifactResult } from './artifacts/comparisonArtifactReader.js';
+export { readComparisonArtifact } from './artifacts/comparisonArtifactReader.js';
+
+export type { PersistedFrontendContractEvaluationResult, WriteFrontendContractEvaluationArtifactOptions } from './artifacts/frontendContractEvaluationArtifactWriter.js';
+export { EVALUATION_MANIFEST_FILENAME, writeFrontendContractEvaluationArtifact } from './artifacts/frontendContractEvaluationArtifactWriter.js';
+
+export type { ReadFrontendContractEvaluationArtifactResult } from './artifacts/frontendContractEvaluationArtifactReader.js';
+export { readFrontendContractEvaluationArtifact } from './artifacts/frontendContractEvaluationArtifactReader.js';
+
+export type { EvaluateAndPersistOptions, ApplicationFrontendContractEvaluationResult } from './application/frontendContractEvaluationService.js';
+export { DEFAULT_EVALUATION_OUTPUT_LOCATION, evaluateAndPersist, evaluateAndPersistFromArtifactRoots } from './application/frontendContractEvaluationService.js';
+
 export type { CompareObservationsResult } from './domain/comparisonEngine.js';
 export { compareObservations, evaluateComparability, evaluateExpectedDependencies, compareTargetConfiguration } from './domain/comparisonEngine.js';
 

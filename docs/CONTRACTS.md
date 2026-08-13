@@ -256,8 +256,10 @@ Downstream of the v0.4 observation/comparison/relationship evidence above,
 `src/domain/frontendContracts.ts` freezes the v0.5 contract/change-scope
 model, `src/domain/frontendContractIdentity.ts` freezes deterministic
 contract/baseline/clause identity, and `src/domain/frontendContractEvaluation.ts`
-implements the one canonical pure evaluation engine. Persistence, baseline
-approval, and CLI exposure do not exist yet.
+implements the one canonical pure evaluation engine. Baseline/per-change
+contract persistence and evaluation-artifact persistence are implemented (see
+"v0.5 contract and evaluation persistence" below); baseline approval and CLI
+exposure do not exist yet.
 
 **Contract classes**: a `PersistentBaselineContract` (append/supersession-based
 history via an optional `supersedesBaselineId`) and a `PerChangeContract`
@@ -312,6 +314,54 @@ target, or reimplements clipping/relationship/scroll-owner derivation.
 Unexpected-change derivation reads `ComparisonArtifact.differences` only
 (which already includes one difference per relationship change), so a single
 logical transition is never double-counted.
+
+## v0.5 contract and evaluation persistence (implemented so far)
+
+Persistence consumes the frozen v0.5 domain above; it never redefines it.
+`src/artifacts/frontendContractArtifactWriter.ts`/`frontendContractArtifactReader.ts`
+persist and read both `PersistentBaselineContract` and `PerChangeContract`
+symmetrically (both already share `CONTRACT_ARTIFACT_KIND`/`CONTRACT_SCHEMA_VERSION`,
+so one writer/reader pair serves both contract classes) as
+`<outputLocation>/<baselineId|contractId>/manifest.json`, following the same
+atomic-write discipline as `artifacts/artifactWriter.ts`/`artifacts/comparisonArtifactWriter.ts`
+(sibling temporary directory, then one atomic rename; an existing directory at
+the final identity is a genuine collision and is rejected, never overwritten -
+prior baseline history is never rewritten). `src/artifacts/comparisonArtifactReader.ts`
+is a new Batch 3 addition (no comparison reader existed before) mirroring
+`artifacts/artifactReader.ts`'s discipline exactly, changing no comparison
+semantics and keeping comparison schema `1.0.0`.
+
+**Evaluation artifact envelope**: Batch 1 froze the evaluation-result
+vocabulary (`ClauseEvaluationResult`, `OverallVerdict`) but not a persistable
+envelope, so `src/domain/frontendContractEvaluationArtifact.ts` adds exactly
+that - `artifactKind: "my-frontend-observer/frontend-contract-evaluation"`,
+`schemaVersion: "1.0.0"` (its own independent family, distinct from
+observation/comparison/frontend-contract), an `evaluationId`/`evaluationRequestId`
+pair, bounded `before`/`after` source-observation references, and
+`comparisonId`/`comparisonRequestId` plus `contracts: {baselineId,
+contractId}` references - never an embedded `ObservationArtifact` or copied
+screenshot. It reuses `ClauseEvaluationResult`/`OverallVerdict`/
+`UnexpectedChangeResult` unchanged and contains no evaluation logic itself.
+`evaluationRequestId` is a deterministic function of `{baselineId,
+contractId, beforeObservationId, afterObservationId, comparisonRequestId}`
+(`frontendContractIdentity.ts#buildFrontendContractEvaluationRequestIdentity` -
+deliberately `comparisonRequestId`, not the fresh-per-execution
+`comparisonId`, so semantically identical evaluations share an identity);
+`evaluationId` reuses the existing generic `buildFrontendContractInstanceIdentity`
+unchanged. `src/artifacts/frontendContractEvaluationArtifactWriter.ts`/
+`frontendContractEvaluationArtifactReader.ts` persist/read it with the same
+atomic-write discipline as above.
+
+**Application seam**: `src/application/frontendContractEvaluationService.ts#evaluateAndPersist`
+calls the existing pure `evaluateFrontendContract` exactly once and - only
+for a structurally constructible result, whether the verdict is `PASS` or
+`FAIL` - persists exactly one evaluation artifact; an `{ok: false}` evaluator
+result (evidence could not be constructed into an evaluation at all) is never
+persisted as a fabricated artifact. `evaluateAndPersistFromArtifactRoots` is
+the future-CLI-facing wrapper: it reads two observations through the existing
+`readObservationArtifact` (never a second observation reader), the
+comparison and the two contracts through the readers above, then delegates
+to `evaluateAndPersist` exactly once. No CLI command exists yet.
 
 ## Approved v0.1 design inputs
 

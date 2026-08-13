@@ -329,11 +329,27 @@ covered by focused unit tests, package version unchanged at `0.4.0`,
 observation schema unchanged at `1.2.0`, comparison schema unchanged at
 `1.0.0`.
 
+v0.5 contract and evaluation persistence are also implemented on
+`feature/v0.5-frontend-contracts` (not yet released):
+`src/artifacts/frontendContractArtifactWriter.ts`/`frontendContractArtifactReader.ts`
+(symmetric baseline/per-change contract persistence, atomic write, no
+overwrite of existing history), `src/artifacts/comparisonArtifactReader.ts`
+(new - no comparison reader existed before this batch; comparison schema
+still `1.0.0`), `src/domain/frontendContractEvaluationArtifact.ts` (minimal
+additive persisted envelope around the frozen evaluation-result vocabulary,
+its own independent schema family `1.0.0`) with
+`src/artifacts/frontendContractEvaluationArtifactWriter.ts`/`...Reader.ts`,
+and `src/application/frontendContractEvaluationService.ts#evaluateAndPersist`/
+`evaluateAndPersistFromArtifactRoots` (calls `evaluateFrontendContract`
+exactly once, persists exactly one evaluation artifact for both `PASS` and
+`FAIL` verdicts, never persists a fabricated artifact when evaluation
+construction itself fails). `evaluateFrontendContract` itself is unmodified.
+
 ## Not implemented
 
-- v0.5 baseline persistence/approval workflow, evaluation-result
-  persistence, and CLI exposure (contract model and evaluation engine exist;
-  reading/writing artifacts and a public command surface do not), source
+- v0.5 baseline approval workflow and CLI exposure (contract/evaluation
+  persistence exist; a decision of what counts as "approved," automatic
+  baseline selection, and a public command surface do not), source
   ownership, my-dev-kit runtime/static integration, orchestrator/lab product
   integration, viewer, and annotation all remain unimplemented.
 
@@ -341,6 +357,6 @@ observation schema unchanged at `1.2.0`, comparison schema unchanged at
 
 v0.1-v0.4 are implemented, validated, and released (`0.1.0`, `0.2.0`,
 `0.3.0`, `0.4.0`). v0.5 (Executable Frontend Contracts and Explicit Change
-Scope) has its contract model and evaluation engine implemented on
-`feature/v0.5-frontend-contracts`; persistence, baseline approval, and CLI
-exposure are next.
+Scope) has its contract model, evaluation engine, and persistence/application
+seam implemented on `feature/v0.5-frontend-contracts`; baseline approval and
+CLI exposure are next.

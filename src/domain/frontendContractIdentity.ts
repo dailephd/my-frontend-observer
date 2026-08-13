@@ -59,3 +59,31 @@ export function buildClauseIdentity(primitive: ContractPrimitive, tolerance?: Co
   const serialized = JSON.stringify(canonicalize({ primitive, tolerance: tolerance ?? null }));
   return createHash('sha256').update(serialized).digest('hex');
 }
+
+/**
+ * Batch 3 addition (additive only - does not change any Batch 1 identity
+ * function's behavior): pure function of {baselineId, contractId,
+ * beforeObservationId, afterObservationId, comparisonRequestId} only, in the
+ * same canonicalize+sha256 style as `buildFrontendContractRequestIdentity`.
+ * Deliberately takes `comparisonRequestId` (comparison's own deterministic
+ * identity), never `comparisonId` (comparison's fresh per-execution instance
+ * id, per `comparisonIdentity.ts#buildComparisonIdentity`) - using the
+ * instance id here would make semantically identical evaluations of the same
+ * before/after pair never share an identity. Never includes a filesystem
+ * path, output location, or captured timestamp. Two evaluations of the same
+ * baseline/contract/observation-pair/comparison-request combination share
+ * this identity even if run from different operational locations;
+ * `buildFrontendContractInstanceIdentity` (already generic) is reused
+ * unchanged to derive the fresh per-execution `evaluationId` from it.
+ */
+export function buildFrontendContractEvaluationRequestIdentity(
+  baselineId: string,
+  contractId: string,
+  beforeObservationId: string,
+  afterObservationId: string,
+  comparisonRequestId: string,
+): string {
+  const semanticView = { baselineId, contractId, beforeObservationId, afterObservationId, comparisonRequestId };
+  const serialized = JSON.stringify(canonicalize(semanticView));
+  return createHash('sha256').update(serialized).digest('hex');
+}
