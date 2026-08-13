@@ -386,6 +386,38 @@ behavior, not duplicated here):
 No command infers baseline approval or supersession automatically - not
 `compare`, not a `PASS` evaluation, not any artifact writer.
 
+This full command sequence is proven against real Chromium observations (not
+hand-constructed artifacts) - see "v0.5 real-browser workflow proof" below.
+
+## v0.5 real-browser workflow proof (implemented so far)
+
+`tests/browser/cliFrontendContracts.test.ts` and
+`scripts/dev/builtCliFrontendContractsBrowserSmoke.mjs` drive the complete
+`observe` → `approve-baseline` → `save-change-contract` → `observe` →
+`compare` → `evaluate-contract` sequence against a real disposable local HTTP
+fixture and real Chromium, proving two scenarios:
+
+- a fully successful contract change - a real observed navigation-width
+  decrease and workspace-width increase, both satisfying their authored
+  `requested`/`expected-dependent` clauses, an unchanged `protected` rail
+  width, and an unclipped `preserved` navigation - overall `PASS`;
+- the "milestone signature" failure - the same locally successful requested
+  change (navigation shrinks, workspace expands, both still `pass`)
+  co-occurring with a genuine `protected` right-rail width regression (a real
+  `resized` comparison difference) and a genuine `preserved` navigation
+  clipping regression (a real `clipping-changed` difference, `not-clipped` →
+  `clipped`) - overall `FAIL`.
+
+Both scenarios confirm: `--enforce` changes only the process exit status
+(`0` without it, nonzero with it) for the identical persisted
+`evaluationRequestId`/`clauseResults`; every source observation and
+comparison artifact is byte-identical before and after evaluation; the
+evaluation directory contains `manifest.json` only (no copied screenshot);
+and no operational filesystem path is ever serialized into a persisted
+manifest. This is real-browser evidence layered on top of the CLI-level
+proof in `tests/unit/cliFrontendContracts.test.ts` and the Chromium-free
+`scripts/dev/builtCliFrontendContractsSmoke.mjs` - it does not replace them.
+
 ## Approved v0.1 design inputs
 
 The historical greenfield scaffold plan recorded these v0.1 design decisions:

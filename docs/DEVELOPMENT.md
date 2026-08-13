@@ -21,9 +21,9 @@ npm run check:docs
 npm pack --dry-run
 ```
 
-`npm test` runs the fast unit suite only (`tests/unit/`, currently 176
+`npm test` runs the fast unit suite only (`tests/unit/`, currently 515
 passing tests). `npm run test:browser` runs the real-Chromium integration
-suite (`tests/browser/`, currently 88 passing tests) against deterministic
+suite (`tests/browser/`, currently 120 passing tests) against deterministic
 local fixtures under `tests/fixtures/` and requires the Chromium binary
 above to be installed first; it is kept out of `npm test` because it
 launches a real browser and is slower.
@@ -140,7 +140,29 @@ locally after `npm run build`:
 node scripts/dev/builtCliFrontendContractsSmoke.mjs
 ```
 
-Unlike `scripts/ci/runPackedObservationSmoke.mjs`, none of these four dev
+`scripts/dev/builtCliFrontendContractsBrowserSmoke.mjs` is the v0.5 Batch 5
+real-browser equivalent, added alongside
+`tests/browser/cliFrontendContracts.test.ts`. Unlike the Chromium-free
+`scripts/dev/builtCliFrontendContractsSmoke.mjs` above, this one launches a
+real disposable local HTTP fixture and real Playwright Chromium, then drives
+the built `dist/cli.js` through the complete `observe` → `approve-baseline`
+→ `save-change-contract` → `observe` → `compare` → `evaluate-contract`
+sequence twice: once against a candidate whose served content produces a
+fully successful contract change (all clauses `pass`, overall `PASS`), and
+once against a candidate that reproduces the milestone-signature failure - a
+real observed navigation clipping regression and a real observed right-rail
+width regression alongside an otherwise-successful requested/expected-
+dependent change (overall `FAIL`). It validates the same `--enforce`
+exit-code/identity behavior, screenshot-free evaluation directory, source
+immutability, and path-privacy properties as the Chromium-free smoke, but
+against genuine rendered geometry instead of hand-constructed artifacts. Run
+it locally after `npm run build` (Chromium must already be installed):
+
+```powershell
+node scripts/dev/builtCliFrontendContractsBrowserSmoke.mjs
+```
+
+Unlike `scripts/ci/runPackedObservationSmoke.mjs`, none of these five dev
 smokes is wired into any CI workflow or is a release gate - they are
 source-checkout development evidence only, proving the built CLI's
 `--targets-file`/`--scroll-scenario-file`/`compare`/frontend-contract

@@ -21,6 +21,14 @@ export interface FixtureServer {
    * 'no-scroll' }` on every fresh server.
    */
   setComparisonFixtureState: (state: Partial<ComparisonFixtureState>) => void;
+  /**
+   * v0.5 Batch 5: test-only, in-process, synchronous control over the
+   * `/contract` route's served content - lets a real-browser test prove the
+   * complete public contract workflow (`observe` -> `compare` ->
+   * `evaluate-contract`) against genuine rendered geometry. Defaults to
+   * `'baseline'` on every fresh server.
+   */
+  setContractFixtureCandidate: (candidate: ContractFixtureCandidate) => void;
 }
 
 export interface ComparisonFixtureState {
@@ -228,6 +236,96 @@ function renderComparisonFixtureHtml(state: ComparisonFixtureState): string {
   <div id="cf-clip-target"><div id="cf-clip-inner"></div></div>
   ${state.layoutVariant === 'after' ? '<div id="cf-wide"></div>' : ''}
   <div id="cf-scroll-filler"></div>
+</body>
+</html>`;
+}
+
+/**
+ * v0.5 Batch 5: deterministic, in-process-toggleable fixture for the
+ * `/contract` route, against a 1000x700 test viewport - proving the full
+ * public contract workflow (`observe` -> `compare` -> `approve-baseline` ->
+ * `save-change-contract` -> `evaluate-contract`) against genuine rendered
+ * geometry rather than hand-constructed artifacts.
+ *
+ * Geometry is deliberately chosen so every configured-target pairwise
+ * relationship (horizontal order, area overlap, relative width, geometric
+ * fit, vertical sequence) stays structurally unchanged across every
+ * candidate below - only each region's own `resized` difference changes -
+ * so no candidate produces an incidental/unintended relationship change
+ * (see docs/CONTRACTS.md's note on deliberate fixture geometry design).
+ *
+ * `#cp-nav` always has `overflow: hidden` with a fixed-width `#cp-nav-inner`
+ * child (190px): `#cp-nav`'s own width is 200px in `baseline`/`success`
+ * (190 < 200, genuinely not clipped), and 140px in `protected-regression`
+ * (190 > 140, genuinely clipped - real dimensional overflow plus real
+ * `overflow: hidden`, reusing the canonical v0.4 clipping derivation
+ * unchanged). `#cp-workspace` sits at a fixed `left: 210px` (never moves)
+ * and only grows narrower/wider by width (500px baseline, 560px in every
+ * candidate) - a pure `resized` difference, never `moved`. `#cp-rail`
+ * stays at `width: 150px` in `baseline`/`success` and regresses to `130px`
+ * only in `protected-regression`. `#cp-footer` is unrelated to every
+ * authored contract clause and only changes (950px -> 850px) in
+ * `unexpected-change`, proving a real, unaccounted-for rendered difference
+ * becomes `unexpected`.
+ */
+export type ContractFixtureCandidate = 'baseline' | 'success' | 'protected-regression' | 'unexpected-change';
+
+export const CONTRACT_FIXTURE_SELECTORS = {
+  navigation: '#cp-nav',
+  workspace: '#cp-workspace',
+  rail: '#cp-rail',
+  footer: '#cp-footer',
+} as const;
+
+const CONTRACT_FIXTURE_NAV_WIDTH: Record<ContractFixtureCandidate, number> = {
+  baseline: 200,
+  success: 195,
+  'protected-regression': 140,
+  'unexpected-change': 195,
+};
+const CONTRACT_FIXTURE_WORKSPACE_WIDTH: Record<ContractFixtureCandidate, number> = {
+  baseline: 500,
+  success: 560,
+  'protected-regression': 560,
+  'unexpected-change': 560,
+};
+const CONTRACT_FIXTURE_RAIL_WIDTH: Record<ContractFixtureCandidate, number> = {
+  baseline: 150,
+  success: 150,
+  'protected-regression': 130,
+  'unexpected-change': 150,
+};
+const CONTRACT_FIXTURE_FOOTER_WIDTH: Record<ContractFixtureCandidate, number> = {
+  baseline: 950,
+  success: 950,
+  'protected-regression': 950,
+  'unexpected-change': 850,
+};
+
+function renderContractFixtureHtml(candidate: ContractFixtureCandidate): string {
+  const navWidth = CONTRACT_FIXTURE_NAV_WIDTH[candidate];
+  const workspaceWidth = CONTRACT_FIXTURE_WORKSPACE_WIDTH[candidate];
+  const railWidth = CONTRACT_FIXTURE_RAIL_WIDTH[candidate];
+  const footerWidth = CONTRACT_FIXTURE_FOOTER_WIDTH[candidate];
+  return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>contract fixture</title>
+<style>
+  html, body { margin: 0; padding: 0; }
+  #cp-nav { position: absolute; top: 0; left: 0; width: ${navWidth}px; height: 80px; overflow: hidden; }
+  #cp-nav-inner { width: 190px; height: 20px; }
+  #cp-workspace { position: absolute; top: 0; left: 210px; width: ${workspaceWidth}px; height: 80px; }
+  #cp-rail { position: absolute; top: 0; left: 800px; width: ${railWidth}px; height: 80px; }
+  #cp-footer { position: absolute; top: 200px; left: 0; width: ${footerWidth}px; height: 50px; }
+</style>
+</head>
+<body>
+  <div id="cp-nav"><div id="cp-nav-inner">Nav</div></div>
+  <div id="cp-workspace">Workspace</div>
+  <div id="cp-rail">Rail</div>
+  <div id="cp-footer">Footer</div>
 </body>
 </html>`;
 }
@@ -455,6 +553,7 @@ const OBSERVATION_FIXTURE_HTML = `<!doctype html>
 export async function startFixtureServer(): Promise<FixtureServer> {
   let disappearingTargetPresent = true;
   let comparisonFixtureState: ComparisonFixtureState = { layoutVariant: 'before', scrollVariant: 'no-scroll' };
+  let contractFixtureCandidate: ContractFixtureCandidate = 'baseline';
 
   const server: Server = createServer((req, res) => {
     const url = req.url ?? '/';
@@ -523,6 +622,12 @@ export async function startFixtureServer(): Promise<FixtureServer> {
       return;
     }
 
+    if (url === '/contract') {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end(renderContractFixtureHtml(contractFixtureCandidate));
+      return;
+    }
+
     res.writeHead(404);
     res.end();
   });
@@ -544,6 +649,9 @@ export async function startFixtureServer(): Promise<FixtureServer> {
     },
     setComparisonFixtureState: (state: Partial<ComparisonFixtureState>) => {
       comparisonFixtureState = { ...comparisonFixtureState, ...state };
+    },
+    setContractFixtureCandidate: (candidate: ContractFixtureCandidate) => {
+      contractFixtureCandidate = candidate;
     },
   };
 }

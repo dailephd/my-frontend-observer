@@ -364,6 +364,27 @@ Package version unchanged at `0.4.0`; observation schema `1.2.0`; comparison
 schema `1.0.0`; frontend contract schema `1.0.0`; evaluation artifact schema
 `1.0.0` - no schema was bumped to add this CLI.
 
+v0.5 Batch 5 proved the complete public contract workflow (`observe` →
+`approve-baseline` → `save-change-contract` → `observe` → `compare` →
+`evaluate-contract`) against real Chromium observations, not hand-constructed
+artifacts: a fully successful contract change (all clauses `pass`, overall
+`PASS`), and the "milestone signature" case - a locally successful requested
+change (navigation shrinks, workspace expands, both real and both `pass`)
+coexisting with a genuine protected-property regression (real right-rail
+`resized` difference) and a genuine preserved-invariant regression (real
+`clipping-changed` difference, `not-clipped` → `clipped`) - producing overall
+`FAIL`. Both scenarios are covered by `tests/browser/cliFrontendContracts.test.ts`
+(real Chromium, via `tests/fixtures/server.ts`'s new `/contract` route) and by
+the built-CLI dev smoke `scripts/dev/builtCliFrontendContractsBrowserSmoke.mjs`
+(the built `dist/cli.js`, not the imported `runCli()`, against its own
+disposable local HTTP fixture). Both confirm `--enforce` behavior (`FAIL`
+persists and exits `0` without it, exits nonzero with it, identical
+`evaluationRequestId` and `clauseResults` in both cases), full source
+observation/comparison immutability, no screenshot copied into the
+evaluation artifact, and no operational filesystem path leaked into any
+persisted manifest. The v0.5 public contract CLI is still not part of
+packed-tarball readiness validation (see `docs/CI_CD.md`).
+
 ## Not implemented
 
 - v0.5 baseline-selection/discovery policy (the caller must supply which

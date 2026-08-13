@@ -148,10 +148,18 @@ persists exactly one evaluation artifact, whether the verdict is `PASS` or
 verdict, never the persisted evidence itself.
 
 This is exercised by `runCli()`-level tests
-(`tests/unit/cliFrontendContracts.test.ts`) and a built `node dist/cli.js`
+(`tests/unit/cliFrontendContracts.test.ts`), a built `node dist/cli.js`
 smoke that needs no Chromium
-(`scripts/dev/builtCliFrontendContractsSmoke.mjs` - see
-`docs/DEVELOPMENT.md`). It is not yet part of packed-tarball validation.
+(`scripts/dev/builtCliFrontendContractsSmoke.mjs`), a real-Chromium
+end-to-end test (`tests/browser/cliFrontendContracts.test.ts`), and a
+real-Chromium built-CLI smoke
+(`scripts/dev/builtCliFrontendContractsBrowserSmoke.mjs` - see
+`docs/DEVELOPMENT.md`). The real-browser coverage proves both a fully
+successful contract change and the "milestone signature" failure (a locally
+successful requested change coexisting with a genuine protected-property
+regression and a genuine preserved-invariant regression) against actual
+rendered geometry, not hand-constructed artifacts. It is not yet part of
+packed-tarball validation.
 
 ## Future workflows
 
