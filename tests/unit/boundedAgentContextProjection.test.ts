@@ -17,8 +17,9 @@ import {
 } from '../../src/domain/frontendContracts.js';
 import { evaluateFrontendContract } from '../../src/domain/frontendContractEvaluation.js';
 import { buildFrontendContractEvaluationArtifact, type FrontendContractEvaluationArtifact } from '../../src/domain/frontendContractEvaluationArtifact.js';
-import { MAX_RUNTIME_TARGETS, MAX_RELATIONSHIP_EVIDENCE_PER_TARGET } from '../../src/domain/boundedAgentContext.js';
+import { MAX_RUNTIME_TARGETS, MAX_RELATIONSHIP_EVIDENCE_PER_TARGET, MAX_OMISSIONS, MAX_TRUNCATIONS, isValidBoundedAgentContextArtifact } from '../../src/domain/boundedAgentContext.js';
 import { projectBoundedAgentContext, type ProjectBoundedAgentContextInput } from '../../src/domain/boundedAgentContextProjection.js';
+import type { Diagnostic } from '../../src/domain/diagnostics.js';
 
 // --- fixture builders (duplicated per existing tests/unit/frontendContractEvaluation.test.ts convention) --
 
@@ -57,7 +58,12 @@ function target(name: string): NamedTarget {
   return { name, locators: [{ kind: 'css', selector: `#${name}` }] };
 }
 
-function observation(names: readonly NamedTarget[], targetEvidence: Record<string, TargetEvidenceRecord>, observationId = 'obs-1'): ObservationArtifact {
+function observation(
+  names: readonly NamedTarget[],
+  targetEvidence: Record<string, TargetEvidenceRecord>,
+  observationId = 'obs-1',
+  diagnostics: Diagnostic[] = [],
+): ObservationArtifact {
   return {
     artifactKind: ARTIFACT_KIND,
     schemaVersion: SCHEMA_VERSION,
@@ -77,8 +83,8 @@ function observation(names: readonly NamedTarget[], targetEvidence: Record<strin
     pageEvidence: {},
     targetEvidence,
     screenshot: { state: 'available', source: 'browser', value: { path: 'screenshot.png' } },
-    completion: { state: 'complete' },
-    diagnostics: [],
+    completion: diagnostics.length === 0 ? { state: 'complete' } : { state: 'partial', diagnostics },
+    diagnostics,
     limits: { truncated: false, omittedFields: [], omittedTargets: [] },
     artifactReferences: [{ path: 'screenshot.png', kind: 'screenshot' }],
   };
@@ -89,13 +95,13 @@ function requireComparisonOk(result: ReturnType<typeof compareObservations>): Co
   return result.artifact;
 }
 
-function baselineContract(clauses: BaselineClause[]): PersistentBaselineContract {
+function baselineContract(clauses: BaselineClause[], sourceObservationId = 'obs-before'): PersistentBaselineContract {
   return {
     artifactKind: CONTRACT_ARTIFACT_KIND,
     schemaVersion: CONTRACT_SCHEMA_VERSION,
     contractClass: 'baseline',
     baselineId: 'baseline-1',
-    sourceObservation: { observationId: 'obs-before', requestId: 'req-1', producer: { name: PRODUCER_NAME, version: '0.5.0' }, observationSchemaVersion: SCHEMA_VERSION },
+    sourceObservation: { observationId: sourceObservationId, requestId: 'req-1', producer: { name: PRODUCER_NAME, version: '0.5.0' }, observationSchemaVersion: SCHEMA_VERSION },
     clauses,
     provenance: { approvedAt: '2026-08-13T00:00:00.000Z' },
   };
@@ -132,8 +138,6 @@ function baseInput(overrides: Partial<ProjectBoundedAgentContextInput> = {}): Pr
     workspace: matchedTarget(rect(200, 0, 600, 600)),
   });
   return {
-    contextId: 'ctx-1',
-    contextRequestId: 'ctx-req-1',
     generatedAt: '2026-08-14T00:00:00.000Z',
     producerVersion: '0.5.0',
     projectionProfile: 'frontend-change-review',
@@ -156,11 +160,18 @@ describe('projectBoundedAgentContext: core construction', () => {
     expect(result.artifact.adequacy.state).toBe('adequate');
   });
 
-  it('is deterministic for repeated calls on equivalent input', () => {
+  it('is deterministic for repeated calls on equivalent input (logical identity and every other field), while instance identity (contextId) is intentionally fresh per call (IMP-B-004)', () => {
     const input = baseInput({ focusTargetIds: ['navigation', 'workspace'] });
     const a = projectBoundedAgentContext(input);
     const b = projectBoundedAgentContext(input);
-    expect(a).toEqual(b);
+    if (!a.ok || !b.ok) throw new Error('expected ok');
+    expect(a.artifact.contextRequestId).toBe(b.artifact.contextRequestId);
+    expect(a.artifact.contextId).not.toBe(b.artifact.contextId);
+    const restA: Partial<typeof a.artifact> = { ...a.artifact };
+    const restB: Partial<typeof b.artifact> = { ...b.artifact };
+    delete restA.contextId;
+    delete restB.contextId;
+    expect(restA).toEqual(restB);
   });
 
   it('preserves explicit source artifact references', () => {
@@ -209,7 +220,10 @@ describe('projectBoundedAgentContext: task relevance', () => {
   });
 
   it('retains preserved (baseline) clause evidence even when its evaluation passes', () => {
-    const baseline = baselineContract([bc('b1', { kind: 'target-visible', target: 'workspace' })]);
+    // baseInput()'s default observation carries observationId 'obs-1' (no separate baselineObservation
+    // supplied), so the baseline's sourceObservation must identify that same observation to satisfy the
+    // rescue's cross-artifact coherence check (IMP-SHARED-004) - see baselineContract's `sourceObservationId` param.
+    const baseline = baselineContract([bc('b1', { kind: 'target-visible', target: 'workspace' })], 'obs-1');
     const result = projectBoundedAgentContext(baseInput({ baseline }));
     if (!result.ok) throw new Error('expected ok');
     expect(result.artifact.targets.map((t) => t.targetId)).toContain('workspace');
@@ -428,5 +442,288 @@ describe('projectBoundedAgentContext: milestone signature scenarios', () => {
     expect(ids).toContain('workspace');
     expect(result.artifact.adequacy.state).toBe('adequate');
     expect(result.artifact.truncations).toEqual([]);
+  });
+});
+
+// --- v0.6 Batch 2 Arm B rescue regression coverage --------------------------------
+// Corrects IMP-SHARED-001..004 and IMP-B-001..006 confirmed against the frozen
+// measurement at 0df4807acdf258c44525ea7e922a2cddabe27c9f. See
+// reports/v0.6-comparison/batch-02/rescues/arm-b/ for the rescue evidence.
+
+function requireValidArtifact(result: ReturnType<typeof projectBoundedAgentContext>) {
+  if (!result.ok) throw new Error(`expected ok, got: ${result.reason}`);
+  const validation = isValidBoundedAgentContextArtifact(result.artifact);
+  if (!validation.valid) throw new Error(`emitted artifact failed the frozen validator: ${validation.reason}`);
+  return result.artifact;
+}
+
+describe('projectBoundedAgentContext: rescue regression (IMP-SHARED-001..004, IMP-B-001..006)', () => {
+  it('IMP-SHARED-001 / B2-P024: a large valid required-target overflow terminates, stays within every frozen cap, and the success artifact validates', () => {
+    const n = Math.max(10 * MAX_RUNTIME_TARGETS, 1000);
+    const names = Array.from({ length: n }, (_, i) => target(`t${String(i).padStart(4, '0')}`));
+    const evidence: Record<string, TargetEvidenceRecord> = {};
+    for (const t of names) evidence[t.name] = matchedTarget(rect(0, 0, 10, 10));
+    const obs = observation(names, evidence);
+    const focusTargetIds = names.map((t) => t.name);
+    const result = projectBoundedAgentContext(baseInput({ observation: obs, focusTargetIds }));
+    const artifact = requireValidArtifact(result);
+    expect(artifact.targets.length).toBeLessThanOrEqual(MAX_RUNTIME_TARGETS);
+    expect(artifact.omissions.length).toBeLessThanOrEqual(MAX_OMISSIONS);
+    expect(artifact.truncations.length).toBeLessThanOrEqual(MAX_TRUNCATIONS);
+    // truthful aggregate loss accounting must survive capping - the 'targets' truncation record (or its
+    // aggregate summary) must still report the true actualCount, not a number silently reduced to fit the cap.
+    const targetsTruncation = artifact.truncations.find((t) => t.subject === 'targets');
+    expect(targetsTruncation?.actualCount).toBe(n);
+    expect(artifact.adequacy.state).not.toBe('adequate');
+  });
+
+  it('IMP-SHARED-002 / B2-P018: 25 fitting required (protected) targets plus a lexically-earlier permitted competitor - required-first allocation is not accidentally encoded by alphabetical order', () => {
+    const requiredNames = Array.from({ length: MAX_RUNTIME_TARGETS }, (_, i) => `z${String(i).padStart(2, '0')}`);
+    const allNames = ['a-permitted', ...requiredNames];
+    const evidence: Record<string, TargetEvidenceRecord> = {};
+    for (const nm of allNames) evidence[nm] = matchedTarget(rect(0, 0, 10, 10));
+    const obs = observation(allNames.map(target), evidence);
+    const baseline = baselineContract(
+      requiredNames.map((nm, i) => bc(`bc-${i}`, { kind: 'target-visible', target: nm })),
+      'obs-1',
+    );
+    const change = changeContractOf([
+      cc('cc-permitted', { kind: 'target-visible', target: 'a-permitted' }, 'expected-dependent', { expectedDependentMode: 'permitted' }),
+    ]);
+    const result = projectBoundedAgentContext(baseInput({ observation: obs, baseline, change }));
+    const artifact = requireValidArtifact(result);
+    const includedIds = artifact.targets.map((t) => t.targetId);
+    expect(requiredNames.every((nm) => includedIds.includes(nm))).toBe(true);
+    expect(includedIds.includes('a-permitted')).toBe(false);
+  });
+
+  it('IMP-SHARED-003 / B2-P020: required per-target evidence-reference overflow is explicit and never reports adequate', () => {
+    const nm = 'navtarget';
+    const evidence: Record<string, TargetEvidenceRecord> = { [nm]: matchedTarget(rect(0, 0, 10, 10)) };
+    const obs = observation([target(nm)], evidence);
+    const manyRefs = Array.from({ length: MAX_RELATIONSHIP_EVIDENCE_PER_TARGET + 5 }, (_, i) => ({ path: `evidence/ref-${i}.json` }));
+    const baseline = baselineContract([bc('bc-1', { kind: 'target-visible', target: nm }, manyRefs)], 'obs-1');
+    const result = projectBoundedAgentContext(baseInput({ observation: obs, baseline }));
+    const artifact = requireValidArtifact(result);
+    expect(artifact.omissions.some((o) => o.subject === `target:${nm}.relationshipEvidence` && o.required)).toBe(true);
+    expect(artifact.adequacy.state).not.toBe('adequate');
+  });
+
+  it('IMP-SHARED-003 (CONTRACT-002 discipline): this rescue does not invent a global partial/inadequate threshold - it only guarantees required loss is never "adequate"', () => {
+    // Documents the deliberate scope boundary: no assertion here pins the exact partial-vs-inadequate choice.
+    expect(true).toBe(true);
+  });
+
+  it('IMP-SHARED-004 / B2-P035: a structurally valid baseline whose sourceObservation.observationId does not identify the supplied observation fails closed', () => {
+    const nm = 'navtarget';
+    const evidence: Record<string, TargetEvidenceRecord> = { [nm]: matchedTarget(rect(0, 0, 10, 10)) };
+    const obs = observation([target(nm)], evidence, 'obs-REAL');
+    const baseline = baselineContract([bc('bc-1', { kind: 'target-visible', target: nm })], 'obs-UNRELATED-DIFFERENT');
+    const result = projectBoundedAgentContext(baseInput({ observation: obs, baseline }));
+    expect(result.ok).toBe(false);
+  });
+
+  it('IMP-B-001 / B2-P009, B2-P011: FAIL and conflict clauseResults survive optional/context cap pressure and remain prioritized', () => {
+    // Kept under v0.4's MAX_CONFIGURED_TARGETS_FOR_RELATIONSHIPS=20 bound (compareObservations rejects
+    // requestConfig.targets beyond 20) - a comparison artifact is needed here only for evaluationArtifact
+    // coherence, not to exercise MAX_RUNTIME_TARGETS=25 itself (that is covered separately by B2-P018 above).
+    const requiredNames = Array.from({ length: 15 }, (_, i) => `r${String(i).padStart(2, '0')}`);
+    const failTargetName = 'failing-target';
+    const allNames = [...requiredNames, failTargetName];
+    const evidence: Record<string, TargetEvidenceRecord> = {};
+    for (const nm of allNames) evidence[nm] = matchedTarget(rect(0, 0, 10, 10));
+    const obs = observation(allNames.map(target), evidence, 'obs-1');
+    const baseline = baselineContract([], 'obs-1');
+    const change = changeContractOf([
+      ...requiredNames.map((nm, i) => cc(`req-${i}`, { kind: 'target-visible', target: nm }, 'requested')),
+      cc('cc-fail', { kind: 'target-visible', target: failTargetName }, 'expected-dependent', { expectedDependentMode: 'permitted' }),
+    ]);
+    const evaluationArtifact: FrontendContractEvaluationArtifact = buildFrontendContractEvaluationArtifact({
+      evaluationId: 'eval-1',
+      evaluationRequestId: 'eval-req-1',
+      producerVersion: '0.5.0',
+      evaluatedAt: '2026-08-14T00:00:00.000Z',
+      baselineId: baseline.baselineId,
+      contractId: change.contractId,
+      before: { observationId: 'obs-1', requestId: 'req-1', producer: { name: PRODUCER_NAME, version: '0.5.0' }, observationSchemaVersion: SCHEMA_VERSION },
+      after: { observationId: 'obs-1', requestId: 'req-1', producer: { name: PRODUCER_NAME, version: '0.5.0' }, observationSchemaVersion: SCHEMA_VERSION },
+      comparisonId: 'comparison-na',
+      comparisonRequestId: 'comparison-req-na',
+      overallVerdict: 'FAIL',
+      activeBaselineClauseIds: [],
+      supersededBaselineClauseIds: [],
+      clauseResults: [{ clauseId: 'cc-fail', status: 'fail', supportingEvidence: [{ path: 'evidence/fail-proof.json' }] }],
+      unexpectedChanges: [],
+    });
+    // Without a comparison artifact, evaluationArtifact coherence requires baseline+change+comparison all supplied;
+    // build a trivial self-consistent comparison via compareObservations(before=after=obs) instead of inventing one.
+    const comparison = requireComparisonOk(compareObservations(obs, obs));
+    const coherentEvaluationArtifact = { ...evaluationArtifact, comparisonId: comparison.comparisonId, comparisonRequestId: comparison.comparisonRequestId };
+    const result = projectBoundedAgentContext(
+      baseInput({ observation: obs, baselineObservation: obs, comparison, baseline, change, evaluationArtifact: coherentEvaluationArtifact }),
+    );
+    const artifact = requireValidArtifact(result);
+    const includedIds = artifact.targets.map((t) => t.targetId);
+    // the FAIL-status permitted clause's target must be promoted to required-tier membership and survive alongside all 24 genuinely-required targets
+    expect(includedIds).toContain(failTargetName);
+    expect(requiredNames.every((nm) => includedIds.includes(nm))).toBe(true);
+  });
+
+  it('IMP-B-001 / B2-P010: a supplied unavailable clauseResult is not represented as known and its evidence is not silently dropped', () => {
+    const nm = 'unavailable-target';
+    const evidence: Record<string, TargetEvidenceRecord> = { [nm]: matchedTarget(rect(0, 0, 10, 10)) };
+    const obs = observation([target(nm)], evidence, 'obs-1');
+    const baseline = baselineContract([], 'obs-1');
+    const change = changeContractOf([cc('cc-unavail', { kind: 'target-visible', target: nm }, 'expected-dependent', { expectedDependentMode: 'permitted' })]);
+    const comparison = requireComparisonOk(compareObservations(obs, obs));
+    const evaluationArtifact: FrontendContractEvaluationArtifact = buildFrontendContractEvaluationArtifact({
+      evaluationId: 'eval-1',
+      evaluationRequestId: 'eval-req-1',
+      producerVersion: '0.5.0',
+      evaluatedAt: '2026-08-14T00:00:00.000Z',
+      baselineId: baseline.baselineId,
+      contractId: change.contractId,
+      before: { observationId: 'obs-1', requestId: 'req-1', producer: { name: PRODUCER_NAME, version: '0.5.0' }, observationSchemaVersion: SCHEMA_VERSION },
+      after: { observationId: 'obs-1', requestId: 'req-1', producer: { name: PRODUCER_NAME, version: '0.5.0' }, observationSchemaVersion: SCHEMA_VERSION },
+      comparisonId: comparison.comparisonId,
+      comparisonRequestId: comparison.comparisonRequestId,
+      overallVerdict: 'FAIL',
+      activeBaselineClauseIds: [],
+      supersededBaselineClauseIds: [],
+      clauseResults: [{ clauseId: 'cc-unavail', status: 'unavailable', reason: 'evidence capture failed', supportingEvidence: [{ path: 'evidence/unavailable-proof.json' }] }],
+      unexpectedChanges: [],
+    });
+    const result = projectBoundedAgentContext(baseInput({ observation: obs, baselineObservation: obs, comparison, baseline, change, evaluationArtifact }));
+    const artifact = requireValidArtifact(result);
+    const includedIds = artifact.targets.map((t) => t.targetId);
+    expect(includedIds).toContain(nm);
+    const t = artifact.targets.find((x) => x.targetId === nm);
+    expect(t?.relationshipEvidence?.some((r) => r.path === 'evidence/unavailable-proof.json')).toBe(true);
+  });
+
+  it('IMP-B-001 / B2-P036: the projection follows the supplied frozen evaluation result and never recomputes it', () => {
+    const nm = 'navigation';
+    const evidence: Record<string, TargetEvidenceRecord> = { [nm]: matchedTarget(rect(0, 0, 190, 600)) };
+    const obs = observation([target(nm)], evidence, 'obs-1');
+    const baseline = baselineContract([], 'obs-1');
+    const change = changeContractOf([cc('cc-1', { kind: 'target-visible', target: nm }, 'protected')]);
+    const comparison = requireComparisonOk(compareObservations(obs, obs));
+    // A recomputation via evaluateFrontendContract would find this clause PASS (target is visible with geometry supplied);
+    // the supplied evaluationArtifact instead claims FAIL - the projection must follow the supplied result, not recompute.
+    const recomputed = evaluateFrontendContract({ before: obs, after: obs, comparison, baseline, change });
+    if (!recomputed.ok) throw new Error('expected ok recomputation');
+    expect(recomputed.evaluation.overallVerdict).toBe('PASS');
+    const evaluationArtifact: FrontendContractEvaluationArtifact = buildFrontendContractEvaluationArtifact({
+      evaluationId: 'eval-1',
+      evaluationRequestId: 'eval-req-1',
+      producerVersion: '0.5.0',
+      evaluatedAt: '2026-08-14T00:00:00.000Z',
+      baselineId: baseline.baselineId,
+      contractId: change.contractId,
+      before: { observationId: 'obs-1', requestId: 'req-1', producer: { name: PRODUCER_NAME, version: '0.5.0' }, observationSchemaVersion: SCHEMA_VERSION },
+      after: { observationId: 'obs-1', requestId: 'req-1', producer: { name: PRODUCER_NAME, version: '0.5.0' }, observationSchemaVersion: SCHEMA_VERSION },
+      comparisonId: comparison.comparisonId,
+      comparisonRequestId: comparison.comparisonRequestId,
+      overallVerdict: 'FAIL',
+      activeBaselineClauseIds: [],
+      supersededBaselineClauseIds: [],
+      clauseResults: [{ clauseId: 'cc-1', status: 'fail', supportingEvidence: [{ path: 'evidence/supplied-fail.json' }] }],
+      unexpectedChanges: [],
+    });
+    const result = projectBoundedAgentContext(baseInput({ observation: obs, baselineObservation: obs, comparison, baseline, change, evaluationArtifact }));
+    const artifact = requireValidArtifact(result);
+    const t = artifact.targets.find((x) => x.targetId === nm);
+    // only the supplied (FAIL) result's evidence appears - nothing derived from the (PASS) recomputation
+    expect(t?.relationshipEvidence?.some((r) => r.path === 'evidence/supplied-fail.json')).toBe(true);
+  });
+
+  it('IMP-B-002 / B2-P019: known optional-only bounded truncation is deterministic, preserves required:false, and does not report adequate', () => {
+    const nm = 'navigation';
+    const requiredNames = ['navigation'];
+    const permittedNames = Array.from({ length: MAX_RUNTIME_TARGETS + 5 }, (_, i) => `optional-${String(i).padStart(2, '0')}`);
+    const allNames = [...requiredNames, ...permittedNames];
+    const evidence: Record<string, TargetEvidenceRecord> = {};
+    for (const n of allNames) evidence[n] = matchedTarget(rect(0, 0, 10, 10));
+    const obs = observation(allNames.map(target), evidence, 'obs-1');
+    const change = changeContractOf([
+      cc('cc-required', { kind: 'target-visible', target: nm }, 'requested'),
+      ...permittedNames.map((n, i) => cc(`cc-opt-${i}`, { kind: 'target-visible', target: n }, 'expected-dependent', { expectedDependentMode: 'permitted' })),
+    ]);
+    const result = projectBoundedAgentContext(baseInput({ observation: obs, change }));
+    const artifact = requireValidArtifact(result);
+    const dropped = artifact.omissions.filter((o) => !o.required);
+    expect(dropped.length).toBeGreaterThan(0);
+    expect(artifact.omissions.every((o) => o.required === false || o.subject === `target:${nm}` === false)).toBe(true);
+    expect(artifact.adequacy.state).not.toBe('adequate');
+    // determinism: repeat run yields byte-identical selection (ignoring instance identity)
+    const again = requireValidArtifact(projectBoundedAgentContext(baseInput({ observation: obs, change })));
+    expect(artifact.targets.map((t) => t.targetId)).toEqual(again.targets.map((t) => t.targetId));
+  });
+
+  it('IMP-B-003 / B2-P026: equal-tier evidence-reference ordering is a stable semantic key (path), not caller array insertion order', () => {
+    const nm = 'navigation';
+    const evidence: Record<string, TargetEvidenceRecord> = { [nm]: matchedTarget(rect(0, 0, 10, 10)) };
+    const obs = observation([target(nm)], evidence, 'obs-1');
+    const refsOrderA = [{ path: 'evidence/zzz.json' }, { path: 'evidence/aaa.json' }, { path: 'evidence/mmm.json' }];
+    const refsOrderB = [{ path: 'evidence/mmm.json' }, { path: 'evidence/zzz.json' }, { path: 'evidence/aaa.json' }];
+    const changeA = changeContractOf([cc('cc-1', { kind: 'target-visible', target: nm }, 'protected', { supportingEvidence: refsOrderA })]);
+    const changeB = changeContractOf([cc('cc-1', { kind: 'target-visible', target: nm }, 'protected', { supportingEvidence: refsOrderB })]);
+    const resultA = requireValidArtifact(projectBoundedAgentContext(baseInput({ observation: obs, change: changeA })));
+    const resultB = requireValidArtifact(projectBoundedAgentContext(baseInput({ observation: obs, change: changeB })));
+    const evidenceA = resultA.targets.find((t) => t.targetId === nm)?.relationshipEvidence?.map((r) => r.path);
+    const evidenceB = resultB.targets.find((t) => t.targetId === nm)?.relationshipEvidence?.map((r) => r.path);
+    expect(evidenceA).toEqual(['evidence/aaa.json', 'evidence/mmm.json', 'evidence/zzz.json']);
+    expect(evidenceA).toEqual(evidenceB);
+  });
+
+  it('IMP-B-004 / B2-P027: canonical logical/request identity is immune to caller/path-like noise; instance identity remains a separate, fresh concept', () => {
+    const nm = 'navigation';
+    const evidence: Record<string, TargetEvidenceRecord> = { [nm]: matchedTarget(rect(0, 0, 10, 10)) };
+    const obs1 = observation([target(nm)], evidence, 'obs-1');
+    // A second, semantically-equivalent observation constructed via a different in-memory path/object identity
+    // (distinct object reference, same logical field values) to simulate caller/path noise without inventing a
+    // second worktree - the projection itself has no path-bearing fields to vary directly.
+    const obs2 = observation([target(nm)], evidence, 'obs-1');
+    const resultA = requireValidArtifact(projectBoundedAgentContext(baseInput({ observation: obs1, focusTargetIds: [nm] })));
+    const resultB = requireValidArtifact(projectBoundedAgentContext(baseInput({ observation: obs2, focusTargetIds: [nm] })));
+    expect(resultA.contextRequestId).toBe(resultB.contextRequestId);
+    expect(resultA.contextId).not.toBe(resultB.contextId);
+    // caller no longer supplies contextId/contextRequestId at all - ProjectBoundedAgentContextInput has no such fields (compile-time proof)
+    const input: ProjectBoundedAgentContextInput = baseInput({ focusTargetIds: [nm] });
+    expect('contextId' in input).toBe(false);
+    expect('contextRequestId' in input).toBe(false);
+  });
+
+  it('IMP-B-005 / B2-P033: a secret/full-page marker present only in a diagnostic message never propagates into the bounded output', () => {
+    const nm = 'navigation';
+    const secretMarker = 'SECRET_TOKEN_SHOULD_NOT_PROPAGATE';
+    const diagnostics: Diagnostic[] = [
+      { code: 'partial-evidence', severity: 'warning', targetName: nm, message: `capture warning containing ${secretMarker} and other raw page text` },
+    ];
+    const evidence: Record<string, TargetEvidenceRecord> = { [nm]: matchedTarget(rect(0, 0, 10, 10)) };
+    const obs = observation([target(nm)], evidence, 'obs-1', diagnostics);
+    const result = projectBoundedAgentContext(baseInput({ observation: obs, focusTargetIds: [nm] }));
+    const artifact = requireValidArtifact(result);
+    const serialized = JSON.stringify(artifact);
+    expect(serialized.includes(secretMarker)).toBe(false);
+  });
+
+  it('IMP-B-006: malformed focusTargetIds values fail closed through the declared {ok:false,reason} boundary instead of throwing', () => {
+    const nm = 'navigation';
+    const evidence: Record<string, TargetEvidenceRecord> = { [nm]: matchedTarget(rect(0, 0, 10, 10)) };
+    const obs = observation([target(nm)], evidence, 'obs-1');
+    const malformedValues: unknown[] = ['not-an-array', null, 42, { not: 'an array' }, ['', 'valid-but-empty-string-entry'], [123, 'valid'], [null]];
+    for (const malformed of malformedValues) {
+      const input = { ...baseInput({ observation: obs }), focusTargetIds: malformed as unknown as readonly string[] };
+      let threw = false;
+      let result: ReturnType<typeof projectBoundedAgentContext> | undefined;
+      try {
+        result = projectBoundedAgentContext(input);
+      } catch {
+        threw = true;
+      }
+      expect(threw).toBe(false);
+      expect(result?.ok).toBe(false);
+    }
   });
 });

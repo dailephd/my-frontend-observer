@@ -1,5 +1,5 @@
 /**
- * v0.6 Batch 2 canonical pure runtime projection engine. Consumes
+ * v0.6 Batch 2 canonical pure runtime projection engine (rescue). Consumes
  * already-loaded evidence (a runtime ObservationArtifact, optionally a prior
  * "before" ObservationArtifact, a ComparisonArtifact, a PersistentBaselineContract,
  * a PerChangeContract, and a FrontendContractEvaluationArtifact - all frozen by
@@ -12,6 +12,17 @@
  * Mutates none of its inputs. Implements no persistence, no CLI, and no
  * static source correlation - correlation records remain an optional,
  * caller-supplied pass-through (see `RuntimeStaticCorrelationRecord`).
+ *
+ * Rescue note (v0.6 Batch 2 Arm B rescue, corrects IMP-SHARED-001..004 and
+ * IMP-B-001..006 against the frozen measurement at
+ * 0df4807acdf258c44525ea7e922a2cddabe27c9f): unlike that measurement, this
+ * version (1) computes `contextId`/`contextRequestId` itself from the
+ * canonical identity helpers instead of accepting them as caller-supplied
+ * input, (2) consumes the supplied `evaluationArtifact.clauseResults` for
+ * evidence tiering, (3) bounds every output collection (including
+ * omissions/truncations themselves) to its frozen aggregate cap, (4) never
+ * copies raw diagnostic message text into output, and (5) validates
+ * `focusTargetIds` at the public boundary.
  */
 import type {
   ProjectionProfile,
@@ -25,9 +36,12 @@ import type {
 import {
   MAX_RUNTIME_TARGETS,
   MAX_RELATIONSHIP_EVIDENCE_PER_TARGET,
+  MAX_OMISSIONS,
+  MAX_TRUNCATIONS,
   BOUNDED_AGENT_CONTEXT_ARTIFACT_KIND,
   BOUNDED_AGENT_CONTEXT_SCHEMA_VERSION,
 } from './boundedAgentContext.js';
+import { buildBoundedAgentContextRequestIdentity, buildBoundedAgentContextInstanceIdentity } from './boundedAgentContextIdentity.js';
 import { evidenceValue } from './evidence.js';
 import type { EvidenceReference } from './relationships.js';
 import { isValidEvidenceReference } from './relationships.js';
@@ -35,7 +49,7 @@ import type { ObservationArtifact } from './schema.js';
 import { PRODUCER_NAME, isValidObservationArtifact } from './schema.js';
 import type { ComparisonArtifact } from './comparison.js';
 import { isValidComparisonArtifact } from './comparison.js';
-import type { PersistentBaselineContract, PerChangeContract, ContractPrimitive } from './frontendContracts.js';
+import type { PersistentBaselineContract, PerChangeContract, ContractPrimitive, ClauseResultStatus } from './frontendContracts.js';
 import { isValidPersistentBaselineContract, isValidPerChangeContract } from './frontendContracts.js';
 import type { FrontendContractEvaluationArtifact } from './frontendContractEvaluationArtifact.js';
 import { isValidFrontendContractEvaluationArtifact } from './frontendContractEvaluationArtifact.js';
@@ -44,15 +58,17 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;
 }
 
+function isValidFocusTargetIds(value: unknown): value is readonly string[] {
+  return Array.isArray(value) && value.every((entry) => isNonEmptyString(entry));
+}
+
 // --- public input/output contract -----------------------------------------
 
 export interface ProjectBoundedAgentContextInput {
-  contextId: string;
-  contextRequestId: string;
   generatedAt: string;
   producerVersion: string;
   projectionProfile: ProjectionProfile;
-  /** Explicit caller-requested focus target identities (may be empty). */
+  /** Explicit caller-requested focus target identities (may be empty). Validated at the boundary - see IMP-B-006. */
   focusTargetIds: readonly string[];
   /** The runtime snapshot the projection samples geometry/visibility/overflow/scroll evidence from. */
   observation: ObservationArtifact;
@@ -91,9 +107,15 @@ function validateInput(input: ProjectBoundedAgentContextInput): string | undefin
     }
   }
 
+  // Known authoritative observation identities this request actually carries (IMP-SHARED-004 coherence anchor).
+  const knownObservationIds = new Set<string>([input.observation.observationId, ...(input.baselineObservation ? [input.baselineObservation.observationId] : [])]);
+
   if (input.baseline !== undefined) {
     const baselineValidation = isValidPersistentBaselineContract(input.baseline);
     if (!baselineValidation.valid) return `baseline is invalid: ${baselineValidation.reason}`;
+    if (!knownObservationIds.has(input.baseline.sourceObservation.observationId)) {
+      return 'baseline.sourceObservation.observationId does not identify the supplied observation or baselineObservation';
+    }
   }
 
   if (input.change !== undefined) {
@@ -117,8 +139,7 @@ function validateInput(input: ProjectBoundedAgentContextInput): string | undefin
     }
   }
 
-  if (!isNonEmptyString(input.contextId)) return 'contextId must be a non-empty string';
-  if (!isNonEmptyString(input.contextRequestId)) return 'contextRequestId must be a non-empty string';
+  if (!isValidFocusTargetIds(input.focusTargetIds)) return 'focusTargetIds must be an array of non-empty strings';
   if (!isNonEmptyString(input.generatedAt)) return 'generatedAt must be a non-empty string';
   if (!isNonEmptyString(input.producerVersion)) return 'producerVersion must be a non-empty string';
 
@@ -168,6 +189,60 @@ function clauseTier(category: 'requested' | 'expected-dependent' | 'protected' |
   return 'optional'; // 'requested'
 }
 
+/**
+ * Whether an authored change clause belongs to the *required* target-set
+ * membership tier (rescue fix for IMP-SHARED-002: previously every change
+ * clause target - including 'expected-dependent'/'permitted' ones - was
+ * unconditionally added to the required target set, letting a permitted
+ * target displace a genuinely required one at the MAX_RUNTIME_TARGETS bound).
+ * Only 'protected', 'preserved', 'requested', and 'expected-dependent'/
+ * 'required' clauses make their targets required; 'expected-dependent'/
+ * 'permitted' clauses make their targets permitted (bound-competing after
+ * required allocation, same as relationship-adjacent optional targets).
+ */
+function isRequiredMembershipClause(category: 'requested' | 'expected-dependent' | 'protected' | 'preserved', mode: 'required' | 'permitted' | undefined): boolean {
+  if (category === 'expected-dependent') return mode === 'required';
+  return true;
+}
+
+/** A non-'pass' clause result must never be silently dropped or displaced (IMP-B-001 / B2-P009-011): its contributed evidence is always required-tier regardless of the clause's own authored category/mode. */
+function evidenceTierForClauseResult(status: ClauseResultStatus | undefined, fallback: EvidenceTier): EvidenceTier {
+  if (status === 'fail' || status === 'unavailable' || status === 'conflict') return 'required';
+  return fallback;
+}
+
+/** Aggregate-cap enforcement for the frozen `omissions` collection (IMP-SHARED-001): required-loss records are preserved preferentially, and a single truthful summary record replaces whatever had to be dropped rather than silently vanishing. */
+function capOmissions(records: readonly OmissionRecord[], max: number): OmissionRecord[] {
+  if (records.length <= max) return [...records];
+  const ranked = [...records].sort((a, b) => Number(b.required) - Number(a.required));
+  const kept = ranked.slice(0, max - 1);
+  const dropped = ranked.slice(max - 1);
+  const anyRequired = dropped.some((d) => d.required);
+  const summary: OmissionRecord = {
+    subject: 'omissions-summary',
+    reason: 'omitted-by-bound',
+    required: anyRequired,
+    detail: `${dropped.length} additional omission record(s) omitted by the aggregate ${max}-omission cap; see the 'targets' truncation record for the true total`,
+  };
+  return [...kept, summary];
+}
+
+/** Aggregate-cap enforcement for the frozen `truncations` collection (IMP-SHARED-001), same policy as `capOmissions`. */
+function capTruncations(records: readonly TruncationRecord[], max: number): TruncationRecord[] {
+  if (records.length <= max) return [...records];
+  const ranked = [...records].sort((a, b) => Number(b.required) - Number(a.required));
+  const kept = ranked.slice(0, max - 1);
+  const dropped = ranked.slice(max - 1);
+  const anyRequired = dropped.some((d) => d.required);
+  const summary: TruncationRecord = {
+    subject: 'truncations-summary',
+    limit: max,
+    actualCount: records.length,
+    required: anyRequired,
+  };
+  return [...kept, summary];
+}
+
 // --- canonical entry point ---------------------------------------------------
 
 /**
@@ -183,15 +258,19 @@ export function projectBoundedAgentContext(input: ProjectBoundedAgentContextInpu
   const { observation, baselineObservation, comparison, baseline, change, evaluationArtifact } = input;
 
   const sources: BoundedAgentContextSourceReferences = {
-    observationIds: baselineObservation ? [baselineObservation.observationId, observation.observationId] : [observation.observationId],
+    observationIds: baselineObservation ? [baselineObservation.observationId, observation.observationId].sort() : [observation.observationId],
     ...(comparison !== undefined ? { comparisonId: comparison.comparisonId, comparisonRequestId: comparison.comparisonRequestId } : {}),
     ...(baseline !== undefined ? { baselineContractId: baseline.baselineId } : {}),
     ...(change !== undefined ? { changeContractId: change.contractId } : {}),
     ...(evaluationArtifact !== undefined ? { evaluationId: evaluationArtifact.evaluationId, evaluationRequestId: evaluationArtifact.evaluationRequestId } : {}),
   };
 
-  // --- relevance: required target ids (explicit focus + all authored clause targets + unexpected-change subjects) --
+  const clauseResultByClauseId = new Map((evaluationArtifact?.clauseResults ?? []).map((r) => [r.clauseId, r] as const));
+
+  // --- relevance: required target ids (explicit focus + authored required-tier clause targets + unexpected-change subjects) --
   const requiredTargetIds = new Set<string>(input.focusTargetIds);
+  // --- relevance: permitted target ids (expected-dependent/permitted clause targets - compete for capacity after required allocation, same as relationship-adjacent targets) --
+  const permittedTargetIds = new Set<string>();
   const evidenceByTarget = new Map<string, CollectedEvidence[]>();
 
   function addEvidence(targetId: string, refs: readonly EvidenceReference[], tier: EvidenceTier): void {
@@ -203,19 +282,32 @@ export function projectBoundedAgentContext(input: ProjectBoundedAgentContextInpu
   }
 
   for (const clause of baseline?.clauses ?? []) {
+    // Baseline clauses have no authored category - they are the frozen 'preserved' invariant and are always required-tier for both membership and evidence.
     const targets = primitiveTargetIds(clause.primitive);
+    const clauseResult = clauseResultByClauseId.get(clause.clauseId);
+    const evidenceTier = evidenceTierForClauseResult(clauseResult?.status, 'required');
+    const evidence = [...clause.supportingEvidence, ...(clauseResult ? clauseResult.supportingEvidence : [])];
     for (const t of targets) {
       requiredTargetIds.add(t);
-      addEvidence(t, clause.supportingEvidence, 'required'); // baseline clauses are always the 'preserved' invariant
+      addEvidence(t, evidence, evidenceTier);
     }
   }
 
   for (const clause of change?.clauses ?? []) {
     const targets = primitiveTargetIds(clause.primitive);
-    const tier = clauseTier(clause.category, clause.expectedDependentMode);
+    const membershipRequired = isRequiredMembershipClause(clause.category, clause.expectedDependentMode);
+    const fallbackEvidenceTier = clauseTier(clause.category, clause.expectedDependentMode);
+    const clauseResult = clauseResultByClauseId.get(clause.clauseId);
+    const evidenceTier = evidenceTierForClauseResult(clauseResult?.status, fallbackEvidenceTier);
+    const evidence = [...clause.supportingEvidence, ...(clauseResult ? clauseResult.supportingEvidence : [])];
     for (const t of targets) {
-      requiredTargetIds.add(t);
-      addEvidence(t, clause.supportingEvidence, tier);
+      if (membershipRequired || evidenceTier === 'required') {
+        // A non-'pass' authoritative result always promotes membership to required too - IMP-B-001 requires failed/unavailable/conflict evidence to survive cap pressure, which a merely-permitted target-set membership could still lose entirely.
+        requiredTargetIds.add(t);
+      } else {
+        permittedTargetIds.add(t);
+      }
+      addEvidence(t, evidence, evidenceTier);
     }
   }
 
@@ -227,40 +319,48 @@ export function projectBoundedAgentContext(input: ProjectBoundedAgentContextInpu
       addEvidence(t, unexpected.supportingEvidence, 'required');
     }
   }
+  for (const permitted of permittedTargetIds) {
+    if (requiredTargetIds.has(permitted)) permittedTargetIds.delete(permitted);
+  }
 
-  // --- relevance: optional target ids (one relationship hop from a required target) --
-  const optionalTargetIds = new Set<string>();
+  // --- relevance: context target ids (one relationship hop from a required OR permitted target) --
+  const contextTargetIds = new Set<string>();
   const relationshipGraph = comparison?.relationshipsAfter;
   if (relationshipGraph) {
+    const priorityTargetIds = new Set<string>([...requiredTargetIds, ...permittedTargetIds]);
     for (const rel of relationshipGraph.pairwiseRelationships) {
-      const subjectRequired = requiredTargetIds.has(rel.subjectTarget);
-      const relatedRequired = requiredTargetIds.has(rel.relatedTarget);
-      if (subjectRequired && !relatedRequired) {
-        optionalTargetIds.add(rel.relatedTarget);
+      const subjectPriority = priorityTargetIds.has(rel.subjectTarget);
+      const relatedPriority = priorityTargetIds.has(rel.relatedTarget);
+      if (subjectPriority && !relatedPriority) {
+        contextTargetIds.add(rel.relatedTarget);
         addEvidence(rel.relatedTarget, rel.evidence, 'context');
       }
-      if (relatedRequired && !subjectRequired) {
-        optionalTargetIds.add(rel.subjectTarget);
+      if (relatedPriority && !subjectPriority) {
+        contextTargetIds.add(rel.subjectTarget);
         addEvidence(rel.subjectTarget, rel.evidence, 'context');
       }
-      if (subjectRequired || relatedRequired) {
+      if (subjectPriority || relatedPriority) {
         addEvidence(rel.subjectTarget, rel.evidence, 'context');
         addEvidence(rel.relatedTarget, rel.evidence, 'context');
       }
     }
   }
-  for (const optional of [...optionalTargetIds]) {
-    if (requiredTargetIds.has(optional)) optionalTargetIds.delete(optional);
+  for (const contextId of [...contextTargetIds]) {
+    if (requiredTargetIds.has(contextId) || permittedTargetIds.has(contextId)) contextTargetIds.delete(contextId);
   }
 
-  // --- required-first bounded allocation of the `targets` collection --
+  // --- required-first bounded allocation of the `targets` collection (required > permitted > context) --
   const orderedRequired = [...requiredTargetIds].sort();
-  const orderedOptional = [...optionalTargetIds].sort();
+  const orderedPermitted = [...permittedTargetIds].sort();
+  const orderedContext = [...contextTargetIds].sort();
   const allowedRequired = orderedRequired.slice(0, MAX_RUNTIME_TARGETS);
   const droppedRequired = orderedRequired.slice(MAX_RUNTIME_TARGETS);
-  const remainingSlots = Math.max(0, MAX_RUNTIME_TARGETS - allowedRequired.length);
-  const allowedOptional = orderedOptional.slice(0, remainingSlots);
-  const droppedOptional = orderedOptional.slice(remainingSlots);
+  let remainingSlots = Math.max(0, MAX_RUNTIME_TARGETS - allowedRequired.length);
+  const allowedPermitted = orderedPermitted.slice(0, remainingSlots);
+  const droppedPermitted = orderedPermitted.slice(remainingSlots);
+  remainingSlots = Math.max(0, remainingSlots - allowedPermitted.length);
+  const allowedContext = orderedContext.slice(0, remainingSlots);
+  const droppedContext = orderedContext.slice(remainingSlots);
 
   const omissions: OmissionRecord[] = [];
   const truncations: TruncationRecord[] = [];
@@ -268,8 +368,15 @@ export function projectBoundedAgentContext(input: ProjectBoundedAgentContextInpu
   for (const targetId of droppedRequired) {
     omissions.push({ subject: `target:${targetId}`, reason: 'required-evidence-lost-by-bound', required: true });
   }
-  const totalCandidateTargets = orderedRequired.length + orderedOptional.length;
-  if (droppedRequired.length > 0 || droppedOptional.length > 0) {
+  for (const targetId of droppedPermitted) {
+    omissions.push({ subject: `target:${targetId}`, reason: 'omitted-by-bound', required: false });
+  }
+  for (const targetId of droppedContext) {
+    omissions.push({ subject: `target:${targetId}`, reason: 'omitted-by-bound', required: false });
+  }
+  const totalCandidateTargets = orderedRequired.length + orderedPermitted.length + orderedContext.length;
+  const anyTargetsDropped = droppedRequired.length > 0 || droppedPermitted.length > 0 || droppedContext.length > 0;
+  if (anyTargetsDropped) {
     truncations.push({
       subject: 'targets',
       limit: MAX_RUNTIME_TARGETS,
@@ -278,8 +385,8 @@ export function projectBoundedAgentContext(input: ProjectBoundedAgentContextInpu
     });
   }
 
-  // --- target-scoped diagnostics -> omissions (frozen contract has no diagnostics field) --
-  const includedTargetIds = new Set<string>([...allowedRequired, ...allowedOptional]);
+  // --- target-scoped diagnostics -> omissions (frozen contract has no diagnostics field; only the closed diagnostic code is ever propagated - IMP-B-005) --
+  const includedTargetIds = new Set<string>([...allowedRequired, ...allowedPermitted, ...allowedContext]);
   for (const diagnostic of observation.diagnostics) {
     if (!diagnostic.targetName || !includedTargetIds.has(diagnostic.targetName)) continue;
     if (diagnostic.code === 'target-missing' || diagnostic.code === 'target-hidden' || diagnostic.code === 'target-ambiguous') {
@@ -287,14 +394,14 @@ export function projectBoundedAgentContext(input: ProjectBoundedAgentContextInpu
         subject: `target:${diagnostic.targetName}`,
         reason: 'unsupported-or-unavailable',
         required: requiredTargetIds.has(diagnostic.targetName),
-        detail: diagnostic.message,
+        detail: `diagnostic code: ${diagnostic.code}`,
       });
     } else if (diagnostic.code === 'browser-evidence-unavailable' || diagnostic.code === 'partial-evidence') {
       omissions.push({
         subject: `target:${diagnostic.targetName}`,
         reason: 'not-observed',
         required: requiredTargetIds.has(diagnostic.targetName),
-        detail: diagnostic.message,
+        detail: `diagnostic code: ${diagnostic.code}`,
       });
     }
   }
@@ -306,7 +413,15 @@ export function projectBoundedAgentContext(input: ProjectBoundedAgentContextInpu
     const collected = evidenceByTarget.get(targetId) ?? [];
     const seen = new Set<string>();
     const deduped: CollectedEvidence[] = [];
-    for (const entry of [...collected].sort((a, b) => evidenceTierRank[a.tier] - evidenceTierRank[b.tier])) {
+    // Rescue fix for IMP-B-003: equal-tier entries are ordered by the stable
+    // semantic key `ref.path`, never by caller-supplied array insertion
+    // order, so permuting a caller's clause/relationship arrays cannot change
+    // which evidence is retained or its output order.
+    for (const entry of [...collected].sort((a, b) => {
+      const tierDiff = evidenceTierRank[a.tier] - evidenceTierRank[b.tier];
+      if (tierDiff !== 0) return tierDiff;
+      return a.ref.path < b.ref.path ? -1 : a.ref.path > b.ref.path ? 1 : 0;
+    })) {
       if (seen.has(entry.ref.path)) continue;
       seen.add(entry.ref.path);
       deduped.push(entry);
@@ -329,7 +444,7 @@ export function projectBoundedAgentContext(input: ProjectBoundedAgentContextInpu
 
   const screenshotRef = evidenceValue(observation.screenshot);
 
-  const targets: BoundedRuntimeTargetProjection[] = [...allowedRequired, ...allowedOptional].sort().map((targetId) => {
+  const targets: BoundedRuntimeTargetProjection[] = [...allowedRequired, ...allowedPermitted, ...allowedContext].sort().map((targetId) => {
     const record = observation.targetEvidence[targetId];
     const geometry = record ? evidenceValue(record.geometry) : undefined;
     const visibility = record ? evidenceValue(record.visibility) : undefined;
@@ -357,7 +472,19 @@ export function projectBoundedAgentContext(input: ProjectBoundedAgentContextInpu
     return projection;
   });
 
-  // --- adequacy --
+  // --- aggregate cap enforcement (IMP-SHARED-001): every output collection stays within its frozen cap, with a truthful summary record for whatever had to be dropped --
+  const boundedOmissions = capOmissions(omissions, MAX_OMISSIONS);
+  const boundedTruncations = capTruncations(truncations, MAX_TRUNCATIONS);
+
+  // --- adequacy (IMP-SHARED-003 / IMP-B-002): derived directly from the full,
+  // pre-cap omission/truncation `required` flags so capping the reported
+  // collections above can never hide required loss from adequacy, and any
+  // known optional-only loss is reported as non-'adequate' truthfully.
+  // CONTRACT-002 (partial vs. inadequate threshold) is deliberately left
+  // unresolved beyond this: required loss must never report 'adequate';
+  // optional-only loss is conservatively reported 'partial'. --
+  const anyRequiredLoss = omissions.some((o) => o.required) || truncations.some((t) => t.required);
+  const anyOptionalLoss = omissions.some((o) => !o.required) || truncations.some((t) => !t.required);
   const requiredUnavailableCount = allowedRequired.filter((targetId) => {
     const record = observation.targetEvidence[targetId];
     return !record || evidenceValue(record.geometry) === undefined;
@@ -370,27 +497,37 @@ export function projectBoundedAgentContext(input: ProjectBoundedAgentContextInpu
   if (requiredUnavailableCount > 0) {
     adequacy.reasons.push({ code: 'required-runtime-target-unavailable', detail: `${requiredUnavailableCount} required target(s) have no available runtime geometry` });
   }
-  if (adequacy.reasons.length === 0) {
-    adequacy.state = 'adequate';
-  } else if (orderedRequired.length > 0 && requiredUnavailableCount + droppedRequired.length >= orderedRequired.length) {
-    adequacy.state = 'inadequate';
-  } else {
-    adequacy.state = 'partial';
+  if (anyRequiredLoss && adequacy.reasons.length === 0) {
+    adequacy.reasons.push({ code: 'required-source-evidence-truncated', detail: 'required source evidence was lost to a per-target or aggregate bound' });
   }
+  if (adequacy.reasons.length > 0) {
+    adequacy.state = orderedRequired.length > 0 && requiredUnavailableCount + droppedRequired.length >= orderedRequired.length ? 'inadequate' : 'partial';
+  } else if (anyOptionalLoss) {
+    adequacy.state = 'partial';
+    adequacy.reasons.push({ code: 'required-source-evidence-truncated', detail: 'optional evidence was truncated by a bound; no required evidence was lost' });
+  }
+
+  // --- identity (IMP-B-004): computed here from semantic input via the
+  // canonical identity helpers - never accepted as caller-supplied input, so
+  // caller/path noise cannot influence logical identity, and fresh instance
+  // identity remains a separate concept from the deterministic logical one. --
+  const allCandidateTargetIds = [...new Set([...orderedRequired, ...orderedPermitted, ...orderedContext])].sort();
+  const contextRequestId = buildBoundedAgentContextRequestIdentity(sources, allCandidateTargetIds, input.projectionProfile);
+  const contextId = buildBoundedAgentContextInstanceIdentity(contextRequestId);
 
   const artifact: BoundedAgentContextArtifact = {
     artifactKind: BOUNDED_AGENT_CONTEXT_ARTIFACT_KIND,
     schemaVersion: BOUNDED_AGENT_CONTEXT_SCHEMA_VERSION,
-    contextId: input.contextId,
-    contextRequestId: input.contextRequestId,
+    contextId,
+    contextRequestId,
     producer: { name: PRODUCER_NAME, version: input.producerVersion },
     provenance: { generatedAt: input.generatedAt },
     projectionProfile: input.projectionProfile,
     sources,
     targets,
     adequacy,
-    omissions,
-    truncations,
+    omissions: boundedOmissions,
+    truncations: boundedTruncations,
   };
 
   return { ok: true, artifact };
