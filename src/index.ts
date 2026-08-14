@@ -267,6 +267,47 @@ export { approveAndPersistBaseline, persistPerChangeContract } from './applicati
 export type { CompareObservationsResult } from './domain/comparisonEngine.js';
 export { compareObservations, evaluateComparability, evaluateExpectedDependencies, compareTargetConfiguration } from './domain/comparisonEngine.js';
 
+export type {
+  ProjectionProfile,
+  AdequacyState,
+  AdequacyReasonCode,
+  AdequacyReason,
+  Adequacy,
+  OmissionReason,
+  OmissionRecord,
+  TruncationRecord,
+  BoundedAgentContextSourceReferences,
+  BoundedRuntimeTargetProjection,
+  CorrelationStatus,
+  StaticCandidateKind,
+  StaticEvidenceProducerIdentity,
+  StaticCandidateReference,
+  RuntimeStaticCorrelationRecord,
+  BoundedAgentContextArtifact,
+  BoundedAgentContextValidationResult,
+} from './domain/boundedAgentContext.js';
+export {
+  BOUNDED_AGENT_CONTEXT_ARTIFACT_KIND,
+  BOUNDED_AGENT_CONTEXT_SCHEMA_VERSION,
+  PROJECTION_PROFILES,
+  MAX_RUNTIME_TARGETS,
+  MAX_RELATIONSHIP_EVIDENCE_PER_TARGET,
+  MAX_OMISSIONS,
+  MAX_TRUNCATIONS,
+  MAX_CORRELATION_RECORDS,
+  MAX_STATIC_CANDIDATES_PER_TARGET,
+  MAX_TEXT_SUMMARY_CHARS,
+  MAX_EVIDENCE_REFS_PER_CORRELATION_FIELD,
+  ADEQUACY_STATES,
+  ADEQUACY_REASON_CODES,
+  OMISSION_REASONS,
+  CORRELATION_STATUSES,
+  STATIC_CANDIDATE_KINDS,
+  isValidBoundedAgentContextArtifact,
+} from './domain/boundedAgentContext.js';
+
+export { buildBoundedAgentContextRequestIdentity, buildBoundedAgentContextInstanceIdentity } from './domain/boundedAgentContextIdentity.js';
+
 export type { PersistedComparisonResult, WriteComparisonArtifactOptions } from './artifacts/comparisonArtifactWriter.js';
 export { COMPARISON_MANIFEST_FILENAME, writeComparisonArtifact } from './artifacts/comparisonArtifactWriter.js';
 
