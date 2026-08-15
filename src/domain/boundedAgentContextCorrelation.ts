@@ -175,6 +175,45 @@ function canonicalEvidenceRefs(refs: readonly EvidenceReference[]): EvidenceRefe
   return [...byPath.values()].sort(byPathAscending);
 }
 
+/**
+ * Rescue fix for C-B3-001 (B3-P004): merges two or more supplied candidates
+ * that share the same authoritative `candidateId` into a single surviving
+ * candidate, unioning their `evidenceRefs` (deduped/ordered later by the
+ * existing `canonicalEvidenceRefs` pass in `deriveOneTarget`). Mirrors the
+ * repository's established nested-collection duplicate-identity precedent -
+ * `boundedEvidenceForTarget` in `boundedAgentContextProjection.ts` (itself a
+ * prior "IMP-B-003" rescue for the same class of permutation-dependent
+ * duplicate-identity problem) - rather than the top-level container-key
+ * reject-on-duplicate precedent used for `runtimeTargetId` in
+ * `validateDeriveInput`: a `candidateId` duplicate is a nested per-target
+ * collection entry, not a top-level record-identity key, so silent
+ * structural rejection is not the matching precedent here.
+ *
+ * `candidateId`/`kind` are never rewritten - the frozen contract's exact
+ * candidate identity is preserved verbatim from whichever supplied entry
+ * matched (identical for every duplicate, since `isValidStaticCandidateEvidenceInput`
+ * already forces `kind` to agree with the `candidateId` prefix). Because
+ * `EvidenceReference` carries only a `path` field, the merge is
+ * content-safe and independent of which duplicate the Map last saw - final
+ * output is fully determined by set union, never by input/duplicate order.
+ */
+function canonicalCandidates(candidates: readonly StaticCandidateEvidenceInput[]): StaticCandidateEvidenceInput[] {
+  const byId = new Map<string, StaticCandidateEvidenceInput>();
+  for (const candidate of candidates) {
+    const existing = byId.get(candidate.candidateId);
+    if (existing === undefined) {
+      byId.set(candidate.candidateId, candidate);
+    } else {
+      byId.set(candidate.candidateId, {
+        candidateId: candidate.candidateId,
+        kind: candidate.kind,
+        evidenceRefs: [...existing.evidenceRefs, ...candidate.evidenceRefs],
+      });
+    }
+  }
+  return [...byId.values()];
+}
+
 /** Aggregate-cap enforcement for the merged `omissions` collection, same policy as `boundedAgentContextProjection.ts#capOmissions`: required-loss records are preserved preferentially and a single truthful summary record replaces whatever had to be dropped. */
 function capOmissions(records: readonly OmissionRecord[], max: number): OmissionRecord[] {
   if (records.length <= max) return [...records];
@@ -223,9 +262,14 @@ function deriveOneTarget(
   omissions: OmissionRecord[],
   truncations: TruncationRecord[],
 ): RuntimeStaticCorrelationRecord {
+  // Rescue fix for C-B3-001: distinct-candidate identity, not raw entry
+  // count, drives ambiguity - merge duplicate candidateIds before ordering
+  // so a duplicate-inflated entry count can never survive into `status`.
+  const distinctCandidateInputs = canonicalCandidates(target.candidates);
+
   // Canonical deterministic candidate ordering: sort by candidateId, never
   // by input/retrieval order, so ambiguity never picks a "first" winner.
-  const orderedCandidates = [...target.candidates].sort((a, b) => (a.candidateId < b.candidateId ? -1 : a.candidateId > b.candidateId ? 1 : 0));
+  const orderedCandidates = [...distinctCandidateInputs].sort((a, b) => (a.candidateId < b.candidateId ? -1 : a.candidateId > b.candidateId ? 1 : 0));
 
   let boundedCandidateInputs = orderedCandidates;
   if (orderedCandidates.length > MAX_STATIC_CANDIDATES_PER_TARGET) {

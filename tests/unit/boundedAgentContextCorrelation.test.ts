@@ -158,6 +158,105 @@ describe('deriveRuntimeStaticCorrelations - candidate cap', () => {
   });
 });
 
+describe('deriveRuntimeStaticCorrelations - duplicate candidate identity (C-B3-001 rescue)', () => {
+  it('an identical candidate ID supplied twice does not produce false ambiguity - stays correlated (TST-C033)', () => {
+    const result = deriveRuntimeStaticCorrelations(
+      deriveInput({ targets: [targetInput('t1', { candidates: [candidate('src/a.ts'), candidate('src/a.ts')] })] }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.records[0]?.status).toBe('correlated');
+    expect(result.records[0]?.candidates).toHaveLength(1);
+    expect(result.records[0]?.candidates[0]?.candidateId).toBe('file:src/a.ts');
+  });
+
+  it('duplicate ID with same candidate kind and same evidence deterministically dedupes to one candidate (TST-C034)', () => {
+    const refs = [{ path: 'e1' }, { path: 'e2' }];
+    const result = deriveRuntimeStaticCorrelations(
+      deriveInput({
+        targets: [targetInput('t1', { candidates: [candidate('src/a.ts', { evidenceRefs: refs }), candidate('src/a.ts', { evidenceRefs: refs })] })],
+      }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.records[0]?.candidates).toHaveLength(1);
+    expect(result.records[0]?.candidates[0]?.evidenceRefs).toEqual([{ path: 'e1' }, { path: 'e2' }]);
+  });
+
+  it('duplicate candidate arrays permuted produce an identical logical result (TST-C036)', () => {
+    const a = [candidate('src/a.ts'), candidate('src/a.ts'), candidate('src/b.ts')];
+    const b = [candidate('src/b.ts'), candidate('src/a.ts'), candidate('src/a.ts')];
+    const r1 = deriveRuntimeStaticCorrelations(deriveInput({ targets: [targetInput('t1', { candidates: a })] }));
+    const r2 = deriveRuntimeStaticCorrelations(deriveInput({ targets: [targetInput('t1', { candidates: b })] }));
+    expect(r1.ok && r2.ok).toBe(true);
+    if (!r1.ok || !r2.ok) return;
+    expect(r1.records[0]?.candidates).toEqual(r2.records[0]?.candidates);
+    expect(r1.records[0]?.status).toBe('ambiguous');
+    expect(r1.records[0]?.candidates).toHaveLength(2);
+  });
+
+  it('duplicate ID carrying evidence refs in different order produces a deterministic bounded merge (TST-C037)', () => {
+    const result1 = deriveRuntimeStaticCorrelations(
+      deriveInput({
+        targets: [
+          targetInput('t1', {
+            candidates: [candidate('src/a.ts', { evidenceRefs: [{ path: 'x' }, { path: 'y' }] }), candidate('src/a.ts', { evidenceRefs: [{ path: 'z' }] })],
+          }),
+        ],
+      }),
+    );
+    const result2 = deriveRuntimeStaticCorrelations(
+      deriveInput({
+        targets: [
+          targetInput('t1', {
+            candidates: [candidate('src/a.ts', { evidenceRefs: [{ path: 'z' }] }), candidate('src/a.ts', { evidenceRefs: [{ path: 'y' }, { path: 'x' }] })],
+          }),
+        ],
+      }),
+    );
+    expect(result1.ok && result2.ok).toBe(true);
+    if (!result1.ok || !result2.ok) return;
+    expect(result1.records[0]?.candidates).toEqual(result2.records[0]?.candidates);
+    expect(result1.records[0]?.candidates[0]?.evidenceRefs).toEqual([{ path: 'x' }, { path: 'y' }, { path: 'z' }]);
+  });
+
+  it('duplicate plus one genuinely distinct candidate is ambiguous with exactly the distinct set, not raw entry count (TST-C035)', () => {
+    const result = deriveRuntimeStaticCorrelations(
+      deriveInput({ targets: [targetInput('t1', { candidates: [candidate('src/a.ts'), candidate('src/a.ts'), candidate('src/b.ts')] })] }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.records[0]?.status).toBe('ambiguous');
+    expect(result.records[0]?.candidates).toHaveLength(2);
+    expect(result.records[0]?.candidates.map((c) => c.candidateId).sort()).toEqual(['file:src/a.ts', 'file:src/b.ts']);
+  });
+
+  it('deduplication never mutates the caller-supplied candidate/evidenceRefs arrays (TST-C039)', () => {
+    const refs = [{ path: 'e1' }];
+    const candidates = [candidate('src/a.ts', { evidenceRefs: refs }), candidate('src/a.ts', { evidenceRefs: [{ path: 'e2' }] })];
+    const snapshot = JSON.parse(JSON.stringify(candidates));
+    const result = deriveRuntimeStaticCorrelations(deriveInput({ targets: [targetInput('t1', { candidates })] }));
+    expect(result.ok).toBe(true);
+    expect(candidates).toEqual(snapshot);
+    expect(refs).toEqual([{ path: 'e1' }]);
+  });
+
+  it('the candidate cap counts distinct candidates, not raw duplicate-inflated entries (TST-C038)', () => {
+    // 6 distinct candidates (over MAX_STATIC_CANDIDATES_PER_TARGET=5), each supplied twice (12 raw entries).
+    const distinct = Array.from({ length: MAX_STATIC_CANDIDATES_PER_TARGET + 1 }, (_, i) => candidate(`f${i}.ts`));
+    const raw = [...distinct, ...distinct];
+    const result = deriveRuntimeStaticCorrelations(deriveInput({ targets: [targetInput('t1', { required: true, candidates: raw })] }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.records[0]?.candidates).toHaveLength(MAX_STATIC_CANDIDATES_PER_TARGET);
+    expect(result.records[0]?.status).toBe('ambiguous');
+    const truncation = result.truncations.find((t) => t.subject === 'correlation:t1.candidates');
+    expect(truncation).toBeDefined();
+    // actualCount must reflect the distinct-candidate count (6), never the raw duplicate-inflated count (12).
+    expect(truncation?.actualCount).toBe(MAX_STATIC_CANDIDATES_PER_TARGET + 1);
+  });
+});
+
 describe('deriveRuntimeStaticCorrelations - determinism', () => {
   it('produces identical logical candidate content regardless of input candidate order (TST-C010)', () => {
     const a = [candidate('a.ts'), candidate('b.ts'), candidate('c.ts')];

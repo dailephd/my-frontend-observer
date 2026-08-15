@@ -1,0 +1,89 @@
+{
+  "arm": "B",
+  "treatment": "stage-context rescue",
+  "executionMode": "DIRECT_IMPLEMENTATION",
+  "frozenMeasurementSha": "a9c7a96fb03135176fb8a93356c2c5d67632ef09",
+  "frozenMeasurementParent": "75576641015b773a69cc66cdb84ebc0f50fe1bd6",
+  "rescueBranch": "experiment/v0.6-batch3-arm-b-rescue",
+  "rescueWorktree": "Z:\\Users\\newuser\\Projects\\my-frontend-observer-batch3-arm-b-rescue",
+  "rescueFinalSha": "UNKNOWN_PENDING_COMMIT",
+  "rescueFinalParent": "a9c7a96fb03135176fb8a93356c2c5d67632ef09",
+  "startTimestamp": "2026-08-15T14:44:17Z",
+  "endTimestamp": "UNKNOWN_PENDING_COMMIT",
+  "elapsedDuration": "UNKNOWN_PENDING_COMMIT",
+  "myDevKitVersion": "1.12.2",
+  "indexPath": ".my-dev-kit-20260815T144619Z",
+  "indexLifecycleDecision": {
+    "candidateInspected": "Z:/Users/newuser/Projects/my-frontend-observer/.my-dev-kit (createdAt 2026-08-14T09:02:59.890Z, projectRoot=main repo working tree)",
+    "decision": "rebuilt",
+    "reason": "Candidate index predates the Batch 3 measurement commit's addition of src/domain/boundedAgentContextCorrelation.ts and its test file - symbol search for 'boundedAgentContextCorrelation' returned zero hits against it, demonstrating it is stale for this defect's source state. Rebuilt a fresh timestamped index inside the rescue worktree (fileCount 42 vs stale index's 40) which does resolve the correlation module's symbols.",
+    "rejectedIndexPath": "Z:/Users/newuser/Projects/my-frontend-observer/.my-dev-kit",
+    "newIndexPath": ".my-dev-kit-20260815T144619Z"
+  },
+  "retrievalCounts": {
+    "search": 2,
+    "lookup": 2,
+    "slice": 1,
+    "source": 3,
+    "continuation": 1,
+    "capBoundedRangeReads": 2
+  },
+  "fullFileFallbackCount": 2,
+  "fullFileFallbacks": [
+    {
+      "path": "src/domain/boundedAgentContextCorrelation.ts",
+      "lineCount": 384,
+      "edited": true,
+      "myDevKitCommandsAttemptedFirst": ["source --node deriveOneTarget", "source --continue-from", "search --query deriveRuntimeStaticCorrelations", "slice --node deriveOneTarget"],
+      "queriesNodeIds": ["symbol:src/domain/boundedAgentContextCorrelation.ts#deriveOneTarget", "symbol:src/domain/boundedAgentContextCorrelation.ts#DeriveRuntimeStaticCorrelationsInput"],
+      "boundedSourceBlocksReturned": "lines 219-238 (node preview) + 238-277 (continuation)",
+      "reason": "Initial orientation read was performed before the index existed (index had to be rebuilt first to be usable at all for this file). Read via the Read tool covered the whole module to establish the complete established-owner surface (public input contract, validation boundary, per-target derivation, attach/export boundary) before selecting the fix location, since a partial view risked missing an existing dedup helper elsewhere in the same file that the fix should reuse rather than duplicate.",
+      "whatFullReadEstablished": "Confirmed canonicalEvidenceRefs (existing per-candidate evidence dedup precedent) lives in the same file the fix belongs in, confirmed validateDeriveInput's runtimeTargetId reject-on-duplicate precedent, confirmed the exact defect line (candidate sort with no dedup feeding candidates.length), confirmed attachRuntimeStaticCorrelations' aggregate-cap/adequacy logic was untouched by the fix scope.",
+      "changedImplementationDecision": false
+    },
+    {
+      "path": "tests/unit/boundedAgentContextCorrelation.test.ts",
+      "lineCount": 498,
+      "edited": true,
+      "myDevKitCommandsAttemptedFirst": ["search --query deriveRuntimeStaticCorrelations (found test file candidate)"],
+      "queriesNodeIds": [],
+      "boundedSourceBlocksReturned": "none - test file has no useful node-level granularity for fixture-builder/describe-block conventions",
+      "reason": "Needed the exact fixture-builder helper signatures (candidate(), targetInput(), deriveInput()) and existing describe-block/test-numbering convention (TST-Cxxx) to add consistent, non-duplicative focused tests; bounded per-symbol retrieval does not expose test-file-wide naming/numbering conventions.",
+      "whatFullReadEstablished": "Exact next available TST-C numbers (033+), exact fixture-builder call signatures, confirmed no existing test already covered duplicate-candidate-identity semantics.",
+      "changedImplementationDecision": false
+    }
+  ],
+  "filesChanged": 2,
+  "additions": 144,
+  "deletions": 1,
+  "failedFocusedTestCycles": 0,
+  "correctionIterations": 0,
+  "validationResults": {
+    "focusedTests": "PASS - 45/45 (tests/unit/boundedAgentContextCorrelation.test.ts)",
+    "typecheck": "PASS",
+    "lint": "PASS",
+    "test": "PASS - 627/627 across 32 files",
+    "build": "PASS",
+    "checkDocs": "PASS - Documentation check passed (17 required files)",
+    "gitDiffCheck": "PASS - no whitespace errors",
+    "browserValidation": "JUSTIFIED_SKIP - pure domain/export/test behavior, no browser surface touched"
+  },
+  "orchestratorUsed": false,
+  "labUsed": false,
+  "armAInspected": false,
+  "preEditDispositionPath": "reports/v0.6-comparison/batch-03/rescues/arm-b/pre-edit-invariant-disposition.md",
+  "preEditDispositionSha256": "dde5dd9cb98f512bcaca4a719ef7ab7d769c17f3a759e1c59db649e70289f7f",
+  "finalAdversarialReviewPath": "reports/v0.6-comparison/batch-03/rescues/arm-b/final-adversarial-invariant-review.md",
+  "finalAdversarialReviewSha256": "f861e8637e1d857a8f1fcf6d4f71e62bc1d868114d2359b86987245279a1693",
+  "defectAddressed": "C-B3-001 / ARM_B_PRODUCT_DEFECT (B3-P004): duplicate static candidate identity (same candidateId supplied twice) survived as two separate candidates, allowing status='ambiguous' for what was actually one distinct candidate identity.",
+  "focusedAcceptanceResults": {
+    "TST-C033_duplicateIdNoFalseAmbiguity": "PASS",
+    "TST-C034_duplicateIdSameEvidenceDedupe": "PASS",
+    "TST-C035_duplicatePlusDistinctAmbiguous": "PASS",
+    "TST-C036_permutedDuplicateArrayDeterministic": "PASS",
+    "TST-C037_duplicateEvidenceOrderDeterministic": "PASS",
+    "TST-C038_candidateCapCountsDistinct": "PASS",
+    "TST-C039_duplicateInputImmutability": "PASS",
+    "preExistingSuiteRegressionCheck": "PASS - all 38 pre-existing tests in this file unmodified and passing"
+  }
+}
