@@ -104,7 +104,8 @@ export interface Adequacy {
   reasons: AdequacyReason[];
 }
 
-function isValidAdequacy(value: unknown): value is Adequacy {
+/** v0.6 Batch 3: exported for reuse by `boundedAgentContextCorrelation.ts` (see note on `isValidStaticEvidenceProducerIdentity`). No logic change. */
+export function isValidAdequacy(value: unknown): value is Adequacy {
   if (!isPlainObject(value)) return false;
   if (typeof value.state !== 'string' || !(ADEQUACY_STATES as readonly string[]).includes(value.state)) return false;
   if (!Array.isArray(value.reasons) || !value.reasons.every(isValidAdequacyReason)) return false;
@@ -133,7 +134,8 @@ export interface OmissionRecord {
   detail?: string;
 }
 
-function isValidOmissionRecord(value: unknown): value is OmissionRecord {
+/** v0.6 Batch 3: exported for reuse by `boundedAgentContextCorrelation.ts` (see note on `isValidStaticEvidenceProducerIdentity`). No logic change. */
+export function isValidOmissionRecord(value: unknown): value is OmissionRecord {
   if (!isPlainObject(value)) return false;
   if (!isNonEmptyString(value.subject)) return false;
   if (typeof value.reason !== 'string' || !(OMISSION_REASONS as readonly string[]).includes(value.reason)) return false;
@@ -150,7 +152,8 @@ export interface TruncationRecord {
   required: boolean;
 }
 
-function isValidTruncationRecord(value: unknown): value is TruncationRecord {
+/** v0.6 Batch 3: exported for reuse by `boundedAgentContextCorrelation.ts` (see note on `isValidStaticEvidenceProducerIdentity`). No logic change. */
+export function isValidTruncationRecord(value: unknown): value is TruncationRecord {
   if (!isPlainObject(value)) return false;
   if (!isNonEmptyString(value.subject)) return false;
   if (typeof value.limit !== 'number' || !Number.isInteger(value.limit) || value.limit < 0) return false;
@@ -254,7 +257,13 @@ export interface StaticEvidenceProducerIdentity {
   indexId: string;
 }
 
-function isValidStaticEvidenceProducerIdentity(value: unknown): value is StaticEvidenceProducerIdentity {
+/**
+ * v0.6 Batch 3: exported (was previously module-private) so
+ * `boundedAgentContextCorrelation.ts` can reuse this structural validator
+ * instead of duplicating it. No change to its logic, signature, or the
+ * frozen `StaticEvidenceProducerIdentity` contract itself.
+ */
+export function isValidStaticEvidenceProducerIdentity(value: unknown): value is StaticEvidenceProducerIdentity {
   if (!isPlainObject(value)) return false;
   return isNonEmptyString(value.name) && isNonEmptyString(value.version) && isNonEmptyString(value.indexId);
 }
@@ -266,7 +275,8 @@ export interface StaticCandidateReference {
   evidenceRefs: EvidenceReference[];
 }
 
-function isValidStaticCandidateReference(value: unknown): value is StaticCandidateReference {
+/** v0.6 Batch 3: exported for reuse by `boundedAgentContextCorrelation.ts` (see note on `isValidStaticEvidenceProducerIdentity`). No logic change. */
+export function isValidStaticCandidateReference(value: unknown): value is StaticCandidateReference {
   if (!isPlainObject(value)) return false;
   if (!isNonEmptyString(value.candidateId)) return false;
   if (typeof value.kind !== 'string' || !(STATIC_CANDIDATE_KINDS as readonly string[]).includes(value.kind)) return false;
@@ -295,7 +305,8 @@ export interface RuntimeStaticCorrelationRecord {
   provenance: { correlatedAt: string };
 }
 
-function isValidRuntimeStaticCorrelationRecord(value: unknown): value is RuntimeStaticCorrelationRecord {
+/** v0.6 Batch 3: exported for reuse by `boundedAgentContextCorrelation.ts` (see note on `isValidStaticEvidenceProducerIdentity`). No logic change. */
+export function isValidRuntimeStaticCorrelationRecord(value: unknown): value is RuntimeStaticCorrelationRecord {
   if (!isPlainObject(value)) return false;
   if (!isNonEmptyString(value.runtimeTargetId)) return false;
   if (!isEvidenceReferenceArray(value.runtimeEvidenceRefs)) return false;

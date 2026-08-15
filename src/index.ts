@@ -311,6 +311,16 @@ export { buildBoundedAgentContextRequestIdentity, buildBoundedAgentContextInstan
 export type { ProjectBoundedAgentContextInput, ProjectBoundedAgentContextResult } from './domain/boundedAgentContextProjection.js';
 export { projectBoundedAgentContext } from './domain/boundedAgentContextProjection.js';
 
+export type {
+  StaticCandidateEvidenceInput,
+  CorrelationTargetInput,
+  DeriveRuntimeStaticCorrelationsInput,
+  DeriveRuntimeStaticCorrelationsOutput,
+  DeriveRuntimeStaticCorrelationsResult,
+  AttachRuntimeStaticCorrelationsResult,
+} from './domain/boundedAgentContextCorrelation.js';
+export { deriveRuntimeStaticCorrelations, attachRuntimeStaticCorrelations } from './domain/boundedAgentContextCorrelation.js';
+
 export type { PersistedComparisonResult, WriteComparisonArtifactOptions } from './artifacts/comparisonArtifactWriter.js';
 export { COMPARISON_MANIFEST_FILENAME, writeComparisonArtifact } from './artifacts/comparisonArtifactWriter.js';
 
