@@ -143,3 +143,18 @@ and without it exiting `0`), plus source-artifact immutability, no copied
 screenshot, no path leakage, and no repository-root leakage - alongside
 every pre-existing v0.1-v0.4 packed observe/compare/scroll assertion, still
 passing unchanged on all three platforms.
+
+## v0.6 readiness note (implemented and canonically verified; release pending)
+
+`.github/workflows/pre-release-readiness.yml`'s existing candidate-job steps
+(`npm test`, `npm run test:browser`, `npm run test:security`, `npm run
+build`, `npm run check:docs`) already cover the v0.6 bounded-agent-context
+and correlation modules, since they are part of the same `src/`/`tests/unit/`
+tree exercised by `npm test`. However, `scripts/ci/runPackedObservationSmoke.mjs`
+(the matrix-smoke packed-candidate proof) does not yet exercise
+bounded-agent-context, because v0.6 adds no new CLI command and no disk
+artifact for the packed candidate to observe end-to-end - it is a
+programmatic export surface only (see `docs/CONTRACTS.md`). This is a
+genuine readiness gap for a future v0.6 release-preparation stage to address
+(e.g. an installed-package import smoke of the exported functions), not
+something corrected as part of this documentation reconciliation.

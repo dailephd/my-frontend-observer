@@ -165,6 +165,36 @@ exercises the installed candidate's `approve-baseline`/`save-change-contract`/
 `compare` evidence, proven on Windows, Linux, and macOS (see
 `docs/CI_CD.md`).
 
+## Current bounded agent context workflow (implemented and canonically verified; release pending)
+
+This is a programmatic (library-only) workflow, not a CLI command - it
+consumes already-persisted v0.1-v0.5 evidence in-process rather than reading
+artifact roots from disk:
+
+```text
+already-captured evidence (ObservationArtifact(s), ComparisonArtifact,
+  PersistentBaselineContract/PerChangeContract, evaluation results)
+→ projectBoundedAgentContext(...)
+  (src/domain/boundedAgentContextProjection.ts)
+→ BoundedRuntimeTargetProjection: bounded geometry/behavior/relationships/
+  differences/contract-scope evidence, adequacy, omission, truncation
+→ deriveRuntimeStaticCorrelations(...) / attachRuntimeStaticCorrelations(...)
+  (src/domain/boundedAgentContextCorrelation.ts), given caller-supplied
+  candidate static evidence
+→ RuntimeStaticCorrelation[] (correlated / ambiguous / unavailable -
+  competing candidates remain visible, never collapsed to one owner)
+→ consumed programmatically via the public export surface (src/index.ts) -
+  by an external orchestrator or coding-agent workflow outside this
+  repository, not by a new my-frontend-observer CLI command
+```
+
+This is exercised by unit tests covering the projection and correlation
+modules (happy path, boundedness at exact/one-over/large-overflow limits,
+immutability, malformed-input fail-closed behavior, adequacy/omission/
+truncation reporting, and correlation status invariants/determinism/
+deduplication). See `docs/CONTRACTS.md` "v0.6 bounded agent context and
+correlation contract" for the exact shape.
+
 ## Future workflows
 
 ```text
@@ -173,13 +203,16 @@ stable targets and bounded runtime behavior
 → safe-change contracts (contract model, evaluation, persistence, and CLI
   released as 0.5.0 - see above; baseline approval remains a single explicit
   command, not a policy engine)
-→ bounded agent context plus runtime/static ecosystem integration
+→ bounded agent context plus runtime/static correlation (implemented and
+  canonically verified, release pending - see above; orchestrator/lab-side
+  ecosystem integration is separate sibling-repository work, not part of
+  this repository)
 → text/config-driven coding-agent change review
 → interactive viewer
 → structured visual annotation
 → full visual human–LLM workflow
 ```
 
-Bounded agent context, ecosystem integration, and everything after remain
-unimplemented. The v0.7 coding-agent workflow must work without the v0.8
-viewer or v0.9 annotation system.
+The v0.7 text/config-driven coding-agent change review and everything after
+remain unimplemented in this repository. The v0.7 coding-agent workflow must
+work without the v0.8 viewer or v0.9 annotation system.

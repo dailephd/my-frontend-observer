@@ -281,6 +281,64 @@ inferred from a `compare` or `evaluate-contract` result. `--enforce` on
 already completed; it selects the process exit status for an already-final
 `FAIL` result and is never part of any identity or persisted field.
 
+## Current v0.6 architecture (implemented and canonically verified; release pending)
+
+v0.6 adds one new downstream, read-only layer that consumes existing v0.1-v0.5
+evidence (`ObservationArtifact`, `ComparisonArtifact`,
+`PersistentBaselineContract`/`PerChangeContract`, and evaluation results)
+plus caller-supplied bounded static candidate evidence - it adds no new
+browser lifecycle, target resolver, observation/comparison/contract engine,
+or persisted artifact family:
+
+```text
+ObservationArtifact(s) + ComparisonArtifact + contract/evaluation evidence
+              ↓
+src/domain/boundedAgentContextProjection.ts#projectBoundedAgentContext
+              ↓
+    BoundedRuntimeTargetProjection
+    (page/viewport identity, stable targets, geometry, runtime behavior,
+     relationships, before/after differences, contract results,
+     requested/expected-dependent/protected/preserved scope reused verbatim
+     from src/domain/frontendContracts.ts, diagnostics, artifact/screenshot
+     references, provenance, adequacy, omission, truncation)
+              ↓
+src/domain/boundedAgentContextCorrelation.ts
+    #deriveRuntimeStaticCorrelations / #attachRuntimeStaticCorrelations
+              ↓
+    RuntimeStaticCorrelation[] (correlated / ambiguous / unavailable,
+    competing candidates preserved verbatim - never collapsed to one owner)
+              ↓
+src/index.ts (public export/correlation boundary only)
+```
+
+`src/domain/boundedAgentContext.ts` freezes the bounded-projection and
+correlation type/constant vocabulary (`Adequacy`, `ADEQUACY_REASON_CODES`,
+`OmissionRecord`, `TruncationRecord`, `BOUNDED_AGENT_CONTEXT_ARTIFACT_KIND`,
+schema `1.0.0`). `src/domain/boundedAgentContextIdentity.ts` derives a
+deterministic logical identity distinct from a fresh per-execution instance
+identity, in the same canonicalize+hash style as
+`comparisonIdentity.ts`/`frontendContractIdentity.ts`.
+`boundedAgentContextProjection.ts` performs no browser I/O and re-derives
+nothing already owned upstream - it reads already-captured artifacts and
+reuses the existing v0.4 relationship/comparison evidence and v0.5
+change-scope clause types directly. `boundedAgentContextCorrelation.ts`
+accepts only plain, caller-supplied candidate static-evidence records; it has
+**no** dependency on `@dailephd/my-dev-kit`, since the audit that preceded
+implementation found no generic static-side retrieval capability actually
+missing (see `docs/ROADMAP.md` v0.6 "Dependency direction" - the "determine
+whether my-dev-kit requires a static-side change" step concluded no).
+Runtime target identity is carried through this module verbatim; the module
+never adds a `sourceOwner`/`causedBy`-shaped field, preserving the
+architectural rule that runtime identity never silently becomes source
+ownership.
+
+This layer is a programmatic export/correlation boundary only: `src/index.ts`
+re-exports its full type/function surface, but there is no new CLI command,
+no `src/artifacts/boundedAgentContext*` writer/reader, and no orchestrator or
+lab code in this repository - those remain separate sibling-repository
+responsibilities per the Milestone 6 ownership split in
+`docs/PROJECT_MILESTONES.md`.
+
 ## Retained v0.1 architecture constraints
 
 v0.1 planning preserved these approved boundaries without treating module
@@ -306,10 +364,11 @@ browser-level validation
 
 Use one browser engine implementation, keep browser logic out of presentation,
 avoid speculative plugin/multi-browser abstractions, and keep observed
-applications external. Before v0.6, versions must not add runtime coupling to
-sibling ecosystem projects. v0.6 may add only explicit bounded context,
-correlation/export, orchestrator-consumption, and lab-compatibility contracts
-while preserving independent ownership.
+applications external. Versions before v0.6 did not add runtime coupling to
+sibling ecosystem projects. v0.6 adds only explicit bounded context and
+correlation/export contracts within this repository, preserving independent
+ownership; orchestrator-consumption and lab-compatibility work are separate
+sibling-repository deliverables, not part of this repository's architecture.
 
 The text/config-driven coding-agent workflow must be operational before the
 viewer and annotation layers are added. Those interfaces consume the same

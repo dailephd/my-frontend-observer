@@ -420,6 +420,72 @@ manifest. This is real-browser evidence layered on top of the CLI-level
 proof in `tests/unit/cliFrontendContracts.test.ts` and the Chromium-free
 `scripts/dev/builtCliFrontendContractsSmoke.mjs` - it does not replace them.
 
+## v0.6 bounded agent context and correlation contract (implemented and canonically verified; release pending)
+
+**Current status: implemented on the canonical `canonicalization/v0.6`
+lineage; not yet published.** Bounded-agent-context is a new, independent
+artifact-kind family, schema `1.0.0` (`BOUNDED_AGENT_CONTEXT_ARTIFACT_KIND =
+"my-frontend-observer/bounded-agent-context"`) - never a bump to
+observation/comparison/frontend-contract/evaluation schemas, which remain
+`1.2.0`/`1.0.0`/`1.0.0`/`1.0.0` respectively. Unlike those families, there is
+**no disk artifact writer/reader** for bounded-agent-context: it is a pure
+programmatic contract and derivation layer, exported from `src/index.ts`
+only.
+
+**Bounded runtime projection**
+(`src/domain/boundedAgentContextProjection.ts#projectBoundedAgentContext`)
+produces a `BoundedRuntimeTargetProjection` from already-captured v0.1-v0.5
+evidence, containing: page/viewport identity; stable target identities;
+important geometry and runtime behavior; layout/behavior relationships;
+before/after differences; contract clause results; requested/expected-
+dependent/protected/preserved scope - reusing `src/domain/
+frontendContracts.ts`'s existing clause types verbatim, never a
+reimplementation; diagnostics; screenshot/artifact references; provenance;
+and explicit `OmissionRecord`/`TruncationRecord` metadata with bounded
+aggregate-cap summarization once a limit is reached.
+
+**Adequacy**: every projection carries an `Adequacy` value
+(`adequate`/`partial`/`inadequate`) plus a structured, closed
+`ADEQUACY_REASON_CODES` vocabulary - evidence existing is not itself
+adequacy; a required omission or an `incomparable`/unavailable upstream
+source is reflected honestly rather than silently reported as sufficient.
+
+**Runtime/static correlation**
+(`src/domain/boundedAgentContextCorrelation.ts#deriveRuntimeStaticCorrelations`/
+`attachRuntimeStaticCorrelations`) evaluates each stable runtime target
+against caller-supplied candidate static-evidence records into exactly one of
+three outcomes: `correlated`, `ambiguous` (multiple competing candidates,
+all preserved and visible - never silently resolved to one), or
+`unavailable` (no supported candidate). The module accepts only plain,
+already-retrieved candidate records and has no dependency on
+`@dailephd/my-dev-kit` - the audit preceding implementation found no generic
+static-side retrieval capability actually missing (see `docs/ROADMAP.md` v0.6
+"Dependency direction"). A runtime target identity is carried through
+verbatim; correlation never produces a `sourceOwner`/`causedBy`-shaped field,
+so a stable runtime identity is never silently reported as source ownership.
+
+**Identity**: `src/domain/boundedAgentContextIdentity.ts#buildBoundedAgentContextRequestIdentity`/
+`buildBoundedAgentContextInstanceIdentity` follow the same
+canonicalize+sha256(+opaque-nonce) pattern as `comparisonIdentity.ts`/
+`frontendContractIdentity.ts`: a deterministic logical identity distinct from
+a fresh per-execution instance identity.
+
+**Export/public boundary**: `src/index.ts` exports the complete
+bounded-agent-context/correlation type and function surface as a
+programmatic library contract. There is no CLI command (`observe`/`compare`/
+`approve-baseline`/`save-change-contract`/`evaluate-contract` remain the only
+public commands) and no orchestrator/lab code in this repository - bounded
+runtime-evidence consumption by `my-dev-kit-orchestrator` and exact
+readers/fixtures/evaluation in `my-dev-kit-lab` are separate sibling-
+repository deliverables outside `my-frontend-observer`'s public surface.
+
+**Compatibility evidence**: cross-repository neutral verification (observer
+`514bf3bb513764815a0a5b9e508d5836aa7d7fd8`, orchestrator `9473e4c`, lab
+`271e72c`) passed with 6/6 requirement coverage and no known product
+blockers; on the canonical worktree, `npm run typecheck`, `npm run lint`,
+`npm test` (627 tests), `npm run test:browser` (120 tests), `npm run
+test:security`, `npm run build`, and `npm run check:docs` all pass.
+
 ## Approved v0.1 design inputs
 
 The historical greenfield scaffold plan recorded these v0.1 design decisions:
@@ -441,8 +507,9 @@ is embedded directly inside `manifest.json`.
 Comparison and relationship contracts belong to v0.4, and canonical
 change-scope contracts belong to v0.5 - see "v0.5 frontend contract and
 evaluation" above for the full shipped contract model, identity, evaluation
-engine, persistence, baseline approval, and CLI exposure.
-Bounded agent-context plus ecosystem integration contracts move to v0.6,
-followed by the text/config-driven
-coding-agent review contract in v0.7. Viewer and annotation contracts follow in
+engine, persistence, baseline approval, and CLI exposure. Bounded
+agent-context and runtime/static correlation contracts are v0.6 - see "v0.6
+bounded agent context and correlation contract" above for the full
+implemented (release-pending) model. The text/config-driven coding-agent
+review contract is v0.7, next. Viewer and annotation contracts follow in
 v0.8 and v0.9 and converge with the existing workflow in v0.10.

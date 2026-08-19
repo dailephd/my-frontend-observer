@@ -49,6 +49,23 @@ already-persisted local observation/comparison/contract artifacts and runs
 the pure `evaluateFrontendContract` function. None of the three navigates,
 re-observes a target, or contacts a network resource.
 
+## Bounded agent context and correlation (v0.6, implemented and canonically verified; release pending)
+
+`src/domain/boundedAgentContextProjection.ts` and
+`src/domain/boundedAgentContextCorrelation.ts` introduce no new browser or
+network surface: neither imports anything from `src/browser/`, neither
+launches Chromium or navigates, and neither performs filesystem or network
+I/O of its own. Both are pure, in-memory functions over already-captured
+observation/comparison/contract evidence plus caller-supplied candidate
+static-evidence records - the correlation module never reads a file path or
+retrieves anything itself; the caller (outside this repository) is
+responsible for however it obtained the candidate evidence it passes in.
+Neither module embeds source code snippets, redacts anything, or invokes
+another ecosystem tool (`@dailephd/my-dev-kit` is not a dependency of either
+module). Bounded runtime projections may include existing screenshot *path
+references* (never embedded bytes), consistent with every other artifact
+family's existing reference-not-embed discipline.
+
 ## Not yet addressed
 
 Certificate-failure-specific handling, permission-prompt-specific handling

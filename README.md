@@ -119,6 +119,20 @@ verdict; the verdict itself, and its persisted evidence, are unaffected. See
 [docs/COMMANDS.md](docs/COMMANDS.md) for the full flag reference and
 [docs/WORKFLOWS.md](docs/WORKFLOWS.md) for the end-to-end flow.
 
+### Bounded agent context (v0.6, implemented and canonically verified; release pending)
+
+`src/domain/boundedAgentContext.ts`, `boundedAgentContextProjection.ts`,
+`boundedAgentContextCorrelation.ts`, and `boundedAgentContextIdentity.ts`
+implement a programmatic (library-only, no CLI command) bounded runtime
+projection and an explicit runtime/static correlation boundary
+(`correlated`/`ambiguous`/`unavailable`, never inferred source ownership),
+exported from `src/index.ts` (bounded-agent-context schema `1.0.0`). This is
+implemented and canonically verified on the `canonicalization/v0.6` branch but
+not yet released as part of a published package version. See
+[docs/CONTRACTS.md](docs/CONTRACTS.md) for the exact contract and
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how it fits the existing
+pipeline.
+
 Validation:
 
 ```powershell
@@ -137,7 +151,8 @@ Planning authorities:
 - [Project Milestones](docs/PROJECT_MILESTONES.md): complete ordered capability
   design and cross-milestone rules.
 - [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.5 are
-  released, v0.6 is next.
+  released, v0.6 is implemented and canonically verified with release
+  pending, v0.7+ remain future.
 - [Current State](docs/CURRENT_STATE.md): retained scaffold and release state.
 
 No sibling ecosystem repository is a runtime dependency of the retained

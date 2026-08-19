@@ -919,6 +919,141 @@ async function main() {
     }
     summary.packedEvaluationPathPrivacyPassed = true;
 
+    // --- v0.6: installed package's bounded-agent-context projection + runtime/static
+    // correlation public surface (programmatic export only - no CLI command, no disk
+    // artifact family - see docs/CONTRACTS.md). Resolved from the consumer's own
+    // installed node_modules (the same `installedPackageApi` import already used above
+    // for the v0.4/v0.5 validators), never the source checkout.
+    if (typeof installedPackageApi.projectBoundedAgentContext !== 'function') fail('installed package does not export projectBoundedAgentContext');
+    if (typeof installedPackageApi.deriveRuntimeStaticCorrelations !== 'function') fail('installed package does not export deriveRuntimeStaticCorrelations');
+    if (typeof installedPackageApi.attachRuntimeStaticCorrelations !== 'function') fail('installed package does not export attachRuntimeStaticCorrelations');
+    if (typeof installedPackageApi.isValidBoundedAgentContextArtifact !== 'function') fail('installed package does not export isValidBoundedAgentContextArtifact');
+
+    const manifestSnapshotBeforeBoundedContext = JSON.stringify(manifest);
+    const boundedContextGeneratedAt = new Date(0).toISOString();
+    const projectionInput = {
+      generatedAt: boundedContextGeneratedAt,
+      producerVersion: manifest.producer.version,
+      projectionProfile: 'frontend-change-review',
+      focusTargetIds: ['primary-navigation', 'action'],
+      observation: manifest,
+    };
+    const projectionResult = installedPackageApi.projectBoundedAgentContext(projectionInput);
+    if (!projectionResult.ok) fail(`installed projectBoundedAgentContext failed: ${projectionResult.reason}`);
+    const boundedArtifact = projectionResult.artifact;
+    const boundedArtifactValidation = installedPackageApi.isValidBoundedAgentContextArtifact(boundedArtifact);
+    if (!boundedArtifactValidation.valid) fail(`installed-package BoundedAgentContextArtifact failed structural validation: ${boundedArtifactValidation.reason}`);
+    if (boundedArtifact.artifactKind !== 'my-frontend-observer/bounded-agent-context') fail(`unexpected bounded-agent-context artifactKind: ${boundedArtifact.artifactKind}`);
+    if (boundedArtifact.schemaVersion !== '1.0.0') fail(`unexpected bounded-agent-context schemaVersion: ${boundedArtifact.schemaVersion}`);
+    if (!['adequate', 'partial', 'inadequate'].includes(boundedArtifact.adequacy?.state)) fail(`unexpected adequacy state: ${JSON.stringify(boundedArtifact.adequacy)}`);
+    if (!Array.isArray(boundedArtifact.omissions)) fail('bounded-agent-context artifact missing omissions array');
+    if (!Array.isArray(boundedArtifact.truncations)) fail('bounded-agent-context artifact missing truncations array');
+    const boundedTargetIds = boundedArtifact.targets.map((t) => t.targetId).sort();
+    if (JSON.stringify(boundedTargetIds) !== JSON.stringify(['action', 'primary-navigation'])) {
+      fail(`unexpected bounded-agent-context target ids: ${JSON.stringify(boundedTargetIds)}`);
+    }
+
+    // Deterministic logical identity vs. fresh instance identity: re-running the same
+    // logical input must reproduce contextRequestId exactly, while contextId (a fresh
+    // per-execution instance identity) must differ across the two runs.
+    const projectionResult2 = installedPackageApi.projectBoundedAgentContext(projectionInput);
+    if (!projectionResult2.ok) fail(`installed projectBoundedAgentContext (rerun) failed: ${projectionResult2.reason}`);
+    if (projectionResult2.artifact.contextRequestId !== boundedArtifact.contextRequestId) {
+      fail(`contextRequestId is not deterministic across identical inputs: ${projectionResult2.artifact.contextRequestId} !== ${boundedArtifact.contextRequestId}`);
+    }
+    if (projectionResult2.artifact.contextId === boundedArtifact.contextId) {
+      fail('contextId (fresh instance identity) unexpectedly matched across two separate projection calls');
+    }
+    summary.boundedContextDeterministicRequestId = true;
+    summary.boundedContextFreshInstanceId = true;
+
+    // Runtime/static correlation: exact ("correlated"), competing-candidates
+    // ("ambiguous"), and no-responsible-candidate ("unavailable") outcomes, plus
+    // attach-to-artifact + no source-ownership/causal vocabulary leakage.
+    const staticProducer = { name: 'ci-smoke-static-producer', version: '0.0.0', indexId: 'ci-smoke-index-1' };
+    const deriveResult = installedPackageApi.deriveRuntimeStaticCorrelations({
+      staticProducer,
+      correlatedAt: boundedContextGeneratedAt,
+      targets: [
+        {
+          runtimeTargetId: 'primary-navigation',
+          required: true,
+          runtimeEvidenceRefs: [{ path: 'targetEvidence.primary-navigation.geometry' }],
+          candidates: [{ candidateId: 'file:src/components/Nav.tsx', kind: 'file', evidenceRefs: [{ path: 'src/components/Nav.tsx' }] }],
+        },
+        {
+          runtimeTargetId: 'action',
+          required: false,
+          runtimeEvidenceRefs: [{ path: 'targetEvidence.action.geometry' }],
+          candidates: [],
+        },
+      ],
+    });
+    if (!deriveResult.ok) fail(`installed deriveRuntimeStaticCorrelations failed: ${deriveResult.reason}`);
+    const navCorrelation = deriveResult.records.find((r) => r.runtimeTargetId === 'primary-navigation');
+    const actionCorrelation = deriveResult.records.find((r) => r.runtimeTargetId === 'action');
+    if (navCorrelation?.status !== 'correlated') fail(`expected primary-navigation correlation status "correlated", got ${JSON.stringify(navCorrelation)}`);
+    if (navCorrelation.candidates?.length !== 1 || navCorrelation.candidates[0].candidateId !== 'file:src/components/Nav.tsx') {
+      fail(`expected primary-navigation correlated candidate identity preserved, got ${JSON.stringify(navCorrelation.candidates)}`);
+    }
+    if (actionCorrelation?.status !== 'unavailable') fail(`expected action correlation status "unavailable", got ${JSON.stringify(actionCorrelation)}`);
+
+    // Ambiguous outcome: derive-only proof (two competing candidates for one target),
+    // deliberately not attached to the real artifact above (attach requires every
+    // correlation's runtimeTargetId to already exist in artifact.targets - this
+    // synthetic target id is not one of the two real projected targets).
+    const ambiguousDeriveResult = installedPackageApi.deriveRuntimeStaticCorrelations({
+      staticProducer,
+      correlatedAt: boundedContextGeneratedAt,
+      targets: [
+        {
+          runtimeTargetId: 'ci-smoke-ambiguous-target',
+          required: false,
+          runtimeEvidenceRefs: [{ path: 'targetEvidence.ci-smoke-ambiguous-target.geometry' }],
+          candidates: [
+            { candidateId: 'file:src/components/A.tsx', kind: 'file', evidenceRefs: [{ path: 'src/components/A.tsx' }] },
+            { candidateId: 'file:src/components/B.tsx', kind: 'file', evidenceRefs: [{ path: 'src/components/B.tsx' }] },
+          ],
+        },
+      ],
+    });
+    if (!ambiguousDeriveResult.ok) fail(`installed deriveRuntimeStaticCorrelations (ambiguous case) failed: ${ambiguousDeriveResult.reason}`);
+    const ambiguousRecord = ambiguousDeriveResult.records[0];
+    if (ambiguousRecord?.status !== 'ambiguous') fail(`expected "ambiguous" correlation status, got ${JSON.stringify(ambiguousRecord)}`);
+    if ((ambiguousRecord.candidates?.length ?? 0) < 2) fail('expected ambiguous record to preserve both competing candidates');
+    summary.boundedContextCorrelationStatuses = { correlated: navCorrelation.status, ambiguous: ambiguousRecord.status, unavailable: actionCorrelation.status };
+
+    const attachResult = installedPackageApi.attachRuntimeStaticCorrelations(boundedArtifact, deriveResult);
+    if (!attachResult.ok) fail(`installed attachRuntimeStaticCorrelations failed: ${attachResult.reason}`);
+    const attachedArtifactValidation = installedPackageApi.isValidBoundedAgentContextArtifact(attachResult.artifact);
+    if (!attachedArtifactValidation.valid) fail(`attached BoundedAgentContextArtifact failed structural validation: ${attachedArtifactValidation.reason}`);
+    if ((attachResult.artifact.correlations ?? []).length !== 2) fail(`expected 2 attached correlation records, got ${(attachResult.artifact.correlations ?? []).length}`);
+
+    // Runtime identity must never silently become a source-ownership/causal claim.
+    const serializedBoundedArtifact = JSON.stringify(attachResult.artifact) + JSON.stringify(ambiguousDeriveResult);
+    for (const forbidden of ['"owner"', '"causedBy"', '"sourceOwner"', '"editAuthority"']) {
+      if (serializedBoundedArtifact.includes(forbidden)) fail(`forbidden source-ownership/causal vocabulary found in bounded-agent-context output: ${forbidden}`);
+    }
+
+    // Source-observation immutability: the runtime observation passed into the v0.6
+    // projection must not have been mutated on disk by projection/correlation/attach.
+    const manifestRawAfterBoundedContext = await readFile(path.join(artifactRoot, 'manifest.json'), 'utf8');
+    if (JSON.parse(manifestRawAfterBoundedContext).observationId !== manifest.observationId) {
+      fail('source observation manifest on disk no longer matches the in-memory observation used for bounded-agent-context projection');
+    }
+    if (JSON.stringify(manifest) !== manifestSnapshotBeforeBoundedContext) {
+      fail('in-memory observation object was mutated by projectBoundedAgentContext/deriveRuntimeStaticCorrelations/attachRuntimeStaticCorrelations');
+    }
+    summary.boundedAgentContextInputImmutable = true;
+
+    summary.boundedAgentContextArtifactKind = boundedArtifact.artifactKind;
+    summary.boundedAgentContextSchemaVersion = boundedArtifact.schemaVersion;
+    summary.boundedAgentContextAdequacyState = boundedArtifact.adequacy.state;
+    summary.boundedAgentContextTargetIds = boundedTargetIds;
+    summary.boundedAgentContextCorrelationAttachOk = true;
+    summary.boundedAgentContextSourceCheckoutIndependent = true;
+    summary.v06PackedSmokeOk = true;
+
     // Target/output isolation: this run must not have written anything new
     // into the repository root - compared against the entries already
     // present before this smoke started (never a fixed-name assertion,

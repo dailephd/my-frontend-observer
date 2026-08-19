@@ -35,8 +35,17 @@ launching a browser; and the public `approve-baseline`/`save-change-contract`/
 per-change contract (requested/expected-dependent/protected/preserved scope,
 plus the derived-only `unexpected` classification) into one canonical
 `PASS`/`FAIL` evaluation, proven against real Chromium observations - see
-`docs/CURRENT_STATE.md` for the implementation summary. v0.6–v0.10 remain
-future and unimplemented.
+`docs/CURRENT_STATE.md` for the implementation summary.
+
+v0.6, Bounded Agent Context and Native my-dev-kit Ecosystem Integration, is
+implemented and canonically verified on the `canonicalization/v0.6` lineage
+(bounded-agent-context schema `1.0.0`; observation/comparison/frontend-
+contract/evaluation schemas unchanged) but not yet published - package
+version remains `0.5.0` and no `v0.6` tag/release exists. It adds a
+programmatic bounded runtime projection plus an explicit runtime/static
+correlation boundary (`correlated`/`ambiguous`/`unavailable`), exported from
+`src/index.ts` with no new CLI command. v0.7–v0.10 remain future and
+unimplemented.
 
 The revised dependency path reaches practical coding-agent use before graphical
 interaction:
@@ -44,8 +53,9 @@ interaction:
 ```text
 runtime observation and stable identity
 → bounded behavior, relationships, comparison, and safe-change contracts
-→ bounded agent context plus native ecosystem integration
-→ text/config-driven coding-agent change review
+→ bounded agent context plus native ecosystem integration (implemented,
+  release pending - see above)
+→ text/config-driven coding-agent change review (v0.7, next)
 → interactive viewer
 → structured visual annotation
 → full visual human–LLM workflow
