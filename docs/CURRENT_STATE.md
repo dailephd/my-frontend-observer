@@ -1,12 +1,10 @@
 # Current State
 
-The project is published at package version `0.5.0` (roadmap v0.5,
-Executable Frontend Contracts and Explicit Change Scope; observation schema
-`1.2.0`; comparison schema `1.0.0`; frontend contract schema `1.0.0`;
-evaluation artifact schema `1.0.0`). v0.6 (Bounded Agent Context and Native
-my-dev-kit Ecosystem Integration) is implemented and canonically verified on
-the `canonicalization/v0.6` lineage but not yet published - see "v0.6
-status" below.
+The project is published at package version `0.6.0` (roadmap v0.6, Bounded
+Agent Context and Native my-dev-kit Ecosystem Integration; observation
+schema `1.2.0`; comparison schema `1.0.0`; frontend contract schema
+`1.0.0`; evaluation artifact schema `1.0.0`; bounded-agent-context schema
+`1.0.0`) - see "v0.6 status" below.
 
 ## Greenfield foundation established
 
@@ -401,13 +399,13 @@ checkout. v0.5 pre-release readiness passed on the validation branch
 hash-verified candidate tarball on Windows, Linux, and macOS - see
 `docs/CI_CD.md` for full evidence) before the version `0.5.0` release below.
 
-## v0.6 status (Bounded Agent Context and Native my-dev-kit Ecosystem Integration) - implemented and canonically verified; release pending
+## v0.6 status (Bounded Agent Context and Native my-dev-kit Ecosystem Integration) - released as `0.6.0`
 
-v0.6 is implemented on the canonical `canonicalization/v0.6` lineage
-(commit `514bf3bb513764815a0a5b9e508d5836aa7d7fd8`) but is **not** published:
-package version remains `0.5.0` and no `v0.6` tag/release exists. Observation
-schema stays `1.2.0`; comparison schema `1.0.0`; frontend contract schema
-`1.0.0`; evaluation artifact schema `1.0.0`; new bounded-agent-context schema
+v0.6 is published as package version `0.6.0`, tagged `v0.6.0`, from the
+canonical `canonicalization/v0.6` lineage (product commit
+`514bf3bb513764815a0a5b9e508d5836aa7d7fd8`). Observation schema stays
+`1.2.0`; comparison schema `1.0.0`; frontend contract schema `1.0.0`;
+evaluation artifact schema `1.0.0`; new bounded-agent-context schema
 `1.0.0` (artifact kind `my-frontend-observer/bounded-agent-context`).
 
 - **Bounded runtime projection** (`src/domain/boundedAgentContext.ts`,
@@ -463,8 +461,6 @@ schema stays `1.2.0`; comparison schema `1.0.0`; frontend contract schema
 
 ## Next target
 
-v0.1-v0.5 are implemented, validated, and released (`0.1.0`, `0.2.0`,
-`0.3.0`, `0.4.0`, `0.5.0`). v0.6 (Bounded Agent Context and Native
-my-dev-kit Ecosystem Integration) is implemented and canonically verified,
-with release pending as a separate, later release-preparation stage. v0.7
-(End-to-End Coding-Agent Frontend Change Review) is next after that release.
+v0.1-v0.6 are implemented, validated, and released (`0.1.0`, `0.2.0`,
+`0.3.0`, `0.4.0`, `0.5.0`, `0.6.0`). v0.7 (End-to-End Coding-Agent Frontend
+Change Review) is next.

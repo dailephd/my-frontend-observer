@@ -84,7 +84,7 @@ exclusive per invocation, and both converge on the same
 observation produces exactly the same `manifest.json` shape as a
 CSS-shorthand one. Schema `1.1.0` was the v0.2 published artifact schema;
 schema `1.2.0` has been emitted since v0.3 and remains the observation schema
-in the current published v0.5.0 package, for both target-input modes
+in the current published v0.6.0 package, for both target-input modes
 (target semantics are unchanged from v0.2 - see the v0.3 scroll scenario
 contract below for what schema `1.2.0` actually adds). `--targets-file`'s
 local input path is never part of the persisted request identity or
@@ -420,10 +420,10 @@ manifest. This is real-browser evidence layered on top of the CLI-level
 proof in `tests/unit/cliFrontendContracts.test.ts` and the Chromium-free
 `scripts/dev/builtCliFrontendContractsSmoke.mjs` - it does not replace them.
 
-## v0.6 bounded agent context and correlation contract (implemented and canonically verified; release pending)
+## v0.6 bounded agent context and correlation contract (released as `0.6.0`)
 
-**Current status: implemented on the canonical `canonicalization/v0.6`
-lineage; not yet published.** Bounded-agent-context is a new, independent
+**Current status: released as package version `0.6.0`, tag `v0.6.0`, from
+the canonical `canonicalization/v0.6` lineage.** Bounded-agent-context is a new, independent
 artifact-kind family, schema `1.0.0` (`BOUNDED_AGENT_CONTEXT_ARTIFACT_KIND =
 "my-frontend-observer/bounded-agent-context"`) - never a bump to
 observation/comparison/frontend-contract/evaluation schemas, which remain

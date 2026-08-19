@@ -281,7 +281,7 @@ inferred from a `compare` or `evaluate-contract` result. `--enforce` on
 already completed; it selects the process exit status for an already-final
 `FAIL` result and is never part of any identity or persisted field.
 
-## Current v0.6 architecture (implemented and canonically verified; release pending)
+## Current v0.6 architecture (released as `0.6.0`)
 
 v0.6 adds one new downstream, read-only layer that consumes existing v0.1-v0.5
 evidence (`ObservationArtifact`, `ComparisonArtifact`,

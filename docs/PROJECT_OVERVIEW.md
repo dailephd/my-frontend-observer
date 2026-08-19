@@ -18,10 +18,12 @@ The responsibility split is stable:
 v0.1, Runtime Observation Foundation; v0.2, Stable Semantic Targets and
 Region Identity; v0.3, Runtime Scrolling, Overflow, and Visibility Behavior;
 v0.4, Layout Relationships, Dependency Evidence, and Before/After
-Comparison; and v0.5, Executable Frontend Contracts and Explicit Change
-Scope, are released, published to npm (current version `0.5.0`, observation
+Comparison; v0.5, Executable Frontend Contracts and Explicit Change Scope;
+and v0.6, Bounded Agent Context and Native my-dev-kit Ecosystem Integration,
+are released, published to npm (current version `0.6.0`, observation
 schema `1.2.0`, comparison schema `1.0.0`, frontend contract schema `1.0.0`,
-evaluation artifact schema `1.0.0`) and validated as a packed npm tarball in
+evaluation artifact schema `1.0.0`, bounded-agent-context schema `1.0.0`)
+and validated as a packed npm tarball in
 a clean consumer environment across Windows, Linux, and macOS: a real
 `observe` CLI command launches Chromium, enforces loopback-only safety,
 captures bounded page/target evidence via legacy CSS-shorthand targets,
@@ -37,15 +39,10 @@ plus the derived-only `unexpected` classification) into one canonical
 `PASS`/`FAIL` evaluation, proven against real Chromium observations - see
 `docs/CURRENT_STATE.md` for the implementation summary.
 
-v0.6, Bounded Agent Context and Native my-dev-kit Ecosystem Integration, is
-implemented and canonically verified on the `canonicalization/v0.6` lineage
-(bounded-agent-context schema `1.0.0`; observation/comparison/frontend-
-contract/evaluation schemas unchanged) but not yet published - package
-version remains `0.5.0` and no `v0.6` tag/release exists. It adds a
-programmatic bounded runtime projection plus an explicit runtime/static
-correlation boundary (`correlated`/`ambiguous`/`unavailable`), exported from
-`src/index.ts` with no new CLI command. v0.7–v0.10 remain future and
-unimplemented.
+v0.6 adds a programmatic bounded runtime projection plus an explicit
+runtime/static correlation boundary (`correlated`/`ambiguous`/
+`unavailable`), exported from `src/index.ts` with no new CLI command.
+v0.7–v0.10 remain future and unimplemented.
 
 The revised dependency path reaches practical coding-agent use before graphical
 interaction:
@@ -53,8 +50,8 @@ interaction:
 ```text
 runtime observation and stable identity
 → bounded behavior, relationships, comparison, and safe-change contracts
-→ bounded agent context plus native ecosystem integration (implemented,
-  release pending - see above)
+→ bounded agent context plus native ecosystem integration (released as
+  `0.6.0` - see above)
 → text/config-driven coding-agent change review (v0.7, next)
 → interactive viewer
 → structured visual annotation

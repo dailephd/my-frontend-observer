@@ -49,7 +49,7 @@ already-persisted local observation/comparison/contract artifacts and runs
 the pure `evaluateFrontendContract` function. None of the three navigates,
 re-observes a target, or contacts a network resource.
 
-## Bounded agent context and correlation (v0.6, implemented and canonically verified; release pending)
+## Bounded agent context and correlation (v0.6, released as `0.6.0`)
 
 `src/domain/boundedAgentContextProjection.ts` and
 `src/domain/boundedAgentContextCorrelation.ts` introduce no new browser or

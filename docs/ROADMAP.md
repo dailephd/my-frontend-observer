@@ -114,10 +114,8 @@ contract storage, approval, tolerance, and conflict resolution.
 
 ## v0.6 — Bounded Agent Context and Native my-dev-kit Ecosystem Integration
 
-Current status: implemented and canonically verified on the
-`canonicalization/v0.6` lineage; release pending. See
-`docs/CURRENT_STATE.md` for the implementation summary. Package version
-remains `0.5.0` until a separate release-preparation stage publishes v0.6.
+Current status: released as `0.6.0`, from the `canonicalization/v0.6`
+lineage. See `docs/CURRENT_STATE.md` for the implementation summary.
 
 Objective/problem: make the observer useful to an actual coding-agent workflow
 by answering the smallest trustworthy runtime-plus-static context question. A

@@ -165,7 +165,7 @@ exercises the installed candidate's `approve-baseline`/`save-change-contract`/
 `compare` evidence, proven on Windows, Linux, and macOS (see
 `docs/CI_CD.md`).
 
-## Current bounded agent context workflow (implemented and canonically verified; release pending)
+## Current bounded agent context workflow (released as `0.6.0`)
 
 This is a programmatic (library-only) workflow, not a CLI command - it
 consumes already-persisted v0.1-v0.5 evidence in-process rather than reading
@@ -203,10 +203,9 @@ stable targets and bounded runtime behavior
 → safe-change contracts (contract model, evaluation, persistence, and CLI
   released as 0.5.0 - see above; baseline approval remains a single explicit
   command, not a policy engine)
-→ bounded agent context plus runtime/static correlation (implemented and
-  canonically verified, release pending - see above; orchestrator/lab-side
-  ecosystem integration is separate sibling-repository work, not part of
-  this repository)
+→ bounded agent context plus runtime/static correlation (released as
+  `0.6.0` - see above; orchestrator/lab-side ecosystem integration is
+  separate sibling-repository work, not part of this repository)
 → text/config-driven coding-agent change review
 → interactive viewer
 → structured visual annotation

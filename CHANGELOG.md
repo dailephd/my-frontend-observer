@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 - 2026-08-19
 
-Bounded Agent Context and Native my-dev-kit Ecosystem Integration (v0.6).
+Bounded Agent Context and Native my-dev-kit Ecosystem Integration.
 
 - Bounded runtime projection (`src/domain/boundedAgentContext.ts`,
   `boundedAgentContextProjection.ts#projectBoundedAgentContext`): a
@@ -29,6 +29,12 @@ Bounded Agent Context and Native my-dev-kit Ecosystem Integration (v0.6).
 - Observation schema remains `1.2.0`, comparison schema `1.0.0`, frontend
   contract schema `1.0.0`, evaluation artifact schema `1.0.0` - no existing
   schema was bumped.
+- Cross-platform packed-candidate validation: one hash-verified npm
+  candidate tarball (`acd067247c447294a611f37f52eab301b6038ab1c6d493ae65e81c2f1279bfd7`)
+  proven on Windows, Linux, and macOS, including an installed-package smoke
+  of the new bounded-agent-context projection and runtime/static
+  correlation exports alongside every pre-existing v0.1-v0.5 packed
+  behavior.
 
 ## 0.5.0 - 2026-08-13
 
