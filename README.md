@@ -6,8 +6,9 @@ in [docs/PROJECT_DESCRIPTION.md](docs/PROJECT_DESCRIPTION.md).
 
 ## Current status
 
-`v0.5.0`, Executable Frontend Contracts and Explicit Change Scope, is the
-current published release: `my-frontend-observer observe` launches a real,
+`v0.6.0`, Bounded Agent Context and Native my-dev-kit Ecosystem Integration,
+is the current published release. It builds on `v0.5.0`, Executable Frontend
+Contracts and Explicit Change Scope: `my-frontend-observer observe` launches a real,
 sandboxed Chromium browser, enforces a loopback-only safety policy, captures
 a viewport screenshot plus bounded page/target evidence, and persists it as
 one portable `manifest.json` + `screenshot.png` artifact (observation schema
@@ -119,6 +120,18 @@ verdict; the verdict itself, and its persisted evidence, are unaffected. See
 [docs/COMMANDS.md](docs/COMMANDS.md) for the full flag reference and
 [docs/WORKFLOWS.md](docs/WORKFLOWS.md) for the end-to-end flow.
 
+### Bounded agent context (v0.6.0)
+
+`src/domain/boundedAgentContext.ts`, `boundedAgentContextProjection.ts`,
+`boundedAgentContextCorrelation.ts`, and `boundedAgentContextIdentity.ts`
+ship a programmatic (library-only, no CLI command) bounded runtime
+projection and an explicit runtime/static correlation boundary
+(`correlated`/`ambiguous`/`unavailable`, never inferred source ownership),
+exported from `src/index.ts` (bounded-agent-context schema `1.0.0`). See
+[docs/CONTRACTS.md](docs/CONTRACTS.md) for the exact contract and
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how it fits the existing
+pipeline.
+
 Validation:
 
 ```powershell
@@ -136,8 +149,8 @@ Planning authorities:
   intent and responsibility boundaries.
 - [Project Milestones](docs/PROJECT_MILESTONES.md): complete ordered capability
   design and cross-milestone rules.
-- [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.5 are
-  released, v0.6 is next.
+- [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.6 are
+  released, v0.7+ remain future.
 - [Current State](docs/CURRENT_STATE.md): retained scaffold and release state.
 
 No sibling ecosystem repository is a runtime dependency of the retained

@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.6.0 - 2026-08-19
+
+Bounded Agent Context and Native my-dev-kit Ecosystem Integration.
+
+- Bounded runtime projection (`src/domain/boundedAgentContext.ts`,
+  `boundedAgentContextProjection.ts#projectBoundedAgentContext`): a
+  task-relevant, bounded view of page/viewport identity, stable targets,
+  geometry, runtime behavior, relationships, before/after differences,
+  contract results, requested/expected-dependent/protected/preserved scope
+  (reusing the existing v0.5 `frontendContracts.ts` types directly), and
+  screenshot/artifact references - never a raw evidence dump.
+- Explicit adequacy reporting (`adequate`/`partial`/`inadequate` with
+  structured reason codes) and omission/truncation records, distinguishing
+  required from optional loss.
+- Explicit runtime/static correlation
+  (`boundedAgentContextCorrelation.ts#deriveRuntimeStaticCorrelations`/
+  `attachRuntimeStaticCorrelations`): `correlated`/`ambiguous`/`unavailable`
+  outcomes only - a stable runtime target identity never silently becomes a
+  source-ownership claim, and competing candidates remain visible.
+- Deterministic logical identity (`boundedAgentContextIdentity.ts`) distinct
+  from fresh per-execution instance identity.
+- Public export/correlation boundary only: `src/index.ts` exports the full
+  bounded-agent-context and correlation type/function surface as a
+  programmatic library contract (bounded-agent-context schema `1.0.0`) - no
+  new CLI command, no disk artifact writer/reader, no `my-dev-kit` runtime
+  dependency, no orchestrator/lab code in this repository.
+- Observation schema remains `1.2.0`, comparison schema `1.0.0`, frontend
+  contract schema `1.0.0`, evaluation artifact schema `1.0.0` - no existing
+  schema was bumped.
+- Cross-platform packed-candidate validation: one hash-verified npm
+  candidate tarball (`acd067247c447294a611f37f52eab301b6038ab1c6d493ae65e81c2f1279bfd7`)
+  proven on Windows, Linux, and macOS, including an installed-package smoke
+  of the new bounded-agent-context projection and runtime/static
+  correlation exports alongside every pre-existing v0.1-v0.5 packed
+  behavior.
+
 ## 0.5.0 - 2026-08-13
 
 Executable Frontend Contracts and Explicit Change Scope.

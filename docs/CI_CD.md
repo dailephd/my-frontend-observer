@@ -143,3 +143,24 @@ and without it exiting `0`), plus source-artifact immutability, no copied
 screenshot, no path leakage, and no repository-root leakage - alongside
 every pre-existing v0.1-v0.4 packed observe/compare/scroll assertion, still
 passing unchanged on all three platforms.
+
+## v0.6 packed-candidate coverage (released as `0.6.0`)
+
+`.github/workflows/pre-release-readiness.yml`'s existing candidate-job steps
+(`npm test`, `npm run test:browser`, `npm run test:security`, `npm run
+build`, `npm run check:docs`) cover the v0.6 bounded-agent-context and
+correlation modules, since they are part of the same `src/`/`tests/unit/`
+tree exercised by `npm test`. `scripts/ci/runPackedObservationSmoke.mjs`
+(the matrix-smoke packed-candidate proof) now also exercises the installed
+package's bounded-agent-context and runtime/static correlation public
+export surface directly - bounded projection, adequacy, omission/
+truncation, deterministic request identity vs. fresh instance identity,
+`correlated`/`ambiguous`/`unavailable` correlation outcomes, v0.5
+scope-inheritance, schema validation, and input immutability - since v0.6
+adds no new CLI command and no disk artifact for the packed candidate to
+observe end-to-end; it is a programmatic export surface only (see
+`docs/CONTRACTS.md`). This closed the readiness gap identified during v0.6
+pre-release validation. The final pre-release candidate
+(`acd067247c447294a611f37f52eab301b6038ab1c6d493ae65e81c2f1279bfd7`) passed
+Windows, Linux, and macOS using that one hash-verified tarball (GitHub
+Actions run `32304059259`) before the `0.6.0` release below.

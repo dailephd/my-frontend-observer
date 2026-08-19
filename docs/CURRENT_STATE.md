@@ -1,9 +1,10 @@
 # Current State
 
-The project is published at package version `0.5.0` (roadmap v0.5,
-Executable Frontend Contracts and Explicit Change Scope; observation schema
-`1.2.0`; comparison schema `1.0.0`; frontend contract schema `1.0.0`;
-evaluation artifact schema `1.0.0`).
+The project is published at package version `0.6.0` (roadmap v0.6, Bounded
+Agent Context and Native my-dev-kit Ecosystem Integration; observation
+schema `1.2.0`; comparison schema `1.0.0`; frontend contract schema
+`1.0.0`; evaluation artifact schema `1.0.0`; bounded-agent-context schema
+`1.0.0`) - see "v0.6 status" below.
 
 ## Greenfield foundation established
 
@@ -16,13 +17,16 @@ The retained repository contains:
 - a safe `dist/` clean script;
 - documentation validation;
 - package allowlisting;
-- minimal `src/cli.ts` and `src/index.ts` placeholders required by the selected
-  TypeScript CLI starter profile;
+- `src/cli.ts` and `src/index.ts`, the package/library entry points originally
+  established by the selected TypeScript CLI starter profile;
 - complete repository-local Project Description, Project Milestones, ROADMAP,
   and standardized documentation.
 
-The package bin (`src/cli.ts`) now implements the real `observe` command
-described below; it is no longer the not-implemented placeholder.
+The package bin (`src/cli.ts`) now exposes the real current public CLI
+surface described below (`observe`, `compare`, `approve-baseline`,
+`save-change-contract`, `evaluate-contract`), while remaining a thin
+parsing/dispatch/presentation boundary; it is no longer the not-implemented
+placeholder.
 
 ## v0.1 progress (Batch 1–6; implemented and released as 0.1.0)
 
@@ -395,16 +399,68 @@ checkout. v0.5 pre-release readiness passed on the validation branch
 hash-verified candidate tarball on Windows, Linux, and macOS - see
 `docs/CI_CD.md` for full evidence) before the version `0.5.0` release below.
 
+## v0.6 status (Bounded Agent Context and Native my-dev-kit Ecosystem Integration) - released as `0.6.0`
+
+v0.6 is published as package version `0.6.0`, tagged `v0.6.0`, from the
+canonical `canonicalization/v0.6` lineage (product commit
+`514bf3bb513764815a0a5b9e508d5836aa7d7fd8`). Observation schema stays
+`1.2.0`; comparison schema `1.0.0`; frontend contract schema `1.0.0`;
+evaluation artifact schema `1.0.0`; new bounded-agent-context schema
+`1.0.0` (artifact kind `my-frontend-observer/bounded-agent-context`).
+
+- **Bounded runtime projection** (`src/domain/boundedAgentContext.ts`,
+  `src/domain/boundedAgentContextProjection.ts#projectBoundedAgentContext`):
+  page/viewport identity, stable target identities, geometry, runtime
+  behavior, relationships, before/after differences, contract results, and
+  requested/expected-dependent/protected/preserved scope - reusing the
+  existing v0.5 `frontendContracts.ts` types directly rather than
+  reimplementing them - plus diagnostics, screenshot/artifact references,
+  provenance, and explicit truncation/omission metadata.
+- **Adequacy, omission, and truncation** (`Adequacy`/`ADEQUACY_REASON_CODES`,
+  `OmissionRecord`/`TruncationRecord`, bounded aggregate-cap summarization):
+  distinguishes required from optional loss and reports whether captured
+  evidence is adequate for the task rather than merely present.
+- **Runtime/static correlation**
+  (`src/domain/boundedAgentContextCorrelation.ts#deriveRuntimeStaticCorrelations`/
+  `attachRuntimeStaticCorrelations`): correlation outcomes are exactly
+  `correlated`/`ambiguous`/`unavailable`; competing candidate identities
+  remain visible; a stable runtime target identity is never silently
+  reported as source ownership. This module has no dependency on
+  `@dailephd/my-dev-kit` - it accepts only plain, already-retrieved
+  candidate evidence, since no generic static-side retrieval capability was
+  found missing.
+- **Deterministic identity** (`src/domain/boundedAgentContextIdentity.ts`):
+  a logical identity distinct from a fresh per-execution instance identity.
+- **Export/public boundary**: `src/index.ts` exports the complete
+  bounded-agent-context and correlation type/function surface as a
+  programmatic library contract. There is no new CLI command and no disk
+  artifact writer/reader for this artifact family - it is a pure contract-
+  and-derivation layer, consistent with the frozen module documentation
+  describing it as a foundation for orchestrator/lab consumption rather than
+  a persisted artifact kind.
+- **Validated on the canonical worktree**: `npm run typecheck`, `npm run
+  lint`, `npm test` (32 files, 627 tests), `npm run test:browser` (9 files,
+  120 tests), `npm run test:security`, `npm run build`, and `npm run
+  check:docs` all pass. Cross-repository neutral verification (observer
+  `514bf3b`, orchestrator `9473e4c`, lab `271e72c`) passed with 6/6
+  requirement coverage and no known product blockers.
+- **Not Observer-owned / correctly out of scope for this repository**: no
+  `my-dev-kit` static-side change was made (none was proven necessary); no
+  orchestrator bounded-evidence consumption or lab reader/fixture/evaluation
+  code lives in this repository - those are separate sibling-repository
+  deliverables, not part of `my-frontend-observer`'s v0.6 surface.
+
 ## Not implemented
 
 - v0.5 baseline-selection/discovery policy (the caller must supply which
   baseline to approve/evaluate against; there is no "find the current
-  baseline" command), source ownership, my-dev-kit runtime/static
-  integration, orchestrator/lab product integration, viewer, and annotation
-  all remain unimplemented.
+  baseline" command), source ownership, orchestrator/lab product
+  integration, viewer, and annotation all remain unimplemented in this
+  repository. (v0.6's bounded runtime projection and runtime/static
+  correlation *are* now implemented - see "v0.6 status" above.)
 
 ## Next target
 
-v0.1-v0.5 are implemented, validated, and released (`0.1.0`, `0.2.0`,
-`0.3.0`, `0.4.0`, `0.5.0`). v0.6 (Bounded Agent Context and Native
-my-dev-kit Ecosystem Integration) is next.
+v0.1-v0.6 are implemented, validated, and released (`0.1.0`, `0.2.0`,
+`0.3.0`, `0.4.0`, `0.5.0`, `0.6.0`). v0.7 (End-to-End Coding-Agent Frontend
+Change Review) is next.

@@ -21,9 +21,11 @@ npm run check:docs
 npm pack --dry-run
 ```
 
-`npm test` runs the fast unit suite only (`tests/unit/`, currently 515
-passing tests). `npm run test:browser` runs the real-Chromium integration
-suite (`tests/browser/`, currently 120 passing tests) against deterministic
+`npm test` runs the fast unit suite only (`tests/unit/`, currently 627
+passing tests across 32 files, including the v0.6 bounded-agent-context
+projection/correlation coverage). `npm run test:browser` runs the
+real-Chromium integration suite (`tests/browser/`, currently 120 passing
+tests) against deterministic
 local fixtures under `tests/fixtures/` and requires the Chromium binary
 above to be installed first; it is kept out of `npm test` because it
 launches a real browser and is slower.
