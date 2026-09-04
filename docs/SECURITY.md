@@ -66,14 +66,53 @@ module). Bounded runtime projections may include existing screenshot *path
 references* (never embedded bytes), consistent with every other artifact
 family's existing reference-not-embed discipline.
 
+## Planned external visual-reference security and privacy boundary (v0.7+)
+
+External visual-reference support is future work and is not implemented in
+`0.6.0`. When implemented, imported reference images must remain local-first
+evidence. Importing or evaluating a reference must not require uploading the
+image, screenshot, source code, annotation, or derived evidence to an external
+service.
+
+The v0.7 planning/implementation workflow must define bounded local-file safety
+for supported reference formats and must decide explicit limits such as accepted
+formats, maximum dimensions/filesize, decode/parse failure behavior, and whether
+reference bytes are copied into observer-owned storage or referenced from an
+approved project-local location. The exact policy is not frozen here.
+
+Reference images are untrusted data, not executable content. A reference reader
+must not evaluate embedded code, dynamically load scripts, or treat image
+metadata as an instruction source. If future formats can contain active or
+complex embedded content, their parser/decoder boundary must be reviewed
+explicitly rather than inheriting a generic file-loading mechanism.
+
+Reference artifacts and downstream correction packets must preserve path
+privacy and boundedness. Operational absolute paths must not become semantic
+identity merely because a reference was imported from that location. Heavy
+image bytes should be referenced rather than copied repeatedly into every
+comparison, viewer state, annotation artifact, or agent-context packet.
+
+The privacy model must also distinguish a raw imported image from an approved
+reference. Import must not silently promote an image to a project baseline,
+active reference, or superseding design authority. Approval and supersession
+must be explicit and auditable.
+
+Reference/candidate comparison must not broaden the existing browser/network
+boundary. Candidate rendering continues through the current loopback-only
+Chromium observation path unless a later separately approved roadmap change
+expands that policy. External references themselves do not authorize remote
+navigation or third-party network requests.
+
 ## Not yet addressed
 
 Certificate-failure-specific handling, permission-prompt-specific handling
 (Chromium's default deny-all applies; no permission is ever explicitly
 granted), and any non-loopback/remote browsing mode remain unimplemented and
-out of scope. `my-frontend-observer@0.5.0` is published to npm, and a
+out of scope. `my-frontend-observer@0.6.0` is published to npm, and a
 pre-release readiness CI workflow (Windows/Linux/macOS packed-candidate
 validation) already exists (see `docs/CI_CD.md`); these are no longer future
-decisions. Those facts do not expand the security scope above: remote
-browsing, certificate handling, and permission-prompt handling remain
-separate, unimplemented concerns.
+decisions. External visual-reference import/evaluation, reference annotation,
+and viewer handling remain future v0.7+ concerns. Those facts do not expand the
+security scope above: remote browsing, certificate handling, permission-prompt
+handling, and the exact future reference-file limits remain separate,
+unimplemented concerns.
