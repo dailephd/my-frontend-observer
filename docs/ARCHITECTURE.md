@@ -3,15 +3,16 @@
 ## Current package architecture
 
 The current repository is one published TypeScript ESM package
-(`my-frontend-observer@0.5.0`):
+(`my-frontend-observer@0.6.0`):
 
 - `src/cli.ts` is the real, thin public CLI parsing/dispatch/presentation
   boundary for the current command surface (`observe`, `compare`,
   `approve-baseline`, `save-change-contract`, `evaluate-contract`); argument
   parsing and output formatting only, per command - the commands do not share
-  domain semantics in the CLI.
+  domain semantics in the CLI. v0.6 adds no new CLI command.
 - `src/index.ts` is the library entry point re-exporting the observer-owned
-  contracts/functions from every layer below.
+  contracts/functions from every layer below, including the v0.6 bounded-agent-
+  context projection and runtime/static correlation surface.
 - `scripts/clean.mjs` safely removes only the project `dist/` directory.
 - `scripts/check-docs.mjs` validates the canonical documentation foundation,
   roadmap version presence, and the no-batches rule.
@@ -339,6 +340,76 @@ lab code in this repository - those remain separate sibling-repository
 responsibilities per the Milestone 6 ownership split in
 `docs/PROJECT_MILESTONES.md`.
 
+## Planned v0.7–v0.10 reference-evidence architecture constraints
+
+The external visual-reference capability is future work. It must extend the
+current v0.1-v0.6 evidence architecture rather than becoming a UI-only feature
+or a parallel visual-comparison stack.
+
+The planned evidence domains remain distinct:
+
+```text
+runtime observation A ↔ runtime observation B
+→ existing before/after comparison
+
+approved baseline/per-change contract ↔ candidate runtime evidence
+→ existing canonical contract evaluation
+
+external visual reference ↔ candidate runtime evidence
+→ future reference applicability + structured fidelity evaluation
+```
+
+An external reference is not an `ObservationArtifact`, and a reference region
+is not a runtime target. The future implementation must preserve explicit
+identity and provenance for the reference image/version, reference regions,
+applicable viewport/theme/application state, authored requirements, tolerances,
+approval/supersession state, and reference-region/runtime-target bindings.
+Bindings may be explicit, ambiguous, unavailable, or another conservatively
+defined state selected during planning; they must never silently become source
+ownership.
+
+The non-UI reference model and structured reference-vs-candidate evaluation
+must be established in v0.7 before v0.8 consumes them. v0.8 may render
+side-by-side images, overlays, measurements, bindings, provenance, and fidelity
+results, but it must not invent a second reference model or evaluation engine.
+v0.9 may author annotations against either runtime screenshots or external
+references, but both coordinate/identity domains remain explicit and feed the
+same canonical contract/change-scope semantics. v0.10 combines both visual
+entry modes with the existing correction loop.
+
+Where a reference requirement is executable, it must map into the existing
+v0.5 requested/expected-dependent/protected/preserved semantics. Informational
+or unassessed reference evidence remains non-executable until explicitly
+promoted. Do not create reference-only PASS/FAIL semantics.
+
+The reference evaluation should reuse existing relationship/value conventions
+where they mean the same thing, and extend them only when evidence from a static
+image or approved design intent genuinely requires a distinct type. Pixel or
+image-region similarity may supplement structured evidence, especially for
+asset-sensitive regions, but it must not replace browser-authoritative runtime
+geometry, canonical contract evaluation, or explicit relationship evidence.
+
+Candidate rendering still uses the one existing Chromium observation engine.
+The observer remains non-mutating. `my-dev-kit` remains the static/source
+evidence owner, and the v0.6 correlation/bounded-context boundary remains the
+route for attaching relevant source evidence to reference-driven correction
+packets. Heavy reference image bytes should be referenced rather than copied
+into every downstream context/evaluation record.
+
+Theme, application-state, viewport, and other applicability dimensions must be
+checked before reference fidelity is interpreted. If reference and candidate do
+not represent compatible intended states, the result must be explicitly
+incompatible/incomparable rather than a fabricated visual difference set.
+Planning should extend or reuse the canonical comparability/state model rather
+than create unrelated reference-only state semantics.
+
+The exact public artifact names, schema versions, persistence layout, supported
+image formats, style-evidence vocabulary, tolerance primitives, and image-
+similarity mechanisms are not frozen by this architecture document. They must be
+designed from the current repository through the v0.7 planning workflow and
+must follow existing identity, provenance, validation, boundedness, and portable-
+artifact precedents.
+
 ## Retained v0.1 architecture constraints
 
 v0.1 planning preserved these approved boundaries without treating module
@@ -370,9 +441,10 @@ correlation/export contracts within this repository, preserving independent
 ownership; orchestrator-consumption and lab-compatibility work are separate
 sibling-repository deliverables, not part of this repository's architecture.
 
-The text/config-driven coding-agent workflow must be operational before the
-viewer and annotation layers are added. Those interfaces consume the same
-canonical observation, relationship, comparison, contract, change-scope,
-correlation, and context boundaries rather than creating parallel engines.
-The concrete implementation plan and module layout must be designed only after
-the relevant version planning workflow inspects the current repositories.
+The text/config-driven coding-agent workflow and the non-UI external-reference
+evidence foundation must be operational before the viewer and annotation layers
+are added. Those interfaces consume the same canonical observation,
+relationship, comparison, contract, change-scope, reference, correlation, and
+context boundaries rather than creating parallel engines. The concrete
+implementation plan and module layout must be designed only after the relevant
+version planning workflow inspects the current repositories.
