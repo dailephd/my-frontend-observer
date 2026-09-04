@@ -6,11 +6,11 @@ This document defines the ordered development milestones for `my-frontend-observ
 
 `my-frontend-observer` is a separate, local-first runtime/browser evidence producer within the broader `my-dev-kit` ecosystem.
 
-Its purpose is to observe what a browser actually renders and convert that runtime frontend state into structured evidence that humans, large language models (LLMs), coding agents, automated regression checks, and later ecosystem consumers can inspect.
+Its purpose is to observe what a browser actually renders and convert that runtime frontend state into structured evidence that humans, large language models (LLMs), coding agents, automated regression checks, and later ecosystem consumers can inspect. As the visual workflow matures, it also owns the structured evidence boundary for approved external visual references used to describe desired design intent, without treating those references as runtime observations or source code.
 
 The milestone order is intentional.
 
-Later capabilities must extend the observation model established by earlier milestones rather than creating parallel browser-control, artifact, comparison, contract, annotation, or integration systems.
+Later capabilities must extend the observation model established by earlier milestones rather than creating parallel browser-control, artifact, comparison, contract, reference, annotation, or integration systems.
 
 The project must preserve the core evidence flow:
 
@@ -22,12 +22,14 @@ browser observation
 → contracts and change scope
 → bounded agent context plus static/runtime integration
 → text/config-driven coding-agent change review
-→ human graphical inspection
-→ structured visual annotation
+  + external visual-reference evidence foundation
+  + reference-vs-candidate structured evaluation
+→ human graphical inspection of runtime and reference evidence
+→ structured visual annotation on runtime screenshots or external references
 → full visual human–LLM frontend change workflow
 ```
 
-The project must not become a source-analysis replacement for `my-dev-kit`.
+The project must not become a source-analysis replacement for `my-dev-kit`, an autonomous image-to-code generator, or a screenshot-cloning system.
 
 ## Long-term responsibility model
 
@@ -51,8 +53,11 @@ my-frontend-observer
 → scrolling and overflow
 → visibility
 → layout relationships
-→ comparisons
+→ before/after comparisons
 → runtime contracts
+→ external visual-reference evidence
+→ reference-region identity and runtime binding
+→ reference/candidate structured fidelity evidence
 → human visual intent
 
 my-dev-kit-orchestrator
@@ -100,7 +105,7 @@ Add comparison, relationship/dependency reasoning, executable contracts, and exp
 Milestones 6–7
 ```
 
-Combine bounded runtime and static evidence through explicit ecosystem contracts, then prove a text/config-driven coding-agent change-review workflow before graphical interaction becomes a dependency.
+Combine bounded runtime and static evidence through explicit ecosystem contracts, then prove a text/config-driven coding-agent change-review workflow before graphical interaction becomes a dependency. Milestone 7 also establishes the non-graphical external-reference artifact/binding/evaluation foundation so the later viewer consumes canonical reference evidence rather than inventing it.
 
 ### Phase D — Human visual interaction
 
@@ -108,7 +113,7 @@ Combine bounded runtime and static evidence through explicit ecosystem contracts
 Milestones 8–10
 ```
 
-Add graphical inspection, structured visual annotation, and the complete visual human–LLM frontend change workflow on top of the already proven coding-agent path.
+Add graphical inspection of runtime and reference evidence, structured visual annotation in both source contexts, and the complete visual human–LLM frontend change workflow on top of the already proven coding-agent path.
 
 ## Milestone 1 — Runtime Observation Foundation
 
@@ -408,6 +413,7 @@ Do not include yet:
 - persistent regression contracts;
 - requested/dependent/protected change contracts;
 - rich LLM context packaging;
+- external visual-reference evaluation;
 - graphical observation viewer;
 - visual annotation;
 - static source ownership;
@@ -461,9 +467,10 @@ The stable observer identity should remain usable by:
 - comparisons;
 - contracts;
 - annotations;
+- future reference bindings;
 - future ecosystem correlation.
 
-A stable runtime identity must not be treated as proof of source ownership.
+A stable runtime identity must not be treated as proof of source ownership or future reference identity.
 
 ### Multiple targets
 
@@ -560,6 +567,7 @@ Do not add yet:
 - automatic target discovery through static analysis;
 - LLM-driven target discovery;
 - source ownership inference;
+- external visual-reference regions;
 - visual annotation;
 - full accessibility auditing.
 
@@ -704,6 +712,8 @@ relevant state/theme
 
 The comparison engine must not silently compare fundamentally incompatible observations as if they represented the same frontend state.
 
+The comparability concepts established here should be extended or reused later for reference/candidate applicability where the same state dimensions apply, rather than replaced by a second unrelated state model.
+
 ### Required difference categories
 
 The comparison engine should support, as evidence permits:
@@ -780,7 +790,7 @@ AppShell
     └── RightAd
 ```
 
-This representation should support later reasoning about which relationships changed.
+This representation should support later reasoning about which relationships changed and should be reusable where an external reference expresses the same geometric relationship among reference regions.
 
 Do not require every target project to have the same graph structure.
 
@@ -801,6 +811,7 @@ A dependency claim must eventually come from:
 
 - explicit user intent;
 - a change contract;
+- approved reference intent;
 - an approved relationship specification;
 - another supported evidence source.
 
@@ -856,6 +867,8 @@ The tool reports observable change.
 Do not yet treat every difference as a failure.
 
 Milestone 5 defines which changes are allowed, required, or protected.
+
+External desired-design references are also not an ordinary Milestone 4 before/after comparison; that separate evidence domain arrives later.
 
 ## Milestone 5 — Executable Frontend Contracts and Explicit Change Scope
 
@@ -965,6 +978,8 @@ visible and classified as unexpected rather than being silently ignored.
 
 Together these five categories define the allowed frontend change scope.
 
+Future executable reference-derived intent must reuse these same categories. A visible reference detail may remain informational or unassessed until explicitly promoted into the canonical contract. Reference evidence must not introduce a second requested/protected taxonomy.
+
 ### Relationship-first design
 
 Prefer relational constraints when they more accurately represent the user's intent.
@@ -985,7 +1000,7 @@ workspace width must equal 1039px
 
 when the actual requirement is redistribution of available space rather than one fixed measurement.
 
-Fixed-pixel constraints remain valid when explicitly required.
+Fixed-pixel constraints remain valid when explicitly required, including when an approved reference genuinely requires a particular geometry.
 
 ### Required contract primitives
 
@@ -1041,6 +1056,8 @@ FAIL
 ```
 
 A requested local success must not hide a protected-region regression.
+
+A later reference-fidelity result must obey the same rule and cannot override this failure.
 
 ### Existing contracts remain active
 
@@ -1154,6 +1171,8 @@ Do not dump by default:
 
 The context builder must report omissions, truncation, and whether evidence required for the agent task is adequate. Some evidence existing is not equivalent to adequate task context.
 
+The same boundedness discipline must later apply when reference evidence is added: only relevant reference regions, failed requirements, and heavy-asset references belong in ordinary coding-agent context.
+
 ### Static/runtime correlation
 
 Support explicit correlation between observer runtime identities and bounded static evidence where reliable.
@@ -1170,11 +1189,13 @@ rendered region
 
 Runtime target identity must never silently become source ownership. Correlation confidence, ambiguity, competing candidates, and missing evidence must remain explicit.
 
+A future reference-region to runtime-target binding remains a separate relationship upstream of this static correlation. Reference identity must not be passed off as a source identity either.
+
 ### my-dev-kit relationship
 
 Determine whether current `my-dev-kit` identities and retrieval contracts already support the required correlation.
 
-Modify `my-dev-kit` only if evidence proves that a generic static-side capability is actually missing. Do not add browser concepts, runtime observation semantics, or Playwright dependencies to `my-dev-kit`.
+Modify `my-dev-kit` only if evidence proves that a generic static-side capability is actually missing. Do not add browser concepts, runtime observation semantics, reference-image semantics, or Playwright dependencies to `my-dev-kit`.
 
 `my-dev-kit` remains the owner of static repository/source evidence, indexing, architecture, dependency evidence, probable ownership evidence, and bounded source retrieval.
 
@@ -1189,7 +1210,7 @@ Modify `my-dev-kit` only if evidence proves that a generic static-side capabilit
 - the correlation/export boundary;
 - references back to authoritative observer artifacts.
 
-It does not become a static analyzer and must remain independently executable outside the ecosystem.
+Future reference evidence remains observer-owned but distinct from runtime evidence. The observer does not become a static analyzer and must remain independently executable outside the ecosystem.
 
 ### Orchestrator relationship
 
@@ -1211,11 +1232,15 @@ The orchestrator must not:
 - duplicate `my-dev-kit` retrieval;
 - become the canonical owner of runtime/static correlation evidence.
 
+Future reference-driven workflows may pass bounded reference/fidelity evidence through the same coordination boundary, but the orchestrator must not define a competing reference schema or fidelity engine.
+
 ### Lab relationship
 
 Add only the `my-dev-kit-lab` exact readers, pinned fixtures, compatibility checks, and evidence-quality evaluation needed to prove the observer/orchestrator/static-evidence contract.
 
 The lab remains downstream evaluation. It must not reimplement capture, retrieval, correlation, orchestration, or become part of every normal frontend edit.
+
+Future reference compatibility/evidence-quality checks belong in the lab only when a concrete integration requires them; the lab must not become the production reference evaluator.
 
 ### Cross-repository dependency direction
 
@@ -1262,17 +1287,17 @@ Milestone 6 is complete when:
 - the lab reads exact supported contracts and validates required compatibility;
 - every affected repository passes individual readiness;
 - coordinated exact-version validation passes;
-- no viewer or visual-annotation dependency is required.
+- no viewer, external-reference, or visual-annotation dependency is required for the released v0.6 capability itself.
 
-## Milestone 7 — End-to-End Coding-Agent Frontend Change Review
+## Milestone 7 — End-to-End Coding-Agent Frontend Change Review and External Reference Evidence Foundation
 
 ### Objective
 
-Prove that the system solves the core practical problem through a text/config-driven workflow before investing in graphical interaction.
+Prove that the system solves the core practical frontend-correction problem through a text/config-driven workflow before investing in graphical interaction, and establish the non-graphical external visual-reference evidence foundation needed when the desired design is supplied as an approved image rather than expressed only as prose.
 
-This is the first milestone where the complete coding-agent correction loop is operational.
+This is the first milestone where the complete coding-agent correction loop is operational. It is also the milestone where reference design vs candidate becomes a first-class observer evidence/evaluation path so Milestone 8 can display that canonical result rather than inventing a viewer-only implementation.
 
-### Required workflow
+### Core text/config-driven workflow
 
 Demonstrate:
 
@@ -1296,27 +1321,245 @@ capture approved baseline
 
 Unexpected changes must remain visible and classified rather than disappearing outside the requested scope.
 
+### External reference evidence domain
+
+The milestone must also support a non-graphical external-reference path for an approved local image that represents desired design intent.
+
+An external reference is not:
+
+- an `ObservationArtifact`;
+- the "before" side of the existing before/after comparison;
+- source code;
+- a hidden DOM/CSS/component representation;
+- automatic permission to change every visible difference.
+
+The exact public artifact/type names and schema versions must be selected during milestone planning by reusing current observer identity, provenance, validation, persistence, and boundedness precedents. Do not freeze a `ReferenceVisualArtifact` name merely because planning used that working term.
+
+### Reference identity and provenance
+
+A reference model must preserve, as applicable:
+
+- deterministic logical reference identity/version;
+- source image reference;
+- image width/height and supported format;
+- provenance;
+- explicit reference viewport or other applicability identity;
+- bounded reference regions;
+- coordinate semantics;
+- authored design constraints;
+- relationships;
+- selected style/asset evidence where supported;
+- tolerances;
+- diagnostics/limits;
+- approval/supersession history.
+
+Operational filesystem paths must not become semantic identity. Heavy image bytes should be referenced rather than copied into every downstream artifact/context packet.
+
+### Reference regions
+
+Support bounded meaningful reference-region identities, for example:
+
+```text
+popup-shell
+header
+brand-mark
+current-page-card
+destination-card
+crawl-controls
+progress
+status
+message
+footer
+```
+
+Reference-region identity is separate from runtime target identity.
+
+Reference geometry may include absolute image coordinates and may support normalized coordinates where appropriate. Exact coordinate semantics must be selected during milestone planning.
+
+Reference regions should reuse the canonical layout-relationship vocabulary where the same geometric concept applies instead of creating a second relationship engine.
+
+### Reference-to-runtime binding
+
+The milestone must establish an explicit binding between:
+
+```text
+reference region
+```
+
+and:
+
+```text
+stable runtime target
+```
+
+The binding must be able to represent reliable association plus ambiguity/unavailability or equivalent conservative states selected during planning.
+
+Reference identity, runtime identity, and static source identity remain separate. A binding to a runtime target never becomes source ownership automatically. Static/source evidence still flows through the Milestone 6 correlation/retrieval boundary.
+
+### Reference applicability before fidelity
+
+The system must decide whether a reference and candidate represent compatible intended states before ordinary fidelity differences are produced.
+
+Relevant dimensions may include:
+
+```text
+viewport
+theme
+application state
+variant/state identity
+```
+
+Example:
+
+```text
+reference: One Dark / active crawl
+candidate: One Light / idle
+```
+
+must produce an explicit incompatible/incomparable result rather than a meaningless visual-difference list.
+
+Where possible, extend/reuse the existing comparability/state conventions established by Milestone 4 rather than inventing an unrelated reference-only state system.
+
+### Reference design intent and canonical contracts
+
+A visible reference detail is evidence, not automatically a hard requirement.
+
+The reference model must distinguish, at minimum conceptually:
+
+```text
+image-observed/derived evidence
+authored design intent
+informational or unassessed detail
+```
+
+When reference intent becomes executable, it must map into the existing Milestone 5 authored categories:
+
+```text
+requested
+expected-dependent
+protected
+preserved
+```
+
+`unexpected` remains derived-only. Do not create reference-only requested/protected semantics or a separate PASS/FAIL taxonomy.
+
+### Reference tolerance and style evidence
+
+Reference fidelity cannot use one global pixel-perfect threshold.
+
+Planning should define bounded property-specific tolerance semantics for appropriate categories such as:
+
+- geometry;
+- normalized position/size;
+- spacing;
+- layout relationships;
+- selected color/style evidence;
+- asset-sensitive regions;
+- optional image-region similarity.
+
+Text rendering, font differences, antialiasing, gradients, shadows, and glow may vary across platform/browser environments and must not generate false structural failures merely because screenshot bytes differ.
+
+Screenshot/image similarity may supplement structured evidence, but it must not be the sole determinant of success.
+
+### Reference-vs-candidate structured evaluation
+
+The milestone must be able to combine:
+
+```text
+REFERENCE IMAGE
++ REFERENCE REGION GEOMETRY
++ REFERENCE RELATIONSHIPS
++ AUTHORED DESIGN INTENT
++ OPTIONAL IMAGE/ASSET SIMILARITY EVIDENCE
+```
+
+with:
+
+```text
+CANDIDATE SCREENSHOT
++ CANDIDATE BROWSER GEOMETRY
++ CANDIDATE RELATIONSHIPS
++ CANDIDATE COMPUTED EVIDENCE
+```
+
+and produce bounded, actionable evidence rather than only "looks different."
+
+Example:
+
+```text
+Target: current-page-card
+Reference x: 28
+Candidate x: 18
+Delta: -10
+
+Reference width: 424
+Candidate width: 446
+Delta: +22
+
+Expected separation below header: 24px within tolerance
+Candidate separation: 38px
+Result: fidelity requirement failed
+```
+
+The candidate side remains browser-authoritative and must be captured through the existing observation engine.
+
+### Coding-agent correction packet
+
+The external coding agent should receive only relevant reference/runtime mismatches plus active protected/preserved constraints, diagnostics/provenance, and bounded static/source context.
+
+Do not make the coding agent reinterpret the full image from scratch on every correction iteration when structured mismatch evidence already exists.
+
+Conceptually:
+
+```text
+reference requirement
++ candidate measurement
++ delta/failure
++ nearby protected relationships
++ bounded source evidence
+→ coding agent correction
+```
+
+### Reference approval and supersession
+
+The system must distinguish:
+
+```text
+raw imported image
+≠ approved reference
+≠ approved runtime baseline
+```
+
+Reference import, reference approval, baseline approval, reference supersession, and baseline supersession are separate acts.
+
+A reference-fidelity `PASS`, ordinary comparison success, or frontend-contract `PASS` must never silently approve or supersede a reference/baseline.
+
+Multiple approved references may exist for explicit states such as dark/light theme, desktop/mobile, idle/active/error, or other variants. Selection must be explicit through reference identity/applicability, not accidental filename matching.
+
 ### No viewer dependency
 
-The workflow must work without requiring:
+Both the ordinary text/config correction workflow and the external-reference foundation must work without requiring:
 
 - an interactive graphical viewer;
 - visual drawing;
 - visual annotation authoring.
 
-A human may express the requested change, expected dependents, protected regions/properties, and preserved invariants through text or structured configuration.
+A human may express the requested change, expected dependents, protected regions/properties, preserved invariants, and initial reference regions/requirements through text or structured configuration.
 
 ### Required proof cases
 
-Controlled targets must demonstrate both:
+Controlled targets must demonstrate:
 
-1. a successful requested change whose dependent changes and preserved contracts pass; and
-2. a requested change that succeeds locally while a protected property or preserved invariant fails.
+1. a successful ordinary requested change whose dependent changes and preserved contracts pass;
+2. an ordinary requested change that succeeds locally while a protected property or preserved invariant fails;
+3. a reference-driven case where an approved external reference is bound to selected runtime targets, measurable fidelity mismatches are produced, bounded correction evidence reaches the coding agent, the candidate is rerendered, and reference fidelity is reevaluated;
+4. a reference/candidate applicability mismatch that produces an explicit incompatible/incomparable result rather than fabricated visual differences;
+5. a case where reference-fidelity requirements pass but an active protected/baseline contract fails, producing overall failure.
 
-The second case must produce an overall failure with actionable evidence. This proves the system prevents:
+The protected/invariant cases prove the system prevents:
 
 ```text
-fix one frontend problem
+fix or match one frontend area
 → silently break another
 ```
 
@@ -1324,7 +1567,9 @@ fix one frontend problem
 
 The observer does not edit source.
 
-A coding agent or another external implementation tool performs the edit against the target project. The observer and ecosystem provide bounded evidence before and after that edit. Source changes and evidence-producer responsibilities remain independently traceable.
+A coding agent or another external implementation tool performs the edit against the target project. The observer and ecosystem provide bounded runtime/reference/static evidence before and after that edit. Source changes and evidence-producer responsibilities remain independently traceable.
+
+The observer is not an automatic image-to-code generator, website cloner, raster-to-HTML/CSS generator, or vectorizer.
 
 ### Baseline and contract behavior
 
@@ -1334,9 +1579,11 @@ Existing approved baseline contracts remain active unless explicitly superseded.
 existing approved baseline contracts
 +
 new per-change contract
++
+reference requirements where applicable
 ```
 
-must both pass. Successful results may be proposed as a new baseline, but baseline approval and history must remain explicit.
+must all remain visible in the overall result. Successful results may be proposed as a new baseline or reference state, but approval and history must remain explicit.
 
 ### Acceptance criteria
 
@@ -1349,15 +1596,23 @@ Milestone 7 is complete when:
 - requested and expected dependent changes are evaluated;
 - protected properties and preserved invariants are evaluated;
 - existing baseline contracts are rerun;
-- successful and failing cases produce traceable actionable results;
+- successful and failing ordinary cases produce traceable actionable results;
 - a locally successful requested change with a protected/invariant regression fails overall;
+- an external-reference identity/artifact model exists without masquerading as an observation;
+- bounded reference regions, applicability, authored intent, tolerances, and reference/runtime binding are represented explicitly;
+- reference-vs-candidate structured evaluation produces measurable actionable evidence;
+- incompatible reference/candidate state is represented explicitly;
+- reference-derived executable intent reuses canonical contract semantics;
+- bounded agent context can carry relevant reference mismatch evidence without embedding all heavy image bytes or unrelated regions;
+- reference approval/supersession remains explicit;
+- reference-fidelity success cannot hide an active contract failure;
 - viewer and annotation systems are not required.
 
-## Milestone 8 — Interactive Local Observation Viewer
+## Milestone 8 — Interactive Local Observation and Reference Viewer
 
 ### Objective
 
-Add a human graphical inspection surface over the already working observation, comparison, contract, correlation, and coding-agent-context system.
+Add a human graphical inspection surface over the already working observation, comparison, contract, correlation, coding-agent-context, and external-reference evidence system.
 
 The viewer enhances a proven core workflow; it is not a prerequisite for Milestones 6 or 7.
 
@@ -1365,32 +1620,61 @@ The viewer enhances a proven core workflow; it is not a prerequisite for Milesto
 
 The viewer should show, as applicable:
 
-- screenshots;
+- runtime screenshots;
+- approved external reference images;
 - stable observed targets;
+- stable reference regions;
 - geometry and semantic information;
 - scrolling, overflow, and visibility evidence;
 - layout and behavior relationships;
 - before/after changes;
+- reference/candidate structured fidelity evidence;
+- reference applicability/incomparability;
 - diagnostics and evidence-state distinctions;
 - requested/dependent/protected/preserved/unexpected classifications;
 - baseline and per-change contract results;
+- reference-region/runtime-target bindings and ambiguity;
 - source-correlation evidence and uncertainty where available;
-- bounded agent-context references.
+- bounded agent-context references;
+- provenance/approval information relevant to the displayed evidence.
 
-### Element/screenshot association
+### Reference/candidate inspection
+
+The viewer should support a clear mode for inspecting an approved reference beside a browser-rendered candidate.
+
+Where useful, this may include:
+
+- side-by-side reference/candidate images;
+- synchronized zoom/pan;
+- region overlays;
+- selecting a reference region and highlighting the bound runtime target;
+- selecting a runtime target and showing its bound reference region;
+- reference/candidate measurements and deltas;
+- failed relationship/style/asset evidence;
+- active baseline/per-change contract results;
+- unsupported/partial/ambiguous/incomparable states.
+
+The viewer displays canonical results; it must not recompute a second fidelity model merely for presentation.
+
+### Element/screenshot/reference association
 
 Where practical:
 
 ```text
-structured target selection
-→ corresponding screenshot region
+structured runtime target selection
+→ corresponding candidate screenshot region
 ```
 
-and:
+```text
+structured reference-region selection
+→ corresponding reference image region
+```
+
+and, where an explicit binding exists:
 
 ```text
-screenshot region
-→ associated known target
+reference region
+↔ runtime target
 ```
 
 should be supported without inventing identity when evidence is insufficient.
@@ -1403,29 +1687,51 @@ It must not create:
 
 - a second observer;
 - a second relationship engine;
-- a second comparison engine;
+- a second before/after comparison engine;
 - a second contract/change-scope engine;
+- a second reference artifact model;
+- a second reference/candidate evaluation engine;
 - a second static/runtime correlation engine;
 - a second bounded-context builder.
 
-CLI and programmatic paths remain first-class. Viewer state must not mutate target applications.
+CLI and programmatic paths remain first-class. Viewer state must not mutate target applications, raw observations, or raw reference images.
+
+Merely opening/importing a reference in the viewer must not silently approve or supersede it.
 
 ### Acceptance criteria
 
 Milestone 8 is complete when:
 
 - a developer can inspect observations and screenshots without opening raw files;
-- geometry, runtime behavior, relationships, and comparisons are understandable;
+- a developer can inspect approved external references beside candidates;
+- geometry, runtime behavior, relationships, and before/after comparisons are understandable;
+- reference/candidate fidelity evidence and applicability are understandable;
 - contract/change-scope results identify relevant regions;
+- reference/runtime binding ambiguity remains visible;
 - source-correlation evidence displays uncertainty rather than false ownership;
 - the evidence shown is the same canonical evidence used by the coding-agent workflow;
+- selecting a reference region can expose the corresponding bound runtime target and mismatch evidence where available;
 - command-line/programmatic workflows remain independently functional.
 
 ## Milestone 9 — Human Visual Annotation and Design-Intent Capture
 
 ### Objective
 
-Add visual human intent to the already working Milestone 7 coding-agent workflow through the Milestone 8 viewer.
+Add visual human intent to the already working Milestone 7 coding-agent/reference workflow through the Milestone 8 viewer.
+
+Annotations may originate from either:
+
+```text
+a runtime observation screenshot
+```
+
+or:
+
+```text
+an approved/imported external visual reference
+```
+
+The two annotation contexts must remain explicit.
 
 ### Required annotation capabilities
 
@@ -1446,56 +1752,76 @@ Support a deliberately bounded first annotation set selected during milestone pl
 
 Annotations must preserve:
 
-- observation identity;
-- screenshot identity;
+- annotation source context (`runtime-observation` or external-reference equivalent selected during planning);
+- observation/screenshot identity or reference identity;
 - annotation geometry;
 - annotation type;
 - textual instruction where supplied;
-- associated stable runtime target or relationship where reliable;
+- associated stable runtime target, relationship, or reference region where reliable;
 - provenance and interpretation/confirmation state.
 
-Do not store annotation intent only as flattened pixels. Preserve structured data in addition to any annotated screenshot.
+Do not store annotation intent only as flattened pixels. Preserve structured data in addition to any annotated screenshot/reference rendering.
+
+Runtime-screenshot and reference-image coordinates are distinct domains. Coordinate transforms must preserve which source image the annotation belongs to.
+
+### Reference region authoring
+
+For external references, annotation may help define or refine:
+
+- meaningful reference regions;
+- reference-region relationships;
+- asset-sensitive regions;
+- design notes;
+- which visual details are informational;
+- which explicit geometry/style/relationship constraints should become executable intent.
+
+A region drawn over a reference does not automatically make every enclosed pixel a requirement.
 
 ### Canonical intent and change-scope model
 
-Annotations must feed the existing canonical change-scope and contract model:
+Annotations must feed the existing canonical reference/change-scope/contract model:
 
 ```text
-visual annotation
-→ target/relationship binding
+runtime annotation OR external-reference annotation
+→ target/relationship/reference-region binding
 → candidate requested/dependent/protected/preserved intent
 → explicit confirmation or interpretation where necessary
 → canonical per-change contract
 ```
 
-Do not create annotation-only change semantics or different PASS/FAIL rules. Ambiguous drawings must not silently become strong requirements.
+Do not create annotation-only or reference-only change semantics or different PASS/FAIL rules. Ambiguous drawings must not silently become strong requirements.
 
 ### LLM and coding-agent consumption
 
 The existing bounded agent-context system may include:
 
-- original and annotated screenshot references;
+- original and annotated runtime screenshot references;
+- external reference and annotated-reference references;
 - structured observation evidence;
+- structured reference evidence;
 - structured annotations;
 - current relationships;
+- reference/candidate mismatches;
 - baseline contracts;
 - confirmed per-change scope;
 - relevant bounded static evidence.
 
-Annotation adds an input mode to the proven workflow; it does not replace text/config requests or bypass contracts.
+Annotation adds an input mode to the proven workflow; it does not replace text/config requests, reference evidence, or contract confirmation.
 
 ### Acceptance criteria
 
 Milestone 9 is complete when:
 
 - a user can annotate an existing observation in the viewer;
+- a user can annotate an external reference in the viewer;
 - annotations survive save/reload;
-- structured annotations remain associated with their observation;
-- target/relationship associations remain available where reliable;
+- structured annotations remain associated with the correct runtime/reference source identity;
+- target/relationship/reference-region associations remain available where reliable;
+- reference regions and selected design requirements can be authored without turning every pixel into a contract;
 - preserve/resize/move/remove/inspect intent can be represented where supported;
 - ambiguous intent requires explicit interpretation or confirmation;
-- annotations can drive the existing coding-agent change-review workflow through the canonical contract model;
-- the original raw observation remains unchanged.
+- annotations can drive the existing coding-agent change-review workflow through the canonical reference and contract models;
+- original raw observations and reference images remain unchanged.
 
 ## Milestone 10 — Full Visual Human–LLM Frontend Change Workflow
 
@@ -1503,29 +1829,53 @@ Milestone 9 is complete when:
 
 Complete the visual communication version of the already operational coding-agent workflow.
 
-This milestone combines the proven Milestone 7 correction loop with the Milestone 8 viewer and Milestone 9 structured annotation.
+This milestone combines the proven Milestone 7 correction/reference loop with the Milestone 8 viewer and Milestone 9 dual-context structured annotation.
 
-### Intended visual workflow
+### Intended visual entry modes
+
+The system must support both of these entry modes.
+
+Actual-frontend-driven:
 
 ```text
 human views actual captured frontend
 → points/draws/annotates requested design change
 → observer binds intent to stable runtime regions
-→ change scope is constructed and confirmed
+```
+
+Reference-driven:
+
+```text
+human supplies or selects an approved external visual reference
+→ viewer shows reference beside the actual captured candidate
+→ human identifies/annotates relevant reference regions and design intent
+→ observer binds confirmed reference intent to stable runtime regions
+```
+
+Both converge on the same canonical workflow:
+
+```text
+change scope is constructed and confirmed
 → bounded runtime evidence is produced
+→ relevant bounded reference evidence is included where applicable
 → bounded static evidence is obtained
 → coding-agent context is assembled
 → external coding agent modifies source
 → observer rerenders
+→ before/after comparison runs
+→ reference-vs-candidate evaluation runs where applicable
 → requested/dependent/protected/preserved behavior is evaluated
+→ baseline contracts rerun
+→ unexpected changes remain explicit
 → viewer shows PASS or actionable failure evidence
 → human approves or requests correction
-→ successful state may become the new approved baseline
+→ successful state may become the new approved baseline and/or explicitly
+  supersede an approved reference according to project policy
 ```
 
 ### Critical invariant
 
-A visual request does not erase existing baseline contracts.
+A visual request or reference does not erase existing baseline contracts.
 
 Unless explicitly superseded:
 
@@ -1533,11 +1883,30 @@ Unless explicitly superseded:
 existing approved contracts
 +
 new visual/requested change contract
++
+active reference requirements where applicable
 ```
 
-must both pass.
+must remain active in the final evaluation.
 
-The system must preserve unexpected-change evidence and cannot treat visual intent as authorization for unrelated rendered changes.
+The system must preserve unexpected-change evidence and cannot treat visual/reference intent as authorization for unrelated rendered changes.
+
+A reference-fidelity `PASS` with a protected or preserved contract `FAIL` is overall failure.
+
+### Reference and baseline governance
+
+The workflow must keep separate:
+
+- raw reference import;
+- reference approval;
+- active reference selection;
+- reference supersession;
+- baseline approval;
+- baseline supersession;
+- per-change approval;
+- final human acceptance.
+
+No comparison or evaluation result silently performs another governance act.
 
 ### Evidence and ownership model
 
@@ -1546,12 +1915,20 @@ The full workflow may combine:
 ```text
 human visual intent
 
+reference evidence
+→ reference identity
+→ reference image/regions
+→ applicability
+→ authored requirements
+→ runtime binding
+→ fidelity evidence
+
 runtime evidence
 → screenshot
 → target identity
 → geometry and behavior
 → relationships
-→ comparison
+→ before/after comparison
 → contracts
 
 static evidence
@@ -1573,11 +1950,13 @@ These domains remain separate and traceable. The observer remains non-mutating, 
 
 Demonstrate:
 
-- a successful visual change;
-- a requested visual change that introduces a protected-property or preserved-invariant regression;
-- actionable failure evidence shown through the viewer;
+- a successful actual-frontend-driven visual change;
+- a successful reference-driven design-replication change;
+- a reference/candidate mismatch producing actionable measured failure evidence;
+- a requested visual/reference change that introduces a protected-property or preserved-invariant regression;
+- a reference-fidelity pass that still fails overall because an active baseline/per-change contract fails;
 - a correction cycle;
-- human approval and new-baseline handling;
+- human approval and new-baseline/reference history;
 - compatible integrated ecosystem evidence using exact supported versions.
 
 ### Acceptance criteria
@@ -1585,14 +1964,17 @@ Demonstrate:
 Milestone 10 is complete when:
 
 - a human can inspect the actual captured frontend and express structured visual intent;
-- annotation binds to stable runtime evidence where reliable;
+- a human can inspect/select an approved external reference and express structured reference intent;
+- annotation binds to stable runtime/reference evidence where reliable;
 - requested/dependent/protected/preserved scope is confirmed;
-- bounded runtime and static evidence form traceable coding-agent context;
+- bounded runtime, reference, and static evidence form traceable coding-agent context;
 - an external coding agent changes the target;
-- the observer rerenders, compares, and evaluates all active contracts;
-- a protected/invariant regression fails despite local requested-change success;
+- the observer rerenders and runs before/after comparison;
+- reference-vs-candidate fidelity is reevaluated where applicable;
+- all active contracts are evaluated;
+- a protected/invariant regression fails despite local requested-change or reference-fidelity success;
 - the viewer presents actionable evidence;
-- the human can request correction and approve a successful new baseline;
+- the human can request correction and explicitly approve a successful new baseline/reference state;
 - all affected ecosystem contracts remain compatible;
 - no evidence producer's responsibility is merged into another project.
 
@@ -1610,6 +1992,7 @@ Do not create separate browser-observation implementations for:
 - graphical viewer;
 - regression tests;
 - annotation viewer;
+- reference-driven workflows;
 - orchestrator adapter.
 
 ### Browser adapter ownership
@@ -1620,19 +2003,22 @@ Initial Chromium support must not require the entire domain model to depend dire
 
 Avoid speculative multi-browser abstraction before another browser is actually planned.
 
-### Runtime target identity ownership
+### Runtime and reference identity ownership
 
-The observer owns stable runtime target identities.
+The observer owns stable runtime target identities and future stable reference-region identities, but these remain separate domains.
 
 Runtime target IDs must remain distinct from:
 
+- reference-region IDs;
 - source-file paths;
 - static symbol IDs;
 - `my-dev-kit` graph-node IDs;
 - orchestrator stage IDs;
 - lab fixture IDs.
 
-Future correlation may connect these identities explicitly.
+Reference-region IDs must likewise remain distinct from runtime and source identities.
+
+Future binding/correlation may connect these identities explicitly.
 
 Do not silently collapse them.
 
@@ -1640,49 +2026,60 @@ Do not silently collapse them.
 
 Observation artifacts must have one canonical schema/versioning owner.
 
+Future external-reference artifacts/evaluation results may have their own canonical observer-owned contract families, but they must remain distinct from observation artifacts and refer back to authoritative reference/runtime evidence.
+
 Do not create incompatible output structures for:
 
 - command-line use;
 - graphical viewer;
 - comparison;
 - contracts;
+- references;
 - LLM packaging;
 - ecosystem adapters.
 
-Derived artifacts may have their own contracts, but they must refer back to authoritative observation evidence.
+Derived artifacts may have their own contracts, but they must refer back to authoritative evidence rather than copying everything.
 
 ### Evidence hierarchy
 
 Preserve the distinction between:
 
 ```text
-direct observation
+direct browser observation
+direct image/reference measurement
+authored reference requirement
 normalized evidence
 derived relationship
-comparison result
+before/after comparison result
+reference/candidate fidelity result
 contract interpretation
 bounded agent context or summary
-human visual interpretation
+human visual interpretation/approval
 ```
 
 Do not flatten these into one unexplained result.
 
 ### Relationship ownership
 
-Layout and behavior relationships must have one canonical interpretation layer.
+Layout and behavior relationships must have one canonical interpretation layer where the relationship concept is shared.
 
 Do not duplicate relationship logic in:
 
 - viewer;
+- reference evaluator;
 - command-line interface;
 - comparison engine;
 - orchestrator adapter.
 
-### Comparison ownership
+Reference relationships may need source-specific provenance but should reuse canonical relation semantics where appropriate.
+
+### Comparison and reference-evaluation ownership
 
 Before/after comparison must have one canonical implementation.
 
-Do not duplicate comparison logic in the viewer and command-line interface.
+Reference design vs candidate is a distinct evaluation category and may require its own canonical observer-owned engine, but the viewer, CLI, and orchestrator must consume that one implementation rather than recreating it.
+
+Do not pretend reference-vs-candidate is ordinary before/after comparison by forging an observation from an image.
 
 ### Contract ownership
 
@@ -1691,21 +2088,38 @@ Frontend baseline contracts and per-change contract evaluation must have one can
 Do not implement different PASS/FAIL semantics in:
 
 - command-line validation;
+- reference-driven workflows;
 - viewer;
 - automated tests;
 - orchestrator integration.
+
+Reference-derived executable intent feeds this engine rather than creating another contract system.
 
 ### Change-scope ownership
 
 Requested, expected-dependent, protected, preserved, and unexpected classifications must use one canonical semantic model.
 
-A protected-region failure cannot become a warning merely because one consumer prefers a looser interpretation.
+A protected-region failure cannot become a warning merely because one consumer or reference workflow prefers a looser interpretation.
+
+### Reference approval ownership
+
+Reference import, approval, active selection, and supersession require explicit observer-owned governance semantics when implemented.
+
+Do not let:
+
+- file import;
+- viewer display;
+- fidelity `PASS`;
+- baseline `PASS`;
+- coding-agent completion;
+
+silently approve or supersede a reference.
 
 ### Target separation
 
 Observed applications remain external targets.
 
-Do not install observer dependencies into target applications merely to perform ordinary observation.
+Do not install observer dependencies into target applications merely to perform ordinary observation or reference-driven validation.
 
 Optional future instrumentation may exist only when explicitly designed and must not become a hidden requirement for ordinary observation.
 
@@ -1722,7 +2136,7 @@ Do not duplicate:
 
 inside `my-frontend-observer`.
 
-Any source association must use an explicit static/runtime integration boundary.
+Any source association must use an explicit static/runtime integration boundary. Reference/runtime binding is not static source analysis.
 
 ### Orchestrator boundary
 
@@ -1736,7 +2150,7 @@ Do not duplicate:
 
 inside `my-frontend-observer`.
 
-The observer produces evidence.
+The observer produces runtime/reference evidence.
 
 The orchestrator coordinates workflows.
 
@@ -1751,7 +2165,7 @@ Do not duplicate:
 
 inside `my-frontend-observer`.
 
-The observer owns production runtime evidence.
+The observer owns production runtime/reference evidence and canonical reference/candidate evaluation.
 
 The lab evaluates supported ecosystem behavior.
 
@@ -1763,12 +2177,16 @@ A shared package must have a concrete, justified owner and compatibility need.
 
 ## Cross-Milestone Evidence Rules
 
-### Observed versus derived
+### Observed, referenced, authored, and derived
 
 Every milestone must preserve:
 
 ```text
-observed fact
+browser-observed fact
+≠
+direct reference/image measurement
+≠
+authored design requirement
 ≠
 derived interpretation
 ```
@@ -1804,6 +2222,20 @@ navigation shrink caused workspace expansion
 
 Expected dependency requires explicit contract or supported intent evidence.
 
+Example reference:
+
+```text
+reference card width measured at 424px
+```
+
+does not automatically mean:
+
+```text
+candidate card width must always equal 424px
+```
+
+unless authored reference intent makes that measurement an executable requirement with an appropriate tolerance.
+
 ### Missing evidence
 
 Do not treat:
@@ -1812,6 +2244,9 @@ Do not treat:
 unavailable
 not observed
 not applicable
+unassessed
+ambiguous
+incompatible/incomparable
 truncated
 ```
 
@@ -1835,6 +2270,8 @@ from:
 items existed but were omitted
 ```
 
+Reference evidence must also remain bounded. Do not embed an entire image or every region/style difference repeatedly when references and targeted mismatch records suffice.
+
 ### Provenance
 
 Every persistent evidence artifact must retain enough provenance to determine:
@@ -1846,6 +2283,8 @@ Every persistent evidence artifact must retain enough provenance to determine:
 - what browser/environment matters;
 - what evidence was omitted;
 - what derived interpretation used which supporting facts.
+
+Future reference artifacts/evaluations must additionally make it possible to determine which exact reference image/version, region definitions, authored requirements, applicability state, binding evidence, tolerance policy, candidate observation, and approval/supersession state were used.
 
 ## Cross-Milestone Testing Rules
 
@@ -1866,8 +2305,11 @@ unit tests
 → static/runtime correlation tests
 → ecosystem compatibility fixtures
 → text/config-driven coding-agent workflow tests
+→ external-reference identity/artifact/binding tests
+→ reference applicability and structured fidelity tests
+→ reference-driven coding-agent correction tests
 → graphical-interface tests
-→ annotation tests
+→ annotation tests for runtime and reference contexts
 → full visual workflow tests
 ```
 
@@ -1881,17 +2323,21 @@ Any browser/runtime feature requires browser-level validation.
 
 Passing static typecheck or unit tests alone is not sufficient.
 
+Reference-driven validation must also prove the candidate side against a real browser when the result depends on rendered runtime evidence.
+
 ### Fixture rule
 
 Use deterministic local fixtures for canonical behavior.
 
 Do not make public internet pages the authoritative test environment.
 
+Reference-driven fixtures should use stable project-local reference images/artifacts whose identity can be pinned for deterministic tests.
+
 ### Cross-platform rule
 
 Structured semantic evidence should be the primary portable contract.
 
-Do not assume screenshot byte identity across operating systems unless explicitly established.
+Do not assume screenshot or reference/candidate image-diff byte identity across operating systems unless explicitly established.
 
 Later ecosystem releases should satisfy the cross-platform validation expectations adopted by the ecosystem.
 
@@ -1909,6 +2355,7 @@ At minimum, as capabilities become real, maintain appropriate documentation for:
 - development/testing;
 - limitations;
 - browser/network safety;
+- external-reference artifact/evaluation and local-file privacy when implemented;
 - roadmap;
 - ecosystem integration when implemented.
 
@@ -2004,9 +2451,10 @@ and Native my-dev-kit Ecosystem Integration
         ↓
 Milestone 7
 End-to-End Coding-Agent Frontend Change Review
+and External Reference Evidence Foundation
         ↓
 Milestone 8
-Interactive Local Observation Viewer
+Interactive Local Observation and Reference Viewer
         ↓
 Milestone 9
 Human Visual Annotation
@@ -2017,12 +2465,16 @@ Full Visual Human–LLM Frontend Change Workflow
 ```
 
 The critical path through Milestone 7 proves that browser/runtime evidence,
-safe-change contracts, bounded static/runtime context, and an external coding
-agent can complete a regression-aware frontend correction without a graphical
-viewer or annotation authoring.
+safe-change contracts, bounded static/runtime context, an external coding
+agent, and optional approved external-reference evidence can complete a
+regression-aware frontend correction without a graphical viewer or annotation
+authoring.
 
 Milestones 8–10 form the human visual branch. The viewer and annotation system
-enhance the proven coding-agent workflow; they are not prerequisites for it.
+enhance the proven coding-agent/reference workflow; they are not prerequisites
+for it. Milestone 8 displays the reference model created in Milestone 7,
+Milestone 9 adds dual-context annotation, and Milestone 10 combines actual-
+frontend-driven and reference-driven entry modes.
 
 Do not reorder these milestones merely for implementation convenience.
 
@@ -2064,6 +2516,7 @@ Do not bootstrap:
 - regression contracts;
 - per-change contracts;
 - LLM context packaging;
+- external visual-reference evaluation;
 - graphical viewing;
 - annotation;
 - static/runtime source correlation;
