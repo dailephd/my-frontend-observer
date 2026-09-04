@@ -2,10 +2,11 @@
 
 ## Current contracts
 
-The observation artifact contract is published as `my-frontend-observer@0.5.0`
-and proven both from the source checkout and from the packed npm tarball,
-on Windows, Linux, and macOS. The observation schema is `1.2.0` (see "v0.2
-target contract" and "v0.3 scroll scenario contract" below):
+The observation artifact contract is published in the current
+`my-frontend-observer@0.6.0` package and proven both from the source checkout
+and from the packed npm tarball, on Windows, Linux, and macOS. The observation
+schema is `1.2.0` (see "v0.2 target contract" and "v0.3 scroll scenario
+contract" below):
 
 - artifact kind `my-frontend-observer/observation`, schema version `1.2.0`
   (independent of the package version);
@@ -29,7 +30,9 @@ target contract" and "v0.3 scroll scenario contract" below):
   provenance are all present in every persisted manifest.
 
 This contract is implemented and published; no public programmatic-API
-compatibility promise has been made.
+compatibility promise has been made for the observation engine itself. v0.6
+additionally publishes the bounded-agent-context/correlation programmatic surface
+described later in this document.
 
 ## v0.2 target contract (shipped as part of this release)
 
@@ -166,8 +169,9 @@ directly, and its local path is operational input only, exactly like
 ## v0.4 comparison contract (shipped as part of this release)
 
 **Current status: shipped as part of the published `my-frontend-observer@0.4.0`
-package.** Observation schema remains `1.2.0`. Comparison is a distinct
-artifact kind and schema, never a bump to the observation schema:
+package and unchanged through the current `0.6.0` release.** Observation
+schema remains `1.2.0`. Comparison is a distinct artifact kind and schema,
+never a bump to the observation schema:
 
 - artifact kind: `my-frontend-observer/comparison`;
 - comparison schema: `1.0.0`.
@@ -486,6 +490,85 @@ blockers; on the canonical worktree, `npm run typecheck`, `npm run lint`,
 `npm test` (627 tests), `npm run test:browser` (120 tests), `npm run
 test:security`, `npm run build`, and `npm run check:docs` all pass.
 
+## Planned v0.7+ external visual-reference contract direction
+
+External visual-reference support is future work and is not part of the
+published `0.6.0` contract. The exact public type names, artifact kinds, schema
+versions, persistence layout, and command/programmatic entry points must be
+designed during v0.7 planning from current repository precedent. This section
+freezes only the contract boundaries that later planning must preserve.
+
+**Distinct evidence domain**: an external reference is desired-design evidence,
+not an `ObservationArtifact` and not the "before" side of a v0.4
+`ComparisonArtifact`. Reference design vs candidate is distinct from both
+before vs after comparison and frontend-contract evaluation. The implementation
+must not fake this distinction by wrapping a raster image in an observation
+shape.
+
+**Reference identity and provenance**: a future reference contract must preserve
+a deterministic logical reference identity/version where appropriate, source
+image reference plus dimensions/format, provenance, bounded region definitions,
+applicable viewport/theme/application-state identity, authored design intent,
+relationship/style evidence where supported, limits/diagnostics, and approval/
+supersession history. Operational filesystem paths must not become semantic
+identity. A raw imported image never silently becomes an approved active
+reference.
+
+**Reference regions and runtime targets stay distinct**: a reference region
+must have its own identity and coordinate semantics. Reference-region to runtime-
+target association must be explicit and capable of representing ambiguity or
+unavailability. Runtime target identity and reference identity must never
+silently become static source ownership; static association still goes through
+the v0.6 runtime/static correlation boundary.
+
+**Applicability before fidelity**: viewport, theme, application state, and
+other selected compatibility dimensions must be evaluated before ordinary
+reference/candidate differences are produced. If the reference and candidate
+represent different intended states, the result must be explicitly incompatible
+or incomparable rather than filled with fabricated visual failures. Planning
+should reuse or extend the canonical v0.4 comparability conventions where they
+mean the same thing rather than invent an unrelated reference-only state model.
+
+**Canonical contract semantics remain authoritative**: executable reference-
+derived requirements must map into the existing v0.5 authored categories
+`requested`, `expected-dependent`, `protected`, or `preserved`. The derived-only
+`unexpected` classification remains derived-only. Informational or unassessed
+reference evidence may stay outside executable contract evaluation until
+explicitly promoted. A second reference-only PASS/FAIL taxonomy is forbidden.
+
+**Tolerance separation**: reference-fidelity tolerances are not automatically
+the same as v0.4 `ComparisonConfig.geometryTolerancePx` or v0.5 contract
+tolerances. Planning must define property-specific semantics for reference
+geometry, spacing, selected style evidence, text/font rendering differences,
+asset-sensitive regions, and optional image similarity. One global pixel-perfect
+threshold is not an acceptable contract.
+
+**Structured evidence first**: geometry, relationships, authored requirements,
+applicability, provenance, and selected bounded style/asset evidence remain
+inspectable primary evidence. Screenshot-region or image-similarity evidence may
+supplement them where reliable, but pixel similarity alone must not determine
+success and must never override active baseline/per-change contracts.
+
+**Bounded correction evidence**: future reference/candidate results must support
+a bounded projection suitable for coding-agent correction, such as reference
+measurement, candidate measurement, delta, failed relationship/style condition,
+relevant reference/runtime identities, provenance, and active protected/
+preserved constraints. Heavy reference image bytes should be referenced, not
+copied into every downstream context packet.
+
+**Approval and supersession**: reference import, reference approval, baseline
+approval, reference supersession, and baseline supersession are separate acts.
+A reference-fidelity `PASS`, a frontend-contract `PASS`, or a successful
+before/after comparison must not silently approve or replace any reference or
+baseline.
+
+The planned v0.8 viewer must consume this v0.7 reference/evaluation contract;
+it must not create a UI-only reference model. v0.9 annotations may originate
+from runtime screenshots or external references but must preserve which source
+identity/coordinate system they belong to and feed the same canonical contract
+semantics. v0.10 combines both entry modes into the full correction/approval
+workflow.
+
 ## Approved v0.1 design inputs
 
 The historical greenfield scaffold plan recorded these v0.1 design decisions:
@@ -509,7 +592,8 @@ change-scope contracts belong to v0.5 - see "v0.5 frontend contract and
 evaluation" above for the full shipped contract model, identity, evaluation
 engine, persistence, baseline approval, and CLI exposure. Bounded
 agent-context and runtime/static correlation contracts are v0.6 - see "v0.6
-bounded agent context and correlation contract" above for the full
-implemented (release-pending) model. The text/config-driven coding-agent
-review contract is v0.7, next. Viewer and annotation contracts follow in
-v0.8 and v0.9 and converge with the existing workflow in v0.10.
+bounded agent context and correlation contract" above for the full released
+model. The text/config-driven coding-agent review plus non-graphical external
+visual-reference foundation is v0.7, next. Viewer consumption of that reference
+model follows in v0.8; dual-context annotation follows in v0.9; both visual entry
+modes converge with the existing workflow in v0.10.
