@@ -11,11 +11,13 @@ install dependencies (npm install; npx playwright install chromium)
 → validate documentation (npm run check:docs)
 ```
 
-## Current observation workflow (published as 0.5.0)
+## Current observation workflow (published and current in 0.6.0)
 
-The real `observe` workflow, part of the published `my-frontend-observer@0.5.0`
-package, accepts target configuration through either of two input paths,
-plus one optional runtime scroll scenario:
+The real `observe` workflow remains part of the published
+`my-frontend-observer@0.6.0` package. Its browser-observation behavior was
+established in earlier releases and remains unchanged by v0.6. It accepts target
+configuration through either of two input paths, plus one optional runtime
+scroll scenario:
 
 ```text
 CLI arguments (--url, --viewport, --output, --timeout, exactly one of:
@@ -62,12 +64,13 @@ temporary consumer directory outside the repository, on Windows, Linux, and
 macOS (`scripts/ci/runPackedObservationSmoke.mjs`) - the same workflow,
 independent of the source checkout.
 
-## Current comparison workflow (published as 0.5.0)
+## Current comparison workflow (published and current in 0.6.0)
 
-**Current status: shipped as part of the published `my-frontend-observer@0.4.0`
-package (unchanged in `0.5.0`).** This is a separate workflow from the observation workflow above -
-it consumes two already-persisted observation artifacts rather than
-producing one, and it never launches a browser:
+**Current status: shipped originally as part of
+`my-frontend-observer@0.4.0` and unchanged through `0.6.0`.** This is a
+separate workflow from the observation workflow above - it consumes two
+already-persisted observation artifacts rather than producing one, and it
+never launches a browser:
 
 ```text
 two prior real "observe" invocations, each producing its own persisted
@@ -110,13 +113,13 @@ fixture (`scripts/dev/builtCliCompareSmoke.mjs`), and packed-tarball
 validation of the installed `compare` command
 (`scripts/ci/runPackedObservationSmoke.mjs` - see `docs/CI_CD.md`).
 
-## Current frontend contract workflow (published as 0.5.0)
+## Current frontend contract workflow (published and current in 0.6.0)
 
-This is a text/config-driven workflow layered downstream of the two
-workflows above - it does not replace them, and it is not yet the complete
-v0.7 coding-agent workflow (no bounded agent context, no automatic
-baseline selection, no CLI-level approval policy beyond the explicit
-`approve-baseline` act):
+This text/config-driven workflow shipped in `0.5.0` and remains current in
+`0.6.0`. It is layered downstream of the two workflows above - it does not
+replace them, and it is not yet the complete v0.7 coding-agent workflow (no
+coding-agent correction loop or external-reference evidence foundation lives in
+this repository yet; baseline selection remains caller-supplied):
 
 ```text
 observe before
@@ -197,6 +200,10 @@ correlation contract" for the exact shape.
 
 ## Future workflows
 
+The future sequence preserves the current engines and adds external-reference
+evidence before the viewer so that later graphical interfaces consume rather
+than invent the reference model:
+
 ```text
 stable targets and bounded runtime behavior
 → relationships and before/after comparison (released - see above)
@@ -206,12 +213,50 @@ stable targets and bounded runtime behavior
 → bounded agent context plus runtime/static correlation (released as
   `0.6.0` - see above; orchestrator/lab-side ecosystem integration is
   separate sibling-repository work, not part of this repository)
-→ text/config-driven coding-agent change review
-→ interactive viewer
-→ structured visual annotation
-→ full visual human–LLM workflow
+→ v0.7 text/config-driven coding-agent change review
+  + external visual-reference evidence foundation
+  + structured reference-vs-candidate fidelity evaluation
+→ v0.8 interactive viewer with reference/candidate inspection
+→ v0.9 structured visual annotation on runtime screenshots and references
+→ v0.10 full visual human–LLM workflow with both actual-frontend-driven and
+  reference-driven entry modes
 ```
 
-The v0.7 text/config-driven coding-agent change review and everything after
-remain unimplemented in this repository. The v0.7 coding-agent workflow must
-work without the v0.8 viewer or v0.9 annotation system.
+### Planned v0.7 reference-driven correction flow
+
+The planned non-graphical reference path is conceptually:
+
+```text
+external visual reference
+→ explicit reference identity/provenance/applicability
+→ bounded reference regions + authored design intent + tolerances
+→ explicit reference-region ↔ runtime-target binding
+→ candidate rendered through the existing Chromium observation engine
+→ structured reference-vs-candidate evaluation
+→ bounded measurable fidelity mismatches
+→ relevant bounded runtime/static context
+→ external coding agent modifies source
+→ rerender
+→ reevaluate reference fidelity
++ rerun before/after comparison
++ rerun per-change and persistent baseline contracts
+→ PASS or actionable fidelity/regression failure
+```
+
+This does not turn an imported image into an observation or approved baseline.
+Reference design vs candidate remains distinct from before vs after comparison.
+Executable reference requirements must reuse the existing canonical requested/
+expected-dependent/protected/preserved semantics. Informational reference detail
+may remain non-executable. Pixel/image similarity can supplement structured
+geometry/relationship/style evidence where reliable, but it must never become
+the only success criterion.
+
+Theme, application state, viewport, and other applicability dimensions must be
+checked before reference fidelity is interpreted. A mismatched reference and
+candidate state must yield an explicit incompatible/incomparable outcome rather
+than fabricated visual failures.
+
+The v0.7 coding-agent workflow and reference foundation remain unimplemented in
+this repository. v0.7 must work without the v0.8 viewer or v0.9 annotation
+system. v0.8 must consume the v0.7 reference/evaluation model rather than create
+a second UI-only one.
