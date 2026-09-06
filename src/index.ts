@@ -492,3 +492,24 @@ export {
   isValidReferenceRuntimeBindingDeclarations,
   evaluateReferenceRuntimeBindings,
 } from './domain/externalReferenceRuntimeBinding.js';
+
+export type {
+  ReferenceRequirementFidelityStatus,
+  ReferenceRequirementFidelityReasonCode,
+  ReferenceRequirementFidelityResult,
+  ReferenceFidelityState,
+  ReferenceFidelityBlockReason,
+  ReferenceCandidateFidelityEvaluation,
+  EvaluateReferenceCandidateFidelityResult,
+  EvaluateReferenceCandidateFidelityOptions,
+} from './domain/externalReferenceFidelity.js';
+export {
+  REFERENCE_REQUIREMENT_FIDELITY_STATUSES,
+  REFERENCE_REQUIREMENT_FIDELITY_REASON_CODES,
+  REFERENCE_FIDELITY_STATES,
+  REFERENCE_FIDELITY_BLOCK_REASONS,
+  evaluateReferenceCandidateFidelity,
+} from './domain/externalReferenceFidelity.js';
+
+export type { EvaluateReferenceFidelityOptions, ApplicationReferenceFidelityResult } from './application/referenceFidelityEvaluationService.js';
+export { evaluateReferenceCandidateFidelityFromArtifactRoots } from './application/referenceFidelityEvaluationService.js';

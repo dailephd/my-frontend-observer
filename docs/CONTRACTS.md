@@ -1223,3 +1223,217 @@ Key rules:
   added merely for symmetry with `import-reference`/`observe`; Prompt 6
   (structured fidelity evaluation) is expected to become the first concrete
   consumer and public-surface owner for this capability.
+
+## v0.7 Prompt 6 structured reference-vs-candidate fidelity evaluation
+
+Implemented, unreleased. One new pure domain module,
+`domain/externalReferenceFidelity.ts`, and its CLI-facing counterpart,
+`application/referenceFidelityEvaluationService.ts` plus the new
+`evaluate-reference-fidelity` CLI command - the first point in this whole
+v0.7 stack where a reference's authored expectation is actually compared
+against live candidate evidence. No new artifact field, no schema version
+bump: this prompt reuses Prompt 1-5's artifacts and result types entirely.
+
+```ts
+// domain/externalReferenceFidelity.ts
+const REFERENCE_REQUIREMENT_FIDELITY_STATUSES = ['pass', 'fail', 'unavailable'] as const;
+const REFERENCE_FIDELITY_STATES = ['not-evaluated', 'pass', 'fail'] as const;
+const REFERENCE_FIDELITY_BLOCK_REASONS = ['reference-inadequate', 'incompatible'] as const;
+
+interface ReferenceRequirementFidelityResult {
+  requirementId: string;
+  category: AuthoredChangeScopeCategory;
+  expectedDependentMode?: ExpectedDependentMode;
+  subject: ReferenceRequirementSubject;
+  boundRuntimeTargets: string[];
+  status: 'pass' | 'fail' | 'unavailable';
+  reasonCode?: 'reference-evidence-unavailable' | 'reference-relationship-not-exhibited' | 'binding-unavailable' | 'candidate-evidence-unavailable' | 'coordinate-mapping-unavailable'; // present iff status === 'unavailable'
+  detail?: string;
+  // region-property/region-measurement subjects only:
+  referenceValue?: number;      // reference-image pixels
+  candidateRawValue?: number;   // CSS pixels, as captured
+  candidateValue?: number;      // candidateRawValue converted into reference-image-pixel space
+  delta?: number;               // candidateValue - referenceValue
+  tolerance?: ReferenceRequirementTolerance;
+  // region-relationship subjects only:
+  expectedRelationship?: PairwiseRelationshipKind;
+  actualRelationship?: PairwiseRelationshipKind;
+}
+
+interface ReferenceCandidateFidelityEvaluation {
+  referenceId: string;
+  referenceRequestId: string;
+  candidateObservationId: string;
+  candidateRequestId: string;
+  adequacy: ReferenceRequirementAdequacy; // reused verbatim from Prompt 3
+  compatibility?: ComparabilityResult;    // reused verbatim from Prompt 4; absent only when adequacy itself is inadequate
+  bindings?: ReferenceRuntimeBindingEvaluation; // reused verbatim from Prompt 5; absent when an earlier gate blocked
+  state: 'not-evaluated' | 'pass' | 'fail';
+  blockedBy?: 'reference-inadequate' | 'incompatible'; // present iff state === 'not-evaluated'
+  requirementResults: ReferenceRequirementFidelityResult[]; // empty iff state === 'not-evaluated'
+}
+
+function evaluateReferenceCandidateFidelity(
+  reference: ExternalReferenceArtifact,
+  candidate: ObservationArtifact,
+  bindingDeclarations: readonly ReferenceRuntimeBindingDeclaration[],
+  options?: { geometryTolerancePx?: number },
+): { ok: true; evaluation: ReferenceCandidateFidelityEvaluation } | { ok: false; reason: string };
+```
+
+**Result vocabulary.** `pass`/`fail`/`unavailable` is reused from v0.5's
+`CLAUSE_RESULT_STATUSES` shape (the same honest three-state idea: a result
+either satisfies its condition, fails it, or cannot be evaluated - never a
+score) but is its own independently-owned constant, deliberately excluding
+v0.5's fourth member, `'conflict'` - Prompt 6 has no cross-requirement
+authoring-conflict concept (each requirement is evaluated independently
+against its own subject), so reusing `conflict` would invite a status this
+prompt can never actually produce.
+
+**Evaluation order (frozen, never reordered):** reference structural
+validation -> candidate structural validation -> binding-declaration
+structural validation -> Prompt 3 reference adequacy -> Prompt 4
+compatibility -> Prompt 5 binding evaluation -> per-requirement candidate-
+evidence/coordinate-mapping checks -> per-requirement tolerance/
+relationship comparison -> overall result. The first three (structural
+validation) failures return `{ ok: false, reason }` - a caller/config error,
+never a fidelity outcome. The next two (adequacy `inadequate`, compatibility
+`incomparable`) short-circuit to `state: 'not-evaluated'` with an empty
+`requirementResults` - an earlier blocking gate never lets an ordinary
+PASS/FAIL requirement set get fabricated past it. `adequacy` "partial" (some,
+but not all, authored requirements individually unavailable) does **not**
+block evaluation - it proceeds normally, and the individual unavailable
+reference-side requirements simply also report `unavailable` at the
+per-requirement level (their own reference-evidence problem, re-derived
+identically by `evaluateOneRequirement`, not looked up from the adequacy
+result).
+
+**Coordinate mapping - the central problem this prompt solves.** Prompt 2
+regions and Prompt 3 tolerances are authored in reference-image pixels;
+`ObservationArtifact` target geometry is CSS pixels. This module establishes
+exactly one explicit, deterministic scale from `reference.applicability.viewport`
+(the CSS-pixel runtime viewport, Prompt 4) and the reference image's own
+pixel dimensions (Prompt 1) - `scaleX = imageWidth / viewportWidth`,
+`scaleY = imageHeight / viewportHeight` - and converts every candidate
+measurement into reference-image-pixel space before comparing it against a
+Prompt 3 tolerance. It never assumes 1 reference-image pixel equals 1 CSS
+pixel, and it never performs cropping, offset, rotation, or perspective
+registration - only a deliberately bounded full-frame mapping. `scaleX`/
+`scaleY` must agree within a small, independently-owned coordinate-mapping-
+validity tolerance (1% relative, never a user-authored design tolerance) or
+the mapping is rejected outright; a reference with no applicable viewport at
+all likewise has no mapping. Either way, every numeric (`region-property`/
+`region-measurement`) requirement becomes `unavailable`/`coordinate-mapping-unavailable`
+- categorical `region-relationship` requirements are unaffected (they never
+need a scale). Horizontal fields (`x`/`width`/`right`/`centerX` and the
+horizontal measurements) always scale by `scaleX`; vertical fields (`y`/
+`height`/`bottom`/`centerY` and the vertical measurements) always scale by
+`scaleY` - this falls out automatically from converting a full
+`TargetGeometry` into a `ReferenceRegionGeometry`-shaped value per axis,
+never a hand-picked per-property axis table.
+
+**Tolerance is reused exactly, never redefined.** A single rule -
+`abs(delta) <= allowedAmount` - covers all three Prompt 3 tolerance kinds:
+`exact` is simply the zero-tolerance case (`allowedAmount = 0`);
+`absolute-reference-px` uses its authored `amount` directly (already in
+reference-image pixels); `percent`'s denominator is `Math.abs(referenceValue)`,
+mirroring v0.5's own `toleranceToPx` "may vary by up to N%" convention
+exactly (independently reimplemented in reference-image-pixel units, never
+imported - `frontendContractEvaluation.ts`'s `ContractTolerance` is a
+different, CSS-pixel-implicit unit). No hidden epsilon is added anywhere;
+subpixel precision is preserved through to the final comparison, so a
+tolerance-boundary value (e.g. delta exactly equal to the allowed amount)
+passes and one unit past it fails, exactly as authored.
+
+**Region-property evaluation** reads `TargetGeometry` from the bound
+target's `targetEvidence` entry, converts it into a `ReferenceRegionGeometry`-
+shaped value (adding `centerX`/`centerY`, computed identically to
+`deriveReferenceRegionGeometry`) both raw (CSS) and scaled (reference-image
+pixels), and reads `[subject.property]` off each - `candidateRawValue`
+(CSS) and `candidateValue` (reference-image pixels) are both reported.
+
+**Region-measurement evaluation** converts *both* bound targets' geometries
+the same way and calls the existing `deriveReferenceRequirementMeasurement`
+(Prompt 3) on the converted geometries directly - reusing Prompt 3's exact
+gap/delta formulas rather than reimplementing a parallel "runtime version"
+of them, and never inventing a generic geometry expression language. A
+geometrically-undefined gap (the two targets overlap on the relevant axis)
+is `unavailable`, mirroring Prompt 3's own reference-side treatment of the
+identical situation.
+
+**Region-relationship evaluation** first confirms the reference itself
+actually exhibits its own selected relationship (`deriveReferenceRequirementExpectation`'s
+`matches` field) - if not, the result is `unavailable`/
+`reference-relationship-not-exhibited` (a reference-authoring problem, never
+a candidate `fail`). It then resolves both bound targets and calls the
+canonical `deriveLayoutRelationships` (v0.4) over the *whole* candidate
+observation - never a second, parallel relationship formula - and looks up
+the pairwise record for the bound target pair **scoped to the exact
+requested relationship family** (an independently-owned, third duplicate of
+the same `RELATIONSHIP_FAMILY_GROUPS` shape already used by
+`frontendContractEvaluation.ts` and `externalReferenceRequirements.ts` -
+this is the same real bug class Prompt 3 fixed: matching the first record
+for a target pair regardless of family would silently compare against the
+wrong relationship kind). A record only derivable in the reversed target
+order is `unavailable`, never auto-flipped - identical to Prompt 3's own
+reference-side handling of the same situation. `pass` requires the
+candidate's actual relationship kind to equal the requirement's authored
+`relationship` exactly.
+
+**Binding gate.** Every subject's dependent reference region(s) must have a
+`bound` (never `ambiguous`/`unavailable`, and never simply absent from the
+supplied declarations) Prompt 5 binding result, or the requirement is
+`unavailable`/`binding-unavailable` - this module never guesses another
+target and never auto-binds based on geometry or names. A `bound` target
+that is not visible (`TargetVisibility.visible !== true`, including when
+visibility evidence itself is unavailable) is treated as having no usable
+geometry - `unavailable`/`candidate-evidence-unavailable` - preserving the
+distinction between "binding succeeded" (Prompt 5's question) and "this
+evidence is usable for fidelity evaluation" (this prompt's question): a
+hidden-but-uniquely-resolved target still has a stable identity, but its
+geometry is never treated as meaningful for a numeric/relationship
+comparison.
+
+**Categories are preserved, never given different PASS/FAIL rules.**
+`category`/`expectedDependentMode` are carried through to each result as
+provenance only; Prompt 3 never implemented a `required`-vs-`permitted`
+directional evaluation difference for its own expectation/adequacy
+derivation (unlike v0.5's runtime-directional contract clauses), so Prompt 6
+does not invent one now - every requirement in the reference's authored
+collection is evaluated by the identical rule and counts identically toward
+the overall result, regardless of category.
+
+**Overall fidelity result.** For an evaluated (non-blocked) pair, `state`
+is `'pass'` only when every requirement result is `'pass'`; any `'fail'` or
+`'unavailable'` result forces `state: 'fail'` - there is no meaningful third
+overall bucket once evaluation has actually run, since "some/all
+unavailable" and "some/all fail" both equally mean "not every selected
+requirement is confirmed satisfied." A reference with zero selected
+requirements never reaches this stage at all - it is `inadequate` (Prompt
+3's own zero-requirements rule) and therefore `not-evaluated`, never a
+meaningless `pass`.
+
+**Persistence decision: none.** `evaluateReferenceCandidateFidelity` (and
+its CLI-facing wrapper, `evaluateReferenceCandidateFidelityFromArtifactRoots`)
+is a pure, on-demand function over already-persisted/in-memory evidence -
+no new `ExternalReferenceFidelityEvaluationArtifact` (or equivalent) is
+introduced. Rationale, identical to Prompt 4/5's own precedent: the result
+is cheap to recompute deterministically from its inputs (a reference, a
+candidate, and a caller-supplied binding-declaration collection), and
+persisting it would invite drift with no corresponding benefit at this
+stage; this may be revisited only if Prompt 7's architecture proves
+persistence necessary.
+
+**CLI**: `evaluate-reference-fidelity --reference <root> --candidate <root>
+[--bindings-file <json-file>] [--enforce]` - the CLI surface Prompt 5
+deliberately deferred. `--bindings-file` follows the exact
+`--requirements-file`/`--regions-file` wrapped-object convention
+(`{ "bindings": [...] }`); CLI code owns only flag syntax/file reading/JSON
+parsing/root-shape validation, with every binding-declaration rule staying
+owned by `isValidReferenceRuntimeBindingDeclarations`. `--enforce` mirrors
+`evaluate-contract`'s exact precedent: it changes only the process exit
+status for an already-computed `state: 'fail'` result, never the printed
+content - and has no effect on `not-evaluated`, which always exits 0 (a
+compatibility/adequacy blocker is a successful, structured, honest
+non-evaluation, never an execution error and never a design mismatch).
+Persists nothing; there is no `--output` flag.

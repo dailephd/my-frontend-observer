@@ -198,7 +198,7 @@ truncation reporting, and correlation status invariants/determinism/
 deduplication). See `docs/CONTRACTS.md` "v0.6 bounded agent context and
 correlation contract" for the exact shape.
 
-## Current external-reference foundation workflow (implemented, unreleased - v0.7 Prompts 1-5)
+## Current external-reference foundation workflow (implemented, unreleased - v0.7 Prompts 1-6)
 
 This is the foundation layer only - identity, provenance, bounded image
 metadata, a two-state lifecycle, (Prompt 2) explicit reference regions plus
@@ -316,15 +316,58 @@ only whether the reference side itself supports every selected requirement -
 `adequate`/`partial`/`inadequate`, never a numeric score, never a claim
 about runtime/candidate availability.
 
+Finally, `evaluate-reference-fidelity --reference <root> --candidate <root>
+[--bindings-file <json-file>] [--enforce]` is the first command in this
+stack that actually compares a reference's selected requirements against
+live candidate evidence:
+
+```text
+evaluate-reference-fidelity --reference <root> --candidate <root> [--bindings-file <json-file>] [--enforce]
+→ (--bindings-file only: read + validate the local JSON root shape - an
+  object with exactly a "bindings" property - the still-unvalidated
+  declarations are handed straight through)
+→ read the reference and candidate artifacts through their existing readers
+→ evaluateReferenceCandidateFidelity(reference, candidate, bindings):
+  reference/candidate/binding-declaration structural validation
+  → Prompt 3 reference adequacy (inadequate -> "not-evaluated", no
+    ordinary result fabricated)
+  → Prompt 4 compatibility (incomparable -> "not-evaluated")
+  → Prompt 5 binding evaluation (ambiguous/unavailable/undeclared binding ->
+    the dependent requirement is "unavailable", never guessed)
+  → per requirement: reference-image-pixel <-> CSS-pixel coordinate mapping
+    (from reference.applicability.viewport and the image's own dimensions;
+    no viewport or an incoherent aspect ratio -> numeric requirements
+    "unavailable", never a fabricated result) then a Prompt-3-tolerance
+    comparison (region-property/region-measurement subjects) or a
+    family-scoped v0.4 relationship comparison (region-relationship
+    subjects)
+→ overall state: "pass" only when every requirement result is "pass";
+  any "fail"/"unavailable" forces "fail"
+```
+
+This produces no persisted artifact - the structured result exists only for
+this invocation, printed as a concise summary (reference adequacy,
+compatibility state, overall fidelity state, and a pass/fail/unavailable
+requirement breakdown). `--enforce` mirrors `evaluate-contract`'s exact
+precedent: it changes only the process exit status for an already-computed
+`fail` result, never its content, and never affects a `not-evaluated`
+result (always exits 0 - a blocked evaluation is a successful, honest
+outcome, not a design mismatch). See `docs/CONTRACTS.md` "v0.7 Prompt 6
+structured reference-vs-candidate fidelity evaluation" for the full
+contract.
+
 This is exercised by unit tests covering the pure image-format/dimension
 boundary, region geometry/validation, reference-region relationship
 derivation, requirement validation/measurement derivation/reference-
 expectation derivation/adequacy, identity (including region- and
 requirement-content/order sensitivity), the domain validator, writer/reader
-round-trip symmetry, the application-level import/approve use cases, and
-`runCli()`-level CLI coverage (no Chromium involved - see
-`tests/unit/externalReference*.test.ts` and
-`tests/unit/cliExternalReference.test.ts`).
+round-trip symmetry, the application-level import/approve use cases,
+coordinate-mapping/tolerance/relationship fidelity evaluation (every
+behavior in the Prompt 6 report's behavior model, including the exact
+worked 2x-scale example from the task specification), and `runCli()`-level
+CLI coverage (no Chromium involved - see `tests/unit/externalReference*.test.ts`,
+`tests/unit/cliExternalReference.test.ts`, and
+`tests/unit/cliEvaluateReferenceFidelity.test.ts`).
 
 ## Future workflows
 

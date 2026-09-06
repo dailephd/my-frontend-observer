@@ -11,9 +11,11 @@ import { compareAndPersistFromArtifactRoots } from './application/comparisonServ
 import { approveAndPersistBaseline, persistPerChangeContract } from './application/frontendContractPersistenceService.js';
 import { evaluateAndPersistFromArtifactRoots } from './application/frontendContractEvaluationService.js';
 import { importExternalReference, approveExternalReference } from './application/externalReferencePersistenceService.js';
+import { evaluateReferenceCandidateFidelityFromArtifactRoots } from './application/referenceFidelityEvaluationService.js';
 import type { ReferenceRegion } from './domain/externalReferenceRegions.js';
 import type { RawReferenceRequirement } from './domain/externalReferenceRequirements.js';
 import type { ExternalReferenceApplicability } from './domain/externalReferenceApplicability.js';
+import type { ReferenceRuntimeBindingDeclaration } from './domain/externalReferenceRuntimeBinding.js';
 
 export interface CliIO {
   stdout: (text: string) => void;
@@ -54,6 +56,12 @@ Commands:
   approve-reference     Explicitly approve one already-imported
                         external-reference artifact, persisting a new
                         approved artifact instance.
+  evaluate-reference-fidelity  Evaluate whether a candidate observation
+                        satisfies an external reference's selected design
+                        requirements, gated by reference adequacy,
+                        reference/candidate compatibility, and explicit
+                        region-to-target bindings. Prints a structured
+                        result; persists nothing.
 
 Options:
   --help     Show this help.
@@ -382,6 +390,56 @@ On an unreadable/malformed --reference target, a target that is not in the
 failure, prints structured diagnostics to stderr and exits nonzero.
 `;
 
+const EVALUATE_REFERENCE_FIDELITY_HELP = `Usage:
+  my-frontend-observer evaluate-reference-fidelity --reference <external-reference-artifact-root> --candidate <observation-artifact-root> [options]
+
+Required:
+  --reference <path>   Root directory of an already-imported or already-
+                        approved external-reference artifact (the directory
+                        containing its manifest.json).
+  --candidate <path>   Root directory of the already-persisted candidate
+                        observation artifact to evaluate against it.
+
+Options:
+  --bindings-file <json-file>  Local JSON file of the form
+                        { "bindings": [ { "referenceRegion": "...",
+                        "runtimeTarget": "..." } ] } declaring which stable
+                        observer runtime target (a configured target name -
+                        see "observe" --target/--targets-file) explicitly
+                        corresponds to each reference region a selected
+                        requirement depends on. Never inferred from
+                        geometry, matching names, or source code - a
+                        binding exists only because this file declares it.
+                        Optional - omitting it (or supplying an empty
+                        "bindings" array) evaluates with no bindings at
+                        all, so every requirement whose subject depends on
+                        a reference region becomes "unavailable".
+  --enforce  Make a FAIL fidelity result produce a nonzero process exit
+             status. A FAIL result is always printed identically with or
+             without this flag - it changes only the process exit code,
+             never the evaluation's content. Has no effect on a
+             "not-evaluated" result (a reference-adequacy or compatibility
+             blocker is never treated as a design mismatch).
+  --help     Show this help.
+
+This command never launches a browser, never re-resolves targets, and
+never recomputes reference regions/requirements/adequacy, compatibility, or
+bindings - it reads the already-persisted reference and candidate exactly
+as given, evaluates the supplied binding declarations, and evaluates every
+one of the reference's selected requirements exactly once. It persists
+nothing: the result exists only for this invocation. On success, prints a
+concise result (reference-side adequacy, compatibility state, the overall
+fidelity state - "not-evaluated"/"pass"/"fail" - and a pass/fail/unavailable
+requirement breakdown) and exits 0, unless --enforce is given and the
+fidelity state is "fail", in which case it exits nonzero. A "not-evaluated"
+result (reference adequacy inadequate, or reference/candidate
+incompatible) is a successful, structured evaluation outcome, never an
+execution error - it always exits 0. On invalid syntax, an unreadable/
+malformed --reference or --candidate target, a malformed --bindings-file,
+or an invalid/out-of-bound binding declaration, prints structured
+diagnostics to stderr and exits nonzero.
+`;
+
 function parseViewport(raw: string): { width: number; height: number } | undefined {
   const match = /^(\d+)x(\d+)$/.exec(raw);
   if (!match) return undefined;
@@ -649,6 +707,55 @@ function loadApplicabilityFile(filePath: string): LoadApplicabilityFileResult {
   }
 
   return { ok: true, applicability: parsed };
+}
+
+const BINDINGS_FILE_ALLOWED_ROOT_FIELDS = new Set(['bindings']);
+
+type LoadBindingsFileResult = { ok: true; bindings: unknown } | { ok: false; error: string };
+
+/**
+ * CLI/input-boundary-only responsibility, mirroring `loadRegionsFile`/
+ * `loadRequirementsFile` exactly: read one local JSON file, validate only
+ * the root wrapper (object root, exactly the "bindings" property, nothing
+ * else), and hand the still-unvalidated `bindings` value to the existing
+ * domain validator (`isValidReferenceRuntimeBindingDeclarations`, called
+ * inside `evaluateReferenceCandidateFidelity`) - every binding-declaration
+ * rule (shape, bounds, reference-region existence, duplicate/conflict)
+ * stays owned there, never duplicated here. The file path itself is never
+ * returned beyond this function, so it can never reach the evaluation
+ * result or any identity.
+ */
+function loadBindingsFile(filePath: string): LoadBindingsFileResult {
+  let rawText: string;
+  try {
+    rawText = readFileSync(filePath, 'utf8');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `--bindings-file could not be read: ${message}` };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `--bindings-file is not valid JSON: ${message}` };
+  }
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return { ok: false, error: '--bindings-file root must be a JSON object' };
+  }
+
+  const record = parsed as Record<string, unknown>;
+  const unknownFields = Object.keys(record).filter((key) => !BINDINGS_FILE_ALLOWED_ROOT_FIELDS.has(key));
+  if (unknownFields.length > 0) {
+    return { ok: false, error: `--bindings-file has unsupported top-level field(s): ${unknownFields.join(', ')}` };
+  }
+  if (!('bindings' in record)) {
+    return { ok: false, error: '--bindings-file must have a "bindings" property' };
+  }
+
+  return { ok: true, bindings: record.bindings };
 }
 
 type LoadTargetsFileResult = { ok: true; targets: unknown } | { ok: false; error: string };
@@ -1292,6 +1399,69 @@ function parseApproveReferenceArgs(argv: readonly string[]): ParsedApproveRefere
   };
 }
 
+type ParsedEvaluateReferenceFidelityArgs =
+  | { ok: true; referenceRoot: string; candidateRoot: string; bindingsFilePath?: string; enforce: boolean }
+  | { ok: false; errors: string[] };
+
+/** CLI-syntax-only parsing, mirroring `parseEvaluateContractArgs`'s `--enforce` handling exactly. */
+function parseEvaluateReferenceFidelityArgs(argv: readonly string[]): ParsedEvaluateReferenceFidelityArgs {
+  const errors: string[] = [];
+  let referenceRoot: string | undefined;
+  let referenceFlagCount = 0;
+  let candidateRoot: string | undefined;
+  let candidateFlagCount = 0;
+  let bindingsFilePath: string | undefined;
+  let bindingsFileFlagCount = 0;
+  let enforce = false;
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    switch (arg) {
+      case '--reference': {
+        const value = argv[(i += 1)];
+        referenceFlagCount += 1;
+        if (value === undefined) errors.push('--reference requires a path argument');
+        else if (referenceFlagCount > 1) errors.push('--reference may only be specified once');
+        else referenceRoot = value;
+        break;
+      }
+      case '--candidate': {
+        const value = argv[(i += 1)];
+        candidateFlagCount += 1;
+        if (value === undefined) errors.push('--candidate requires a path argument');
+        else if (candidateFlagCount > 1) errors.push('--candidate may only be specified once');
+        else candidateRoot = value;
+        break;
+      }
+      case '--bindings-file': {
+        const value = argv[(i += 1)];
+        bindingsFileFlagCount += 1;
+        if (value === undefined) errors.push('--bindings-file requires a file path argument');
+        else if (bindingsFileFlagCount > 1) errors.push('--bindings-file may only be specified once');
+        else bindingsFilePath = value;
+        break;
+      }
+      case '--enforce':
+        enforce = true;
+        break;
+      default:
+        errors.push(`unrecognized argument: ${arg}`);
+    }
+  }
+
+  if (referenceRoot === undefined) errors.push('--reference is required');
+  if (candidateRoot === undefined) errors.push('--candidate is required');
+
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    referenceRoot: referenceRoot as string,
+    candidateRoot: candidateRoot as string,
+    ...(bindingsFilePath === undefined ? {} : { bindingsFilePath }),
+    enforce,
+  };
+}
+
 function formatDiagnostic(diagnostic: Diagnostic): string {
   const target = diagnostic.targetName === undefined ? '' : ` (target: ${diagnostic.targetName})`;
   return `[${diagnostic.code}] ${diagnostic.message}${target}`;
@@ -1676,6 +1846,69 @@ async function runApproveReferenceCommand(argv: readonly string[], io: CliIO): P
   return 0;
 }
 
+/**
+ * Thin orchestration only: parse args, load the optional bindings file
+ * (syntax/root-shape only - every binding-declaration rule stays owned by
+ * `isValidReferenceRuntimeBindingDeclarations`, called inside the domain
+ * evaluator), then delegate to the existing
+ * `evaluateReferenceCandidateFidelityFromArtifactRoots` application function
+ * exactly once. No adequacy/compatibility/binding/tolerance/coordinate-
+ * mapping/relationship logic lives here - see
+ * `src/domain/externalReferenceFidelity.ts`. `--enforce` is applied only
+ * after the evaluation has already been computed: it selects the process
+ * exit status for an already-final "fail" fidelity state and never affects
+ * the evaluation's content. Persists nothing.
+ */
+async function runEvaluateReferenceFidelityCommand(argv: readonly string[], io: CliIO): Promise<number> {
+  if (argv.includes('--help')) {
+    io.stdout(EVALUATE_REFERENCE_FIDELITY_HELP);
+    return 0;
+  }
+
+  const parsedArgs = parseEvaluateReferenceFidelityArgs(argv);
+  if (!parsedArgs.ok) {
+    for (const error of parsedArgs.errors) io.stderr(`error: ${error}\n`);
+    io.stderr(EVALUATE_REFERENCE_FIDELITY_HELP);
+    return 1;
+  }
+
+  let bindings: ReferenceRuntimeBindingDeclaration[] = [];
+  if (parsedArgs.bindingsFilePath !== undefined) {
+    const loaded = loadBindingsFile(parsedArgs.bindingsFilePath);
+    if (!loaded.ok) {
+      io.stderr(`error: ${loaded.error}\n`);
+      io.stderr(EVALUATE_REFERENCE_FIDELITY_HELP);
+      return 1;
+    }
+    // CLI boundary owns file-read/root-wrapper syntax only; binding-declaration shape/bounds/existence/conflict validation is owned by isValidReferenceRuntimeBindingDeclarations, called inside evaluateReferenceCandidateFidelity.
+    bindings = loaded.bindings as ReferenceRuntimeBindingDeclaration[];
+  }
+
+  // Exactly one application evaluation attempt: reads reference/candidate once each, calls the canonical evaluator exactly once.
+  const result = await evaluateReferenceCandidateFidelityFromArtifactRoots(parsedArgs.referenceRoot, parsedArgs.candidateRoot, bindings);
+  if (!result.ok) {
+    for (const diagnostic of result.diagnostics) io.stderr(`${formatDiagnostic(diagnostic)}\n`);
+    return 1;
+  }
+
+  const { evaluation } = result;
+  const passCount = evaluation.requirementResults.filter((r) => r.status === 'pass').length;
+  const failCount = evaluation.requirementResults.filter((r) => r.status === 'fail').length;
+  const unavailableCount = evaluation.requirementResults.filter((r) => r.status === 'unavailable').length;
+
+  io.stdout(`Reference: ${evaluation.referenceId}\n`);
+  io.stdout(`Candidate: ${evaluation.candidateObservationId}\n`);
+  io.stdout(`Adequacy: ${evaluation.adequacy.status}\n`);
+  if (evaluation.compatibility !== undefined) io.stdout(`Compatibility: ${evaluation.compatibility.state}\n`);
+  io.stdout(`State: ${evaluation.state}\n`);
+  if (evaluation.blockedBy !== undefined) io.stdout(`Blocked by: ${evaluation.blockedBy}\n`);
+  io.stdout(`Requirements: ${evaluation.requirementResults.length} (pass: ${passCount}, fail: ${failCount}, unavailable: ${unavailableCount})\n`);
+  io.stdout(`Enforced: ${parsedArgs.enforce ? 'yes' : 'no'}\n`);
+
+  if (parsedArgs.enforce && evaluation.state === 'fail') return 1;
+  return 0;
+}
+
 /** Testable CLI entry point: pure function of argv (+ injectable IO), no direct process.exit. */
 export async function runCli(argv: readonly string[], io: CliIO = defaultIO): Promise<number> {
   const [command, ...rest] = argv;
@@ -1721,6 +1954,10 @@ export async function runCli(argv: readonly string[], io: CliIO = defaultIO): Pr
 
   if (command === 'approve-reference') {
     return runApproveReferenceCommand(rest, io);
+  }
+
+  if (command === 'evaluate-reference-fidelity') {
+    return runEvaluateReferenceFidelityCommand(rest, io);
   }
 
   io.stderr(`error: unrecognized command "${command}"\n`);

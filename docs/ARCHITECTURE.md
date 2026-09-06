@@ -540,5 +540,30 @@ new persisted artifact family were introduced; neither
 binding result, since a reference may later be evaluated against several
 candidates and an observation against several references.
 
-Reference-vs-candidate fidelity evaluation remains unimplemented; it is the
-next v0.7 prompt building on this foundation.
+v0.7 Prompt 6 adds structured reference-vs-candidate fidelity evaluation
+(`domain/externalReferenceFidelity.ts`, `application/referenceFidelityEvaluationService.ts`,
+and the `evaluate-reference-fidelity` CLI command) - the first point in this
+stack where a reference's authored expectation is compared against live
+candidate evidence. See `docs/CONTRACTS.md` "v0.7 Prompt 6 structured
+reference-vs-candidate fidelity evaluation" for the exact shape. It is
+downstream of every prior v0.7 prompt and reuses each verbatim: Prompt 3's
+`deriveReferenceRequirementAdequacy`/`deriveReferenceRequirementExpectation`/
+`deriveReferenceRequirementMeasurement` (never redefined), Prompt 4's
+`evaluateReferenceCandidateCompatibility` (a hard gate, never duplicated),
+and Prompt 5's `evaluateReferenceRuntimeBindings` (the sole source of
+runtime-target identity - no automatic binding, no second target resolver).
+It also reuses v0.4's `deriveLayoutRelationships` for runtime relationship
+evidence, scoped to the exact requested relationship family (the same
+Prompt 3 bug-fix precedent). The one genuinely new problem this prompt
+solves is the reference-image-pixel <-> CSS-pixel coordinate mapping: a
+single explicit, deterministic full-frame scale derived from
+`reference.applicability.viewport` and the reference image's own
+dimensions, with a tiny independent aspect-ratio-coherence check (never a
+design tolerance) gating whether that mapping exists at all. No new
+persisted artifact family, no browser execution, and no source-ownership
+attribution - this is reference fidelity only, a separate concern from any
+later v0.5 baseline/per-change contract result or v0.7 overall verdict.
+
+Bounded visual-fidelity mismatch projection and v0.6 bounded-agent-context
+integration remain unimplemented; they are the next v0.7 prompt building on
+this foundation.

@@ -531,6 +531,72 @@ identical evaluations invoked from different filesystem locations share the
 same `evaluationRequestId` even though each execution gets a fresh
 `evaluationId`.
 
+## `evaluate-reference-fidelity`
+
+**Current status: implemented, unreleased (v0.7 Prompt 6).** No new artifact
+family or schema version — this command persists nothing.
+
+`my-frontend-observer evaluate-reference-fidelity` evaluates whether an
+already-persisted candidate observation satisfies an external reference's
+selected design requirements, gated by reference adequacy (v0.7 Prompt 3),
+reference/candidate compatibility (v0.7 Prompt 4), and explicit
+region-to-target bindings (v0.7 Prompt 5):
+
+```text
+my-frontend-observer evaluate-reference-fidelity --reference <external-reference-artifact-root> --candidate <observation-artifact-root> [--bindings-file <json-file>] [--enforce]
+```
+
+Required:
+
+- `--reference <path>` — root directory of an already-imported or
+  already-approved external-reference artifact.
+- `--candidate <path>` — root directory of the already-persisted candidate
+  observation artifact to evaluate against it.
+
+Options:
+
+- `--bindings-file <json-file>` — local JSON file of the form
+  `{ "bindings": [ { "referenceRegion": "...", "runtimeTarget": "..." } ] }`
+  declaring which stable observer runtime target (a configured target name)
+  explicitly corresponds to each reference region a selected requirement
+  depends on. Never inferred from geometry, matching names, or source code.
+  Optional — omitting it evaluates with no bindings at all, so every
+  requirement whose subject depends on a reference region becomes
+  `unavailable`.
+- `--enforce` — makes a `fail` fidelity state produce a nonzero process
+  exit status. A `fail` result is always printed identically with or
+  without this flag; `--enforce` changes only the process exit code, never
+  the result's content, and has no effect on a `not-evaluated` result.
+
+**This command never launches a browser, never re-resolves targets, and
+never recomputes reference regions/requirements/adequacy, compatibility, or
+bindings** — it reads the already-persisted reference and candidate exactly
+as given and evaluates every selected requirement exactly once via
+`evaluateReferenceCandidateFidelity`.
+
+A `not-evaluated` result (reference adequacy inadequate, or reference/
+candidate incompatible) and a `fail` result (a found design mismatch) are
+both successful, structured evaluation outcomes — not execution errors. On
+success, the command prints exactly:
+
+```text
+Reference: <referenceId>
+Candidate: <candidateObservationId>
+Adequacy: <adequate|partial|inadequate>
+Compatibility: <comparable|comparable-with-warnings|incomparable>
+State: <not-evaluated|pass|fail>
+Blocked by: <reference-inadequate|incompatible>
+Requirements: <count> (pass: <n>, fail: <n>, unavailable: <n>)
+Enforced: <yes|no>
+```
+
+(`Compatibility`/`Blocked by` are printed only when computed/applicable)
+and exits `0`, unless `--enforce` is given and the state is `fail`, in
+which case it exits nonzero. It exits nonzero and persists nothing for
+invalid CLI syntax, an unreadable/malformed `--reference`/`--candidate`
+target, a malformed `--bindings-file`, or an invalid/out-of-bound binding
+declaration.
+
 ## Foundation commands
 
 - `npm install` — install dependencies (includes the `playwright` runtime
