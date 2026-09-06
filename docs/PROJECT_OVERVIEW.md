@@ -4,15 +4,15 @@
 the my-dev-kit ecosystem. It addresses the gap between source-level evidence
 and what a browser actually renders and supports three durable jobs: human-to-LLM
 design communication, safer LLM-assisted frontend changes, and runtime evidence
-for coordinated ecosystem work. Human-to-LLM design communication may begin
-from the currently rendered frontend or, in later versions, from an approved
-external visual reference that describes the desired design.
+for coordinated ecosystem work. Human-to-LLM design communication can begin
+from the currently rendered frontend or from an approved external visual
+reference that describes the desired design.
 
 The responsibility split is stable:
 
 - `my-dev-kit` produces static repository/source evidence.
 - `my-frontend-observer` produces rendered browser/runtime evidence and owns the
-  future structured external-reference evidence needed to compare desired visual
+  structured external-reference evidence used to compare approved desired-design
   intent with an actual browser-rendered candidate.
 - `my-dev-kit-orchestrator` coordinates workflows and bounded evidence use.
 - `my-dev-kit-lab` owns compatibility, fixtures, experiments, and evaluation.
