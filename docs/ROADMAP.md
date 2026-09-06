@@ -357,10 +357,27 @@ reference/candidate evidence through the UI, and the displayed evidence is
 demonstrably the same canonical evidence used by CLI/programmatic and
 coding-agent workflows. A developer can select a reference region and see the
 bound runtime target and measured mismatch where available without the viewer
-recomputing a second result. Version-start planning must choose UI technology,
-local process boundary, reader/version strategy, reference/candidate layout,
-coordinate/overlay behavior, synchronized selection/zoom behavior, and
-large-artifact loading policy from the then-current repository.
+recomputing a second result.
+
+Version-start planning decisions are now resolved for v0.8:
+
+- UI: React + TypeScript + Vite;
+- application boundary: normal browser + Node-backed local server + installable
+  Progressive Web App using the same viewer application;
+- reader architecture: existing canonical readers feed an ephemeral viewer
+  adapter/projection rather than a new persisted viewer artifact;
+- reference/candidate display: side-by-side by default with independently
+  toggleable structured overlays;
+- geometry rendering: SVG using each source artifact/image's original coordinate
+  domain;
+- interaction: explicit-binding cross-selection, independent zoom/pan, and
+  synchronized/locked viewing only when existing compatibility evidence permits
+  it;
+- loading: metadata/index first, with full artifacts and images loaded on demand.
+
+The frozen concrete batch plan and implementation sequencing live in
+`docs/plans/v0.8-implementation-plan.md`; this roadmap intentionally does not
+copy those batches.
 
 ## v0.9 — Human Visual Annotation and Design-Intent Capture
 
