@@ -1637,3 +1637,213 @@ existing "bounded agent context is library-only" architecture.
 CLI surface, and this prompt does not introduce one - Prompt 8 is expected
 to become the first concrete consumer of `projectBoundedAgentContext`'s
 (now fidelity-aware) programmatic output.
+
+## v0.7 Prompt 8 controlled end-to-end external-reference coding-agent correction workflow
+
+Implemented, unreleased. One new pure domain module,
+`domain/referenceCorrectionWorkflow.ts`, plus its identity counterpart,
+`domain/referenceCorrectionIdentity.ts` - the first stage that composes
+every Prompt 1-7 and v0.1/v0.4/v0.5/v0.6 owner into one traceable
+reference-driven correction cycle. It reimplements none of them: reference
+lifecycle/adequacy (Prompt 1/3), compatibility (Prompt 4), binding (Prompt
+5), fidelity (Prompt 6), bounded context (Prompt 7), runtime comparison
+(v0.4 `compareObservations`), and contract evaluation (v0.5
+`evaluateFrontendContract`) are all called, never re-derived. No new
+persisted artifact family, no CLI surface, no remote AI dependency, and no
+mechanism anywhere in this module (or any module it calls) that edits
+target source.
+
+```ts
+// domain/referenceCorrectionWorkflow.ts
+function prepareReferenceCorrection(input: {
+  reference: ExternalReferenceArtifact;       // must be approved
+  baselineObservation: ObservationArtifact;   // approved baseline / pre-change state
+  baselineContract: PersistentBaselineContract;
+  changeContract: PerChangeContract;
+  bindingDeclarations: readonly ReferenceRuntimeBindingDeclaration[];
+  currentObservation: ObservationArtifact;    // fidelity is measured against this (= baselineObservation for the canonical proof)
+  generatedAt: string; producerVersion: string; projectionProfile: ProjectionProfile;
+}): { ok: true; status: 'handoff-ready'; reviewRequestId: string; fidelity: ReferenceCandidateFidelityEvaluation; handoff: ReferenceCorrectionHandoff }
+  | { ok: true; status: 'blocked-not-evaluated'; reviewRequestId: string; fidelity: ReferenceCandidateFidelityEvaluation }
+  | { ok: false; reason: string };
+
+function reviewReferenceCorrectionAttempt(input: {
+  // ...same reference/baselineObservation/baselineContract/changeContract/bindingDeclarations...
+  reviewRequestId: string;              // must match the id prepareReferenceCorrection returned for this exact semantic review
+  candidateObservation: ObservationArtifact; // fresh, post-edit capture
+  priorAttemptId?: string;
+}): { ok: true; attempt: ReferenceCorrectionAttemptResult } | { ok: false; reason: string };
+```
+
+**Workflow architecture.** A narrowly-scoped coordinator, not a second
+workflow engine: it holds no stage catalog, no job scheduler, and no
+generic orchestration graph. It performs exactly two operations - "prepare"
+(pre-change evidence -> bounded handoff) and "review" (post-edit candidate
+-> one composed overall result) - matching this prompt's own explicit
+guidance that the external-edit boundary must remain a visible seam between
+two separate calls, never one command that blocks waiting for an external
+actor.
+
+**New owners introduced**: `prepareReferenceCorrection`,
+`reviewReferenceCorrectionAttempt` (composition only - no new evaluation
+logic), `buildReferenceCorrectionReviewIdentity`/
+`buildReferenceCorrectionAttemptIdentity` (deterministic identity, see
+below), and the plain `ReferenceCorrectionHandoff`/
+`ReferenceCorrectionAttemptResult` result shapes.
+
+**Existing owners reused, verbatim**: `isApprovedExternalReferenceArtifact`
+(Prompt 1), `isValidReferenceRuntimeBindingDeclarations` (Prompt 5),
+`evaluateReferenceCandidateFidelity` (Prompt 6), `projectBoundedAgentContext`
+(Prompt 7, itself now fidelity-aware), `compareObservations` (v0.4),
+`evaluateFrontendContract` (v0.5). None of their internal logic is
+inspected, duplicated, or reimplemented by this module - only their
+top-level results are read.
+
+**Approved-reference/approved-baseline requirement.** `prepareReferenceCorrection`
+and `reviewReferenceCorrectionAttempt` both fail closed (`{ok: false}`) if
+`reference` is not in the `'approved'` lifecycle state (Prompt 1's own
+`isApprovedExternalReferenceArtifact` guard) - an imported-but-unapproved
+reference is never treated as an authoritative target design. Neither
+function ever calls `approveExternalReference`/`approveAndPersistBaseline`
+itself; approval remains the caller's own separate, explicit action.
+
+**Pre-change candidate = approved baseline observation**, for the canonical
+proof: `prepareReferenceCorrection`'s `currentObservation` and
+`baselineObservation` are the same value, so the initial reference fidelity
+can genuinely `FAIL` (measuring the gap between the current, already-
+approved implementation and the desired new design) while the baseline
+itself stays fully valid and approved. A caller's own architecture may
+supply a distinct `currentObservation` only when justified - the workflow
+does not require them to be identical, only that `currentObservation` and
+`candidateObservation` are always independently validated
+`ObservationArtifact`s.
+
+**Preparation (phase A)**: validates the common preconditions (approved
+reference, matching baseline/contract coherence, valid binding
+declarations), evaluates reference fidelity via Prompt 6 against
+`currentObservation`, and - only when that evaluation actually produced a
+result (`state !== 'not-evaluated'`) - projects it into a bounded context
+via Prompt 7/v0.6 and returns the `ReferenceCorrectionHandoff`. A
+`not-evaluated` fidelity (inadequate reference, or reference/candidate
+incompatible state) is reported as `status: 'blocked-not-evaluated'` -
+carrying the full Prompt 6 result for inspection, but never a fabricated
+handoff pretending evidence is adequate. An ambiguous or unavailable
+required binding does **not** block preparation outright - it still
+produces a `handoff-ready` result, with the ambiguity/unavailability
+visible directly in that requirement's own `unavailable`/`binding-
+unavailable` mismatch (Prompt 6's own honest per-requirement reporting,
+unchanged), so the external actor sees exactly why that specific
+requirement cannot yet be assessed.
+
+**The handoff** (`ReferenceCorrectionHandoff`) carries `reviewRequestId`,
+`referenceId`/`referenceRequestId`, `baselineObservationId`,
+`currentObservationId`, the full Prompt 7 `boundedContext` (already
+containing bounded fidelity mismatches, protected/preserved context,
+adequacy/omission/truncation, and - when the caller supplied it - runtime/
+static correlation), and a fixed, four-line `verificationPlan` explaining
+in plain language what will be re-checked after the edit (fresh Chromium
+capture, reference re-evaluation, v0.4/v0.5 re-evaluation, and the exact
+overall-PASS rule) - never reduced to "make it look like the screenshot".
+No raw reference image bytes, no full `ObservationArtifact`, and no source
+excerpt are ever included.
+
+**Handoff persistence: none.** The handoff is a plain, JSON-serializable,
+in-memory value returned directly to the caller - no new writer/reader, no
+new artifact family. A caller that needs the handoff to cross a process/
+session boundary (e.g. to hand it to an external coding-agent process) is
+free to serialize it with its own mechanism; observer product code does not
+own a persisted handoff artifact. This was a deliberate "smallest possible"
+choice: the handoff's only genuinely new identity is `reviewRequestId`
+(already deterministic and recomputable from stable inputs - see below), so
+nothing about it requires observer-managed persistence to remain
+traceable.
+
+**Review identity** (`buildReferenceCorrectionReviewIdentity`): a pure
+function of `{referenceRequestId, baselineObservationId,
+baselineContractId, baselineContractClauses, changeContractId,
+changeContractClauses, bindingDeclarations}` only - never a timestamp,
+never an operational file path. Deliberately hashes each contract's own
+authored `clauses` content, not merely its `baselineId`/`contractId` label:
+unlike this repository's content-derived identities elsewhere (e.g.
+`ObservationArtifact.observationId`), a `PersistentBaselineContract`'s
+`baselineId` and a `PerChangeContract`'s `contractId` are plain, caller-
+authored strings (`approveAndPersistBaseline` persists `contract.baselineId`
+verbatim, never recomputing it from `clauses`) - so two structurally valid
+contracts could in principle share an id while authoring different clauses.
+Hashing clause content directly closes that gap (caught during this
+prompt's own independent-judge review before being reported PASS - see the
+report's Tooling incidents section). `reviewReferenceCorrectionAttempt`
+recomputes this same hash from its own inputs and rejects the call
+(`{ok: false}`) if the caller-supplied `reviewRequestId` does not match -
+this is the mechanism that makes "no hidden baseline change" an enforced
+invariant rather than a documented intention: an attempt claiming to belong
+to a review while actually supplying a different baseline observation,
+baseline contract (id or clause content), per-change contract (id or clause
+content), reference, or binding set can never silently succeed.
+
+**Attempt identity** (`buildReferenceCorrectionAttemptIdentity`): a pure,
+deterministic function of `{reviewRequestId, candidateObservationId}` only
+- deliberately never a fresh random nonce. Every candidate observation
+already carries its own fresh, collision-resistant instance identity (v0.1's
+`buildObservationIdentity`), so hashing it together with the review it was
+captured for gives an attempt id that is both reproducible (the same
+review+candidate pair always yields the same `attemptId`) and guaranteed
+distinct per real capture.
+
+**Attempt history**: caller-managed, not observer-persisted. Because both
+workflow functions are pure (no internal mutable state, no side effects),
+an already-returned `ReferenceCorrectionAttemptResult` can never be
+overwritten by a later call - a caller that keeps every attempt result it
+receives (in memory, in its own log, or in its own storage) has a complete,
+immutable, traceable history for free, linked via each attempt's own
+`reviewRequestId` (shared across all attempts of one review),
+`priorAttemptId` (an optional, purely informational link to the immediately
+preceding attempt, carried through unchanged - never consulted by the
+evaluation logic itself), and `attemptId`.
+
+**Baseline-across-attempts rule**: enforced structurally, not merely
+documented. Every call to `reviewReferenceCorrectionAttempt` requires the
+caller to re-supply `baselineObservation`/`baselineContract` in full, and
+`compareObservations`/`evaluateFrontendContract` are always invoked with
+that same baseline against the fresh `candidateObservation` - there is no
+code path anywhere in this module that compares one candidate against a
+prior candidate instead. Combined with the `reviewRequestId` coherence
+check above, a caller cannot silently swap in a different baseline between
+attempts of the same review without the call being rejected.
+
+**Overall result composition.** `ReferenceCorrectionOverallState =
+'not-evaluated' | 'pass' | 'fail'`:
+
+- `fidelity.state === 'not-evaluated'` -> overall `'not-evaluated'` - Prompt
+  6's own explicit blocked state is preserved exactly, never collapsed into
+  an ordinary `'fail'`.
+- otherwise, `fidelity.state === 'pass' && contractEvaluation.overallVerdict === 'PASS'`
+  -> overall `'pass'`; anything else -> overall `'fail'`.
+
+A structurally-incomparable baseline/candidate pair is *not* given its own
+third overall bucket - v0.5's own `evaluateFrontendContract` already
+returns `'FAIL'` (never `'PASS'`) for that case, per its own established,
+unmodified precedent, and this workflow reuses that decision rather than
+re-litigating it. `approvalEligible` is a plain, read-only boolean
+(`true` iff `overallState === 'pass'`) - it is never itself an approval
+action; the caller must still invoke the existing explicit
+`approveAndPersistBaseline`/`approveExternalReference` owners separately,
+and neither is ever called from within this module.
+
+**Correction iteration**: `reviewReferenceCorrectionAttempt` is called once
+per candidate; the caller decides whether and when to call it again after
+another external edit. There is no loop, no polling, no automatic retry,
+and no mechanism in this module that itself waits for or drives an external
+implementation step - the production boundary between "prepare a handoff"
+and "review a candidate" is the explicit seam a human or an external
+process controls.
+
+**Source-editing boundary**: absolute. Neither this module nor anything it
+calls opens, reads, parses, or writes any target source file; both public
+operations accept only already-captured `ObservationArtifact`s and already-
+approved contract/reference artifacts. Real-Chromium candidate capture is
+always the caller's own responsibility, through the existing, unmodified
+observation pipeline (`runBrowserCapture`/`buildObservationArtifact`, the
+same functions `application/observationPersistence.ts#observe` already
+uses) - Prompt 8 adds no second browser adapter, screenshot engine, target
+resolver, or evidence-capture path.

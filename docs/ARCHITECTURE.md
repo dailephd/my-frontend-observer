@@ -587,3 +587,32 @@ before) - a caller joins fidelity, target, and correlation evidence by the
 one stable v0.2 runtime target id all three already share. Every new field
 is optional and additive; a pre-Prompt-7 caller supplying no fidelity
 evidence receives byte-identical output, including logical identity.
+
+v0.7 Prompt 8 adds the first complete, controlled end-to-end external-
+reference correction workflow (`domain/referenceCorrectionWorkflow.ts`,
+`domain/referenceCorrectionIdentity.ts`) - see `docs/CONTRACTS.md` "v0.7
+Prompt 8 controlled end-to-end external-reference coding-agent correction
+workflow" for the exact shape. This is a narrowly-scoped coordinator, not a
+second workflow engine: it exposes exactly two pure operations -
+`prepareReferenceCorrection` (pre-change evidence -> a bounded coding-agent
+handoff, built from Prompt 1/3/4/5/6/7's existing engines) and
+`reviewReferenceCorrectionAttempt` (a fresh post-edit candidate -> one
+composed overall result, built from v0.4's `compareObservations`, v0.7
+Prompt 6's `evaluateReferenceCandidateFidelity`, and v0.5's
+`evaluateFrontendContract`) - with an explicit, un-automatable seam between
+them where an external implementation actor edits target source. Overall
+`'pass'` requires both reference fidelity `'pass'` and v0.5 contract
+evaluation `'PASS'` - matching the selected design reference is necessary
+but never sufficient, so a candidate that visually satisfies the reference
+while regressing an active protected or preserved contract clause still
+resolves to overall `'fail'`. Review and attempt identity are both
+deterministic hashes of stable semantic inputs (never a timestamp, never an
+operational path), and `reviewReferenceCorrectionAttempt` rejects any call
+whose supplied `reviewRequestId` does not match what its own
+baseline/contract/reference/binding inputs recompute - the mechanism that
+makes "every attempt evaluates against the same approved baseline" an
+enforced invariant, not just a documented one. No new persisted artifact
+family, no CLI surface, and - most importantly - no code path anywhere in
+this module (or anything it calls) that opens, parses, or writes a target
+source file: real candidate capture remains the caller's own responsibility
+through the existing, unmodified real-Chromium observation pipeline.

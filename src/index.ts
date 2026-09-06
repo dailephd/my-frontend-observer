@@ -522,3 +522,17 @@ export {
 
 export type { EvaluateReferenceFidelityOptions, ApplicationReferenceFidelityResult } from './application/referenceFidelityEvaluationService.js';
 export { evaluateReferenceCandidateFidelityFromArtifactRoots } from './application/referenceFidelityEvaluationService.js';
+
+export { buildReferenceCorrectionReviewIdentity, buildReferenceCorrectionAttemptIdentity } from './domain/referenceCorrectionIdentity.js';
+
+export type {
+  PrepareReferenceCorrectionInput,
+  PrepareReferenceCorrectionStatus,
+  ReferenceCorrectionHandoff,
+  PrepareReferenceCorrectionResult,
+  ReferenceCorrectionOverallState,
+  ReviewReferenceCorrectionAttemptInput,
+  ReferenceCorrectionAttemptResult,
+  ReviewReferenceCorrectionAttemptResult,
+} from './domain/referenceCorrectionWorkflow.js';
+export { REFERENCE_CORRECTION_OVERALL_STATES, prepareReferenceCorrection, reviewReferenceCorrectionAttempt } from './domain/referenceCorrectionWorkflow.js';

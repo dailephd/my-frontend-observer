@@ -226,7 +226,7 @@ behavior described above, including logical identity. See
 `docs/CONTRACTS.md` "v0.7 Prompt 7 bounded reference-fidelity projection and
 v0.6 bounded-agent-context integration" for the full contract.
 
-## Current external-reference foundation workflow (implemented, unreleased - v0.7 Prompts 1-6)
+## Current external-reference foundation workflow (implemented, unreleased - v0.7 Prompts 1-8)
 
 This is the foundation layer only - identity, provenance, bounded image
 metadata, a two-state lifecycle, (Prompt 2) explicit reference regions plus
@@ -396,6 +396,83 @@ worked 2x-scale example from the task specification), and `runCli()`-level
 CLI coverage (no Chromium involved - see `tests/unit/externalReference*.test.ts`,
 `tests/unit/cliExternalReference.test.ts`, and
 `tests/unit/cliEvaluateReferenceFidelity.test.ts`).
+
+## Current reference correction workflow (implemented, unreleased - v0.7 Prompt 8)
+
+The first complete, controlled correction cycle - a programmatic (library-
+only) workflow, exactly like the v0.6 bounded-context workflow above, with
+one explicit, un-automatable seam where an external implementation actor
+edits target source:
+
+```text
+approved ExternalReferenceArtifact + approved baseline ObservationArtifact
+  + active PersistentBaselineContract + PerChangeContract + binding
+  declarations + current (pre-change) ObservationArtifact
+→ prepareReferenceCorrection(...) (src/domain/referenceCorrectionWorkflow.ts)
+  → evaluateReferenceCandidateFidelity(...) (v0.7 Prompt 6, reused)
+  → not-evaluated (inadequate reference / incompatible state)?
+      → { status: 'blocked-not-evaluated' } - no fabricated handoff
+  → otherwise: projectBoundedAgentContext({ ..., fidelity }) (v0.7 Prompt 7/v0.6, reused)
+      → { status: 'handoff-ready', handoff: ReferenceCorrectionHandoff }
+        ↓
+EXTERNAL implementation actor edits target source (never observer code)
+        ↓
+fresh real-Chromium candidate ObservationArtifact
+  (existing observe()/runBrowserCapture pipeline, reused unchanged)
+        ↓
+reviewReferenceCorrectionAttempt(...)
+  → compareObservations(baseline, candidate) (v0.4, reused)
+  → evaluateReferenceCandidateFidelity(reference, candidate, bindings) (Prompt 6, reused)
+  → evaluateFrontendContract({ before: baseline, after: candidate, comparison, baseline: baselineContract, change: changeContract }) (v0.5, reused)
+  → overall: 'not-evaluated' iff fidelity not-evaluated; else 'pass' iff
+    fidelity PASS AND contract evaluation PASS; else 'fail'
+        ↓
+FAIL? → prepareReferenceCorrection(..., currentObservation: <this failed candidate>)
+        derives a FRESH bounded handoff from the newest failed evidence
+        ↓
+        external correction → fresh candidate → review again (caller-controlled, never automatic)
+        ↓
+PASS? → approvalEligible: true (a plain flag) - explicit
+        approve-baseline/approve-reference remain the caller's own,
+        separate, unautomated actions
+```
+
+Every attempt (`reviewReferenceCorrectionAttempt` call) evaluates against
+the *same* supplied approved baseline - there is no attempt-to-attempt
+comparison path - and `reviewRequestId` (a deterministic hash of
+`{referenceRequestId, baselineObservationId, baselineContractId,
+changeContractId, bindingDeclarations}`) is recomputed and checked on every
+review call, so a caller cannot silently swap in a different baseline
+between attempts of the same logical review. Attempt identity
+(`attemptId`, a deterministic hash of `{reviewRequestId,
+candidateObservationId}`) distinguishes every candidate execution without
+ever using a timestamp; because both workflow functions are pure, a
+returned attempt result can never be overwritten by a later call - callers
+that keep every result they receive have a complete, immutable attempt
+history for free.
+
+This is exercised by unit tests covering preparation (valid handoff,
+unapproved-reference rejection, inadequate-reference and incompatible-state
+blocking, ambiguous-binding handling, review-identity determinism),
+attempt review (all four overall-composition cases - both PASS, reference
+FAIL, contract FAIL including a protected regression, and not-evaluated -
+plus reviewRequestId coherence, attempt-identity determinism/distinctness,
+`priorAttemptId` traceability, and input immutability), and a real-Chromium
+end-to-end suite (`tests/browser/referenceCorrectionWorkflow.test.ts`)
+proving: an initial genuine design mismatch measured against real rendered
+geometry; a controlled, deterministic, test-only "external actor" (living
+entirely outside `src/`) editing a disposable copy of a tracked HTML
+fixture template and the observer capturing the change through the
+unmodified real browser pipeline; a full success correction; a protected-
+regression case where the candidate visually satisfies the reference but a
+real Chromium-observed element becomes hidden, still producing overall
+`FAIL`; a two-attempt correction iteration with both attempts remaining
+distinct and traceable to the same baseline; and a blocking case
+(incompatible reference/candidate viewport) that never produces a handoff.
+The tracked fixture template is verified byte-identical before and after
+the proof - only its disposable, repository-local copy is ever edited. See
+`docs/CONTRACTS.md` "v0.7 Prompt 8 controlled end-to-end external-reference
+coding-agent correction workflow" for the full contract.
 
 ## Future workflows
 
