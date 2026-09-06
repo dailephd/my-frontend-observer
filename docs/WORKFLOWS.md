@@ -442,15 +442,16 @@ Every attempt (`reviewReferenceCorrectionAttempt` call) evaluates against
 the *same* supplied approved baseline - there is no attempt-to-attempt
 comparison path - and `reviewRequestId` (a deterministic hash of
 `{referenceRequestId, baselineObservationId, baselineContractId,
-changeContractId, bindingDeclarations}`) is recomputed and checked on every
-review call, so a caller cannot silently swap in a different baseline
-between attempts of the same logical review. Attempt identity
-(`attemptId`, a deterministic hash of `{reviewRequestId,
-candidateObservationId}`) distinguishes every candidate execution without
-ever using a timestamp; because both workflow functions are pure, a
-returned attempt result can never be overwritten by a later call - callers
-that keep every result they receive have a complete, immutable attempt
-history for free.
+baselineContractClauses, changeContractId, changeContractClauses,
+bindingDeclarations}`) is recomputed and checked on every review call. The
+contract clause contents are identity-bearing as well as the caller-authored
+contract ids, so a same-id contract with different clauses cannot be silently
+substituted between attempts. Attempt identity (`attemptId`, a deterministic
+hash of `{reviewRequestId, candidateObservationId}`) distinguishes every
+candidate execution without ever using a timestamp; because both workflow
+functions are pure, a returned attempt result can never be overwritten by a
+later call - callers that keep every result they receive have a complete,
+immutable attempt history for free.
 
 This is exercised by unit tests covering preparation (valid handoff,
 unapproved-reference rejection, inadequate-reference and incompatible-state
