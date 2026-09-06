@@ -177,4 +177,110 @@ describe('externalReferencePersistenceService', () => {
     expect(xManifestAfter).toBe(xManifestBefore);
     expect(xManifestAfter.includes('supersededBy')).toBe(false);
   });
+
+  // v0.7 Prompt 2: importing with a valid region set persists it, and reports the correct count.
+  it('imports a reference with valid regions and persists them', async () => {
+    const cwd = await freshCwd();
+    const regions = [
+      { id: 'header', rectangle: { x: 0, y: 0, width: 800, height: 60 } },
+      { id: 'current-page-card', rectangle: { x: 28, y: 92, width: 424, height: 82 } },
+    ];
+    const result = await importExternalReference(buildMinimalPng(800, 600), { outputLocation: '.', cwd, regions });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok result');
+    expect(result.regionCount).toBe(2);
+
+    const manifest = JSON.parse(await readFile(result.manifestPath, 'utf8')) as ImportedExternalReferenceArtifact;
+    expect(manifest.regions).toEqual(regions);
+  });
+
+  // Legacy compatibility (behavior S): importing without regions produces an artifact with no `regions` key at all, and behaves exactly as in Prompt 1.
+  it('importing without regions produces no regions field and a regionCount of 0', async () => {
+    const cwd = await freshCwd();
+    const result = await importExternalReference(buildMinimalPng(100, 100), { outputLocation: '.', cwd });
+    if (!result.ok) throw new Error('expected ok result');
+    expect(result.regionCount).toBe(0);
+
+    const manifest = JSON.parse(await readFile(result.manifestPath, 'utf8')) as ImportedExternalReferenceArtifact;
+    expect('regions' in manifest).toBe(false);
+  });
+
+  // Fail-closed: an invalid region set rejects the whole import, nothing persisted.
+  it('rejects import when a region is out of the image bounds, and persists nothing', async () => {
+    const cwd = await freshCwd();
+    const result = await importExternalReference(buildMinimalPng(100, 100), {
+      outputLocation: '.',
+      cwd,
+      regions: [{ id: 'overflow', rectangle: { x: 90, y: 0, width: 50, height: 20 } }],
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected failure');
+    expect(result.diagnostics[0]?.code).toBe('invalid-reference-region');
+    await expect(readdir(cwd)).resolves.toEqual([]);
+  });
+
+  it('rejects import when regions contain a duplicate id', async () => {
+    const cwd = await freshCwd();
+    const result = await importExternalReference(buildMinimalPng(200, 200), {
+      outputLocation: '.',
+      cwd,
+      regions: [
+        { id: 'a', rectangle: { x: 0, y: 0, width: 10, height: 10 } },
+        { id: 'a', rectangle: { x: 20, y: 20, width: 10, height: 10 } },
+      ],
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected failure');
+    expect(result.diagnostics[0]?.code).toBe('invalid-reference-region');
+  });
+
+  // Approval carries regions forward unchanged - never re-validated, never re-derived, never dropped.
+  it('approval carries the imported artifact\'s regions forward unchanged', async () => {
+    const cwd = await freshCwd();
+    const regions = [{ id: 'header', rectangle: { x: 0, y: 0, width: 100, height: 40 } }];
+    const imported = await importExternalReference(buildMinimalPng(400, 300), { outputLocation: '.', cwd, regions });
+    if (!imported.ok) throw new Error('expected import to succeed');
+
+    const approved = await approveExternalReference(imported.artifactRoot, { outputLocation: '.', cwd });
+    expect(approved.ok).toBe(true);
+    if (!approved.ok) throw new Error('expected approval to succeed');
+    expect(approved.regionCount).toBe(1);
+
+    const approvedManifest = JSON.parse(await readFile(approved.manifestPath, 'utf8')) as ApprovedExternalReferenceArtifact;
+    expect(approvedManifest.regions).toEqual(regions);
+  });
+
+  // Approval of a regionless import carries forward "no regions" (not an empty array, not a fabricated one).
+  it('approval of a regionless import has no regions field', async () => {
+    const cwd = await freshCwd();
+    const imported = await importExternalReference(buildMinimalPng(100, 100), { outputLocation: '.', cwd });
+    if (!imported.ok) throw new Error('expected import to succeed');
+
+    const approved = await approveExternalReference(imported.artifactRoot, { outputLocation: '.', cwd });
+    if (!approved.ok) throw new Error('expected approval to succeed');
+    expect(approved.regionCount).toBe(0);
+
+    const approvedManifest = JSON.parse(await readFile(approved.manifestPath, 'utf8')) as ApprovedExternalReferenceArtifact;
+    expect('regions' in approvedManifest).toBe(false);
+  });
+
+  // Behavior T: an already-approved historical artifact's manifest is never rewritten by any later action in this module (approval is the only writer, and it always creates a brand-new instance).
+  it('an approved artifact\'s manifest is never mutated by any later import/approve call', async () => {
+    const cwd = await freshCwd();
+    const imported = await importExternalReference(buildMinimalPng(300, 200), {
+      outputLocation: '.',
+      cwd,
+      regions: [{ id: 'a', rectangle: { x: 0, y: 0, width: 50, height: 50 } }],
+    });
+    if (!imported.ok) throw new Error('expected import to succeed');
+    const approved = await approveExternalReference(imported.artifactRoot, { outputLocation: '.', cwd });
+    if (!approved.ok) throw new Error('expected approval to succeed');
+    const approvedManifestBefore = await readFile(approved.manifestPath, 'utf8');
+
+    // Unrelated later activity in the same output directory.
+    await importExternalReference(buildMinimalPng(50, 50), { outputLocation: '.', cwd });
+
+    const approvedManifestAfter = await readFile(approved.manifestPath, 'utf8');
+    expect(approvedManifestAfter).toBe(approvedManifestBefore);
+  });
 });

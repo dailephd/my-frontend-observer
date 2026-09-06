@@ -361,6 +361,8 @@ export {
   isValidExternalReferenceLifecycleState,
   isValidExternalReferenceProvenance,
   isValidExternalReferenceArtifact,
+  isImportedExternalReferenceArtifact,
+  isApprovedExternalReferenceArtifact,
 } from './domain/externalReference.js';
 
 export { buildExternalReferenceRequestIdentity, buildExternalReferenceInstanceIdentity } from './domain/externalReferenceIdentity.js';
@@ -378,3 +380,28 @@ export type {
   ApplicationApproveExternalReferenceResult,
 } from './application/externalReferencePersistenceService.js';
 export { importExternalReference, approveExternalReference } from './application/externalReferencePersistenceService.js';
+
+export type { ReferenceRegionRectangle, ReferenceRegion, ReferenceRegionGeometry, ReferenceRegionValidationResult } from './domain/externalReferenceRegions.js';
+export {
+  REFERENCE_REGION_ID_PATTERN,
+  MAX_REFERENCE_REGIONS,
+  deriveReferenceRegionGeometry,
+  isValidReferenceRegionRectangle,
+  isValidReferenceRegion,
+  isValidReferenceRegions,
+} from './domain/externalReferenceRegions.js';
+
+export type {
+  ReferenceRegionRelationship,
+  ReferenceRegionRelationshipGraph,
+  DeriveReferenceRegionRelationshipsOptions,
+  DeriveReferenceRegionRelationshipsResult,
+} from './domain/externalReferenceRegionRelationships.js';
+export {
+  MAX_REFERENCE_REGION_PAIRS,
+  REFERENCE_REGION_RELATIONSHIP_FAMILY_COUNT,
+  MAX_REFERENCE_REGION_RELATIONSHIP_RECORDS,
+  isValidReferenceRegionRelationship,
+  isValidReferenceRegionRelationshipGraph,
+  deriveReferenceRegionRelationships,
+} from './domain/externalReferenceRegionRelationships.js';

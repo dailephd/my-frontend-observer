@@ -1,10 +1,12 @@
 /**
- * v0.7 Prompt 1 external-reference artifact family. Frozen here as the
- * foundation layer only - identity, provenance, bounded image metadata, and a
- * two-state lifecycle (imported -> approved) with explicit forward-only
- * supersession. This module implements neither reference regions, geometry,
- * relationships, design requirements, tolerances, reference-region/runtime
- * binding, nor reference-vs-candidate evaluation - see docs/ARCHITECTURE.md.
+ * v0.7 Prompt 1 external-reference artifact family, extended in Prompt 2
+ * with explicit, additive, optional reference regions (identity, provenance,
+ * bounded image metadata, two-state lifecycle, forward-only supersession -
+ * see the Prompt 1 report for that foundation; region geometry/relationship
+ * derivation lives in externalReferenceRegions.ts /
+ * externalReferenceRegionRelationships.ts). This module still implements
+ * neither design requirements, tolerances, reference-region/runtime binding,
+ * nor reference-vs-candidate evaluation - see docs/ARCHITECTURE.md.
  *
  * An external reference is desired-design evidence, not an earlier browser
  * observation: this module never reuses ARTIFACT_KIND/SCHEMA_VERSION
@@ -16,6 +18,8 @@ import type { CompletionState } from './completion.js';
 import { PRODUCER_NAME } from './schema.js';
 import type { ExternalReferenceImageFormat } from './externalReferenceImage.js';
 import { isExternalReferenceImageFormat, isValidExternalReferenceImageDimensions } from './externalReferenceImage.js';
+import type { ReferenceRegion } from './externalReferenceRegions.js';
+import { isValidReferenceRegions } from './externalReferenceRegions.js';
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -123,6 +127,16 @@ interface ExternalReferenceArtifactBase {
   provenance: ExternalReferenceProvenance;
   /** Explicit, forward-only supersession of a prior reference's referenceId - never inferred from image/content similarity. */
   supersedesReferenceId?: string;
+  /**
+   * v0.7 Prompt 2 addition (additive, optional - a Prompt 1 artifact predates
+   * this field entirely and remains valid without it, so no schema version
+   * bump was needed). Explicit, user/configuration-authored reference-image
+   * rectangles - identity-bearing wherever present (see
+   * externalReferenceIdentity.ts). Never mutated in place: changing region
+   * content produces a new referenceRequestId/referenceId, never a rewrite of
+   * this array on an existing persisted artifact.
+   */
+  regions?: ReferenceRegion[];
   diagnostics: Diagnostic[];
   completion: CompletionState;
 }
@@ -207,16 +221,30 @@ export function isValidExternalReferenceArtifact(value: unknown): ExternalRefere
   const hasImage = 'image' in value && value.image !== undefined;
   const hasSourceReference = 'sourceReference' in value && value.sourceReference !== undefined;
 
+  let imageWidth: number;
+  let imageHeight: number;
+
   if (lifecycle.state === 'imported') {
     if (hasSourceReference) return { valid: false, reason: 'an "imported" artifact must not carry sourceReference' };
     if (!hasImage || !isValidExternalReferenceImageReference(value.image)) return { valid: false, reason: 'an "imported" artifact must carry a valid image reference' };
-    return { valid: true };
+    const image = value.image as ExternalReferenceImageReference;
+    imageWidth = image.width;
+    imageHeight = image.height;
+  } else {
+    // lifecycle.state === 'approved'
+    if (hasImage) return { valid: false, reason: 'an "approved" artifact must not carry image (it never owns a copy of the reference image)' };
+    if (!hasSourceReference || !isValidExternalReferenceSourceReference(value.sourceReference)) {
+      return { valid: false, reason: 'an "approved" artifact must carry a valid sourceReference' };
+    }
+    const sourceReference = value.sourceReference as ExternalReferenceSourceReference;
+    imageWidth = sourceReference.image.width;
+    imageHeight = sourceReference.image.height;
   }
 
-  // lifecycle.state === 'approved'
-  if (hasImage) return { valid: false, reason: 'an "approved" artifact must not carry image (it never owns a copy of the reference image)' };
-  if (!hasSourceReference || !isValidExternalReferenceSourceReference(value.sourceReference)) {
-    return { valid: false, reason: 'an "approved" artifact must carry a valid sourceReference' };
+  if ('regions' in value && value.regions !== undefined) {
+    const regionsValidation = isValidReferenceRegions(value.regions, imageWidth, imageHeight);
+    if (!regionsValidation.valid) return { valid: false, reason: `regions: ${regionsValidation.reason}` };
   }
+
   return { valid: true };
 }

@@ -11,6 +11,7 @@ import { compareAndPersistFromArtifactRoots } from './application/comparisonServ
 import { approveAndPersistBaseline, persistPerChangeContract } from './application/frontendContractPersistenceService.js';
 import { evaluateAndPersistFromArtifactRoots } from './application/frontendContractEvaluationService.js';
 import { importExternalReference, approveExternalReference } from './application/externalReferencePersistenceService.js';
+import type { ReferenceRegion } from './domain/externalReferenceRegions.js';
 
 export interface CliIO {
   stdout: (text: string) => void;
@@ -264,15 +265,26 @@ Options:
                           artifact (imported or approved) that this import
                           explicitly supersedes. The prior artifact is never
                           modified.
+  --regions-file <json-file>  Local JSON file of the form { "regions": [...] }
+                          declaring explicit, meaningful reference-image
+                          regions (id + a {x, y, width, height} rectangle in
+                          reference-image pixels, origin at the image's
+                          top-left corner). Optional - a reference imported
+                          without this flag behaves exactly as in v0.7 Prompt
+                          1. Region content participates in the reference's
+                          logical identity; the file path itself never does.
   --help                 Show this help.
 
 Detects the image format from its header bytes only (never from the file
 extension), reads its pixel dimensions from the same bounded header bytes
 (never decoding pixel data), and persists a new external-reference artifact
 in the "imported" lifecycle state - importing never approves it. On success,
-prints a concise result and exits 0. On an unreadable file, an unsupported or
-undetectable format, invalid/out-of-bound dimensions, an over-limit file
-size, or an unresolvable --supersedes target, prints structured diagnostics
+prints a concise result (including the accepted region count) and exits 0.
+On an unreadable file, an unsupported or undetectable format, invalid/
+out-of-bound dimensions, an over-limit file size, an unresolvable
+--supersedes target, or an invalid region (missing/duplicate/malformed id,
+non-finite/negative/zero geometry, a region extending outside the image, or
+more than the bounded maximum region count), prints structured diagnostics
 to stderr and exits nonzero.
 `;
 
@@ -298,10 +310,14 @@ is never inferred from a successful import or from any later fidelity
 evaluation. Approving persists a brand-new artifact instance (a fresh
 referenceId sharing the imported artifact's referenceRequestId) that carries
 a reference back to the imported artifact's image rather than a second copy
-of its bytes; the imported artifact's own manifest is never modified. Only a
-reference currently in the "imported" lifecycle state can be approved. On
-success, prints a concise result and exits 0. On an unreadable/malformed
---reference target, a target that is not in the "imported" state, an
+of its bytes; the imported artifact's own manifest is never modified. Any
+regions already declared on the imported artifact are carried forward
+unchanged (not re-validated against new input, not re-derived) - approval
+never adds, removes, or edits regions. Only a reference currently in the
+"imported" lifecycle state can be approved. On success, prints a concise
+result (including the carried-forward region count) and exits 0. On an
+unreadable/malformed --reference target, a target that is not in the
+"imported" state, an
 unresolvable --supersedes target, or a persistence failure, prints structured
 diagnostics to stderr and exits nonzero.
 `;
@@ -428,6 +444,52 @@ function parseObserveArgs(argv: readonly string[]): ParsedObserveArgs {
 }
 
 const TARGETS_FILE_ALLOWED_ROOT_FIELDS = new Set(['targets']);
+const REGIONS_FILE_ALLOWED_ROOT_FIELDS = new Set(['regions']);
+
+type LoadRegionsFileResult = { ok: true; regions: unknown } | { ok: false; error: string };
+
+/**
+ * CLI/input-boundary-only responsibility, mirroring loadTargetsFile exactly:
+ * read one local JSON file, validate only the root wrapper (object root,
+ * exactly the "regions" field, nothing else), and hand the still-unvalidated
+ * `regions` value to the existing domain validators
+ * (isValidReferenceRegions, called inside importExternalReference) - region
+ * geometry/ID rules stay owned there, never duplicated here. The file path
+ * itself is never returned beyond this function, so it can never reach the
+ * persisted artifact or its identity.
+ */
+function loadRegionsFile(filePath: string): LoadRegionsFileResult {
+  let rawText: string;
+  try {
+    rawText = readFileSync(filePath, 'utf8');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `--regions-file could not be read: ${message}` };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `--regions-file is not valid JSON: ${message}` };
+  }
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return { ok: false, error: '--regions-file root must be a JSON object' };
+  }
+
+  const record = parsed as Record<string, unknown>;
+  const unknownFields = Object.keys(record).filter((key) => !REGIONS_FILE_ALLOWED_ROOT_FIELDS.has(key));
+  if (unknownFields.length > 0) {
+    return { ok: false, error: `--regions-file has unsupported top-level field(s): ${unknownFields.join(', ')}` };
+  }
+  if (!('regions' in record)) {
+    return { ok: false, error: '--regions-file must have a "regions" property' };
+  }
+
+  return { ok: true, regions: record.regions };
+}
 
 type LoadTargetsFileResult = { ok: true; targets: unknown } | { ok: false; error: string };
 
@@ -871,7 +933,7 @@ function parseEvaluateContractArgs(argv: readonly string[]): ParsedEvaluateContr
 }
 
 type ParsedImportReferenceArgs =
-  | { ok: true; imageFilePath: string; outputLocation: string; label?: string; supersedesReferenceRoot?: string }
+  | { ok: true; imageFilePath: string; outputLocation: string; label?: string; supersedesReferenceRoot?: string; regionsFilePath?: string }
   | { ok: false; errors: string[] };
 
 /** CLI-syntax-only parsing, mirroring `parseApproveBaselineArgs`. The image file path is the one positional argument. */
@@ -884,6 +946,8 @@ function parseImportReferenceArgs(argv: readonly string[]): ParsedImportReferenc
   let labelFlagCount = 0;
   let supersedesReferenceRoot: string | undefined;
   let supersedesFlagCount = 0;
+  let regionsFilePath: string | undefined;
+  let regionsFileFlagCount = 0;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -912,6 +976,14 @@ function parseImportReferenceArgs(argv: readonly string[]): ParsedImportReferenc
         else supersedesReferenceRoot = value;
         break;
       }
+      case '--regions-file': {
+        const value = argv[(i += 1)];
+        regionsFileFlagCount += 1;
+        if (value === undefined) errors.push('--regions-file requires a file path argument');
+        else if (regionsFileFlagCount > 1) errors.push('--regions-file may only be specified once');
+        else regionsFilePath = value;
+        break;
+      }
       default:
         if (arg === undefined) break;
         if (arg.startsWith('--')) errors.push(`unrecognized argument: ${arg}`);
@@ -930,6 +1002,7 @@ function parseImportReferenceArgs(argv: readonly string[]): ParsedImportReferenc
     outputLocation: outputLocation as string,
     ...(label === undefined ? {} : { label }),
     ...(supersedesReferenceRoot === undefined ? {} : { supersedesReferenceRoot }),
+    ...(regionsFilePath === undefined ? {} : { regionsFilePath }),
   };
 }
 
@@ -1265,11 +1338,24 @@ async function runImportReferenceCommand(argv: readonly string[], io: CliIO): Pr
     return 1;
   }
 
-  // Exactly one application import attempt: format/dimension validation, an optional supersession-target read, persisted at most once.
+  let regions: ReferenceRegion[] | undefined;
+  if (parsedArgs.regionsFilePath !== undefined) {
+    const loaded = loadRegionsFile(parsedArgs.regionsFilePath);
+    if (!loaded.ok) {
+      io.stderr(`error: ${loaded.error}\n`);
+      io.stderr(IMPORT_REFERENCE_HELP);
+      return 1;
+    }
+    // CLI boundary owns file-read/root-wrapper syntax only; region content/geometry validation is owned by isValidReferenceRegions, called inside importExternalReference.
+    regions = loaded.regions as ReferenceRegion[];
+  }
+
+  // Exactly one application import attempt: format/dimension validation, an optional region-set validation, an optional supersession-target read, persisted at most once.
   const result = await importExternalReference(imageBytes, {
     outputLocation: parsedArgs.outputLocation,
     ...(parsedArgs.label === undefined ? {} : { label: parsedArgs.label }),
     ...(parsedArgs.supersedesReferenceRoot === undefined ? {} : { supersedesReferenceRoot: parsedArgs.supersedesReferenceRoot }),
+    ...(regions === undefined ? {} : { regions }),
   });
   if (!result.ok) {
     for (const diagnostic of result.diagnostics) io.stderr(`${formatDiagnostic(diagnostic)}\n`);
@@ -1280,6 +1366,7 @@ async function runImportReferenceCommand(argv: readonly string[], io: CliIO): Pr
   io.stdout(`State: imported\n`);
   io.stdout(`Artifact: ${result.artifactRoot}\n`);
   io.stdout(`Image: ${result.imagePath}\n`);
+  io.stdout(`Regions: ${result.regionCount}\n`);
 
   return 0;
 }
@@ -1315,6 +1402,7 @@ async function runApproveReferenceCommand(argv: readonly string[], io: CliIO): P
   io.stdout(`Reference: ${result.referenceId}\n`);
   io.stdout(`State: approved\n`);
   io.stdout(`Artifact: ${result.artifactRoot}\n`);
+  io.stdout(`Regions: ${result.regionCount}\n`);
 
   return 0;
 }

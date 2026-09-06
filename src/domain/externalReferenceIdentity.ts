@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { ExternalReferenceImageFormat } from './externalReferenceImage.js';
+import type { ReferenceRegion } from './externalReferenceRegions.js';
 
 /**
  * Deliberately duplicated from domain/identity.ts#canonicalize (itself
@@ -20,14 +21,25 @@ function canonicalize(value: unknown): unknown {
 }
 
 /**
- * Pure function of {imageSha256, format, width, height, supersedesReferenceId}
- * only - the semantic content of the reference image plus which prior
- * reference (if any) it explicitly supersedes. Never includes a filesystem
- * path, output location, a captured timestamp, or a caller-supplied label:
- * two imports of byte-identical image content from different operational
- * locations, with different labels, produce the same logical identity;
- * changing the image content, its detected format/dimensions, or the
- * supersession target changes it.
+ * Pure function of {imageSha256, format, width, height, supersedesReferenceId,
+ * regions?} - the semantic content of the reference image, which prior
+ * reference (if any) it explicitly supersedes, and (v0.7 Prompt 2 addition)
+ * its explicitly authored reference regions when present. Never includes a
+ * filesystem path, output location, a captured timestamp, or a
+ * caller-supplied label: two imports of byte-identical image content and
+ * region content from different operational locations, with different
+ * labels, produce the same logical identity; changing the image content, its
+ * detected format/dimensions, the supersession target, or the region set
+ * (added/removed/renamed/moved/resized) changes it.
+ *
+ * `regions` is omitted from the hashed view entirely when not supplied
+ * (rather than included as `null`, unlike `supersedes`) so that every
+ * pre-Prompt-2 call site - and every Prompt 2 call that legitimately imports
+ * or approves a reference with no regions - keeps producing byte-identical
+ * identity to Prompt 1, never a new hash purely because this parameter now
+ * exists. Region order is part of the semantic view (authored order is
+ * semantic, mirroring domain/identity.ts's `targets` treatment) - canonicalize
+ * sorts object keys but deliberately never reorders arrays.
  */
 export function buildExternalReferenceRequestIdentity(
   imageSha256: string,
@@ -35,8 +47,16 @@ export function buildExternalReferenceRequestIdentity(
   width: number,
   height: number,
   supersedesReferenceId?: string,
+  regions?: readonly ReferenceRegion[],
 ): string {
-  const semanticView = { imageSha256, format, width, height, supersedes: supersedesReferenceId ?? null };
+  const semanticView = {
+    imageSha256,
+    format,
+    width,
+    height,
+    supersedes: supersedesReferenceId ?? null,
+    ...(regions !== undefined ? { regions } : {}),
+  };
   const serialized = JSON.stringify(canonicalize(semanticView));
   return createHash('sha256').update(serialized).digest('hex');
 }

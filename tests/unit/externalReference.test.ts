@@ -98,4 +98,44 @@ describe('externalReference validator', () => {
     const withEmpty = { ...validImported(), supersedesReferenceId: '' };
     expect(isValidExternalReferenceArtifact(withEmpty).valid).toBe(false);
   });
+
+  // Behavior S: a Prompt 1 artifact without a `regions` field at all remains valid - the field is purely additive/optional.
+  it('a legacy (Prompt 1) artifact with no regions field at all remains valid', () => {
+    const legacy = validImported();
+    expect('regions' in legacy).toBe(false);
+    expect(isValidExternalReferenceArtifact(legacy)).toEqual({ valid: true });
+  });
+
+  it('accepts a valid regions array on an imported artifact, bounded by that artifact\'s own image dimensions (800x600)', () => {
+    const withRegions = { ...validImported(), regions: [{ id: 'header', rectangle: { x: 0, y: 0, width: 100, height: 40 } }] };
+    expect(isValidExternalReferenceArtifact(withRegions)).toEqual({ valid: true });
+  });
+
+  it('accepts a valid regions array on an approved artifact, bounded by sourceReference.image dimensions', () => {
+    const withRegions = { ...validApproved(), regions: [{ id: 'header', rectangle: { x: 0, y: 0, width: 100, height: 40 } }] };
+    expect(isValidExternalReferenceArtifact(withRegions)).toEqual({ valid: true });
+  });
+
+  it('rejects a region extending outside the artifact\'s own image bounds', () => {
+    const outOfBounds = { ...validImported(), regions: [{ id: 'overflow', rectangle: { x: 750, y: 0, width: 100, height: 50 } }] };
+    const result = isValidExternalReferenceArtifact(outOfBounds);
+    expect(result.valid).toBe(false);
+    if (!result.valid) expect(result.reason).toContain('regions:');
+  });
+
+  it('rejects a malformed regions value (not an array)', () => {
+    const malformed = { ...validImported(), regions: { id: 'x' } };
+    expect(isValidExternalReferenceArtifact(malformed).valid).toBe(false);
+  });
+
+  it('rejects duplicate region ids', () => {
+    const duplicate = {
+      ...validImported(),
+      regions: [
+        { id: 'header', rectangle: { x: 0, y: 0, width: 100, height: 40 } },
+        { id: 'header', rectangle: { x: 0, y: 50, width: 100, height: 40 } },
+      ],
+    };
+    expect(isValidExternalReferenceArtifact(duplicate).valid).toBe(false);
+  });
 });

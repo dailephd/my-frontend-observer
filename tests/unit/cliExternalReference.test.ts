@@ -101,4 +101,88 @@ describe('cli import-reference / approve-reference', () => {
     const out2 = capture();
     expect(await runCli(['approve-reference'], out2.io)).toBe(1);
   });
+
+  // v0.7 Prompt 2: --regions-file wires explicit regions through the CLI, and approval carries them forward.
+  it('imports a reference with an explicit --regions-file, and approval carries the regions forward', async () => {
+    const dir = await makeTempDir('mfo-cli-external-reference-regions-');
+    const imagePath = path.join(dir, 'design.png');
+    await writeFile(imagePath, buildMinimalPng(800, 600));
+    const regionsPath = path.join(dir, 'regions.json');
+    await writeFile(
+      regionsPath,
+      JSON.stringify({
+        regions: [
+          { id: 'header', rectangle: { x: 0, y: 0, width: 800, height: 60 } },
+          { id: 'current-page-card', rectangle: { x: 28, y: 92, width: 424, height: 82 } },
+        ],
+      }),
+      'utf8',
+    );
+
+    const importOut = capture();
+    const importCode = await runCliInDir(dir, ['import-reference', imagePath, '--output', '.', '--regions-file', regionsPath], importOut.io);
+    expect(importCode).toBe(0);
+    expect(importOut.stdout()).toContain('Regions: 2');
+
+    const artifactRoot = importOut
+      .stdout()
+      .split('\n')
+      .find((line) => line.startsWith('Artifact: '))!
+      .slice('Artifact: '.length);
+    const manifest = JSON.parse(await readFile(path.join(artifactRoot, EXTERNAL_REFERENCE_MANIFEST_FILENAME), 'utf8')) as ImportedExternalReferenceArtifact;
+    expect(manifest.regions).toHaveLength(2);
+
+    const approveOut = capture();
+    const approveCode = await runCliInDir(dir, ['approve-reference', '--reference', artifactRoot, '--output', '.'], approveOut.io);
+    expect(approveCode).toBe(0);
+    expect(approveOut.stdout()).toContain('Regions: 2');
+  });
+
+  it('a legacy import-reference invocation without --regions-file reports zero regions, unchanged from Prompt 1', async () => {
+    const dir = await makeTempDir('mfo-cli-external-reference-no-regions-');
+    const imagePath = path.join(dir, 'design.png');
+    await writeFile(imagePath, buildMinimalPng(100, 100));
+
+    const out = capture();
+    const code = await runCliInDir(dir, ['import-reference', imagePath, '--output', '.'], out.io);
+    expect(code).toBe(0);
+    expect(out.stdout()).toContain('Regions: 0');
+  });
+
+  it('exits nonzero with an invalid-reference-region diagnostic for an out-of-bounds region', async () => {
+    const dir = await makeTempDir('mfo-cli-external-reference-bad-region-');
+    const imagePath = path.join(dir, 'design.png');
+    await writeFile(imagePath, buildMinimalPng(100, 100));
+    const regionsPath = path.join(dir, 'regions.json');
+    await writeFile(regionsPath, JSON.stringify({ regions: [{ id: 'overflow', rectangle: { x: 90, y: 0, width: 50, height: 20 } }] }), 'utf8');
+
+    const out = capture();
+    const code = await runCliInDir(dir, ['import-reference', imagePath, '--output', '.', '--regions-file', regionsPath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('invalid-reference-region');
+  });
+
+  it('exits nonzero for a malformed --regions-file (bad JSON, wrong root shape, unknown top-level field)', async () => {
+    const dir = await makeTempDir('mfo-cli-external-reference-bad-regions-file-');
+    const imagePath = path.join(dir, 'design.png');
+    await writeFile(imagePath, buildMinimalPng(100, 100));
+
+    const badJsonPath = path.join(dir, 'bad.json');
+    await writeFile(badJsonPath, '{ not valid json', 'utf8');
+    const badJsonOut = capture();
+    expect(await runCliInDir(dir, ['import-reference', imagePath, '--output', '.', '--regions-file', badJsonPath], badJsonOut.io)).toBe(1);
+    expect(badJsonOut.stderr()).toContain('not valid JSON');
+
+    const arrayRootPath = path.join(dir, 'array-root.json');
+    await writeFile(arrayRootPath, '[]', 'utf8');
+    const arrayRootOut = capture();
+    expect(await runCliInDir(dir, ['import-reference', imagePath, '--output', '.', '--regions-file', arrayRootPath], arrayRootOut.io)).toBe(1);
+    expect(arrayRootOut.stderr()).toContain('root must be a JSON object');
+
+    const unknownFieldPath = path.join(dir, 'unknown-field.json');
+    await writeFile(unknownFieldPath, JSON.stringify({ regions: [], extra: true }), 'utf8');
+    const unknownFieldOut = capture();
+    expect(await runCliInDir(dir, ['import-reference', imagePath, '--output', '.', '--regions-file', unknownFieldPath], unknownFieldOut.io)).toBe(1);
+    expect(unknownFieldOut.stderr()).toContain('unsupported top-level field');
+  });
 });

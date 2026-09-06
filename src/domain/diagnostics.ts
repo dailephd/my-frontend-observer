@@ -20,6 +20,7 @@ export const DIAGNOSTIC_CODES = [
   'image-too-large',
   'unsupported-schema-version',
   'reference-not-found',
+  'invalid-reference-region',
 ] as const;
 
 export type DiagnosticCode = (typeof DIAGNOSTIC_CODES)[number];
@@ -49,6 +50,7 @@ export const DIAGNOSTIC_SEVERITY: Record<DiagnosticCode, DiagnosticSeverity> = {
   'image-too-large': 'error',
   'unsupported-schema-version': 'error',
   'reference-not-found': 'error',
+  'invalid-reference-region': 'error',
 };
 
 export interface Diagnostic {

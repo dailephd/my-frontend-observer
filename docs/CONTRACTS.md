@@ -704,3 +704,105 @@ temp-dir-then-rename discipline as every other artifact family
 `externalReferenceArtifactReader.ts`). CLI: `import-reference <image-file>
 --output <dir> [--label] [--supersedes <root>]` and `approve-reference
 --reference <root> --output <dir> [--supersedes <root>]`.
+
+## v0.7 Prompt 2 explicit reference regions and relationships
+
+Implemented, unreleased. Additive extension of the Prompt 1 contract above:
+one new, optional `regions?: ReferenceRegion[]` field on
+`ExternalReferenceArtifact` (both lifecycle variants), plus a pure,
+non-persisted relationship-derivation capability. No schema version bump -
+`EXTERNAL_REFERENCE_SCHEMA_VERSION` remains `'1.0.0'`, because the field is
+genuinely optional/additive and every Prompt 1 artifact (which predates this
+field entirely) remains valid without it.
+
+```ts
+// domain/externalReferenceRegions.ts
+interface ReferenceRegionRectangle { x: number; y: number; width: number; height: number; }
+interface ReferenceRegion { id: string; rectangle: ReferenceRegionRectangle; }
+
+// Pure derived geometry - never persisted, always recomputed, so it can never drift from the rectangle above.
+interface ReferenceRegionGeometry {
+  x: number; y: number; width: number; height: number;
+  right: number; bottom: number; centerX: number; centerY: number;
+}
+
+const REFERENCE_REGION_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/; // same convention as request/request.ts's target-name pattern
+const MAX_REFERENCE_REGIONS = 20; // same bound value as request/request.ts's MAX_TARGETS - independently owned, coincidentally equal
+```
+
+Region coordinate semantics: origin at the reference image's top-left
+corner, x increasing rightward, y increasing downward, unit is
+reference-image pixels (explicitly not CSS pixels - a static image has no
+CSS box model), coordinates may be fractional. A region's rectangle must lie
+entirely within its owning image's own already-validated
+width/height - out-of-bounds geometry is rejected outright, never clamped.
+
+Key rules:
+
+- Only `{x, y, width, height}` is canonical/authored. `right`, `bottom`,
+  `centerX`, `centerY` are pure calculations over it
+  (`deriveReferenceRegionGeometry`) - never a second, potentially-drifting
+  stored copy of the same fact.
+- Region content is identity-bearing:
+  `buildExternalReferenceRequestIdentity` gained an additive, optional
+  trailing `regions` parameter. Omitting it entirely (every Prompt 1 call
+  site, and any Prompt 2 call that legitimately has no regions) produces the
+  byte-identical hash Prompt 1 already produced - the parameter is left out
+  of the hashed view rather than defaulted to `null`, unlike
+  `supersedesReferenceId`. Authored region order participates in identity
+  (arrays are never reordered by the shared `canonicalize()`), mirroring
+  `domain/identity.ts`'s treatment of configured targets.
+- Region IDs are unique case-insensitively within one artifact (mirroring
+  `request/request.ts`'s target-name dedup convention exactly).
+- `import-reference` gained an optional `--regions-file <json-file>` of the
+  form `{ "regions": [...] }` (same object-root-wrapper convention as
+  `--targets-file`); a legacy invocation without it behaves exactly as in
+  Prompt 1. `approve-reference` carries an imported artifact's `regions`
+  forward verbatim (never re-validated, never re-derived, never dropped) -
+  approval never adds, removes, or edits regions.
+- One new diagnostic code, `invalid-reference-region` (error), covers every
+  region-validation failure (missing/duplicate/malformed id,
+  non-finite/negative/zero geometry, out-of-image-bounds, over the bounded
+  region count) - deliberately not split into several codes, per the
+  "don't proliferate diagnostics" convention.
+
+Reference-region relationships (`domain/externalReferenceRegionRelationships.ts`)
+reuse the exact same pure, tolerance-aware geometry predicates that
+`domain/relationships.ts#deriveLayoutRelationships` uses for runtime targets
+(`horizontalOrderOf`/`verticalOrderOf`/`areaOverlapOf`/`relativeWidthOf`/
+`geometricFitOf`/`verticalSequenceOf`, now exported additively from that
+module with unchanged formulas) and the same `PairwiseRelationshipKind`
+vocabulary and `EvidenceReference` type - never a duplicated or
+reinterpreted copy. Only the six geometry-only families apply (horizontal
+order, vertical order, area overlap, relative width, geometric fit, vertical
+sequencing); DOM containment, scroll ownership, runtime visibility, and
+page-width-vs-viewport are runtime/browser concepts with no reference-image
+equivalent and are not reused. `fits-inside`/`does-not-fit-inside` is
+geometry-only fit - it never claims DOM containment, which an external image
+cannot expose.
+
+```ts
+interface ReferenceRegionRelationship {
+  kind: PairwiseRelationshipKind;
+  subjectRegion: string;   // deliberately distinct field name from PairwiseLayoutRelationship's subjectTarget
+  relatedRegion: string;
+  evidence: EvidenceReference[]; // e.g. { path: 'regions.header.rectangle' } - never a targetEvidence/browser path
+}
+```
+
+Relationships are **not persisted** on the artifact - `deriveReferenceRegionRelationships(referenceRequestId, regions, options)`
+is a pure, deterministic, synchronous function any caller (a future prompt,
+a test) calls on demand against an artifact's own `regions` field, avoiding
+any possibility of a persisted relationship graph drifting from the region
+data it was derived from. Bounded at `MAX_REFERENCE_REGIONS` regions ->
+`MAX_REFERENCE_REGION_PAIRS` pairs `x` 6 families =
+`MAX_REFERENCE_REGION_RELATIONSHIP_RECORDS` records maximum - the same
+bounding shape as `relationships.ts`'s `MAX_PAIRWISE_RELATIONSHIP_RECORDS`.
+This is a maximum capacity, never a required minimum region count - there is
+no contract requiring any specific number of authored regions.
+
+A reference relationship is a fact about the reference image's geometry
+only. It is not a design requirement, not a pass/fail verdict, and does not
+claim a runtime target or source owner exists - see
+`docs/WORKFLOWS.md` "Current external-reference foundation workflow" for
+where those later concepts (Prompt 3+) will attach.

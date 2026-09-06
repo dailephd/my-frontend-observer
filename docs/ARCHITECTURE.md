@@ -463,7 +463,18 @@ nonce-based fresh instance identity, atomic temp-dir-then-rename persistence,
 the shared `DIAGNOSTIC_CODES` vocabulary) without reusing or duplicating the
 observation, comparison, or contract engines themselves - an external
 reference is desired-design evidence, never an `ObservationArtifact`, an
-approved baseline, or a runtime target. Reference regions, geometry,
-relationships, requirements, tolerances, reference-region/runtime-target
-binding, and reference-vs-candidate fidelity evaluation remain unimplemented;
-they are later v0.7 prompts building on this foundation.
+approved baseline, or a runtime target.
+
+v0.7 Prompt 2 adds explicit reference regions and reusable reference-region
+relationships on top of that foundation (`domain/externalReferenceRegions.ts`,
+`externalReferenceRegionRelationships.ts`) - see `docs/CONTRACTS.md` "v0.7
+Prompt 2 explicit reference regions and relationships" for the exact shape.
+The relationship-derivation predicates are reused verbatim (now exported
+additively) from `domain/relationships.ts` rather than reimplemented, so
+reference-region geometry and runtime-target geometry can never diverge on
+the same underlying formula; only the geometry-only relationship families
+apply, since a static image exposes no DOM, scroll, or viewport evidence.
+Selected design requirements, tolerances, reference-evidence adequacy,
+reference-region/runtime-target binding, and reference-vs-candidate fidelity
+evaluation remain unimplemented; they are later v0.7 prompts building on
+this foundation.

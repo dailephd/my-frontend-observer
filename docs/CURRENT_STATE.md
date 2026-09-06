@@ -509,6 +509,63 @@ two-state lifecycle. This is not the full v0.7 coding-agent workflow.
   fidelity evaluation, theme/application-state compatibility evaluation,
   viewer, and annotation.
 
+## v0.7 Prompt 2 status (Explicit Reference Regions, Geometry, and Reusable Reference Relationships) - implemented, unreleased
+
+Additive extension of the Prompt 1 foundation above. Still not the full v0.7
+coding-agent workflow - no design requirements, tolerances, adequacy,
+binding, or fidelity evaluation yet.
+
+- **Domain** (`src/domain/externalReferenceRegions.ts`): explicit,
+  user/configuration-authored reference-image rectangles
+  (`ReferenceRegion { id, rectangle: {x, y, width, height} }`), origin at the
+  reference image's top-left corner, unit reference-image pixels. Pure
+  derived geometry (`right`/`bottom`/`centerX`/`centerY`) is always
+  recomputed from the canonical rectangle, never separately stored. Bounded
+  at `MAX_REFERENCE_REGIONS` (20, matching `request/request.ts`'s
+  `MAX_TARGETS`), region ids validated against the same
+  `^[A-Za-z0-9_-]{1,64}$` pattern as target names, unique
+  case-insensitively, and rejected outright (never clamped) if any rectangle
+  extends outside the owning image's bounds.
+- **Domain** (`src/domain/externalReferenceRegionRelationships.ts`): reuses
+  the exact pure geometry predicates `deriveLayoutRelationships` uses for
+  runtime targets (now exported additively from `relationships.ts`, formulas
+  unchanged) to derive the six geometry-only relationship families
+  (horizontal order, vertical order, area overlap, relative width, geometric
+  fit, vertical sequencing) between reference regions. Not persisted -
+  `deriveReferenceRegionRelationships()` is a pure function callers invoke
+  on demand against an artifact's own `regions`, bounded at
+  `MAX_REFERENCE_REGION_RELATIONSHIP_RECORDS`.
+- **Schema**: `ExternalReferenceArtifact` gained one additive, optional
+  `regions?: ReferenceRegion[]` field. No schema version bump
+  (`EXTERNAL_REFERENCE_SCHEMA_VERSION` remains `'1.0.0'`) - every Prompt 1
+  artifact remains valid with no `regions` key at all.
+- **Identity**: `buildExternalReferenceRequestIdentity` gained an additive,
+  optional trailing `regions` parameter, omitted from the hashed view
+  entirely (not defaulted to `null`) when absent, so every Prompt 1 call
+  site keeps producing byte-identical identity. Region content (including
+  authored order) is identity-bearing when present.
+- **Application**: `importExternalReference()` validates an optional
+  `regions` option and fails closed with the new `invalid-reference-region`
+  diagnostic; `approveExternalReference()` carries an imported artifact's
+  `regions` forward verbatim, never re-validating or re-deriving them.
+- **CLI**: `import-reference` gained an optional
+  `--regions-file <json-file>` (`{ "regions": [...] }`, same object-root-
+  wrapper convention as `--targets-file`); legacy invocations without it are
+  unchanged from Prompt 1. Both commands now print a `Regions: <count>` line.
+- **Export/public boundary**: `src/index.ts` exports the complete new region
+  and relationship type/constant/validator/function surface, following the
+  same grouping order as every existing family.
+- **Validated on the canonical worktree**: `npm run typecheck`, `npm run
+  lint`, `npm test` (40 files, 719 tests), `npm run test:browser` (9 files,
+  120 tests, unchanged), `npm run test:security`, `npm run build`, `npm run
+  check:docs`, `git diff --check`, and `npm pack --dry-run` all pass with
+  zero changes to any pre-existing test.
+- **Not implemented in this stage** (explicitly deferred to later v0.7
+  prompts): selected design requirements, design tolerance semantics,
+  reference-evidence adequacy, theme/application-state compatibility
+  evaluation, reference-region/runtime-target binding, reference-vs-candidate
+  fidelity evaluation, viewer, and annotation.
+
 ## Not implemented
 
 - v0.5 baseline-selection/discovery policy (the caller must supply which
@@ -517,13 +574,15 @@ two-state lifecycle. This is not the full v0.7 coding-agent workflow.
   integration, viewer, and annotation all remain unimplemented in this
   repository. (v0.6's bounded runtime projection and runtime/static
   correlation *are* now implemented - see "v0.6 status" above.) The rest of
-  v0.7 (reference regions, binding, fidelity evaluation, and the coding-agent
-  correction loop) remains unimplemented beyond the Prompt 1 foundation above.
+  v0.7 (design requirements, tolerances, adequacy, binding, fidelity
+  evaluation, and the coding-agent correction loop) remains unimplemented
+  beyond the Prompt 1/Prompt 2 foundation above.
 
 ## Next target
 
 v0.1-v0.6 are implemented, validated, and released (`0.1.0`, `0.2.0`,
 `0.3.0`, `0.4.0`, `0.5.0`, `0.6.0`). v0.7 (End-to-End Coding-Agent Frontend
 Change Review) is in progress: the external-reference artifact foundation
-(Prompt 1) is implemented and unreleased; v0.7 Prompt 2 (explicit reference
-regions, geometry, and reusable reference relationships) is next.
+(Prompt 1) and explicit reference regions/relationships (Prompt 2) are
+implemented and unreleased; v0.7 Prompt 3 (selected design requirements,
+tolerance semantics, and reference-evidence adequacy) is next.
