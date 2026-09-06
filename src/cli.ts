@@ -12,6 +12,7 @@ import { approveAndPersistBaseline, persistPerChangeContract } from './applicati
 import { evaluateAndPersistFromArtifactRoots } from './application/frontendContractEvaluationService.js';
 import { importExternalReference, approveExternalReference } from './application/externalReferencePersistenceService.js';
 import type { ReferenceRegion } from './domain/externalReferenceRegions.js';
+import type { RawReferenceRequirement } from './domain/externalReferenceRequirements.js';
 
 export interface CliIO {
   stdout: (text: string) => void;
@@ -273,19 +274,43 @@ Options:
                           without this flag behaves exactly as in v0.7 Prompt
                           1. Region content participates in the reference's
                           logical identity; the file path itself never does.
+  --requirements-file <json-file>  Local JSON file of the form
+                          { "requirements": [...] } declaring explicit,
+                          user-selected design requirements over the regions
+                          above - what actually matters for later candidate
+                          evaluation, never inferred merely because a region
+                          property/relationship exists. Each requirement has
+                          a "category" (requested | expected-dependent |
+                          protected | preserved - "unexpected" is never
+                          authorable), a "subject" (a region property, a
+                          region-to-region relationship, or a derived
+                          two-region measurement), and - for property/
+                          measurement subjects - a "tolerance" (exact |
+                          absolute-reference-px | percent; relationship
+                          subjects must omit tolerance). Requires --regions-
+                          file (or an already-present region set) supplying
+                          every region a requirement refers to. Optional -
+                          a reference imported without this flag behaves
+                          exactly as in v0.7 Prompt 1/2. Requirement content
+                          participates in the reference's logical identity.
   --help                 Show this help.
 
 Detects the image format from its header bytes only (never from the file
 extension), reads its pixel dimensions from the same bounded header bytes
 (never decoding pixel data), and persists a new external-reference artifact
 in the "imported" lifecycle state - importing never approves it. On success,
-prints a concise result (including the accepted region count) and exits 0.
-On an unreadable file, an unsupported or undetectable format, invalid/
-out-of-bound dimensions, an over-limit file size, an unresolvable
---supersedes target, or an invalid region (missing/duplicate/malformed id,
-non-finite/negative/zero geometry, a region extending outside the image, or
-more than the bounded maximum region count), prints structured diagnostics
-to stderr and exits nonzero.
+prints a concise result (including the accepted region/requirement counts
+and the resulting reference-side requirement adequacy: adequate, partial, or
+inadequate) and exits 0. On an unreadable file, an unsupported or
+undetectable format, invalid/out-of-bound dimensions, an over-limit file
+size, an unresolvable --supersedes target, an invalid region (missing/
+duplicate/malformed id, non-finite/negative/zero geometry, a region
+extending outside the image, or more than the bounded maximum region
+count), or an invalid requirement (unsupported category/property/
+measurement/relationship, a tolerance that is missing/inapplicable/out of
+bounds, a reference to an unknown region id, a duplicate requirement
+subject, or more than the bounded maximum requirement count), prints
+structured diagnostics to stderr and exits nonzero.
 `;
 
 const APPROVE_REFERENCE_HELP = `Usage:
@@ -311,13 +336,14 @@ evaluation. Approving persists a brand-new artifact instance (a fresh
 referenceId sharing the imported artifact's referenceRequestId) that carries
 a reference back to the imported artifact's image rather than a second copy
 of its bytes; the imported artifact's own manifest is never modified. Any
-regions already declared on the imported artifact are carried forward
-unchanged (not re-validated against new input, not re-derived) - approval
-never adds, removes, or edits regions. Only a reference currently in the
-"imported" lifecycle state can be approved. On success, prints a concise
-result (including the carried-forward region count) and exits 0. On an
-unreadable/malformed --reference target, a target that is not in the
-"imported" state, an
+regions and requirements already declared on the imported artifact are
+carried forward unchanged (not re-validated against new input, not
+re-derived) - approval never adds, removes, or edits regions or
+requirements. Only a reference currently in the "imported" lifecycle state
+can be approved. On success, prints a concise result (including the
+carried-forward region/requirement counts and reference-side requirement
+adequacy) and exits 0. On an unreadable/malformed --reference target, a
+target that is not in the "imported" state, an
 unresolvable --supersedes target, or a persistence failure, prints structured
 diagnostics to stderr and exits nonzero.
 `;
@@ -489,6 +515,54 @@ function loadRegionsFile(filePath: string): LoadRegionsFileResult {
   }
 
   return { ok: true, regions: record.regions };
+}
+
+const REQUIREMENTS_FILE_ALLOWED_ROOT_FIELDS = new Set(['requirements']);
+
+type LoadRequirementsFileResult = { ok: true; requirements: unknown } | { ok: false; error: string };
+
+/**
+ * CLI/input-boundary-only responsibility, mirroring loadRegionsFile exactly:
+ * read one local JSON file, validate only the root wrapper (object root,
+ * exactly the "requirements" field, nothing else), and hand the
+ * still-unvalidated `requirements` value to the existing domain validators
+ * (isValidRawReferenceRequirement/isValidReferenceRequirements, called
+ * inside importExternalReference) - requirement category/subject/tolerance
+ * rules stay owned there, never duplicated here. The file path itself is
+ * never returned beyond this function, so it can never reach the persisted
+ * artifact or its identity.
+ */
+function loadRequirementsFile(filePath: string): LoadRequirementsFileResult {
+  let rawText: string;
+  try {
+    rawText = readFileSync(filePath, 'utf8');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `--requirements-file could not be read: ${message}` };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `--requirements-file is not valid JSON: ${message}` };
+  }
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return { ok: false, error: '--requirements-file root must be a JSON object' };
+  }
+
+  const record = parsed as Record<string, unknown>;
+  const unknownFields = Object.keys(record).filter((key) => !REQUIREMENTS_FILE_ALLOWED_ROOT_FIELDS.has(key));
+  if (unknownFields.length > 0) {
+    return { ok: false, error: `--requirements-file has unsupported top-level field(s): ${unknownFields.join(', ')}` };
+  }
+  if (!('requirements' in record)) {
+    return { ok: false, error: '--requirements-file must have a "requirements" property' };
+  }
+
+  return { ok: true, requirements: record.requirements };
 }
 
 type LoadTargetsFileResult = { ok: true; targets: unknown } | { ok: false; error: string };
@@ -933,7 +1007,7 @@ function parseEvaluateContractArgs(argv: readonly string[]): ParsedEvaluateContr
 }
 
 type ParsedImportReferenceArgs =
-  | { ok: true; imageFilePath: string; outputLocation: string; label?: string; supersedesReferenceRoot?: string; regionsFilePath?: string }
+  | { ok: true; imageFilePath: string; outputLocation: string; label?: string; supersedesReferenceRoot?: string; regionsFilePath?: string; requirementsFilePath?: string }
   | { ok: false; errors: string[] };
 
 /** CLI-syntax-only parsing, mirroring `parseApproveBaselineArgs`. The image file path is the one positional argument. */
@@ -948,6 +1022,8 @@ function parseImportReferenceArgs(argv: readonly string[]): ParsedImportReferenc
   let supersedesFlagCount = 0;
   let regionsFilePath: string | undefined;
   let regionsFileFlagCount = 0;
+  let requirementsFilePath: string | undefined;
+  let requirementsFileFlagCount = 0;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -984,6 +1060,14 @@ function parseImportReferenceArgs(argv: readonly string[]): ParsedImportReferenc
         else regionsFilePath = value;
         break;
       }
+      case '--requirements-file': {
+        const value = argv[(i += 1)];
+        requirementsFileFlagCount += 1;
+        if (value === undefined) errors.push('--requirements-file requires a file path argument');
+        else if (requirementsFileFlagCount > 1) errors.push('--requirements-file may only be specified once');
+        else requirementsFilePath = value;
+        break;
+      }
       default:
         if (arg === undefined) break;
         if (arg.startsWith('--')) errors.push(`unrecognized argument: ${arg}`);
@@ -1003,6 +1087,7 @@ function parseImportReferenceArgs(argv: readonly string[]): ParsedImportReferenc
     ...(label === undefined ? {} : { label }),
     ...(supersedesReferenceRoot === undefined ? {} : { supersedesReferenceRoot }),
     ...(regionsFilePath === undefined ? {} : { regionsFilePath }),
+    ...(requirementsFilePath === undefined ? {} : { requirementsFilePath }),
   };
 }
 
@@ -1350,12 +1435,25 @@ async function runImportReferenceCommand(argv: readonly string[], io: CliIO): Pr
     regions = loaded.regions as ReferenceRegion[];
   }
 
-  // Exactly one application import attempt: format/dimension validation, an optional region-set validation, an optional supersession-target read, persisted at most once.
+  let requirements: RawReferenceRequirement[] | undefined;
+  if (parsedArgs.requirementsFilePath !== undefined) {
+    const loaded = loadRequirementsFile(parsedArgs.requirementsFilePath);
+    if (!loaded.ok) {
+      io.stderr(`error: ${loaded.error}\n`);
+      io.stderr(IMPORT_REFERENCE_HELP);
+      return 1;
+    }
+    // CLI boundary owns file-read/root-wrapper syntax only; requirement category/subject/tolerance validation is owned by isValidRawReferenceRequirement/isValidReferenceRequirements, called inside importExternalReference.
+    requirements = loaded.requirements as RawReferenceRequirement[];
+  }
+
+  // Exactly one application import attempt: format/dimension validation, an optional region-set validation, an optional requirement-set validation, an optional supersession-target read, persisted at most once.
   const result = await importExternalReference(imageBytes, {
     outputLocation: parsedArgs.outputLocation,
     ...(parsedArgs.label === undefined ? {} : { label: parsedArgs.label }),
     ...(parsedArgs.supersedesReferenceRoot === undefined ? {} : { supersedesReferenceRoot: parsedArgs.supersedesReferenceRoot }),
     ...(regions === undefined ? {} : { regions }),
+    ...(requirements === undefined ? {} : { requirements }),
   });
   if (!result.ok) {
     for (const diagnostic of result.diagnostics) io.stderr(`${formatDiagnostic(diagnostic)}\n`);
@@ -1367,6 +1465,8 @@ async function runImportReferenceCommand(argv: readonly string[], io: CliIO): Pr
   io.stdout(`Artifact: ${result.artifactRoot}\n`);
   io.stdout(`Image: ${result.imagePath}\n`);
   io.stdout(`Regions: ${result.regionCount}\n`);
+  io.stdout(`Requirements: ${result.requirementCount}\n`);
+  io.stdout(`Adequacy: ${result.adequacy.status}\n`);
 
   return 0;
 }
@@ -1403,6 +1503,8 @@ async function runApproveReferenceCommand(argv: readonly string[], io: CliIO): P
   io.stdout(`State: approved\n`);
   io.stdout(`Artifact: ${result.artifactRoot}\n`);
   io.stdout(`Regions: ${result.regionCount}\n`);
+  io.stdout(`Requirements: ${result.requirementCount}\n`);
+  io.stdout(`Adequacy: ${result.adequacy.status}\n`);
 
   return 0;
 }

@@ -283,4 +283,70 @@ describe('externalReferencePersistenceService', () => {
     const approvedManifestAfter = await readFile(approved.manifestPath, 'utf8');
     expect(approvedManifestAfter).toBe(approvedManifestBefore);
   });
+
+  // v0.7 Prompt 3: importing with valid requirements persists them and reports adequacy.
+  it('imports a reference with valid requirements and reports adequacy', async () => {
+    const cwd = await freshCwd();
+    const regions = [{ id: 'header', rectangle: { x: 0, y: 0, width: 800, height: 60 } }];
+    const requirements = [{ category: 'requested' as const, subject: { kind: 'region-property' as const, region: 'header', property: 'width' as const }, tolerance: { kind: 'exact' as const } }];
+    const result = await importExternalReference(buildMinimalPng(800, 600), { outputLocation: '.', cwd, regions, requirements });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok result');
+    expect(result.requirementCount).toBe(1);
+    expect(result.adequacy.status).toBe('adequate');
+
+    const manifest = JSON.parse(await readFile(result.manifestPath, 'utf8')) as ImportedExternalReferenceArtifact;
+    expect(manifest.requirements).toHaveLength(1);
+    expect(manifest.requirements![0]!.requirementId).toBeTruthy();
+  });
+
+  // Legacy compatibility: importing without requirements has no requirements field and reports inadequate (zero requirements).
+  it('importing without requirements has no requirements field and reports inadequate adequacy', async () => {
+    const cwd = await freshCwd();
+    const result = await importExternalReference(buildMinimalPng(100, 100), { outputLocation: '.', cwd });
+    if (!result.ok) throw new Error('expected ok result');
+    expect(result.requirementCount).toBe(0);
+    expect(result.adequacy.status).toBe('inadequate');
+
+    const manifest = JSON.parse(await readFile(result.manifestPath, 'utf8')) as ImportedExternalReferenceArtifact;
+    expect('requirements' in manifest).toBe(false);
+  });
+
+  // Fail-closed: a requirement referencing an unknown region rejects the whole import, nothing persisted.
+  it('rejects import when a requirement references an unknown region, and persists nothing', async () => {
+    const cwd = await freshCwd();
+    const regions = [{ id: 'header', rectangle: { x: 0, y: 0, width: 800, height: 60 } }];
+    const requirements = [{ category: 'requested' as const, subject: { kind: 'region-property' as const, region: 'crawl-button', property: 'width' as const }, tolerance: { kind: 'exact' as const } }];
+    const result = await importExternalReference(buildMinimalPng(800, 600), { outputLocation: '.', cwd, regions, requirements });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected failure');
+    expect(result.diagnostics[0]?.code).toBe('invalid-reference-requirement');
+    await expect(readdir(cwd)).resolves.toEqual([]);
+  });
+
+  it('rejects an authored requirementId in raw requirement input', async () => {
+    const cwd = await freshCwd();
+    const regions = [{ id: 'header', rectangle: { x: 0, y: 0, width: 800, height: 60 } }];
+    const requirements = [{ requirementId: 'x', category: 'requested' as const, subject: { kind: 'region-property' as const, region: 'header', property: 'width' as const }, tolerance: { kind: 'exact' as const } }] as never;
+    const result = await importExternalReference(buildMinimalPng(800, 600), { outputLocation: '.', cwd, regions, requirements });
+    expect(result.ok).toBe(false);
+  });
+
+  // Approval carries requirements forward unchanged.
+  it('approval carries the imported artifact\'s requirements forward unchanged, with matching adequacy', async () => {
+    const cwd = await freshCwd();
+    const regions = [{ id: 'header', rectangle: { x: 0, y: 0, width: 800, height: 60 } }];
+    const requirements = [{ category: 'requested' as const, subject: { kind: 'region-property' as const, region: 'header', property: 'width' as const }, tolerance: { kind: 'exact' as const } }];
+    const imported = await importExternalReference(buildMinimalPng(800, 600), { outputLocation: '.', cwd, regions, requirements });
+    if (!imported.ok) throw new Error('expected import to succeed');
+
+    const approved = await approveExternalReference(imported.artifactRoot, { outputLocation: '.', cwd });
+    expect(approved.ok).toBe(true);
+    if (!approved.ok) throw new Error('expected approval to succeed');
+    expect(approved.requirementCount).toBe(1);
+    expect(approved.adequacy.status).toBe('adequate');
+
+    const approvedManifest = JSON.parse(await readFile(approved.manifestPath, 'utf8')) as ApprovedExternalReferenceArtifact;
+    expect(approvedManifest.requirements).toHaveLength(1);
+  });
 });

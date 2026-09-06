@@ -474,7 +474,22 @@ additively) from `domain/relationships.ts` rather than reimplemented, so
 reference-region geometry and runtime-target geometry can never diverge on
 the same underlying formula; only the geometry-only relationship families
 apply, since a static image exposes no DOM, scroll, or viewport evidence.
-Selected design requirements, tolerances, reference-evidence adequacy,
-reference-region/runtime-target binding, and reference-vs-candidate fidelity
+v0.7 Prompt 3 adds selected design requirements, tolerance semantics, and
+reference-evidence adequacy on top of that region model
+(`domain/externalReferenceRequirements.ts`,
+`externalReferenceRequirementIdentity.ts`) - see `docs/CONTRACTS.md` "v0.7
+Prompt 3 selected design requirements, tolerance semantics, and
+reference-evidence adequacy" for the exact shape. Requirement categories are
+the exact v0.5 `AuthoredChangeScopeCategory` vocabulary, imported directly
+rather than reinvented, since that type carries no runtime-only coupling of
+its own; tolerance is a genuinely new, reference-owned type (never a reuse
+of `frontendContracts.ts`'s runtime/CSS-pixel-implicit `ContractTolerance`);
+and reference-evidence adequacy is a small, independently-owned vocabulary
+distinct from `boundedAgentContext.ts`'s runtime/static-correlation
+`Adequacy`. A region property or derived relationship is never promoted to
+an executable requirement automatically - only explicit user/configuration
+selection does that.
+
+Reference-region/runtime-target binding and reference-vs-candidate fidelity
 evaluation remain unimplemented; they are later v0.7 prompts building on
 this foundation.

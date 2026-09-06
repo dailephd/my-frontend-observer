@@ -566,6 +566,75 @@ binding, or fidelity evaluation yet.
   evaluation, reference-region/runtime-target binding, reference-vs-candidate
   fidelity evaluation, viewer, and annotation.
 
+## v0.7 Prompt 3 status (Selected Design Requirements, Tolerance Semantics, and Reference-Evidence Adequacy) - implemented, unreleased
+
+Additive extension of the Prompt 1/2 foundation above. Still not the full
+v0.7 coding-agent workflow - no runtime binding or fidelity evaluation yet.
+
+- **Domain** (`src/domain/externalReferenceRequirements.ts`): explicit,
+  user/configuration-selected design intent over Prompt 2's `regions` -
+  never inferred merely because a region property or relationship exists.
+  Requirement category reuses v0.5's `AuthoredChangeScopeCategory`
+  (`requested`/`expected-dependent`/`protected`/`preserved`) directly;
+  `'unexpected'` remains impossible to author. Three subject kinds:
+  `region-property` (one region + a `ReferenceRegionGeometry` field),
+  `region-relationship` (two regions + a reused `PairwiseRelationshipKind`,
+  geometry-only families only, no tolerance), `region-measurement` (two
+  regions + one of six pure derived measurements - `vertical-gap`,
+  `horizontal-gap`, `center-x-delta`, `center-y-delta`, `left-edge-delta`,
+  `right-edge-delta` - with a required tolerance). Tolerance is a new,
+  reference-owned type (`exact` | `absolute-reference-px` | `percent`),
+  deliberately not a reuse of v0.5's `ContractTolerance` (whose
+  `absolute-px` is implicitly runtime/CSS pixels). Bounded at
+  `MAX_REFERENCE_REQUIREMENTS` (50). A requirement's `requirementId` is
+  always system-computed from its content, never authored.
+- **Reference-evidence adequacy**: `deriveReferenceRequirementAdequacy()`
+  asks only whether the reference definition itself supports every selected
+  requirement - never whether a runtime target/candidate exists. Its own
+  small vocabulary (`adequate`/`partial`/`inadequate`, two reason codes)
+  deliberately does not reuse `boundedAgentContext.ts`'s `Adequacy`, which
+  describes an unrelated runtime/static-correlation domain. Zero selected
+  requirements is explicitly `inadequate`. Never a numeric score; reasons
+  ordered deterministically by authored requirement position.
+- **Validation**: a requirement referencing an unknown region id is a
+  construction-time failure (`invalid-reference-requirement`), never
+  "unavailable" evidence. Two requirements sharing the exact same structural
+  subject (regardless of category) are rejected as duplicates/conflicts -
+  v0.5's runtime-evaluation-time conflict detector
+  (`evaluateFrontendContract#primitivesConflict`) needs before/after
+  observation evidence that does not exist at this stage and could not be
+  reused safely.
+- **Schema**: `ExternalReferenceArtifact` gained one additive, optional
+  `requirements?: ExternalReferenceRequirement[]` field. No schema version
+  bump - every Prompt 1/2 artifact remains valid with no `requirements` key.
+- **Identity**: `buildExternalReferenceRequestIdentity` gained an additive,
+  optional trailing `requirements` parameter, omitted from the hashed view
+  entirely when absent, so every Prompt 1/2 call site keeps producing
+  byte-identical identity. Requirement content (category, subject,
+  tolerance, mode, authored order) is identity-bearing when present.
+- **Application**: `importExternalReference()` validates an optional
+  `requirements` option (computing each requirement's identity from its raw
+  authored content) and fails closed on any invalid requirement;
+  `approveExternalReference()` carries `requirements` forward verbatim.
+  Both now also compute and return reference-evidence adequacy.
+- **CLI**: `import-reference` gained an optional
+  `--requirements-file <json-file>` (`{ "requirements": [...] }`, same
+  object-root-wrapper convention as `--regions-file`); legacy invocations
+  without it are unchanged. Both commands now also print
+  `Requirements: <count>` and `Adequacy: <status>` lines.
+- **Export/public boundary**: `src/index.ts` exports the complete new
+  requirement/tolerance/adequacy type/constant/validator/function surface,
+  following the same grouping order as every existing family.
+- **Validated on the canonical worktree**: `npm run typecheck`, `npm run
+  lint`, `npm test` (42 files, 779 tests), `npm run test:browser` (9 files,
+  120 tests, unchanged), `npm run test:security`, `npm run build`, `npm run
+  check:docs`, `git diff --check`, and `npm pack --dry-run` all pass with
+  zero changes to any pre-existing test.
+- **Not implemented in this stage** (explicitly deferred to later v0.7
+  prompts): theme/application-state compatibility evaluation,
+  reference-region/runtime-target binding, reference-vs-candidate fidelity
+  evaluation, viewer, and annotation.
+
 ## Not implemented
 
 - v0.5 baseline-selection/discovery policy (the caller must supply which
@@ -574,15 +643,17 @@ binding, or fidelity evaluation yet.
   integration, viewer, and annotation all remain unimplemented in this
   repository. (v0.6's bounded runtime projection and runtime/static
   correlation *are* now implemented - see "v0.6 status" above.) The rest of
-  v0.7 (design requirements, tolerances, adequacy, binding, fidelity
-  evaluation, and the coding-agent correction loop) remains unimplemented
-  beyond the Prompt 1/Prompt 2 foundation above.
+  v0.7 (state compatibility, binding, fidelity evaluation, and the
+  coding-agent correction loop) remains unimplemented beyond the Prompt
+  1/2/3 foundation above.
 
 ## Next target
 
 v0.1-v0.6 are implemented, validated, and released (`0.1.0`, `0.2.0`,
 `0.3.0`, `0.4.0`, `0.5.0`, `0.6.0`). v0.7 (End-to-End Coding-Agent Frontend
 Change Review) is in progress: the external-reference artifact foundation
-(Prompt 1) and explicit reference regions/relationships (Prompt 2) are
-implemented and unreleased; v0.7 Prompt 3 (selected design requirements,
-tolerance semantics, and reference-evidence adequacy) is next.
+(Prompt 1), explicit reference regions/relationships (Prompt 2), and
+selected design requirements/tolerance semantics/reference-evidence
+adequacy (Prompt 3) are implemented and unreleased; v0.7 Prompt 4
+(reference applicability/state compatibility and comparability foundation)
+is next.

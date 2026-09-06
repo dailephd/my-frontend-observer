@@ -185,4 +185,98 @@ describe('cli import-reference / approve-reference', () => {
     expect(await runCliInDir(dir, ['import-reference', imagePath, '--output', '.', '--regions-file', unknownFieldPath], unknownFieldOut.io)).toBe(1);
     expect(unknownFieldOut.stderr()).toContain('unsupported top-level field');
   });
+
+  // v0.7 Prompt 3: --requirements-file wires explicit design requirements through the CLI, and approval carries them forward.
+  it('imports a reference with regions and requirements, reporting adequacy; approval carries requirements forward', async () => {
+    const dir = await makeTempDir('mfo-cli-external-reference-requirements-');
+    const imagePath = path.join(dir, 'design.png');
+    await writeFile(imagePath, buildMinimalPng(800, 600));
+    const regionsPath = path.join(dir, 'regions.json');
+    await writeFile(regionsPath, JSON.stringify({ regions: [{ id: 'header', rectangle: { x: 0, y: 0, width: 800, height: 60 } }] }), 'utf8');
+    const requirementsPath = path.join(dir, 'requirements.json');
+    await writeFile(
+      requirementsPath,
+      JSON.stringify({ requirements: [{ category: 'requested', subject: { kind: 'region-property', region: 'header', property: 'width' }, tolerance: { kind: 'exact' } }] }),
+      'utf8',
+    );
+
+    const importOut = capture();
+    const importCode = await runCliInDir(
+      dir,
+      ['import-reference', imagePath, '--output', '.', '--regions-file', regionsPath, '--requirements-file', requirementsPath],
+      importOut.io,
+    );
+    expect(importCode).toBe(0);
+    expect(importOut.stdout()).toContain('Requirements: 1');
+    expect(importOut.stdout()).toContain('Adequacy: adequate');
+
+    const artifactRoot = importOut
+      .stdout()
+      .split('\n')
+      .find((line) => line.startsWith('Artifact: '))!
+      .slice('Artifact: '.length);
+    const manifest = JSON.parse(await readFile(path.join(artifactRoot, EXTERNAL_REFERENCE_MANIFEST_FILENAME), 'utf8')) as ImportedExternalReferenceArtifact;
+    expect(manifest.requirements).toHaveLength(1);
+
+    const approveOut = capture();
+    const approveCode = await runCliInDir(dir, ['approve-reference', '--reference', artifactRoot, '--output', '.'], approveOut.io);
+    expect(approveCode).toBe(0);
+    expect(approveOut.stdout()).toContain('Requirements: 1');
+    expect(approveOut.stdout()).toContain('Adequacy: adequate');
+  });
+
+  it('a legacy import-reference invocation without --requirements-file reports zero requirements and inadequate adequacy', async () => {
+    const dir = await makeTempDir('mfo-cli-external-reference-no-requirements-');
+    const imagePath = path.join(dir, 'design.png');
+    await writeFile(imagePath, buildMinimalPng(100, 100));
+
+    const out = capture();
+    const code = await runCliInDir(dir, ['import-reference', imagePath, '--output', '.'], out.io);
+    expect(code).toBe(0);
+    expect(out.stdout()).toContain('Requirements: 0');
+    expect(out.stdout()).toContain('Adequacy: inadequate');
+  });
+
+  it('exits nonzero with an invalid-reference-requirement diagnostic for a requirement referencing an unknown region', async () => {
+    const dir = await makeTempDir('mfo-cli-external-reference-bad-requirement-');
+    const imagePath = path.join(dir, 'design.png');
+    await writeFile(imagePath, buildMinimalPng(800, 600));
+    const regionsPath = path.join(dir, 'regions.json');
+    await writeFile(regionsPath, JSON.stringify({ regions: [{ id: 'header', rectangle: { x: 0, y: 0, width: 800, height: 60 } }] }), 'utf8');
+    const requirementsPath = path.join(dir, 'requirements.json');
+    await writeFile(
+      requirementsPath,
+      JSON.stringify({ requirements: [{ category: 'requested', subject: { kind: 'region-property', region: 'crawl-button', property: 'width' }, tolerance: { kind: 'exact' } }] }),
+      'utf8',
+    );
+
+    const out = capture();
+    const code = await runCliInDir(dir, ['import-reference', imagePath, '--output', '.', '--regions-file', regionsPath, '--requirements-file', requirementsPath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('invalid-reference-requirement');
+  });
+
+  it('exits nonzero for a malformed --requirements-file (bad JSON, wrong root shape, unknown top-level field)', async () => {
+    const dir = await makeTempDir('mfo-cli-external-reference-bad-requirements-file-');
+    const imagePath = path.join(dir, 'design.png');
+    await writeFile(imagePath, buildMinimalPng(100, 100));
+
+    const badJsonPath = path.join(dir, 'bad.json');
+    await writeFile(badJsonPath, '{ not valid json', 'utf8');
+    const badJsonOut = capture();
+    expect(await runCliInDir(dir, ['import-reference', imagePath, '--output', '.', '--requirements-file', badJsonPath], badJsonOut.io)).toBe(1);
+    expect(badJsonOut.stderr()).toContain('not valid JSON');
+
+    const arrayRootPath = path.join(dir, 'array-root.json');
+    await writeFile(arrayRootPath, '[]', 'utf8');
+    const arrayRootOut = capture();
+    expect(await runCliInDir(dir, ['import-reference', imagePath, '--output', '.', '--requirements-file', arrayRootPath], arrayRootOut.io)).toBe(1);
+    expect(arrayRootOut.stderr()).toContain('root must be a JSON object');
+
+    const unknownFieldPath = path.join(dir, 'unknown-field.json');
+    await writeFile(unknownFieldPath, JSON.stringify({ requirements: [], extra: true }), 'utf8');
+    const unknownFieldOut = capture();
+    expect(await runCliInDir(dir, ['import-reference', imagePath, '--output', '.', '--requirements-file', unknownFieldPath], unknownFieldOut.io)).toBe(1);
+    expect(unknownFieldOut.stderr()).toContain('unsupported top-level field');
+  });
 });

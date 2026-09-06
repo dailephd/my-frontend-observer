@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { ExternalReferenceImageFormat } from './externalReferenceImage.js';
 import type { ReferenceRegion } from './externalReferenceRegions.js';
+import type { ExternalReferenceRequirement } from './externalReferenceRequirements.js';
 
 /**
  * Deliberately duplicated from domain/identity.ts#canonicalize (itself
@@ -32,14 +33,18 @@ function canonicalize(value: unknown): unknown {
  * detected format/dimensions, the supersession target, or the region set
  * (added/removed/renamed/moved/resized) changes it.
  *
- * `regions` is omitted from the hashed view entirely when not supplied
- * (rather than included as `null`, unlike `supersedes`) so that every
- * pre-Prompt-2 call site - and every Prompt 2 call that legitimately imports
- * or approves a reference with no regions - keeps producing byte-identical
- * identity to Prompt 1, never a new hash purely because this parameter now
- * exists. Region order is part of the semantic view (authored order is
- * semantic, mirroring domain/identity.ts's `targets` treatment) - canonicalize
- * sorts object keys but deliberately never reorders arrays.
+ * `regions`/`requirements` are each omitted from the hashed view entirely
+ * when not supplied (rather than included as `null`, unlike `supersedes`) so
+ * that every pre-Prompt-2/pre-Prompt-3 call site - and every later call that
+ * legitimately has no regions/requirements - keeps producing byte-identical
+ * identity to the earlier prompt, never a new hash purely because a
+ * parameter now exists. Region/requirement order is part of the semantic
+ * view (authored order is semantic, mirroring domain/identity.ts's `targets`
+ * treatment) - canonicalize sorts object keys but deliberately never
+ * reorders arrays. `requirements` entries already carry their own
+ * content-derived `requirementId` (see externalReferenceRequirementIdentity.ts),
+ * so changing a selected property, tolerance, or category changes both that
+ * requirement's own id and this artifact-level identity.
  */
 export function buildExternalReferenceRequestIdentity(
   imageSha256: string,
@@ -48,6 +53,7 @@ export function buildExternalReferenceRequestIdentity(
   height: number,
   supersedesReferenceId?: string,
   regions?: readonly ReferenceRegion[],
+  requirements?: readonly ExternalReferenceRequirement[],
 ): string {
   const semanticView = {
     imageSha256,
@@ -56,6 +62,7 @@ export function buildExternalReferenceRequestIdentity(
     height,
     supersedes: supersedesReferenceId ?? null,
     ...(regions !== undefined ? { regions } : {}),
+    ...(requirements !== undefined ? { requirements } : {}),
   };
   const serialized = JSON.stringify(canonicalize(semanticView));
   return createHash('sha256').update(serialized).digest('hex');

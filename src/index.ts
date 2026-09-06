@@ -405,3 +405,45 @@ export {
   isValidReferenceRegionRelationshipGraph,
   deriveReferenceRegionRelationships,
 } from './domain/externalReferenceRegionRelationships.js';
+
+export { buildReferenceRequirementIdentity } from './domain/externalReferenceRequirementIdentity.js';
+
+export type {
+  ReferenceRequirementRegionProperty,
+  ReferenceRequirementMeasurement,
+  ReferenceRequirementTolerance,
+  RegionPropertyRequirementSubject,
+  RegionRelationshipRequirementSubject,
+  RegionMeasurementRequirementSubject,
+  ReferenceRequirementSubject,
+  RawReferenceRequirement,
+  ExternalReferenceRequirement,
+  ReferenceRequirementValidationResult,
+  ReferenceRequirementExpectation,
+  ReferenceRequirementAdequacyState,
+  ReferenceRequirementAdequacyReasonCode,
+  ReferenceRequirementAdequacyReason,
+  ReferenceRequirementAdequacy,
+} from './domain/externalReferenceRequirements.js';
+export {
+  MAX_REFERENCE_REQUIREMENTS,
+  REFERENCE_REQUIREMENT_REGION_PROPERTIES,
+  isReferenceRequirementRegionProperty,
+  REFERENCE_REQUIREMENT_MEASUREMENTS,
+  isReferenceRequirementMeasurement,
+  deriveReferenceRequirementMeasurement,
+  REFERENCE_REQUIREMENT_TOLERANCE_ABSOLUTE_PX_MIN,
+  REFERENCE_REQUIREMENT_TOLERANCE_ABSOLUTE_PX_MAX,
+  REFERENCE_REQUIREMENT_TOLERANCE_PERCENT_MIN,
+  REFERENCE_REQUIREMENT_TOLERANCE_PERCENT_MAX,
+  isValidReferenceRequirementTolerance,
+  isValidReferenceRequirementSubjectShape,
+  isValidRawReferenceRequirement,
+  buildReferenceRequirement,
+  isValidReferenceRequirementShape,
+  isValidReferenceRequirements,
+  deriveReferenceRequirementExpectation,
+  REFERENCE_REQUIREMENT_ADEQUACY_STATES,
+  REFERENCE_REQUIREMENT_ADEQUACY_REASON_CODES,
+  deriveReferenceRequirementAdequacy,
+} from './domain/externalReferenceRequirements.js';

@@ -86,4 +86,35 @@ describe('externalReferenceIdentity', () => {
     const orderTwo = buildExternalReferenceRequestIdentity('abc123', 'png', 800, 600, undefined, [regionB, regionA]);
     expect(orderOne).not.toBe(orderTwo);
   });
+
+  // v0.7 Prompt 3: requirements is likewise omitted entirely (never null) when absent, preserving byte-identical Prompt 1/2 hashes.
+  it('omitting requirements produces the exact same identity as before this parameter existed', () => {
+    const withoutRequirementsParam = buildExternalReferenceRequestIdentity('abc123', 'png', 800, 600, undefined, [regionA]);
+    const explicitlyUndefined = buildExternalReferenceRequestIdentity('abc123', 'png', 800, 600, undefined, [regionA], undefined);
+    expect(withoutRequirementsParam).toBe(explicitlyUndefined);
+  });
+
+  const requirementOne = { requirementId: 'req-1', category: 'requested', subject: { kind: 'region-property', region: 'header', property: 'width' }, tolerance: { kind: 'exact' } };
+  const requirementTwo = { requirementId: 'req-2', category: 'protected', subject: { kind: 'region-property', region: 'header', property: 'height' }, tolerance: { kind: 'exact' } };
+
+  it('same requirement content produces the same request identity regardless of call site', () => {
+    const first = buildExternalReferenceRequestIdentity('abc123', 'png', 800, 600, undefined, [regionA], [requirementOne]);
+    const second = buildExternalReferenceRequestIdentity('abc123', 'png', 800, 600, undefined, [regionA], [requirementOne]);
+    expect(first).toBe(second);
+  });
+
+  it('changing a requirement (e.g. its category) changes the request identity', () => {
+    const base = buildExternalReferenceRequestIdentity('abc123', 'png', 800, 600, undefined, [regionA], [requirementOne]);
+    const changed = buildExternalReferenceRequestIdentity('abc123', 'png', 800, 600, undefined, [regionA], [{ ...requirementOne, category: 'protected' }]);
+    expect(changed).not.toBe(base);
+  });
+
+  it('adding or removing a requirement changes the request identity', () => {
+    const withoutRequirements = buildExternalReferenceRequestIdentity('abc123', 'png', 800, 600, undefined, [regionA]);
+    const withOneRequirement = buildExternalReferenceRequestIdentity('abc123', 'png', 800, 600, undefined, [regionA], [requirementOne]);
+    expect(withOneRequirement).not.toBe(withoutRequirements);
+
+    const withTwoRequirements = buildExternalReferenceRequestIdentity('abc123', 'png', 800, 600, undefined, [regionA], [requirementOne, requirementTwo]);
+    expect(withTwoRequirements).not.toBe(withOneRequirement);
+  });
 });

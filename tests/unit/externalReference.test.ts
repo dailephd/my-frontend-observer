@@ -138,4 +138,47 @@ describe('externalReference validator', () => {
     };
     expect(isValidExternalReferenceArtifact(duplicate).valid).toBe(false);
   });
+
+  // v0.7 Prompt 3: requirements field (additive, optional).
+  const headerRegion = { id: 'header', rectangle: { x: 0, y: 0, width: 100, height: 40 } };
+  const validRequirement = {
+    requirementId: 'req-1',
+    category: 'requested',
+    subject: { kind: 'region-property', region: 'header', property: 'width' },
+    tolerance: { kind: 'exact' },
+  };
+
+  it('U: a legacy (Prompt 1/2) artifact with no requirements field at all remains valid', () => {
+    const legacy = { ...validImported(), regions: [headerRegion] };
+    expect('requirements' in legacy).toBe(false);
+    expect(isValidExternalReferenceArtifact(legacy)).toEqual({ valid: true });
+  });
+
+  it('accepts a valid requirements array alongside its referenced regions', () => {
+    const withRequirements = { ...validImported(), regions: [headerRegion], requirements: [validRequirement] };
+    expect(isValidExternalReferenceArtifact(withRequirements)).toEqual({ valid: true });
+  });
+
+  it('accepts requirements on an approved artifact too', () => {
+    const withRequirements = { ...validApproved(), regions: [headerRegion], requirements: [validRequirement] };
+    expect(isValidExternalReferenceArtifact(withRequirements)).toEqual({ valid: true });
+  });
+
+  // D: a requirement referencing an unknown region id is a validation failure, not merely unavailable evidence.
+  it('D: rejects a requirement whose region does not exist among the artifact\'s regions', () => {
+    const artifact = { ...validImported(), regions: [headerRegion], requirements: [{ ...validRequirement, subject: { kind: 'region-property', region: 'crawl-button', property: 'width' } }] };
+    const result = isValidExternalReferenceArtifact(artifact);
+    expect(result.valid).toBe(false);
+    if (!result.valid) expect(result.reason).toContain('requirements:');
+  });
+
+  it('rejects requirements when regions is entirely absent (nothing to validate the reference against)', () => {
+    const artifact = { ...validImported(), requirements: [validRequirement] };
+    expect(isValidExternalReferenceArtifact(artifact).valid).toBe(false);
+  });
+
+  it('rejects a malformed requirements value (not an array)', () => {
+    const artifact = { ...validImported(), regions: [headerRegion], requirements: { id: 'x' } };
+    expect(isValidExternalReferenceArtifact(artifact).valid).toBe(false);
+  });
 });

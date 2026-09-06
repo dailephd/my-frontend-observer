@@ -806,3 +806,125 @@ only. It is not a design requirement, not a pass/fail verdict, and does not
 claim a runtime target or source owner exists - see
 `docs/WORKFLOWS.md` "Current external-reference foundation workflow" for
 where those later concepts (Prompt 3+) will attach.
+
+## v0.7 Prompt 3 selected design requirements, tolerance semantics, and reference-evidence adequacy
+
+Implemented, unreleased. Additive extension of the Prompt 1/2 contracts
+above: one new, optional `requirements?: ExternalReferenceRequirement[]`
+field on `ExternalReferenceArtifact` (both lifecycle variants). No schema
+version bump - same reasoning as Prompt 2's `regions` field.
+
+**Central distinction**: a region's geometry is REFERENCE EVIDENCE -
+everything visibly/measurably present in the image. A requirement is
+SELECTED DESIGN INTENT - only what the user/configuration explicitly chose
+as mattering for later candidate evaluation. Nothing in this repository ever
+turns a region property or a derived relationship into a requirement
+automatically.
+
+```ts
+// domain/externalReferenceRequirements.ts
+
+// Reused directly from domain/frontendContracts.ts - not reinvented as a
+// "reference-only" taxonomy; that type carries no runtime-only coupling.
+// 'unexpected' remains impossible to author (not a member of this union).
+type AuthoredChangeScopeCategory = 'requested' | 'expected-dependent' | 'protected' | 'preserved';
+type ExpectedDependentMode = 'required' | 'permitted'; // required only (and exactly) when category === 'expected-dependent'
+
+type ReferenceRequirementRegionProperty = 'x' | 'y' | 'width' | 'height' | 'right' | 'bottom' | 'centerX' | 'centerY'; // exactly ReferenceRegionGeometry's own fields
+type ReferenceRequirementMeasurement = 'vertical-gap' | 'horizontal-gap' | 'center-x-delta' | 'center-y-delta' | 'left-edge-delta' | 'right-edge-delta';
+
+type ReferenceRequirementSubject =
+  | { kind: 'region-property'; region: string; property: ReferenceRequirementRegionProperty }
+  | { kind: 'region-relationship'; subjectRegion: string; relatedRegion: string; relationship: PairwiseRelationshipKind } // reused from relationships.ts - geometry-only families only
+  | { kind: 'region-measurement'; subjectRegion: string; relatedRegion: string; measurement: ReferenceRequirementMeasurement };
+
+// Deliberately NOT a reuse of frontendContracts.ts's ContractTolerance: that
+// type's 'absolute-px' is implicitly runtime/CSS pixels. Reference-image
+// pixels are a distinct, explicitly-labeled unit - nothing here assumes
+// 1 reference pixel = 1 CSS pixel (Prompt 6 will need an explicit mapping).
+type ReferenceRequirementTolerance = { kind: 'exact' } | { kind: 'absolute-reference-px'; amount: number } | { kind: 'percent'; amount: number };
+
+interface ExternalReferenceRequirement {
+  requirementId: string; // system-computed from {subject, category, expectedDependentMode, tolerance} only - never authored
+  category: AuthoredChangeScopeCategory;
+  expectedDependentMode?: ExpectedDependentMode;
+  subject: ReferenceRequirementSubject;
+  tolerance?: ReferenceRequirementTolerance; // required for region-property/region-measurement; must be absent for region-relationship
+}
+```
+
+Key rules:
+
+- Requirement identity (`requirementId`) is always system-computed
+  (`buildReferenceRequirementIdentity`, mirroring
+  `frontendContractIdentity.ts#buildClauseIdentity`'s exact shape) - the raw
+  authored input (`RawReferenceRequirement`) has no `requirementId` field at
+  all, and supplying one is a validation error. Unlike v0.5's
+  `BaselineClause`/`PerChangeClause` (which need an author-visible `clauseId`
+  for cross-document `supersedesBaselineClauseIds` references), Prompt 3
+  requirements have no cross-document reference need yet, so trusting an
+  authored id would only invite drift between a user-typed id and the
+  content it claims to identify.
+- The reference-side expected value/relationship is never stored on the
+  requirement or the artifact - `deriveReferenceRequirementExpectation()` is
+  a pure function computed on demand from the artifact's own `regions`,
+  eliminating the exact drift risk of persisting e.g. `width: 424` alongside
+  a region whose rectangle could (in principle) later disagree with it.
+- A requirement referencing a region id that does not exist in the
+  artifact's own `regions` is a **structural validation failure** (rejected
+  at construction/import time), never merely "unavailable" reference
+  evidence - `isValidReferenceRequirements` checks this before any
+  requirement reaches adequacy computation.
+- **Duplicate/conflicting subject rule**: no two requirements in one
+  collection may share the same structural subject (same region+property,
+  or the same unordered region pair + relationship, or + measurement),
+  regardless of category. This single rule covers both "duplicate
+  requirement" and "conflicting categories on the same subject" (e.g. the
+  same region/property authored as both `requested` and `protected`) -
+  v0.5's `evaluateFrontendContract#primitivesConflict` is a *runtime-
+  evaluation-time* detector (it needs before/after `ObservationArtifact`
+  evidence that does not exist yet at this stage) and could not be reused
+  safely; Prompt 3 restricts invalid combinations at authoring time instead,
+  per the documented precedent-review outcome.
+- Bounded at `MAX_REFERENCE_REQUIREMENTS` (50) requirements per artifact -
+  a maximum capacity, never a required minimum (there is no contract
+  requiring any specific number of authored requirements).
+- One new diagnostic code, `invalid-reference-requirement` (error), covers
+  every requirement-authoring validation failure - deliberately not split
+  further, per the "don't proliferate diagnostics" convention already used
+  for `invalid-reference-region`.
+- `import-reference` gained an optional `--requirements-file <json-file>`
+  (`{ "requirements": [...] }`, same object-root-wrapper convention as
+  `--regions-file`/`--targets-file`); `approve-reference` carries an
+  imported artifact's `requirements` forward verbatim (never re-validated,
+  never re-derived, never dropped), exactly mirroring how it already
+  handles `regions`.
+
+**Reference-evidence adequacy** (`deriveReferenceRequirementAdequacy(regions, requirements)`)
+answers only "does the reference definition itself contain enough evidence
+to understand every selected requirement?" - never "does a runtime
+target/candidate exist" (that is Prompt 4/5's responsibility). It is its own
+small, reference-owned vocabulary (`REFERENCE_REQUIREMENT_ADEQUACY_STATES` =
+`'adequate' | 'partial' | 'inadequate'`, and exactly two reason codes,
+`no-selected-requirements` and `missing-reference-relationship-evidence`) -
+deliberately **not** a reuse of
+`boundedAgentContext.ts`'s `Adequacy`/`ADEQUACY_REASON_CODES`, which
+describe runtime-target/static-correlation concerns that do not exist at
+this stage; mislabeling reference adequacy as bounded-agent-context adequacy
+would conflate two genuinely different evidence domains. Zero selected
+requirements is explicitly `inadequate` (a region-rich, fully-valid
+reference is still not usable for a correction task until the user has
+actually selected what matters) - this is a documented product decision,
+not an oversight. The result is never a numeric score, always structured
+and inspectable, with reasons ordered deterministically by authored
+requirement position.
+
+```ts
+interface ReferenceRequirementAdequacy {
+  status: 'adequate' | 'partial' | 'inadequate';
+  totalRequirements: number;
+  evaluableRequirements: number;
+  unavailableRequirements: number;
+  reasons: { code: 'no-selected-requirements' | 'missing-reference-relationship-evidence'; requirementId?: string; detail?: string }[];
+}
+```

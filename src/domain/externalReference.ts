@@ -20,6 +20,8 @@ import type { ExternalReferenceImageFormat } from './externalReferenceImage.js';
 import { isExternalReferenceImageFormat, isValidExternalReferenceImageDimensions } from './externalReferenceImage.js';
 import type { ReferenceRegion } from './externalReferenceRegions.js';
 import { isValidReferenceRegions } from './externalReferenceRegions.js';
+import type { ExternalReferenceRequirement } from './externalReferenceRequirements.js';
+import { isValidReferenceRequirements } from './externalReferenceRequirements.js';
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -137,6 +139,18 @@ interface ExternalReferenceArtifactBase {
    * this array on an existing persisted artifact.
    */
   regions?: ReferenceRegion[];
+  /**
+   * v0.7 Prompt 3 addition (additive, optional - same backward-compatibility
+   * reasoning as `regions`: a Prompt 1/2 artifact predates this field
+   * entirely and remains valid without it). Explicit, user/configuration-
+   * selected design intent over the `regions` above - never inferred merely
+   * because a region property/relationship exists (see docs/CONTRACTS.md
+   * "v0.7 Prompt 3"). Identity-bearing wherever present. Never mutated in
+   * place: changing selected requirements/tolerances produces a new
+   * referenceRequestId/referenceId, never a rewrite of this array on an
+   * existing persisted artifact.
+   */
+  requirements?: ExternalReferenceRequirement[];
   diagnostics: Diagnostic[];
   completion: CompletionState;
 }
@@ -241,9 +255,16 @@ export function isValidExternalReferenceArtifact(value: unknown): ExternalRefere
     imageHeight = sourceReference.image.height;
   }
 
-  if ('regions' in value && value.regions !== undefined) {
+  const hasRegions = 'regions' in value && value.regions !== undefined;
+  if (hasRegions) {
     const regionsValidation = isValidReferenceRegions(value.regions, imageWidth, imageHeight);
     if (!regionsValidation.valid) return { valid: false, reason: `regions: ${regionsValidation.reason}` };
+  }
+
+  if ('requirements' in value && value.requirements !== undefined) {
+    const regionsForRequirements = (hasRegions ? value.regions : []) as ReferenceRegion[];
+    const requirementsValidation = isValidReferenceRequirements(value.requirements, regionsForRequirements);
+    if (!requirementsValidation.valid) return { valid: false, reason: `requirements: ${requirementsValidation.reason}` };
   }
 
   return { valid: true };

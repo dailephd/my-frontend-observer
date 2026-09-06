@@ -16,6 +16,8 @@ import { EXTERNAL_REFERENCE_ARTIFACT_KIND, EXTERNAL_REFERENCE_SCHEMA_VERSION, is
 import { buildExternalReferenceRequestIdentity, buildExternalReferenceInstanceIdentity } from '../domain/externalReferenceIdentity.js';
 import type { ReferenceRegion } from '../domain/externalReferenceRegions.js';
 import { isValidReferenceRegions } from '../domain/externalReferenceRegions.js';
+import type { ExternalReferenceRequirement, RawReferenceRequirement, ReferenceRequirementAdequacy } from '../domain/externalReferenceRequirements.js';
+import { isValidRawReferenceRequirement, buildReferenceRequirement, isValidReferenceRequirements, deriveReferenceRequirementAdequacy } from '../domain/externalReferenceRequirements.js';
 import { normalizeOutputLocation } from '../request/paths.js';
 import { writeExternalReferenceArtifact } from '../artifacts/externalReferenceArtifactWriter.js';
 import type { WriteExternalReferenceArtifactOptions } from '../artifacts/externalReferenceArtifactWriter.js';
@@ -30,6 +32,8 @@ export interface ImportExternalReferenceOptions {
   supersedesReferenceRoot?: string;
   /** v0.7 Prompt 2: explicit, user/configuration-authored reference-image regions. Identity-bearing when present - see externalReferenceIdentity.ts. */
   regions?: ReferenceRegion[];
+  /** v0.7 Prompt 3: explicit, user/configuration-selected design requirements over `regions` above. Raw (not yet identified) authored input - see domain/externalReferenceRequirements.ts#RawReferenceRequirement. Identity-bearing when present. */
+  requirements?: RawReferenceRequirement[];
 }
 
 export interface ApproveExternalReferenceOptions {
@@ -40,11 +44,11 @@ export interface ApproveExternalReferenceOptions {
 }
 
 export type ApplicationImportExternalReferenceResult =
-  | { ok: true; referenceId: string; referenceRequestId: string; artifactRoot: string; manifestPath: string; imagePath: string; regionCount: number }
+  | { ok: true; referenceId: string; referenceRequestId: string; artifactRoot: string; manifestPath: string; imagePath: string; regionCount: number; requirementCount: number; adequacy: ReferenceRequirementAdequacy }
   | { ok: false; diagnostics: Diagnostic[] };
 
 export type ApplicationApproveExternalReferenceResult =
-  | { ok: true; referenceId: string; referenceRequestId: string; artifactRoot: string; manifestPath: string; regionCount: number }
+  | { ok: true; referenceId: string; referenceRequestId: string; artifactRoot: string; manifestPath: string; regionCount: number; requirementCount: number; adequacy: ReferenceRequirementAdequacy }
   | { ok: false; diagnostics: Diagnostic[] };
 
 function failure(code: Diagnostic['code'], message: string): { ok: false; diagnostics: Diagnostic[] } {
@@ -86,6 +90,19 @@ export async function importExternalReference(imageBytes: Uint8Array, options: I
     if (!regionsValidation.valid) return failure('invalid-reference-region', regionsValidation.reason);
   }
 
+  let requirements: ExternalReferenceRequirement[] | undefined;
+  if (options.requirements !== undefined) {
+    const built: ExternalReferenceRequirement[] = [];
+    for (const raw of options.requirements) {
+      const rawValidation = isValidRawReferenceRequirement(raw);
+      if (!rawValidation.valid) return failure('invalid-reference-requirement', rawValidation.reason);
+      built.push(buildReferenceRequirement(raw));
+    }
+    const collectionValidation = isValidReferenceRequirements(built, options.regions ?? []);
+    if (!collectionValidation.valid) return failure('invalid-reference-requirement', collectionValidation.reason);
+    requirements = built;
+  }
+
   const supersedes = await resolveSupersedesReferenceId(options.supersedesReferenceRoot);
   if (!supersedes.ok) return supersedes;
 
@@ -93,7 +110,7 @@ export async function importExternalReference(imageBytes: Uint8Array, options: I
   if (!normalizedOutput.ok) return { ok: false, diagnostics: [normalizedOutput.diagnostic] };
 
   const imageSha256 = createHash('sha256').update(imageBytes).digest('hex');
-  const referenceRequestId = buildExternalReferenceRequestIdentity(imageSha256, format, dimensions.width, dimensions.height, supersedes.referenceId, options.regions);
+  const referenceRequestId = buildExternalReferenceRequestIdentity(imageSha256, format, dimensions.width, dimensions.height, supersedes.referenceId, options.regions, requirements);
   const referenceId = buildExternalReferenceInstanceIdentity(referenceRequestId);
 
   const artifact: ImportedExternalReferenceArtifact = {
@@ -114,6 +131,7 @@ export async function importExternalReference(imageBytes: Uint8Array, options: I
     lifecycle: { state: 'imported' },
     ...(supersedes.referenceId === undefined ? {} : { supersedesReferenceId: supersedes.referenceId }),
     ...(options.regions === undefined ? {} : { regions: options.regions }),
+    ...(requirements === undefined ? {} : { requirements }),
     diagnostics: [],
     completion: deriveCompletion([], 'post-capture'),
   };
@@ -129,6 +147,8 @@ export async function importExternalReference(imageBytes: Uint8Array, options: I
     manifestPath: persisted.manifestPath,
     imagePath: persisted.imagePath!,
     regionCount: artifact.regions?.length ?? 0,
+    requirementCount: artifact.requirements?.length ?? 0,
+    adequacy: deriveReferenceRequirementAdequacy(artifact.regions ?? [], artifact.requirements ?? []),
   };
 }
 
@@ -178,6 +198,7 @@ export async function approveExternalReference(importedArtifactRoot: string, opt
     lifecycle: { state: 'approved', approvedAt: new Date().toISOString() },
     ...(supersedes.referenceId === undefined ? {} : { supersedesReferenceId: supersedes.referenceId }),
     ...(imported.regions === undefined ? {} : { regions: imported.regions }),
+    ...(imported.requirements === undefined ? {} : { requirements: imported.requirements }),
     diagnostics: [],
     completion: deriveCompletion([], 'post-capture'),
   };
@@ -192,5 +213,7 @@ export async function approveExternalReference(importedArtifactRoot: string, opt
     artifactRoot: persisted.artifactRoot,
     manifestPath: persisted.manifestPath,
     regionCount: artifact.regions?.length ?? 0,
+    requirementCount: artifact.requirements?.length ?? 0,
+    adequacy: deriveReferenceRequirementAdequacy(artifact.regions ?? [], artifact.requirements ?? []),
   };
 }
