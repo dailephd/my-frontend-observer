@@ -51,7 +51,15 @@ import type {
   AuthoredChangeScopeCategory,
   ExpectedDependentMode,
 } from './externalReferenceRequirements.js';
-import { deriveReferenceRequirementAdequacy, deriveReferenceRequirementExpectation, deriveReferenceRequirementMeasurement } from './externalReferenceRequirements.js';
+import {
+  deriveReferenceRequirementAdequacy,
+  deriveReferenceRequirementExpectation,
+  deriveReferenceRequirementMeasurement,
+  isAuthoredChangeScopeCategory,
+  isValidExpectedDependentMode,
+  isValidReferenceRequirementSubjectShape,
+  isValidReferenceRequirementTolerance,
+} from './externalReferenceRequirements.js';
 import type { ObservationArtifact, TargetGeometry } from './schema.js';
 import { isValidObservationArtifact } from './schema.js';
 import { evidenceValue } from './evidence.js';
@@ -68,7 +76,16 @@ import {
   RELATIVE_WIDTH_RELATIONSHIPS,
   GEOMETRIC_FIT_RELATIONSHIPS,
   VERTICAL_SEQUENCE_RELATIONSHIPS,
+  PAIRWISE_RELATIONSHIP_KINDS,
 } from './relationships.js';
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0;
+}
 
 // ---------------------------------------------------------------------------
 // Result vocabulary
@@ -119,6 +136,41 @@ export interface ReferenceRequirementFidelityResult {
   tolerance?: ReferenceRequirementTolerance;
   expectedRelationship?: PairwiseRelationshipKind;
   actualRelationship?: PairwiseRelationshipKind;
+}
+
+/**
+ * v0.7 Prompt 7 addition (additive; no prior structural validator existed
+ * for this Prompt 6 shape - fidelity evaluations previously only ever
+ * flowed in-memory from `evaluateReferenceCandidateFidelity`'s own return
+ * type, with no external/persisted input path to defend against). Reused by
+ * `boundedAgentContext.ts` as defense-in-depth when a caller-supplied
+ * `ReferenceRequirementFidelityResult` becomes part of a bounded fidelity
+ * projection. No change to `evaluateReferenceCandidateFidelity`'s own logic.
+ */
+export function isValidReferenceRequirementFidelityResult(value: unknown): value is ReferenceRequirementFidelityResult {
+  if (!isPlainObject(value)) return false;
+  if (!isNonEmptyString(value.requirementId)) return false;
+  if (!isAuthoredChangeScopeCategory(value.category)) return false;
+  if (value.expectedDependentMode !== undefined && !isValidExpectedDependentMode(value.expectedDependentMode)) return false;
+  if (!isValidReferenceRequirementSubjectShape(value.subject)) return false;
+  if (!Array.isArray(value.boundRuntimeTargets) || !value.boundRuntimeTargets.every(isNonEmptyString)) return false;
+  if (typeof value.status !== 'string' || !(REFERENCE_REQUIREMENT_FIDELITY_STATUSES as readonly string[]).includes(value.status)) return false;
+
+  if (value.status === 'unavailable') {
+    if (typeof value.reasonCode !== 'string' || !(REFERENCE_REQUIREMENT_FIDELITY_REASON_CODES as readonly string[]).includes(value.reasonCode)) return false;
+    if (!isNonEmptyString(value.detail)) return false;
+  } else if ('reasonCode' in value && value.reasonCode !== undefined) {
+    return false;
+  }
+
+  for (const key of ['referenceValue', 'candidateRawValue', 'candidateValue', 'delta'] as const) {
+    if (value[key] !== undefined && typeof value[key] !== 'number') return false;
+  }
+  if (value.tolerance !== undefined && !isValidReferenceRequirementTolerance(value.tolerance)) return false;
+  for (const key of ['expectedRelationship', 'actualRelationship'] as const) {
+    if (value[key] !== undefined && (typeof value[key] !== 'string' || !(PAIRWISE_RELATIONSHIP_KINDS as readonly string[]).includes(value[key] as string))) return false;
+  }
+  return true;
 }
 
 export const REFERENCE_FIDELITY_STATES = ['not-evaluated', 'pass', 'fail'] as const;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateReferenceCandidateFidelity } from '../../src/domain/externalReferenceFidelity.js';
+import { evaluateReferenceCandidateFidelity, isValidReferenceRequirementFidelityResult } from '../../src/domain/externalReferenceFidelity.js';
 import { EXTERNAL_REFERENCE_ARTIFACT_KIND, EXTERNAL_REFERENCE_SCHEMA_VERSION } from '../../src/domain/externalReference.js';
 import type { ImportedExternalReferenceArtifact } from '../../src/domain/externalReference.js';
 import type { ReferenceRegion } from '../../src/domain/externalReferenceRegions.js';
@@ -504,5 +504,74 @@ describe('evaluateReferenceCandidateFidelity', () => {
     const source = await readFile(new URL('../../src/domain/externalReferenceFidelity.ts', import.meta.url), 'utf8');
     expect(source).not.toMatch(/from ['"]playwright['"]/);
     expect(source).not.toMatch(/from ['"]node:fs/);
+  });
+});
+
+// v0.7 Prompt 7 addition: defense-in-depth structural validator, reused by domain/boundedAgentContext.ts.
+describe('isValidReferenceRequirementFidelityResult', () => {
+  it('accepts a valid pass result', () => {
+    expect(
+      isValidReferenceRequirementFidelityResult({
+        requirementId: 'r1',
+        category: 'requested',
+        subject: { kind: 'region-property', region: 'card', property: 'width' },
+        boundRuntimeTargets: ['t1'],
+        status: 'pass',
+      }),
+    ).toBe(true);
+  });
+
+  it('accepts a valid fail result with numeric fields', () => {
+    expect(
+      isValidReferenceRequirementFidelityResult({
+        requirementId: 'r1',
+        category: 'protected',
+        subject: { kind: 'region-property', region: 'card', property: 'width' },
+        boundRuntimeTargets: ['t1'],
+        status: 'fail',
+        referenceValue: 424,
+        candidateRawValue: 223,
+        candidateValue: 446,
+        delta: 22,
+        tolerance: { kind: 'absolute-reference-px', amount: 4 },
+      }),
+    ).toBe(true);
+  });
+
+  it('accepts a valid relationship fail result', () => {
+    expect(
+      isValidReferenceRequirementFidelityResult({
+        requirementId: 'r1',
+        category: 'preserved',
+        subject: { kind: 'region-relationship', subjectRegion: 'a', relatedRegion: 'b', relationship: 'left-of' },
+        boundRuntimeTargets: ['t1', 't2'],
+        status: 'fail',
+        expectedRelationship: 'left-of',
+        actualRelationship: 'right-of',
+      }),
+    ).toBe(true);
+  });
+
+  it('requires reasonCode and detail when status is unavailable', () => {
+    const base = { requirementId: 'r1', category: 'requested' as const, subject: { kind: 'region-property' as const, region: 'card', property: 'width' as const }, boundRuntimeTargets: ['t1'] };
+    expect(isValidReferenceRequirementFidelityResult({ ...base, status: 'unavailable' })).toBe(false);
+    expect(isValidReferenceRequirementFidelityResult({ ...base, status: 'unavailable', reasonCode: 'binding-unavailable', detail: 'x' })).toBe(true);
+    expect(isValidReferenceRequirementFidelityResult({ ...base, status: 'unavailable', reasonCode: 'not-a-real-code', detail: 'x' })).toBe(false);
+  });
+
+  it('rejects a reasonCode present alongside a pass/fail status', () => {
+    const base = { requirementId: 'r1', category: 'requested' as const, subject: { kind: 'region-property' as const, region: 'card', property: 'width' as const }, boundRuntimeTargets: ['t1'] };
+    expect(isValidReferenceRequirementFidelityResult({ ...base, status: 'pass', reasonCode: 'binding-unavailable' })).toBe(false);
+  });
+
+  it('rejects a malformed subject, boundRuntimeTargets, or an invalid category', () => {
+    expect(isValidReferenceRequirementFidelityResult({ requirementId: 'r1', category: 'bogus', subject: { kind: 'region-property', region: 'card', property: 'width' }, boundRuntimeTargets: ['t1'], status: 'pass' })).toBe(false);
+    expect(isValidReferenceRequirementFidelityResult({ requirementId: 'r1', category: 'requested', subject: { kind: 'region-property', region: 'card', property: 'not-a-property' }, boundRuntimeTargets: ['t1'], status: 'pass' })).toBe(false);
+    expect(isValidReferenceRequirementFidelityResult({ requirementId: 'r1', category: 'requested', subject: { kind: 'region-property', region: 'card', property: 'width' }, boundRuntimeTargets: 'not-an-array', status: 'pass' })).toBe(false);
+  });
+
+  it('rejects a non-object value', () => {
+    expect(isValidReferenceRequirementFidelityResult(null)).toBe(false);
+    expect(isValidReferenceRequirementFidelityResult('x')).toBe(false);
   });
 });

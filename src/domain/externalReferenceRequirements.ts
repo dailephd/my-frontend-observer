@@ -501,3 +501,27 @@ export function deriveReferenceRequirementAdequacy(
 
   return { status, totalRequirements: requirements.length, evaluableRequirements, unavailableRequirements, reasons };
 }
+
+/**
+ * v0.7 Prompt 7 addition (additive, previously no structural validator
+ * existed for this already-frozen Prompt 3 shape): a defense-in-depth
+ * structural check, reused by `boundedAgentContext.ts` when accepting an
+ * already-computed `ReferenceRequirementAdequacy` value as part of a bounded
+ * fidelity projection. No change to `deriveReferenceRequirementAdequacy`'s
+ * own logic or the `ReferenceRequirementAdequacy` contract itself.
+ */
+export function isValidReferenceRequirementAdequacy(value: unknown): value is ReferenceRequirementAdequacy {
+  if (!isPlainObject(value)) return false;
+  if (typeof value.status !== 'string' || !(REFERENCE_REQUIREMENT_ADEQUACY_STATES as readonly string[]).includes(value.status)) return false;
+  for (const key of ['totalRequirements', 'evaluableRequirements', 'unavailableRequirements'] as const) {
+    if (typeof value[key] !== 'number' || !Number.isInteger(value[key]) || (value[key] as number) < 0) return false;
+  }
+  if (!Array.isArray(value.reasons)) return false;
+  for (const reason of value.reasons) {
+    if (!isPlainObject(reason)) return false;
+    if (typeof reason.code !== 'string' || !(REFERENCE_REQUIREMENT_ADEQUACY_REASON_CODES as readonly string[]).includes(reason.code)) return false;
+    if (reason.requirementId !== undefined && !isNonEmptyString(reason.requirementId)) return false;
+    if (reason.detail !== undefined && typeof reason.detail !== 'string') return false;
+  }
+  return true;
+}

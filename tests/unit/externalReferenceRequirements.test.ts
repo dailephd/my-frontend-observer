@@ -8,6 +8,7 @@ import {
   deriveReferenceRequirementMeasurement,
   deriveReferenceRequirementExpectation,
   deriveReferenceRequirementAdequacy,
+  isValidReferenceRequirementAdequacy,
   MAX_REFERENCE_REQUIREMENTS,
   REFERENCE_REQUIREMENT_TOLERANCE_ABSOLUTE_PX_MIN,
   REFERENCE_REQUIREMENT_TOLERANCE_ABSOLUTE_PX_MAX,
@@ -302,5 +303,44 @@ describe('externalReferenceRequirements', () => {
     const requirement = build(rawPropertyRequirement());
     expect(isValidReferenceRequirementShape(requirement)).toEqual({ valid: true });
     expect(isValidReferenceRequirementShape({ ...requirement, requirementId: '' }).valid).toBe(false);
+  });
+});
+
+// v0.7 Prompt 7 addition: defense-in-depth structural validator for the already-frozen Prompt 3 shape.
+describe('isValidReferenceRequirementAdequacy', () => {
+  it('accepts a valid adequate/partial/inadequate value', () => {
+    expect(isValidReferenceRequirementAdequacy({ status: 'adequate', totalRequirements: 1, evaluableRequirements: 1, unavailableRequirements: 0, reasons: [] })).toBe(true);
+    expect(
+      isValidReferenceRequirementAdequacy({
+        status: 'inadequate',
+        totalRequirements: 0,
+        evaluableRequirements: 0,
+        unavailableRequirements: 0,
+        reasons: [{ code: 'no-selected-requirements' }],
+      }),
+    ).toBe(true);
+    expect(
+      isValidReferenceRequirementAdequacy({
+        status: 'partial',
+        totalRequirements: 2,
+        evaluableRequirements: 1,
+        unavailableRequirements: 1,
+        reasons: [{ code: 'missing-reference-relationship-evidence', requirementId: 'r1', detail: 'x' }],
+      }),
+    ).toBe(true);
+  });
+
+  it('rejects an invalid status, negative/non-integer counts, or a malformed reason', () => {
+    expect(isValidReferenceRequirementAdequacy({ status: 'bogus', totalRequirements: 0, evaluableRequirements: 0, unavailableRequirements: 0, reasons: [] })).toBe(false);
+    expect(isValidReferenceRequirementAdequacy({ status: 'adequate', totalRequirements: -1, evaluableRequirements: 0, unavailableRequirements: 0, reasons: [] })).toBe(false);
+    expect(isValidReferenceRequirementAdequacy({ status: 'adequate', totalRequirements: 1.5, evaluableRequirements: 0, unavailableRequirements: 0, reasons: [] })).toBe(false);
+    expect(
+      isValidReferenceRequirementAdequacy({ status: 'inadequate', totalRequirements: 0, evaluableRequirements: 0, unavailableRequirements: 0, reasons: [{ code: 'not-a-real-code' }] }),
+    ).toBe(false);
+  });
+
+  it('rejects a non-object value', () => {
+    expect(isValidReferenceRequirementAdequacy(null)).toBe(false);
+    expect(isValidReferenceRequirementAdequacy('x')).toBe(false);
   });
 });

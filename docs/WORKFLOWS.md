@@ -198,6 +198,34 @@ truncation reporting, and correlation status invariants/determinism/
 deduplication). See `docs/CONTRACTS.md` "v0.6 bounded agent context and
 correlation contract" for the exact shape.
 
+**v0.7 Prompt 7 addition (implemented, unreleased):** `projectBoundedAgentContext`
+now optionally accepts an already-computed v0.7 Prompt 6
+`ReferenceCandidateFidelityEvaluation` (`fidelity`) alongside its existing
+v0.1-v0.5 evidence inputs - never recomputed, never a second fidelity
+engine:
+
+```text
+already-computed evaluateReferenceCandidateFidelity(...) result
+→ projectBoundedAgentContext({ ..., fidelity, fidelityRequired? })
+→ projectReferenceFidelity(...) (src/domain/referenceFidelityProjection.ts):
+  selects/prioritizes/bounds Prompt 6's non-passing requirement results
+  (failed-required, then unavailable-required, then other non-pass) plus
+  passing protected/preserved context, and contributes their bound v0.2
+  runtime target ids to the exact same required/permitted-target
+  allocation contract clauses already compete in
+→ BoundedAgentContextArtifact.fidelity: bounded mismatches/protectedContext
+  + adequacy/compatibility/state pass-through from Prompt 6, folded into
+  the same omissions/truncations/adequacy computation as every other
+  evidence source (a blocked "not-evaluated" fidelity is never silently
+  reported as "no problems")
+→ still consumed programmatically only, unchanged - no CLI surface
+```
+
+Absent `fidelity`, output is unaffected - identical to the pre-Prompt-7
+behavior described above, including logical identity. See
+`docs/CONTRACTS.md` "v0.7 Prompt 7 bounded reference-fidelity projection and
+v0.6 bounded-agent-context integration" for the full contract.
+
 ## Current external-reference foundation workflow (implemented, unreleased - v0.7 Prompts 1-6)
 
 This is the foundation layer only - identity, provenance, bounded image

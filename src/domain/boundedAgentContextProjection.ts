@@ -53,6 +53,9 @@ import type { PersistentBaselineContract, PerChangeContract, ContractPrimitive, 
 import { isValidPersistentBaselineContract, isValidPerChangeContract } from './frontendContracts.js';
 import type { FrontendContractEvaluationArtifact } from './frontendContractEvaluationArtifact.js';
 import { isValidFrontendContractEvaluationArtifact } from './frontendContractEvaluationArtifact.js';
+import type { ReferenceCandidateFidelityEvaluation } from './externalReferenceFidelity.js';
+import { REFERENCE_FIDELITY_STATES } from './externalReferenceFidelity.js';
+import { projectReferenceFidelity } from './referenceFidelityProjection.js';
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;
@@ -78,6 +81,16 @@ export interface ProjectBoundedAgentContextInput {
   baseline?: PersistentBaselineContract;
   change?: PerChangeContract;
   evaluationArtifact?: FrontendContractEvaluationArtifact;
+  /**
+   * v0.7 Prompt 7 addition (additive, optional): an already-computed
+   * `evaluateReferenceCandidateFidelity` result for the supplied
+   * `observation` (never recomputed here). Absent means no reference-
+   * fidelity evidence is included in this context - the exact pre-Prompt-7
+   * behavior.
+   */
+  fidelity?: ReferenceCandidateFidelityEvaluation;
+  /** Whether this request's coding-agent task depends on `fidelity` being evaluable. Defaults to `true` when `fidelity` is supplied - see `projectReferenceFidelity`'s own doc comment. Ignored when `fidelity` is absent. */
+  fidelityRequired?: boolean;
 }
 
 export type ProjectBoundedAgentContextResult = { ok: true; artifact: BoundedAgentContextArtifact } | { ok: false; reason: string };
@@ -136,6 +149,18 @@ function validateInput(input: ProjectBoundedAgentContextInput): string | undefin
     if (ea.after.observationId !== input.observation.observationId) return 'evaluationArtifact.after does not match the supplied observation';
     if (input.baselineObservation === undefined || ea.before.observationId !== input.baselineObservation.observationId) {
       return 'evaluationArtifact.before does not match the supplied baselineObservation';
+    }
+  }
+
+  if (input.fidelity !== undefined) {
+    if (!isNonEmptyString(input.fidelity.referenceId) || !isNonEmptyString(input.fidelity.referenceRequestId)) {
+      return 'fidelity.referenceId/referenceRequestId must be non-empty strings';
+    }
+    if (!(REFERENCE_FIDELITY_STATES as readonly string[]).includes(input.fidelity.state)) {
+      return `fidelity.state must be one of: ${REFERENCE_FIDELITY_STATES.join(', ')}`;
+    }
+    if (input.fidelity.candidateObservationId !== input.observation.observationId) {
+      return 'fidelity.candidateObservationId does not match the supplied observation';
     }
   }
 
@@ -255,7 +280,7 @@ export function projectBoundedAgentContext(input: ProjectBoundedAgentContextInpu
   const validationError = validateInput(input);
   if (validationError) return { ok: false, reason: validationError };
 
-  const { observation, baselineObservation, comparison, baseline, change, evaluationArtifact } = input;
+  const { observation, baselineObservation, comparison, baseline, change, evaluationArtifact, fidelity } = input;
 
   const sources: BoundedAgentContextSourceReferences = {
     observationIds: baselineObservation ? [baselineObservation.observationId, observation.observationId].sort() : [observation.observationId],
@@ -263,7 +288,15 @@ export function projectBoundedAgentContext(input: ProjectBoundedAgentContextInpu
     ...(baseline !== undefined ? { baselineContractId: baseline.baselineId } : {}),
     ...(change !== undefined ? { changeContractId: change.contractId } : {}),
     ...(evaluationArtifact !== undefined ? { evaluationId: evaluationArtifact.evaluationId, evaluationRequestId: evaluationArtifact.evaluationRequestId } : {}),
+    ...(fidelity !== undefined ? { referenceId: fidelity.referenceId, referenceRequestId: fidelity.referenceRequestId } : {}),
   };
+
+  // v0.7 Prompt 7: derived once, up front, so its required/permitted target
+  // ids can compete fairly for MAX_RUNTIME_TARGETS capacity exactly like
+  // contract-clause-derived targets already do, and its omissions/
+  // truncations fold into the same aggregate arrays/adequacy computation
+  // below - never a second, parallel bounded-context concept.
+  const fidelityOutput = fidelity !== undefined ? projectReferenceFidelity(fidelity, { required: input.fidelityRequired ?? true }) : undefined;
 
   const clauseResultByClauseId = new Map((evaluationArtifact?.clauseResults ?? []).map((r) => [r.clauseId, r] as const));
 
@@ -319,6 +352,12 @@ export function projectBoundedAgentContext(input: ProjectBoundedAgentContextInpu
       addEvidence(t, unexpected.supportingEvidence, 'required');
     }
   }
+  // v0.7 Prompt 7: fidelity-derived required/permitted runtime target ids compete for
+  // MAX_RUNTIME_TARGETS capacity exactly like contract-clause-derived ones above - no fidelity
+  // mismatch's bound runtime target is ever silently excluded from the target-selection pipeline.
+  for (const t of fidelityOutput?.requiredTargetIds ?? []) requiredTargetIds.add(t);
+  for (const t of fidelityOutput?.permittedTargetIds ?? []) permittedTargetIds.add(t);
+
   for (const permitted of permittedTargetIds) {
     if (requiredTargetIds.has(permitted)) permittedTargetIds.delete(permitted);
   }
@@ -362,8 +401,8 @@ export function projectBoundedAgentContext(input: ProjectBoundedAgentContextInpu
   const allowedContext = orderedContext.slice(0, remainingSlots);
   const droppedContext = orderedContext.slice(remainingSlots);
 
-  const omissions: OmissionRecord[] = [];
-  const truncations: TruncationRecord[] = [];
+  const omissions: OmissionRecord[] = [...(fidelityOutput?.omissions ?? [])];
+  const truncations: TruncationRecord[] = [...(fidelityOutput?.truncations ?? [])];
 
   for (const targetId of droppedRequired) {
     omissions.push({ subject: `target:${targetId}`, reason: 'required-evidence-lost-by-bound', required: true });
@@ -512,7 +551,7 @@ export function projectBoundedAgentContext(input: ProjectBoundedAgentContextInpu
   // caller/path noise cannot influence logical identity, and fresh instance
   // identity remains a separate concept from the deterministic logical one. --
   const allCandidateTargetIds = [...new Set([...orderedRequired, ...orderedPermitted, ...orderedContext])].sort();
-  const contextRequestId = buildBoundedAgentContextRequestIdentity(sources, allCandidateTargetIds, input.projectionProfile);
+  const contextRequestId = buildBoundedAgentContextRequestIdentity(sources, allCandidateTargetIds, input.projectionProfile, fidelityOutput?.projection);
   const contextId = buildBoundedAgentContextInstanceIdentity(contextRequestId);
 
   const artifact: BoundedAgentContextArtifact = {
@@ -528,6 +567,7 @@ export function projectBoundedAgentContext(input: ProjectBoundedAgentContextInpu
     adequacy,
     omissions: boundedOmissions,
     truncations: boundedTruncations,
+    ...(fidelityOutput !== undefined ? { fidelity: fidelityOutput.projection } : {}),
   };
 
   return { ok: true, artifact };

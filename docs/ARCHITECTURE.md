@@ -564,6 +564,26 @@ persisted artifact family, no browser execution, and no source-ownership
 attribution - this is reference fidelity only, a separate concern from any
 later v0.5 baseline/per-change contract result or v0.7 overall verdict.
 
-Bounded visual-fidelity mismatch projection and v0.6 bounded-agent-context
-integration remain unimplemented; they are the next v0.7 prompt building on
-this foundation.
+v0.7 Prompt 7 adds bounded reference-fidelity projection into the existing
+v0.6 bounded-agent-context architecture (`domain/referenceFidelityProjection.ts`,
+plus additive extensions to `domain/boundedAgentContext.ts`,
+`domain/boundedAgentContextIdentity.ts`, and
+`domain/boundedAgentContextProjection.ts`) - see `docs/CONTRACTS.md` "v0.7
+Prompt 7 bounded reference-fidelity projection and v0.6 bounded-agent-
+context integration" for the exact shape. `projectBoundedAgentContext`
+itself, not a new parallel context system, gains one new optional input (an
+already-computed Prompt 6 fidelity evaluation): fidelity-relevant runtime
+targets fold into the exact same required/permitted-target-allocation,
+evidence-tiering, omission/truncation, and adequacy machinery v0.5 contract
+clauses already compete in, and a new `fidelity?` field on
+`BoundedAgentContextArtifact` (mirroring `correlations?`'s own additive,
+non-version-bumping precedent from v0.6 Batch 3) carries a bounded,
+priority-ordered selection of Prompt 6's non-passing requirement results
+plus passing protected/preserved context. No second bounded-context
+architecture, no recomputation of Prompt 2-6/v0.4/v0.5 logic, and no change
+to v0.6's own runtime/static correlation (`deriveRuntimeStaticCorrelations`/
+`attachRuntimeStaticCorrelations` are untouched and reused exactly as
+before) - a caller joins fidelity, target, and correlation evidence by the
+one stable v0.2 runtime target id all three already share. Every new field
+is optional and additive; a pre-Prompt-7 caller supplying no fidelity
+evidence receives byte-identical output, including logical identity.

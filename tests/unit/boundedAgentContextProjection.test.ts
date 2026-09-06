@@ -20,6 +20,7 @@ import { buildFrontendContractEvaluationArtifact, type FrontendContractEvaluatio
 import { MAX_RUNTIME_TARGETS, MAX_RELATIONSHIP_EVIDENCE_PER_TARGET, MAX_OMISSIONS, MAX_TRUNCATIONS, isValidBoundedAgentContextArtifact } from '../../src/domain/boundedAgentContext.js';
 import { projectBoundedAgentContext, type ProjectBoundedAgentContextInput } from '../../src/domain/boundedAgentContextProjection.js';
 import type { Diagnostic } from '../../src/domain/diagnostics.js';
+import type { ReferenceCandidateFidelityEvaluation, ReferenceRequirementFidelityResult } from '../../src/domain/externalReferenceFidelity.js';
 
 // --- fixture builders (duplicated per existing tests/unit/frontendContractEvaluation.test.ts convention) --
 
@@ -725,5 +726,167 @@ describe('projectBoundedAgentContext: rescue regression (IMP-SHARED-001..004, IM
       expect(threw).toBe(false);
       expect(result?.ok).toBe(false);
     }
+  });
+});
+
+// --- v0.7 Prompt 7: bounded reference-fidelity integration ------------------
+
+function fidelityRequirement(overrides: Partial<ReferenceRequirementFidelityResult> & { requirementId: string }): ReferenceRequirementFidelityResult {
+  return {
+    category: 'requested',
+    subject: { kind: 'region-property', region: 'card', property: 'width' },
+    boundRuntimeTargets: ['navigation'],
+    status: 'fail',
+    referenceValue: 100,
+    candidateValue: 120,
+    delta: 20,
+    tolerance: { kind: 'absolute-reference-px', amount: 4 },
+    ...overrides,
+  };
+}
+
+function fidelityEvaluation(overrides: Partial<ReferenceCandidateFidelityEvaluation> = {}): ReferenceCandidateFidelityEvaluation {
+  return {
+    referenceId: 'ref-1',
+    referenceRequestId: 'ref-req-1',
+    candidateObservationId: 'obs-1',
+    candidateRequestId: 'req-1',
+    adequacy: { status: 'adequate', totalRequirements: 1, evaluableRequirements: 1, unavailableRequirements: 0, reasons: [] },
+    compatibility: { state: 'comparable', reasons: [] },
+    state: 'fail',
+    requirementResults: [fidelityRequirement({ requirementId: 'r1', category: 'protected' })],
+    ...overrides,
+  };
+}
+
+describe('projectBoundedAgentContext: v0.7 Prompt 7 fidelity integration', () => {
+  // K: no fidelity input at all - existing v0.6 behavior unchanged.
+  it('K: is byte-identical (aside from the fresh contextId) to the pre-Prompt-7 output when fidelity is absent', () => {
+    const input = baseInput({ focusTargetIds: ['navigation'] });
+    const result = projectBoundedAgentContext(input);
+    if (!result.ok) throw new Error('expected ok');
+    expect('fidelity' in result.artifact).toBe(false);
+    expect(result.artifact.sources.referenceId).toBeUndefined();
+  });
+
+  // L / M: identity changes only when fidelity content is semantically present/different; path independence holds trivially (no path is ever an input).
+  it('L: adding fidelity content changes contextRequestId; identical fidelity content produces the identical contextRequestId', () => {
+    const withoutFidelity = projectBoundedAgentContext(baseInput());
+    const withFidelityA = projectBoundedAgentContext(baseInput({ fidelity: fidelityEvaluation() }));
+    const withFidelityB = projectBoundedAgentContext(baseInput({ fidelity: fidelityEvaluation() }));
+    if (!withoutFidelity.ok || !withFidelityA.ok || !withFidelityB.ok) throw new Error('expected ok');
+    expect(withFidelityA.artifact.contextRequestId).not.toBe(withoutFidelity.artifact.contextRequestId);
+    expect(withFidelityA.artifact.contextRequestId).toBe(withFidelityB.artifact.contextRequestId);
+  });
+
+  it('changed fidelity content relevant to the projection changes contextRequestId', () => {
+    const a = projectBoundedAgentContext(baseInput({ fidelity: fidelityEvaluation() }));
+    const changed = fidelityEvaluation({ requirementResults: [fidelityRequirement({ requirementId: 'r1', category: 'protected', delta: 999 })] });
+    const b = projectBoundedAgentContext(baseInput({ fidelity: changed }));
+    if (!a.ok || !b.ok) throw new Error('expected ok');
+    expect(a.artifact.contextRequestId).not.toBe(b.artifact.contextRequestId);
+  });
+
+  // G: a fidelity mismatch's bound runtime target is included in `targets` with its own evidence.
+  it('G: a fidelity mismatch\'s bound runtime target is included in targets with full geometry evidence', () => {
+    const input = baseInput({ fidelity: fidelityEvaluation() });
+    const result = projectBoundedAgentContext(input);
+    if (!result.ok) throw new Error('expected ok');
+    const navTarget = result.artifact.targets.find((t) => t.targetId === 'navigation');
+    expect(navTarget?.geometry).toBeDefined();
+    expect(result.artifact.fidelity?.mismatches[0]?.requirementId).toBe('r1');
+    expect(result.artifact.sources.referenceId).toBe('ref-1');
+    expect(result.artifact.sources.referenceRequestId).toBe('ref-req-1');
+  });
+
+  // H: a relationship failure with two bound targets includes both in `targets`.
+  it('H: a relationship failure with two bound runtime targets includes both in targets', () => {
+    const relFail: ReferenceRequirementFidelityResult = {
+      requirementId: 'rel-1',
+      category: 'protected',
+      subject: { kind: 'region-relationship', subjectRegion: 'a', relatedRegion: 'b', relationship: 'left-of' },
+      boundRuntimeTargets: ['navigation', 'workspace'],
+      status: 'fail',
+      expectedRelationship: 'left-of',
+      actualRelationship: 'right-of',
+    };
+    const input = baseInput({ fidelity: fidelityEvaluation({ requirementResults: [relFail] }) });
+    const result = projectBoundedAgentContext(input);
+    if (!result.ok) throw new Error('expected ok');
+    const targetIds = result.artifact.targets.map((t) => t.targetId);
+    expect(targetIds).toContain('navigation');
+    expect(targetIds).toContain('workspace');
+  });
+
+  // F: not-evaluated fidelity - blocker preserved, adequacy honestly degraded (required by default).
+  it('F: a not-evaluated fidelity (required) degrades adequacy away from adequate and preserves the blocker', () => {
+    const notEvaluated: ReferenceCandidateFidelityEvaluation = {
+      referenceId: 'ref-1',
+      referenceRequestId: 'ref-req-1',
+      candidateObservationId: 'obs-1',
+      candidateRequestId: 'req-1',
+      adequacy: { status: 'inadequate', totalRequirements: 0, evaluableRequirements: 0, unavailableRequirements: 0, reasons: [{ code: 'no-selected-requirements' }] },
+      state: 'not-evaluated',
+      blockedBy: 'reference-inadequate',
+      requirementResults: [],
+    };
+    const result = projectBoundedAgentContext(baseInput({ fidelity: notEvaluated }));
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.artifact.fidelity?.state).toBe('not-evaluated');
+    expect(result.artifact.fidelity?.blockedBy).toBe('reference-inadequate');
+    expect(result.artifact.adequacy.state).not.toBe('adequate');
+  });
+
+  it('a not-evaluated fidelity with fidelityRequired: false never degrades adequacy to inadequate (optional loss stays at most partial, matching existing v0.6 convention)', () => {
+    const notEvaluated: ReferenceCandidateFidelityEvaluation = {
+      referenceId: 'ref-1',
+      referenceRequestId: 'ref-req-1',
+      candidateObservationId: 'obs-1',
+      candidateRequestId: 'req-1',
+      adequacy: { status: 'inadequate', totalRequirements: 0, evaluableRequirements: 0, unavailableRequirements: 0, reasons: [{ code: 'no-selected-requirements' }] },
+      state: 'not-evaluated',
+      blockedBy: 'reference-inadequate',
+      requirementResults: [],
+    };
+    const result = projectBoundedAgentContext(baseInput({ fidelity: notEvaluated, fidelityRequired: false }));
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.artifact.adequacy.state).not.toBe('inadequate');
+  });
+
+  it('a passing fidelity result does not degrade adequacy', () => {
+    const passing = fidelityEvaluation({ state: 'pass', requirementResults: [fidelityRequirement({ requirementId: 'r1', category: 'requested', status: 'pass' })] });
+    const result = projectBoundedAgentContext(baseInput({ fidelity: passing }));
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.artifact.adequacy.state).toBe('adequate');
+    expect(result.artifact.fidelity?.mismatches).toEqual([]);
+  });
+
+  it('rejects a fidelity evaluation whose candidateObservationId does not match the supplied observation', () => {
+    const mismatched = fidelityEvaluation({ candidateObservationId: 'some-other-observation' });
+    const result = projectBoundedAgentContext(baseInput({ fidelity: mismatched }));
+    expect(result.ok).toBe(false);
+  });
+
+  // N: input immutability, including the new fidelity input.
+  it('N: never mutates the supplied fidelity evaluation', () => {
+    const fidelity = fidelityEvaluation();
+    const snapshot = JSON.parse(JSON.stringify(fidelity));
+    projectBoundedAgentContext(baseInput({ fidelity }));
+    expect(fidelity).toEqual(snapshot);
+  });
+
+  // O: deterministic output.
+  it('O: produces the same fidelity projection content across repeated calls on equivalent input', () => {
+    const input = baseInput({ fidelity: fidelityEvaluation() });
+    const a = projectBoundedAgentContext(input);
+    const b = projectBoundedAgentContext(input);
+    if (!a.ok || !b.ok) throw new Error('expected ok');
+    expect(a.artifact.fidelity).toEqual(b.artifact.fidelity);
+  });
+
+  it('the resulting artifact remains structurally valid per isValidBoundedAgentContextArtifact', () => {
+    const result = projectBoundedAgentContext(baseInput({ fidelity: fidelityEvaluation() }));
+    if (!result.ok) throw new Error('expected ok');
+    expect(isValidBoundedAgentContextArtifact(result.artifact)).toEqual({ valid: true });
   });
 });

@@ -44,6 +44,40 @@ describe('buildBoundedAgentContextRequestIdentity', () => {
     const b = buildBoundedAgentContextRequestIdentity(sources, ['t-1'], 'frontend-change-review');
     expect(a).toBe(b);
   });
+
+  // v0.7 Prompt 7: fidelity is a new optional trailing parameter, omitted (never null) when absent.
+  it('omitting fidelity produces the exact same identity as before this parameter existed', () => {
+    const withoutFidelityParam = buildBoundedAgentContextRequestIdentity(sources, ['t-1'], 'frontend-change-review');
+    const explicitlyUndefined = buildBoundedAgentContextRequestIdentity(sources, ['t-1'], 'frontend-change-review', undefined);
+    expect(withoutFidelityParam).toBe(explicitlyUndefined);
+  });
+
+  it('same fidelity content produces the same request identity regardless of call site', () => {
+    const a = buildBoundedAgentContextRequestIdentity(sources, ['t-1'], 'frontend-change-review', { state: 'fail', mismatches: ['r1'] });
+    const b = buildBoundedAgentContextRequestIdentity(sources, ['t-1'], 'frontend-change-review', { state: 'fail', mismatches: ['r1'] });
+    expect(a).toBe(b);
+  });
+
+  it('adding or changing fidelity content changes the request identity', () => {
+    const withoutFidelity = buildBoundedAgentContextRequestIdentity(sources, ['t-1'], 'frontend-change-review');
+    const withFidelity = buildBoundedAgentContextRequestIdentity(sources, ['t-1'], 'frontend-change-review', { state: 'fail' });
+    expect(withFidelity).not.toBe(withoutFidelity);
+
+    const changedFidelity = buildBoundedAgentContextRequestIdentity(sources, ['t-1'], 'frontend-change-review', { state: 'pass' });
+    expect(changedFidelity).not.toBe(withFidelity);
+  });
+
+  it('referenceId/referenceRequestId on sources are likewise omitted (never null) when absent, preserving byte-identical pre-Prompt-7 hashes', () => {
+    const withoutReferenceFields = buildBoundedAgentContextRequestIdentity({ observationIds: ['obs-1'] }, ['t-1'], 'frontend-change-review');
+    const explicitlyUndefined = buildBoundedAgentContextRequestIdentity({ observationIds: ['obs-1'], referenceId: undefined, referenceRequestId: undefined }, ['t-1'], 'frontend-change-review');
+    expect(withoutReferenceFields).toBe(explicitlyUndefined);
+  });
+
+  it('a different referenceId on sources changes the request identity', () => {
+    const a = buildBoundedAgentContextRequestIdentity({ observationIds: ['obs-1'], referenceId: 'ref-1', referenceRequestId: 'ref-req-1' }, ['t-1'], 'frontend-change-review');
+    const b = buildBoundedAgentContextRequestIdentity({ observationIds: ['obs-1'], referenceId: 'ref-2', referenceRequestId: 'ref-req-1' }, ['t-1'], 'frontend-change-review');
+    expect(a).not.toBe(b);
+  });
 });
 
 describe('buildBoundedAgentContextInstanceIdentity', () => {

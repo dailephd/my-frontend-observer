@@ -1437,3 +1437,203 @@ content - and has no effect on `not-evaluated`, which always exits 0 (a
 compatibility/adequacy blocker is a successful, structured, honest
 non-evaluation, never an execution error and never a design mismatch).
 Persists nothing; there is no `--output` flag.
+
+## v0.7 Prompt 7 bounded reference-fidelity projection and v0.6 bounded-agent-context integration
+
+Implemented, unreleased. Additive extension of the v0.6 bounded-agent-context
+contract above and of the v0.7 Prompt 6 fidelity evaluator - no new bounded-
+context artifact family, no second visual-context system, no schema version
+bump (`BOUNDED_AGENT_CONTEXT_SCHEMA_VERSION` stays `1.0.0`, following the
+exact precedent already set when `correlations?` was added in v0.6 Batch 3).
+
+**Chosen integration owner.** `projectBoundedAgentContext` itself gains one
+new optional input (`fidelity?: ReferenceCandidateFidelityEvaluation`, plus
+`fidelityRequired?: boolean`) rather than a separate `VisualAgentContext`/
+`VisualPromptPacket`/`ReferencePromptBuilder`. This was chosen over a pure
+post-hoc "attach" step (the shape `attachRuntimeStaticCorrelations` uses)
+because fidelity-relevant runtime targets must compete fairly for
+`MAX_RUNTIME_TARGETS` capacity and receive the exact same geometry/
+visibility/screenshot assembly contract-clause-derived targets already get -
+an attach-only step run after target allocation could never produce that. A
+new pure module, `domain/referenceFidelityProjection.ts`
+(`projectReferenceFidelity`), derives the bounded, prioritized fidelity
+content plus the target-id/omission/truncation contributions
+`projectBoundedAgentContext` folds into its own existing pipeline - it is
+not a second fidelity-evaluation engine, only a selection over Prompt 6's
+already-computed result.
+
+```ts
+// domain/boundedAgentContext.ts - additive
+interface BoundedAgentContextSourceReferences {
+  // ...unchanged fields...
+  referenceId?: string;       // new, optional
+  referenceRequestId?: string; // new, optional
+}
+
+const MAX_FIDELITY_MISMATCHES = 15;
+const MAX_FIDELITY_PROTECTED_CONTEXT = 10; // reuses MAX_RELATIONSHIP_EVIDENCE_PER_TARGET's value
+
+interface BoundedReferenceFidelityProjection {
+  referenceId: string;
+  referenceRequestId: string;
+  candidateObservationId: string;
+  candidateRequestId: string;
+  adequacy: ReferenceRequirementAdequacy;   // reused verbatim from Prompt 3
+  compatibility?: ComparabilityResult;      // reused verbatim from Prompt 4
+  state: ReferenceFidelityState;            // reused verbatim from Prompt 6
+  blockedBy?: ReferenceFidelityBlockReason; // reused verbatim from Prompt 6
+  mismatches: ReferenceRequirementFidelityResult[];      // bounded, prioritized non-pass requirements (Prompt 6 type, unmodified)
+  protectedContext: ReferenceRequirementFidelityResult[]; // bounded passing protected/preserved requirements, as "do not break this" context
+}
+
+interface BoundedAgentContextArtifact {
+  // ...unchanged fields...
+  fidelity?: BoundedReferenceFidelityProjection; // new, optional - mirrors `correlations?`'s own additive precedent exactly
+}
+```
+
+**Selection policy** (`domain/referenceFidelityProjection.ts#projectReferenceFidelity`):
+only Prompt 6's non-`pass` requirement results are ever candidates for
+`mismatches` - passing requirements are never dumped by default, satisfying
+this prompt's "bounded coding-agent use" design goal. Each candidate is
+classified into a tier by its authored category/mode, reusing
+`boundedAgentContextProjection.ts#clauseTier`'s exact rule (duplicated, not
+imported, per this repository's established per-module small-helper
+convention - never a reference-specific protected/preserved taxonomy):
+`protected`/`preserved` are always `required`; `expected-dependent` is
+`required` only in `'required'` mode; `requested` and `expected-dependent`/
+`'permitted'` are `optional`.
+
+**Priority policy**: 1) `fail` + `required` tier, 2) `unavailable` +
+`required` tier, 3) any other non-`pass` (optional-tier) result. Within one
+priority class, Prompt 6's own authored requirement order is preserved (a
+stable sort by priority rank only) - never re-ranked by an opaque score.
+The final `mismatches` array is reported in priority order (highest first),
+not restored to authored order, since the whole point of prioritization is
+that the most actionable evidence appears first when the set is large.
+
+**Cap values**: `MAX_FIDELITY_MISMATCHES = 15` and
+`MAX_FIDELITY_PROTECTED_CONTEXT = 10` (reusing
+`MAX_RELATIONSHIP_EVIDENCE_PER_TARGET`'s value) - both judgment-call bounds
+in the same spirit as v0.6 Batch 1's own frozen caps (no measured fixture
+corpus exists yet for either concept).
+
+**Omission/truncation behavior**: reuses `OmissionRecord`/`TruncationRecord`
+wholesale, no second reporting model. When mismatches exceed the cap, a
+`{subject: 'fidelity-mismatches', limit, actualCount, required}` truncation
+is recorded, plus one `{subject: 'fidelity-mismatch:<requirementId>',
+reason: 'required-evidence-lost-by-bound', required: true}` omission for
+*each* dropped required-tier mismatch (optional-tier drops are truncated
+but never separately omitted as "required loss", since they were never
+required). `protectedContext` truncation is always `required: false` - it
+is confirmatory/passing context, never a design-fidelity failure. These
+records are folded into `projectBoundedAgentContext`'s own `omissions`/
+`truncations` arrays *before* its existing aggregate `capOmissions`/
+`capTruncations` calls and its existing adequacy computation run - fidelity
+loss is never a separate adequacy code path, it simply participates in the
+exact same `anyRequiredLoss`/`anyOptionalLoss` rule every other evidence
+source already uses.
+
+**Adequacy behavior**: a `not-evaluated` fidelity (blocked by Prompt 6's own
+`reference-inadequate`/`incompatible` gates) is never converted into "no
+problems" - `projectReferenceFidelity` records an explicit
+`{subject: 'fidelity', reason: 'unsupported-or-unavailable', required,
+detail}` omission, where `required` defaults to `true` (supplying a
+fidelity evaluation to be projected at all is itself the signal that the
+task depends on it, mirroring `CorrelationTargetInput.required`'s existing
+v0.6 convention - callers who want fidelity as purely incidental context set
+`fidelityRequired: false`). A `required: true` fidelity omission, folded
+into the existing adequacy computation, prevents `adequacy.state` from
+remaining `'adequate'` (it becomes `'partial'`, or `'inadequate'` when
+combined with other required loss reaching the existing threshold) - it is
+never silently ignored. A `required: false` omission can degrade adequacy
+to at most `'partial'`, per v0.6's own pre-existing "optional-only loss
+never means inadequate" rule - unchanged, not redefined. A `pass` fidelity
+result contributes no omissions/truncations at all and never degrades
+adequacy.
+
+**Not-evaluated fidelity behavior**: preserved exactly as Prompt 6 reported
+it - `fidelity.state`/`fidelity.blockedBy` on the output artifact are a
+direct pass-through of Prompt 6's own values, with `mismatches`/
+`protectedContext` both empty (there is nothing to select from an empty
+`requirementResults`).
+
+**Per-target organization**: every fidelity mismatch's `boundRuntimeTargets`
+(Prompt 5/6's own field, never truncated) becomes a required- or permitted-
+tier addition to `projectBoundedAgentContext`'s existing target-id sets,
+so those runtime targets receive full `BoundedRuntimeTargetProjection`
+treatment (geometry/visibility/overflow/scrollOwner/screenshotRef) through
+the exact existing assembly code - no duplicated target-projection logic.
+Reference regions are never used as a correlation or target-selection key;
+only the already-bound stable v0.2 runtime target ids are.
+
+**Multi-target relationship representation**: a `region-relationship`
+mismatch's `boundRuntimeTargets` array (already carrying both bound
+targets, from Prompt 6) is used as-is - both targets are added to the
+required/permitted set, so both appear in `targets`. Nothing collapses a
+two-target relationship failure onto a single target.
+
+**Static-correlation reuse**: entirely unchanged. `deriveRuntimeStaticCorrelations`/
+`attachRuntimeStaticCorrelations` are not modified, not called from within
+this prompt's new code, and remain the caller's own separate step -
+`BoundedRuntimeTargetProjection.targetId`/`RuntimeStaticCorrelationRecord.runtimeTargetId`
+already share the same stable v0.2 identity a fidelity mismatch's
+`boundRuntimeTargets` also uses, so a caller (Prompt 8) joins fidelity,
+target, and correlation evidence by that one shared id without this module
+ever needing to read source, run my-dev-kit, or choose among ambiguous
+candidates itself.
+
+**Ambiguous/unavailable correlation behavior**: unaffected - a
+`RuntimeStaticCorrelationRecord` with `status: 'ambiguous'` continues to
+preserve every competing candidate (v0.6's own frozen invariant,
+untouched), and `status: 'unavailable'` never causes a fidelity mismatch
+for that same runtime target to be dropped - the two evidence kinds
+(runtime fidelity, static correlation) are attached independently and
+neither erases the other.
+
+**Provenance**: every included mismatch remains traceable to the reference
+(`sources.referenceId`/`referenceRequestId`, new), the requirement
+(`requirementId`, `category`, `subject` - naming its reference region(s)),
+the Prompt 5 binding (`boundRuntimeTargets`), the candidate
+(`sources.observationIds`), and the full Prompt 6 evidence
+(`referenceValue`/`candidateRawValue`/`candidateValue`/`delta`/`tolerance`
+or `expectedRelationship`/`actualRelationship`) - nothing is replaced by a
+prose-only summary. No raw image bytes are ever embedded (fidelity carries
+only identifiers and numeric/categorical evidence, never pixels), and no
+source-ownership field (`sourceOwner`/`sourceFile`/`component`/`symbol`/
+`causedBy`) is ever produced - Prompt 7 stops at the runtime target exactly
+as Prompt 6 did; v0.6's own, unmodified static correlation is the only
+source-adjacent evidence this context ever carries, and it remains
+evidence, never edit authorization.
+
+**Identity impact**: `buildBoundedAgentContextRequestIdentity` gained a
+final optional `fidelity?: unknown` parameter - omitted (never `null`) from
+the hashed semantic view when absent, so every pre-Prompt-7 call site keeps
+producing its exact byte-identical hash (verified by a frozen-vector-style
+regression test). When present, the caller's already-derived, bounded
+`BoundedReferenceFidelityProjection` (not the raw Prompt 6 evaluation) is
+hashed, so identity changes exactly when the content a caller would
+actually receive changes - never merely because an unselected, dropped
+requirement result changed somewhere upstream. `sources.referenceId`/
+`referenceRequestId` follow the identical omit-when-absent convention.
+Operational paths were never an identity input for this artifact family to
+begin with (no path parameter exists anywhere in this contract), so path
+independence holds trivially.
+
+**Schema-version decision**: no bump. Every new field
+(`BoundedAgentContextSourceReferences.referenceId`/`referenceRequestId`,
+`BoundedAgentContextArtifact.fidelity`) is additive and optional; a
+pre-Prompt-7 artifact/consumer remains fully valid and behaviorally
+unchanged with all of them absent, matching the exact precedent
+`correlations?` already established without a version bump in v0.6 Batch 3.
+
+**Persistence decision: none.** `projectBoundedAgentContext` and
+`projectReferenceFidelity` both remain pure, programmatic, in-memory
+functions - no new writer/reader, no new artifact family. This mirrors
+Prompt 6's own "no persisted fidelity artifact" decision and v0.6's
+existing "bounded agent context is library-only" architecture.
+
+**CLI decision**: none added. v0.6 bounded agent context has never had a
+CLI surface, and this prompt does not introduce one - Prompt 8 is expected
+to become the first concrete consumer of `projectBoundedAgentContext`'s
+(now fidelity-aware) programmatic output.

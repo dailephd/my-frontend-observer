@@ -292,6 +292,7 @@ export type {
   RuntimeStaticCorrelationRecord,
   BoundedAgentContextArtifact,
   BoundedAgentContextValidationResult,
+  BoundedReferenceFidelityProjection,
 } from './domain/boundedAgentContext.js';
 export {
   BOUNDED_AGENT_CONTEXT_ARTIFACT_KIND,
@@ -305,18 +306,24 @@ export {
   MAX_STATIC_CANDIDATES_PER_TARGET,
   MAX_TEXT_SUMMARY_CHARS,
   MAX_EVIDENCE_REFS_PER_CORRELATION_FIELD,
+  MAX_FIDELITY_MISMATCHES,
+  MAX_FIDELITY_PROTECTED_CONTEXT,
   ADEQUACY_STATES,
   ADEQUACY_REASON_CODES,
   OMISSION_REASONS,
   CORRELATION_STATUSES,
   STATIC_CANDIDATE_KINDS,
   isValidBoundedAgentContextArtifact,
+  isValidBoundedReferenceFidelityProjection,
 } from './domain/boundedAgentContext.js';
 
 export { buildBoundedAgentContextRequestIdentity, buildBoundedAgentContextInstanceIdentity } from './domain/boundedAgentContextIdentity.js';
 
 export type { ProjectBoundedAgentContextInput, ProjectBoundedAgentContextResult } from './domain/boundedAgentContextProjection.js';
 export { projectBoundedAgentContext } from './domain/boundedAgentContextProjection.js';
+
+export type { ProjectReferenceFidelityOptions, ProjectReferenceFidelityOutput } from './domain/referenceFidelityProjection.js';
+export { projectReferenceFidelity } from './domain/referenceFidelityProjection.js';
 
 export type {
   StaticCandidateEvidenceInput,
@@ -453,6 +460,7 @@ export {
   REFERENCE_REQUIREMENT_ADEQUACY_STATES,
   REFERENCE_REQUIREMENT_ADEQUACY_REASON_CODES,
   deriveReferenceRequirementAdequacy,
+  isValidReferenceRequirementAdequacy,
 } from './domain/externalReferenceRequirements.js';
 
 export type { AuthenticatedState, ExplicitStateDimensions, ExplicitStateValidationResult } from './domain/explicitState.js';
@@ -509,6 +517,7 @@ export {
   REFERENCE_FIDELITY_STATES,
   REFERENCE_FIDELITY_BLOCK_REASONS,
   evaluateReferenceCandidateFidelity,
+  isValidReferenceRequirementFidelityResult,
 } from './domain/externalReferenceFidelity.js';
 
 export type { EvaluateReferenceFidelityOptions, ApplicationReferenceFidelityResult } from './application/referenceFidelityEvaluationService.js';
