@@ -1054,6 +1054,268 @@ async function main() {
     summary.boundedAgentContextSourceCheckoutIndependent = true;
     summary.v06PackedSmokeOk = true;
 
+    // --- v0.7: installed CLI reference-authoring/fidelity commands + programmatic
+    // reference-correction-workflow surface, exercised through real installed-candidate
+    // behavior against the same contract-fixture geometry already captured above
+    // (cpSuccessObsRoot/cpRegressionObsRoot/cpBaselineObsRoot, both contract artifacts) -
+    // never a second, parallel fixture. ---
+    const importReferenceHelpRes = await runBin(['import-reference', '--help']);
+    if (importReferenceHelpRes.code !== 0) fail(`import-reference --help failed:\n${importReferenceHelpRes.stderr}`);
+    for (const flag of ['--output', '--label', '--supersedes', '--regions-file', '--requirements-file', '--applicability-file']) {
+      if (!importReferenceHelpRes.stdout.includes(flag)) fail(`import-reference --help missing expected flag documentation: ${flag}`);
+    }
+
+    const approveReferenceHelpRes = await runBin(['approve-reference', '--help']);
+    if (approveReferenceHelpRes.code !== 0) fail(`approve-reference --help failed:\n${approveReferenceHelpRes.stderr}`);
+    for (const flag of ['--reference', '--output', '--supersedes']) {
+      if (!approveReferenceHelpRes.stdout.includes(flag)) fail(`approve-reference --help missing expected flag documentation: ${flag}`);
+    }
+
+    const evaluateReferenceFidelityHelpRes = await runBin(['evaluate-reference-fidelity', '--help']);
+    if (evaluateReferenceFidelityHelpRes.code !== 0) fail(`evaluate-reference-fidelity --help failed:\n${evaluateReferenceFidelityHelpRes.stderr}`);
+    for (const flag of ['--reference', '--candidate', '--bindings-file', '--enforce']) {
+      if (!evaluateReferenceFidelityHelpRes.stdout.includes(flag)) fail(`evaluate-reference-fidelity --help missing expected flag documentation: ${flag}`);
+    }
+    summary.v07HelpCommandsExposed = true;
+
+    // Minimal, hand-built PNG header (89 50 4e 47 ... IHDR width/height) - same
+    // header-only-bytes convention as tests/unit/externalReferenceImageFixtures.ts's
+    // buildMinimalPng, deliberately not real pixel data (the observer's format/
+    // dimension detection reads only bounded header bytes, never pixel content).
+    // Dimensions match the contract fixture's runtime viewport (1000x700) so the
+    // reference/candidate coordinate scale below is exactly 1 reference-image
+    // pixel = 1 CSS pixel - no scale-mapping arithmetic to get wrong here.
+    function buildSmokeReferencePng(width, height) {
+      const bytes = new Uint8Array(41);
+      bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+      bytes[8] = 0; bytes[9] = 0; bytes[10] = 0; bytes[11] = 13;
+      bytes.set(Array.from('IHDR').map((c) => c.charCodeAt(0)), 12);
+      bytes[16] = (width >>> 24) & 0xff; bytes[17] = (width >>> 16) & 0xff; bytes[18] = (width >>> 8) & 0xff; bytes[19] = width & 0xff;
+      bytes[20] = (height >>> 24) & 0xff; bytes[21] = (height >>> 16) & 0xff; bytes[22] = (height >>> 8) & 0xff; bytes[23] = height & 0xff;
+      bytes.set([8, 6, 0, 0, 0], 24);
+      bytes.set([0xde, 0xad, 0xbe, 0xef], 37);
+      return bytes;
+    }
+
+    const referenceImagePath = path.join(consumerDir, 'reference.png');
+    await writeFile(referenceImagePath, buildSmokeReferencePng(1000, 700));
+
+    const referenceRegionsFilePath = path.join(consumerDir, 'reference-regions.json');
+    await writeFile(
+      referenceRegionsFilePath,
+      JSON.stringify({
+        regions: [
+          { id: 'nav-region', rectangle: { x: 0, y: 0, width: 200, height: 80 } },
+          { id: 'workspace-region', rectangle: { x: 210, y: 0, width: 500, height: 80 } },
+          { id: 'rail-region', rectangle: { x: 800, y: 0, width: 150, height: 80 } },
+        ],
+      }),
+      'utf8',
+    );
+
+    const referenceRequirementsFilePath = path.join(consumerDir, 'reference-requirements.json');
+    await writeFile(
+      referenceRequirementsFilePath,
+      JSON.stringify({
+        requirements: [
+          { category: 'protected', subject: { kind: 'region-property', region: 'rail-region', property: 'width' }, tolerance: { kind: 'exact' } },
+          { category: 'requested', subject: { kind: 'region-property', region: 'nav-region', property: 'width' }, tolerance: { kind: 'absolute-reference-px', amount: 10 } },
+          { category: 'preserved', subject: { kind: 'region-relationship', subjectRegion: 'workspace-region', relatedRegion: 'rail-region', relationship: 'left-of' } },
+        ],
+      }),
+      'utf8',
+    );
+
+    const referenceApplicabilityFilePath = path.join(consumerDir, 'reference-applicability.json');
+    await writeFile(referenceApplicabilityFilePath, JSON.stringify({ viewport: { width: 1000, height: 700 } }), 'utf8');
+
+    const referenceBindingsFilePath = path.join(consumerDir, 'reference-bindings.json');
+    await writeFile(
+      referenceBindingsFilePath,
+      JSON.stringify({
+        bindings: [
+          { referenceRegion: 'nav-region', runtimeTarget: 'navigation' },
+          { referenceRegion: 'workspace-region', runtimeTarget: 'workspace' },
+          { referenceRegion: 'rail-region', runtimeTarget: 'rail' },
+        ],
+      }),
+      'utf8',
+    );
+
+    const importReferenceOutputSubdir = `ci-smoke-output-import-reference-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, importReferenceOutputSubdir), { recursive: true });
+    const importReferenceRes = await runBin([
+      'import-reference',
+      referenceImagePath,
+      '--output', importReferenceOutputSubdir,
+      '--regions-file', referenceRegionsFilePath,
+      '--requirements-file', referenceRequirementsFilePath,
+      '--applicability-file', referenceApplicabilityFilePath,
+    ]);
+    console.log('--- import-reference stdout ---');
+    console.log(importReferenceRes.stdout);
+    if (importReferenceRes.code !== 0) fail(`installed import-reference failed (exit ${importReferenceRes.code}):\n${importReferenceRes.stdout}\n${importReferenceRes.stderr}`);
+    if (!importReferenceRes.stdout.includes('State: imported')) fail(`expected "State: imported" from import-reference:\n${importReferenceRes.stdout}`);
+    if (!importReferenceRes.stdout.includes('Regions: 3')) fail(`expected "Regions: 3" from import-reference:\n${importReferenceRes.stdout}`);
+    if (!importReferenceRes.stdout.includes('Requirements: 3')) fail(`expected "Requirements: 3" from import-reference:\n${importReferenceRes.stdout}`);
+    if (!importReferenceRes.stdout.includes('Applicability: declared')) fail(`expected "Applicability: declared" from import-reference:\n${importReferenceRes.stdout}`);
+    if (!importReferenceRes.stdout.includes('Adequacy: adequate')) fail(`expected "Adequacy: adequate" from import-reference:\n${importReferenceRes.stdout}`);
+    const importedReferenceRoot = importReferenceRes.stdout.split('\n').find((l) => l.startsWith('Artifact: ')).slice('Artifact: '.length).trim();
+    summary.packedImportReferenceOk = true;
+
+    const approveReferenceOutputSubdir = `ci-smoke-output-approve-reference-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, approveReferenceOutputSubdir), { recursive: true });
+    const approveReferenceRes = await runBin(['approve-reference', '--reference', importedReferenceRoot, '--output', approveReferenceOutputSubdir]);
+    console.log('--- approve-reference stdout ---');
+    console.log(approveReferenceRes.stdout);
+    if (approveReferenceRes.code !== 0) fail(`installed approve-reference failed (exit ${approveReferenceRes.code}):\n${approveReferenceRes.stdout}\n${approveReferenceRes.stderr}`);
+    if (!approveReferenceRes.stdout.includes('State: approved')) fail(`expected "State: approved" from approve-reference:\n${approveReferenceRes.stdout}`);
+    if (!approveReferenceRes.stdout.includes('Regions: 3') || !approveReferenceRes.stdout.includes('Requirements: 3')) {
+      fail(`approve-reference did not carry forward region/requirement counts:\n${approveReferenceRes.stdout}`);
+    }
+    const approvedReferenceRoot = approveReferenceRes.stdout.split('\n').find((l) => l.startsWith('Artifact: ')).slice('Artifact: '.length).trim();
+    summary.packedApproveReferenceOk = true;
+
+    // Explicit candidate state: an --observe with --state-file, proving persisted
+    // requestConfig.explicitState round-trips through the installed candidate.
+    const stateFilePath = path.join(consumerDir, 'candidate-state.json');
+    await writeFile(stateFilePath, JSON.stringify({ theme: 'light', authenticatedState: 'authenticated' }), 'utf8');
+    contractVariant = 'baseline';
+    const stateObserveOutputSubdir = `ci-smoke-output-state-${randomUUID()}`;
+    await mkdir(path.join(consumerDir, stateObserveOutputSubdir), { recursive: true });
+    const stateObserveRes = await runBin(['observe', '--url', contractTargetUrl, '--viewport', '1000x700', ...contractTargetArgs, '--state-file', stateFilePath, '--output', stateObserveOutputSubdir]);
+    if (stateObserveRes.code !== 0) fail(`explicit-state observe failed (exit ${stateObserveRes.code}):\n${stateObserveRes.stdout}\n${stateObserveRes.stderr}`);
+    const stateObsRoot = stateObserveRes.stdout.split('\n').find((l) => l.startsWith('Artifact: ')).slice('Artifact: '.length).trim();
+    const stateManifest = JSON.parse(await readFile(path.join(stateObsRoot, 'manifest.json'), 'utf8'));
+    if (stateManifest.requestConfig?.explicitState?.theme !== 'light' || stateManifest.requestConfig?.explicitState?.authenticatedState !== 'authenticated') {
+      fail(`explicit state did not round-trip into requestConfig.explicitState: ${JSON.stringify(stateManifest.requestConfig?.explicitState)}`);
+    }
+    summary.packedExplicitStateOk = true;
+
+    // Fidelity PASS: the "success" candidate (nav shrinks within tolerance, rail
+    // unchanged, workspace still left-of rail) against the approved reference.
+    const evalFidelityPassOutputRes = await runBin(['evaluate-reference-fidelity', '--reference', approvedReferenceRoot, '--candidate', cpSuccessObsRoot, '--bindings-file', referenceBindingsFilePath, '--enforce']);
+    console.log('--- evaluate-reference-fidelity (PASS, --enforce) stdout ---');
+    console.log(evalFidelityPassOutputRes.stdout);
+    console.log(`--- evaluate-reference-fidelity (PASS, --enforce) exit code: ${evalFidelityPassOutputRes.code} ---`);
+    if (evalFidelityPassOutputRes.code !== 0) fail(`packed PASS evaluate-reference-fidelity with --enforce expected exit 0, got ${evalFidelityPassOutputRes.code}:\n${evalFidelityPassOutputRes.stdout}\n${evalFidelityPassOutputRes.stderr}`);
+    if (!evalFidelityPassOutputRes.stdout.includes('State: pass')) fail(`expected "State: pass" from packed evaluate-reference-fidelity:\n${evalFidelityPassOutputRes.stdout}`);
+    if (!evalFidelityPassOutputRes.stdout.includes('Requirements: 3 (pass: 3, fail: 0, unavailable: 0)')) {
+      fail(`unexpected packed PASS requirement breakdown:\n${evalFidelityPassOutputRes.stdout}`);
+    }
+    summary.packedReferenceFidelityPassOk = true;
+
+    // Fidelity FAIL: the "protected-regression" candidate (rail shrinks, nav
+    // shrinks past tolerance) against the same approved reference - both without
+    // and with --enforce, mirroring the v0.5 evaluate-contract PASS/FAIL/--enforce
+    // proof pattern above exactly.
+    const evalFidelityFailNoEnforceRes = await runBin(['evaluate-reference-fidelity', '--reference', approvedReferenceRoot, '--candidate', cpRegressionObsRoot, '--bindings-file', referenceBindingsFilePath]);
+    console.log('--- evaluate-reference-fidelity (FAIL, no --enforce) stdout ---');
+    console.log(evalFidelityFailNoEnforceRes.stdout);
+    console.log(`--- evaluate-reference-fidelity (FAIL, no --enforce) exit code: ${evalFidelityFailNoEnforceRes.code} ---`);
+    if (evalFidelityFailNoEnforceRes.code !== 0) fail(`packed FAIL evaluate-reference-fidelity without --enforce expected exit 0, got ${evalFidelityFailNoEnforceRes.code}:\n${evalFidelityFailNoEnforceRes.stdout}\n${evalFidelityFailNoEnforceRes.stderr}`);
+    if (!evalFidelityFailNoEnforceRes.stdout.includes('State: fail')) fail(`expected "State: fail" from packed evaluate-reference-fidelity:\n${evalFidelityFailNoEnforceRes.stdout}`);
+
+    const evalFidelityFailEnforceRes = await runBin(['evaluate-reference-fidelity', '--reference', approvedReferenceRoot, '--candidate', cpRegressionObsRoot, '--bindings-file', referenceBindingsFilePath, '--enforce']);
+    console.log(`--- evaluate-reference-fidelity (FAIL, --enforce) exit code: ${evalFidelityFailEnforceRes.code} ---`);
+    if (evalFidelityFailEnforceRes.code === 0) fail('packed FAIL evaluate-reference-fidelity with --enforce was expected to exit nonzero');
+    if (!evalFidelityFailEnforceRes.stdout.includes('State: fail')) fail(`expected "State: fail" from packed evaluate-reference-fidelity (--enforce):\n${evalFidelityFailEnforceRes.stdout}`);
+    summary.packedReferenceFidelityFailOk = true;
+    summary.packedReferenceFidelityEnforceExitCodes = { pass: evalFidelityPassOutputRes.code, failNoEnforce: evalFidelityFailNoEnforceRes.code, failEnforce: evalFidelityFailEnforceRes.code };
+
+    // --- v0.7 programmatic surface, resolved from the installed candidate's own
+    // node_modules (the same `installedPackageApi` import already used for the
+    // v0.4/v0.5/v0.6 validators/exports above) - never the source checkout. ---
+    for (const exportName of [
+      'evaluateReferenceCandidateFidelityFromArtifactRoots',
+      'prepareReferenceCorrection',
+      'reviewReferenceCorrectionAttempt',
+      'readExternalReferenceArtifact',
+      'importExternalReference',
+      'approveExternalReference',
+    ]) {
+      if (typeof installedPackageApi[exportName] !== 'function') fail(`installed package does not export ${exportName}`);
+    }
+
+    const programmaticFidelityResult = await installedPackageApi.evaluateReferenceCandidateFidelityFromArtifactRoots(
+      approvedReferenceRoot,
+      cpSuccessObsRoot,
+      [
+        { referenceRegion: 'nav-region', runtimeTarget: 'navigation' },
+        { referenceRegion: 'workspace-region', runtimeTarget: 'workspace' },
+        { referenceRegion: 'rail-region', runtimeTarget: 'rail' },
+      ],
+    );
+    if (!programmaticFidelityResult.ok) fail(`installed evaluateReferenceCandidateFidelityFromArtifactRoots failed: ${JSON.stringify(programmaticFidelityResult.diagnostics)}`);
+    if (programmaticFidelityResult.evaluation.state !== 'pass') fail(`expected programmatic fidelity state "pass", got ${programmaticFidelityResult.evaluation.state}`);
+    summary.packedProgrammaticFidelityOk = true;
+
+    const approvedReferenceRead = await installedPackageApi.readExternalReferenceArtifact(path.join(approvedReferenceRoot, 'manifest.json'));
+    if (!approvedReferenceRead.ok) fail(`installed readExternalReferenceArtifact failed: ${approvedReferenceRead.reason}`);
+    const approvedReferenceArtifact = approvedReferenceRead.artifact;
+
+    const bindingDeclarationsForWorkflow = [
+      { referenceRegion: 'nav-region', runtimeTarget: 'navigation' },
+      { referenceRegion: 'workspace-region', runtimeTarget: 'workspace' },
+      { referenceRegion: 'rail-region', runtimeTarget: 'rail' },
+    ];
+    const baselineContractArtifactForWorkflow = JSON.parse(cpBaselineContractArtifactRaw0.toString('utf8'));
+    const changeContractArtifactForWorkflow = JSON.parse(cpChangeContractArtifactRaw0.toString('utf8'));
+    const successObservationForWorkflow = JSON.parse(await readFile(path.join(cpSuccessObsRoot, 'manifest.json'), 'utf8'));
+    const regressionObservationForWorkflow = JSON.parse(await readFile(path.join(cpRegressionObsRoot, 'manifest.json'), 'utf8'));
+
+    const prepareResult = installedPackageApi.prepareReferenceCorrection({
+      reference: approvedReferenceArtifact,
+      baselineObservation: cpBaselineManifest,
+      baselineContract: baselineContractArtifactForWorkflow,
+      changeContract: changeContractArtifactForWorkflow,
+      bindingDeclarations: bindingDeclarationsForWorkflow,
+      currentObservation: successObservationForWorkflow,
+      generatedAt: new Date(0).toISOString(),
+      producerVersion: cpBaselineManifest.producer.version,
+      projectionProfile: 'frontend-change-review',
+    });
+    if (!prepareResult.ok) fail(`installed prepareReferenceCorrection failed: ${prepareResult.reason}`);
+    if (prepareResult.status !== 'handoff-ready') fail(`expected prepareReferenceCorrection status "handoff-ready", got ${prepareResult.status}`);
+    if (!prepareResult.handoff?.boundedContext) fail('prepareReferenceCorrection handoff missing boundedContext (bounded fidelity projection / v0.6 bounded-agent-context integration)');
+    if (prepareResult.handoff.boundedContext.artifactKind !== 'my-frontend-observer/bounded-agent-context') fail('prepareReferenceCorrection handoff boundedContext has unexpected artifactKind');
+    summary.packedPrepareReferenceCorrectionOk = true;
+
+    const reviewPassResult = installedPackageApi.reviewReferenceCorrectionAttempt({
+      reference: approvedReferenceArtifact,
+      baselineObservation: cpBaselineManifest,
+      baselineContract: baselineContractArtifactForWorkflow,
+      changeContract: changeContractArtifactForWorkflow,
+      bindingDeclarations: bindingDeclarationsForWorkflow,
+      reviewRequestId: prepareResult.reviewRequestId,
+      candidateObservation: successObservationForWorkflow,
+    });
+    if (!reviewPassResult.ok) fail(`installed reviewReferenceCorrectionAttempt (success candidate) failed: ${reviewPassResult.reason}`);
+    if (reviewPassResult.attempt.overallState !== 'pass') fail(`expected reviewReferenceCorrectionAttempt overallState "pass" for the success candidate, got ${reviewPassResult.attempt.overallState}`);
+    if (!reviewPassResult.attempt.approvalEligible) fail('expected approvalEligible=true for a "pass" review attempt');
+
+    const reviewFailResult = installedPackageApi.reviewReferenceCorrectionAttempt({
+      reference: approvedReferenceArtifact,
+      baselineObservation: cpBaselineManifest,
+      baselineContract: baselineContractArtifactForWorkflow,
+      changeContract: changeContractArtifactForWorkflow,
+      bindingDeclarations: bindingDeclarationsForWorkflow,
+      reviewRequestId: prepareResult.reviewRequestId,
+      candidateObservation: regressionObservationForWorkflow,
+    });
+    if (!reviewFailResult.ok) fail(`installed reviewReferenceCorrectionAttempt (regression candidate) failed: ${reviewFailResult.reason}`);
+    if (reviewFailResult.attempt.overallState !== 'fail') fail(`expected reviewReferenceCorrectionAttempt overallState "fail" for the regression candidate, got ${reviewFailResult.attempt.overallState}`);
+    if (reviewFailResult.attempt.approvalEligible) fail('expected approvalEligible=false for a "fail" review attempt');
+    summary.packedReviewReferenceCorrectionAttemptOk = true;
+
+    // Observer source immutability: neither the CLI reference/fidelity commands
+    // nor the programmatic correction-workflow calls above may have touched any
+    // source observation/contract artifact already hashed earlier.
+    if (!(await readFile(path.join(cpBaselineObsRoot, 'manifest.json'))).equals(cpBaselineManifestRaw0)) fail('baseline observation manifest changed by v0.7 reference workflow');
+    if (!(await readFile(path.join(cpSuccessObsRoot, 'manifest.json'))).toString('utf8').length) fail('unexpected empty success observation manifest after v0.7 reference workflow');
+
+    summary.v07PackedSmokeOk = true;
+
     // Target/output isolation: this run must not have written anything new
     // into the repository root - compared against the entries already
     // present before this smoke started (never a fixed-name assertion,

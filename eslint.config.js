@@ -5,7 +5,7 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    ignores: ['dist/**', 'node_modules/**', '.my-dev-kit/**', '.my-dev-kit-orchestrator/**', 'observations/**'],
+    ignores: ['dist/**', 'node_modules/**', '.my-dev-kit/**', '.my-dev-kit-orchestrator/**', '.my-dev-kit-workflow/**', '.my-dev-kit-context/**', 'observations/**'],
   },
   {
     files: ['**/*.mjs'],
