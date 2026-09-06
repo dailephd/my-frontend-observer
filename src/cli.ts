@@ -10,6 +10,7 @@ import { observe } from './application/observationPersistence.js';
 import { compareAndPersistFromArtifactRoots } from './application/comparisonService.js';
 import { approveAndPersistBaseline, persistPerChangeContract } from './application/frontendContractPersistenceService.js';
 import { evaluateAndPersistFromArtifactRoots } from './application/frontendContractEvaluationService.js';
+import { importExternalReference, approveExternalReference } from './application/externalReferencePersistenceService.js';
 
 export interface CliIO {
   stdout: (text: string) => void;
@@ -44,6 +45,12 @@ Commands:
                         baseline, a per-change contract, and existing
                         before/after/comparison evidence, and persist the
                         result.
+  import-reference      Validate and persist one local external design-
+                        reference image as a new, unapproved
+                        external-reference artifact.
+  approve-reference     Explicitly approve one already-imported
+                        external-reference artifact, persisting a new
+                        approved artifact instance.
 
 Options:
   --help     Show this help.
@@ -238,6 +245,65 @@ result and exits nonzero. On invalid syntax, an unreadable/malformed/
 incoherent source artifact, or a persistence failure (evaluation could not
 even be constructed), prints structured diagnostics to stderr, persists
 nothing, and exits nonzero.
+`;
+
+const IMPORT_REFERENCE_HELP = `Usage:
+  my-frontend-observer import-reference <image-file> --output <directory> [options]
+
+Required:
+  <image-file>           Local path to a PNG, JPEG, or WebP external design-
+                          reference image.
+  --output <directory>   Portable, relative output location for the
+                          external-reference artifact.
+
+Options:
+  --label <text>         Optional human-readable label, stored as pure
+                          provenance - never part of the reference's logical
+                          identity.
+  --supersedes <path>    Root directory of a prior external-reference
+                          artifact (imported or approved) that this import
+                          explicitly supersedes. The prior artifact is never
+                          modified.
+  --help                 Show this help.
+
+Detects the image format from its header bytes only (never from the file
+extension), reads its pixel dimensions from the same bounded header bytes
+(never decoding pixel data), and persists a new external-reference artifact
+in the "imported" lifecycle state - importing never approves it. On success,
+prints a concise result and exits 0. On an unreadable file, an unsupported or
+undetectable format, invalid/out-of-bound dimensions, an over-limit file
+size, or an unresolvable --supersedes target, prints structured diagnostics
+to stderr and exits nonzero.
+`;
+
+const APPROVE_REFERENCE_HELP = `Usage:
+  my-frontend-observer approve-reference --reference <external-reference-artifact-root> --output <directory> [options]
+
+Required:
+  --reference <path>     Root directory of the already-imported
+                          external-reference artifact (the directory
+                          containing its manifest.json) to approve.
+  --output <directory>   Portable, relative output location for the newly
+                          persisted approved artifact.
+
+Options:
+  --supersedes <path>    Root directory of a prior external-reference
+                          artifact (imported or approved) that this approval
+                          explicitly supersedes. The prior artifact is never
+                          modified.
+  --help                 Show this help.
+
+This is the only explicit reference-approval act in the observer - approval
+is never inferred from a successful import or from any later fidelity
+evaluation. Approving persists a brand-new artifact instance (a fresh
+referenceId sharing the imported artifact's referenceRequestId) that carries
+a reference back to the imported artifact's image rather than a second copy
+of its bytes; the imported artifact's own manifest is never modified. Only a
+reference currently in the "imported" lifecycle state can be approved. On
+success, prints a concise result and exits 0. On an unreadable/malformed
+--reference target, a target that is not in the "imported" state, an
+unresolvable --supersedes target, or a persistence failure, prints structured
+diagnostics to stderr and exits nonzero.
 `;
 
 function parseViewport(raw: string): { width: number; height: number } | undefined {
@@ -804,6 +870,127 @@ function parseEvaluateContractArgs(argv: readonly string[]): ParsedEvaluateContr
   };
 }
 
+type ParsedImportReferenceArgs =
+  | { ok: true; imageFilePath: string; outputLocation: string; label?: string; supersedesReferenceRoot?: string }
+  | { ok: false; errors: string[] };
+
+/** CLI-syntax-only parsing, mirroring `parseApproveBaselineArgs`. The image file path is the one positional argument. */
+function parseImportReferenceArgs(argv: readonly string[]): ParsedImportReferenceArgs {
+  const errors: string[] = [];
+  let imageFilePath: string | undefined;
+  let outputLocation: string | undefined;
+  let outputFlagCount = 0;
+  let label: string | undefined;
+  let labelFlagCount = 0;
+  let supersedesReferenceRoot: string | undefined;
+  let supersedesFlagCount = 0;
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    switch (arg) {
+      case '--output': {
+        const value = argv[(i += 1)];
+        outputFlagCount += 1;
+        if (value === undefined) errors.push('--output requires a directory argument');
+        else if (outputFlagCount > 1) errors.push('--output may only be specified once');
+        else outputLocation = value;
+        break;
+      }
+      case '--label': {
+        const value = argv[(i += 1)];
+        labelFlagCount += 1;
+        if (value === undefined) errors.push('--label requires a text argument');
+        else if (labelFlagCount > 1) errors.push('--label may only be specified once');
+        else label = value;
+        break;
+      }
+      case '--supersedes': {
+        const value = argv[(i += 1)];
+        supersedesFlagCount += 1;
+        if (value === undefined) errors.push('--supersedes requires a path argument');
+        else if (supersedesFlagCount > 1) errors.push('--supersedes may only be specified once');
+        else supersedesReferenceRoot = value;
+        break;
+      }
+      default:
+        if (arg === undefined) break;
+        if (arg.startsWith('--')) errors.push(`unrecognized argument: ${arg}`);
+        else if (imageFilePath !== undefined) errors.push('only one image-file argument may be given');
+        else imageFilePath = arg;
+    }
+  }
+
+  if (imageFilePath === undefined) errors.push('an image-file argument is required');
+  if (outputLocation === undefined) errors.push('--output is required');
+
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    imageFilePath: imageFilePath as string,
+    outputLocation: outputLocation as string,
+    ...(label === undefined ? {} : { label }),
+    ...(supersedesReferenceRoot === undefined ? {} : { supersedesReferenceRoot }),
+  };
+}
+
+type ParsedApproveReferenceArgs =
+  | { ok: true; referenceRoot: string; outputLocation: string; supersedesReferenceRoot?: string }
+  | { ok: false; errors: string[] };
+
+/** CLI-syntax-only parsing, mirroring `parseApproveBaselineArgs`. */
+function parseApproveReferenceArgs(argv: readonly string[]): ParsedApproveReferenceArgs {
+  const errors: string[] = [];
+  let referenceRoot: string | undefined;
+  let referenceFlagCount = 0;
+  let outputLocation: string | undefined;
+  let outputFlagCount = 0;
+  let supersedesReferenceRoot: string | undefined;
+  let supersedesFlagCount = 0;
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    switch (arg) {
+      case '--reference': {
+        const value = argv[(i += 1)];
+        referenceFlagCount += 1;
+        if (value === undefined) errors.push('--reference requires a path argument');
+        else if (referenceFlagCount > 1) errors.push('--reference may only be specified once');
+        else referenceRoot = value;
+        break;
+      }
+      case '--output': {
+        const value = argv[(i += 1)];
+        outputFlagCount += 1;
+        if (value === undefined) errors.push('--output requires a directory argument');
+        else if (outputFlagCount > 1) errors.push('--output may only be specified once');
+        else outputLocation = value;
+        break;
+      }
+      case '--supersedes': {
+        const value = argv[(i += 1)];
+        supersedesFlagCount += 1;
+        if (value === undefined) errors.push('--supersedes requires a path argument');
+        else if (supersedesFlagCount > 1) errors.push('--supersedes may only be specified once');
+        else supersedesReferenceRoot = value;
+        break;
+      }
+      default:
+        errors.push(`unrecognized argument: ${arg}`);
+    }
+  }
+
+  if (referenceRoot === undefined) errors.push('--reference is required');
+  if (outputLocation === undefined) errors.push('--output is required');
+
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    referenceRoot: referenceRoot as string,
+    outputLocation: outputLocation as string,
+    ...(supersedesReferenceRoot === undefined ? {} : { supersedesReferenceRoot }),
+  };
+}
+
 function formatDiagnostic(diagnostic: Diagnostic): string {
   const target = diagnostic.targetName === undefined ? '' : ` (target: ${diagnostic.targetName})`;
   return `[${diagnostic.code}] ${diagnostic.message}${target}`;
@@ -1049,6 +1236,89 @@ async function runEvaluateContractCommand(argv: readonly string[], io: CliIO): P
   return 0;
 }
 
+/**
+ * Thin orchestration only: parse args, read the local image file's raw
+ * bytes, then delegate to the existing `importExternalReference` application
+ * function exactly once. No format/dimension validation lives here - see
+ * `src/domain/externalReferenceImage.ts`.
+ */
+async function runImportReferenceCommand(argv: readonly string[], io: CliIO): Promise<number> {
+  if (argv.includes('--help')) {
+    io.stdout(IMPORT_REFERENCE_HELP);
+    return 0;
+  }
+
+  const parsedArgs = parseImportReferenceArgs(argv);
+  if (!parsedArgs.ok) {
+    for (const error of parsedArgs.errors) io.stderr(`error: ${error}\n`);
+    io.stderr(IMPORT_REFERENCE_HELP);
+    return 1;
+  }
+
+  let imageBytes: Uint8Array;
+  try {
+    imageBytes = readFileSync(parsedArgs.imageFilePath);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    io.stderr(`error: could not read image file "${parsedArgs.imageFilePath}": ${message}\n`);
+    io.stderr(IMPORT_REFERENCE_HELP);
+    return 1;
+  }
+
+  // Exactly one application import attempt: format/dimension validation, an optional supersession-target read, persisted at most once.
+  const result = await importExternalReference(imageBytes, {
+    outputLocation: parsedArgs.outputLocation,
+    ...(parsedArgs.label === undefined ? {} : { label: parsedArgs.label }),
+    ...(parsedArgs.supersedesReferenceRoot === undefined ? {} : { supersedesReferenceRoot: parsedArgs.supersedesReferenceRoot }),
+  });
+  if (!result.ok) {
+    for (const diagnostic of result.diagnostics) io.stderr(`${formatDiagnostic(diagnostic)}\n`);
+    return 1;
+  }
+
+  io.stdout(`Reference: ${result.referenceId}\n`);
+  io.stdout(`State: imported\n`);
+  io.stdout(`Artifact: ${result.artifactRoot}\n`);
+  io.stdout(`Image: ${result.imagePath}\n`);
+
+  return 0;
+}
+
+/**
+ * Thin orchestration only: parse args, then delegate to the existing
+ * `approveExternalReference` application function exactly once. This is the
+ * only command in the observer that approves an external reference.
+ */
+async function runApproveReferenceCommand(argv: readonly string[], io: CliIO): Promise<number> {
+  if (argv.includes('--help')) {
+    io.stdout(APPROVE_REFERENCE_HELP);
+    return 0;
+  }
+
+  const parsedArgs = parseApproveReferenceArgs(argv);
+  if (!parsedArgs.ok) {
+    for (const error of parsedArgs.errors) io.stderr(`error: ${error}\n`);
+    io.stderr(APPROVE_REFERENCE_HELP);
+    return 1;
+  }
+
+  // Exactly one application approval attempt: one reference read, an optional supersession-target read, persisted at most once.
+  const result = await approveExternalReference(parsedArgs.referenceRoot, {
+    outputLocation: parsedArgs.outputLocation,
+    ...(parsedArgs.supersedesReferenceRoot === undefined ? {} : { supersedesReferenceRoot: parsedArgs.supersedesReferenceRoot }),
+  });
+  if (!result.ok) {
+    for (const diagnostic of result.diagnostics) io.stderr(`${formatDiagnostic(diagnostic)}\n`);
+    return 1;
+  }
+
+  io.stdout(`Reference: ${result.referenceId}\n`);
+  io.stdout(`State: approved\n`);
+  io.stdout(`Artifact: ${result.artifactRoot}\n`);
+
+  return 0;
+}
+
 /** Testable CLI entry point: pure function of argv (+ injectable IO), no direct process.exit. */
 export async function runCli(argv: readonly string[], io: CliIO = defaultIO): Promise<number> {
   const [command, ...rest] = argv;
@@ -1086,6 +1356,14 @@ export async function runCli(argv: readonly string[], io: CliIO = defaultIO): Pr
 
   if (command === 'evaluate-contract') {
     return runEvaluateContractCommand(rest, io);
+  }
+
+  if (command === 'import-reference') {
+    return runImportReferenceCommand(rest, io);
+  }
+
+  if (command === 'approve-reference') {
+    return runApproveReferenceCommand(rest, io);
   }
 
   io.stderr(`error: unrecognized command "${command}"\n`);

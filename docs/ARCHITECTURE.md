@@ -448,3 +448,22 @@ relationship, comparison, contract, change-scope, reference, correlation, and
 context boundaries rather than creating parallel engines. The concrete
 implementation plan and module layout must be designed only after the relevant
 version planning workflow inspects the current repositories.
+
+v0.7 Prompt 1 implements only the bottom of that external-reference stack: a
+new, standalone `ExternalReferenceArtifact` evidence root
+(`src/domain/externalReference.ts`, `externalReferenceImage.ts`,
+`externalReferenceIdentity.ts`, `src/artifacts/externalReferenceArtifact{Writer,Reader}.ts`,
+`src/application/externalReferencePersistenceService.ts`) with its own
+identity, provenance, bounded image metadata, and a two-state
+(`imported`/`approved`) lifecycle - see `docs/CONTRACTS.md` "v0.7 Prompt 1
+external-reference artifact contract" for the exact shape. It follows the
+same identity/persistence/diagnostics/export conventions as every existing
+artifact family (deterministic canonicalize-then-sha256 request identity,
+nonce-based fresh instance identity, atomic temp-dir-then-rename persistence,
+the shared `DIAGNOSTIC_CODES` vocabulary) without reusing or duplicating the
+observation, comparison, or contract engines themselves - an external
+reference is desired-design evidence, never an `ObservationArtifact`, an
+approved baseline, or a runtime target. Reference regions, geometry,
+relationships, requirements, tolerances, reference-region/runtime-target
+binding, and reference-vs-candidate fidelity evaluation remain unimplemented;
+they are later v0.7 prompts building on this foundation.

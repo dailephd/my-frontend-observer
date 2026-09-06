@@ -329,3 +329,52 @@ export { readObservationArtifact } from './artifacts/artifactReader.js';
 
 export type { CompareAndPersistOptions, ApplicationComparisonResult } from './application/comparisonService.js';
 export { DEFAULT_COMPARISON_OUTPUT_LOCATION, compareAndPersist, compareAndPersistFromArtifactRoots } from './application/comparisonService.js';
+
+export type { ExternalReferenceImageFormat, ImageDimensions } from './domain/externalReferenceImage.js';
+export {
+  EXTERNAL_REFERENCE_SUPPORTED_IMAGE_FORMATS,
+  isExternalReferenceImageFormat,
+  EXTERNAL_REFERENCE_MAX_IMAGE_BYTES,
+  EXTERNAL_REFERENCE_MIN_DIMENSION_PX,
+  EXTERNAL_REFERENCE_MAX_DIMENSION_PX,
+  detectExternalReferenceImageFormat,
+  readExternalReferenceImageDimensions,
+  isValidExternalReferenceImageDimensions,
+  fileExtensionForFormat,
+} from './domain/externalReferenceImage.js';
+
+export type {
+  ExternalReferenceImageReference,
+  ExternalReferenceSourceReference,
+  ExternalReferenceLifecycleState,
+  ExternalReferenceProvenance,
+  ImportedExternalReferenceArtifact,
+  ApprovedExternalReferenceArtifact,
+  ExternalReferenceArtifact,
+  ExternalReferenceValidationResult,
+} from './domain/externalReference.js';
+export {
+  EXTERNAL_REFERENCE_ARTIFACT_KIND,
+  EXTERNAL_REFERENCE_SCHEMA_VERSION,
+  isValidExternalReferenceImageReference,
+  isValidExternalReferenceSourceReference,
+  isValidExternalReferenceLifecycleState,
+  isValidExternalReferenceProvenance,
+  isValidExternalReferenceArtifact,
+} from './domain/externalReference.js';
+
+export { buildExternalReferenceRequestIdentity, buildExternalReferenceInstanceIdentity } from './domain/externalReferenceIdentity.js';
+
+export type { PersistedExternalReferenceResult, WriteExternalReferenceArtifactOptions } from './artifacts/externalReferenceArtifactWriter.js';
+export { EXTERNAL_REFERENCE_MANIFEST_FILENAME, writeExternalReferenceArtifact } from './artifacts/externalReferenceArtifactWriter.js';
+
+export type { ReadExternalReferenceArtifactResult } from './artifacts/externalReferenceArtifactReader.js';
+export { readExternalReferenceArtifact } from './artifacts/externalReferenceArtifactReader.js';
+
+export type {
+  ImportExternalReferenceOptions,
+  ApproveExternalReferenceOptions,
+  ApplicationImportExternalReferenceResult,
+  ApplicationApproveExternalReferenceResult,
+} from './application/externalReferencePersistenceService.js';
+export { importExternalReference, approveExternalReference } from './application/externalReferencePersistenceService.js';

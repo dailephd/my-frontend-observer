@@ -450,6 +450,65 @@ evaluation artifact schema `1.0.0`; new bounded-agent-context schema
   code lives in this repository - those are separate sibling-repository
   deliverables, not part of `my-frontend-observer`'s v0.6 surface.
 
+## v0.7 Prompt 1 status (External Visual Reference Foundation) - implemented, unreleased
+
+Only the foundation layer of the v0.7 external-reference architecture is
+implemented: an observer-owned `ExternalReferenceArtifact` family
+representing one externally supplied design-reference image plus
+deterministic identity, provenance, bounded image metadata, and an explicit
+two-state lifecycle. This is not the full v0.7 coding-agent workflow.
+
+- **Domain** (`src/domain/externalReferenceImage.ts`): pure, dependency-free
+  PNG/JPEG/WebP header-byte format detection and dimension parsing (no
+  decode, no OCR, no computer vision), bounded to
+  `EXTERNAL_REFERENCE_MAX_IMAGE_BYTES` (20,000,000 bytes) and
+  `[EXTERNAL_REFERENCE_MIN_DIMENSION_PX, EXTERNAL_REFERENCE_MAX_DIMENSION_PX]`
+  (`[1, 8192]`) pixels per side.
+- **Domain** (`src/domain/externalReference.ts`): `ExternalReferenceArtifact`
+  is a discriminated union of `ImportedExternalReferenceArtifact` (owns its
+  image file) and `ApprovedExternalReferenceArtifact` (carries a
+  `sourceReference` back to the imported artifact's image instead of copying
+  it) under `EXTERNAL_REFERENCE_ARTIFACT_KIND` /
+  `EXTERNAL_REFERENCE_SCHEMA_VERSION` (`'1.0.0'`, independent of the
+  observation/comparison/contract schema versions). Lifecycle has exactly two
+  persisted states, `'imported'` and `'approved'` - there is no literal
+  `'superseded'` state; supersession is represented only as a forward
+  pointer (`supersedesReferenceId` on the newer artifact), so an existing
+  persisted artifact's own manifest is never rewritten.
+- **Identity** (`src/domain/externalReferenceIdentity.ts`): the same
+  canonicalize-then-sha256 request identity plus nonce-based fresh instance
+  identity pattern used by every other artifact family, duplicated per-family
+  per existing convention. `referenceRequestId` is a pure function of
+  `{imageSha256, format, width, height, supersedesReferenceId}` only - never
+  a filesystem path, output location, label, or timestamp.
+- **Persistence** (`src/artifacts/externalReferenceArtifactWriter.ts` /
+  `externalReferenceArtifactReader.ts`): same atomic temp-dir-then-rename
+  discipline as the observation/comparison writers; an `'imported'`
+  artifact's directory contains `manifest.json` plus its owned image file;
+  an `'approved'` artifact's directory contains only `manifest.json`.
+- **Application** (`src/application/externalReferencePersistenceService.ts`):
+  `importExternalReference()` (never approves; fails closed on an
+  unsupported/undetectable format, invalid or out-of-bound dimensions, an
+  over-limit file, or an unresolvable `--supersedes` target) and
+  `approveExternalReference()` (the only explicit approval act; refuses to
+  approve anything not currently in the `'imported'` state; never mutates the
+  imported artifact it approves).
+- **CLI**: `import-reference <image-file> --output <dir> [--label] [--supersedes]`
+  and `approve-reference --reference <root> --output <dir> [--supersedes]`.
+- **Export/public boundary**: `src/index.ts` exports the complete new type,
+  constant, validator, identity, writer, reader, and application-service
+  surface, following the same grouping order as every existing family.
+- **Validated on the canonical worktree**: `npm run typecheck`, `npm run
+  lint`, `npm test` (38 files, 668 tests), `npm run test:browser` (9 files,
+  120 tests), `npm run test:security`, `npm run build`, `npm run check:docs`,
+  `git diff --check`, and `npm pack --dry-run` all pass with zero changes to
+  any pre-existing test.
+- **Not implemented in this stage** (explicitly deferred to later v0.7
+  prompts): reference regions, geometry, relationships, design requirements,
+  tolerances, reference-region/runtime-target binding, reference-vs-candidate
+  fidelity evaluation, theme/application-state compatibility evaluation,
+  viewer, and annotation.
+
 ## Not implemented
 
 - v0.5 baseline-selection/discovery policy (the caller must supply which
@@ -457,10 +516,14 @@ evaluation artifact schema `1.0.0`; new bounded-agent-context schema
   baseline" command), source ownership, orchestrator/lab product
   integration, viewer, and annotation all remain unimplemented in this
   repository. (v0.6's bounded runtime projection and runtime/static
-  correlation *are* now implemented - see "v0.6 status" above.)
+  correlation *are* now implemented - see "v0.6 status" above.) The rest of
+  v0.7 (reference regions, binding, fidelity evaluation, and the coding-agent
+  correction loop) remains unimplemented beyond the Prompt 1 foundation above.
 
 ## Next target
 
 v0.1-v0.6 are implemented, validated, and released (`0.1.0`, `0.2.0`,
 `0.3.0`, `0.4.0`, `0.5.0`, `0.6.0`). v0.7 (End-to-End Coding-Agent Frontend
-Change Review) is next.
+Change Review) is in progress: the external-reference artifact foundation
+(Prompt 1) is implemented and unreleased; v0.7 Prompt 2 (explicit reference
+regions, geometry, and reusable reference relationships) is next.

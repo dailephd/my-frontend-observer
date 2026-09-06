@@ -198,6 +198,50 @@ truncation reporting, and correlation status invariants/determinism/
 deduplication). See `docs/CONTRACTS.md` "v0.6 bounded agent context and
 correlation contract" for the exact shape.
 
+## Current external-reference foundation workflow (implemented, unreleased - v0.7 Prompt 1)
+
+This is the foundation layer only - identity, provenance, bounded image
+metadata, and a two-state lifecycle for one externally supplied
+design-reference image. It implements no region, geometry, requirement,
+tolerance, binding, or fidelity-evaluation behavior (those remain future
+work, see "Planned v0.7 reference-driven correction flow" below), and it
+never launches a browser or reads/writes any observation, comparison, or
+contract artifact:
+
+```text
+import-reference <image-file> --output <dir> [--label] [--supersedes <root>]
+→ format detection from header/magic bytes only (png/jpeg/webp; never a
+  caller-declared extension), dimension parsing from the same bounded header
+  bytes (never a pixel decode), byte-length and dimension bounds checked
+→ (--supersedes only: read + validate the referenced prior external-reference
+  artifact through the same reader the writer's counterpart uses)
+→ deterministic referenceRequestId (pure function of {imageSha256, format,
+  width, height, supersedesReferenceId} only) + fresh referenceId
+→ atomic persistence of one "imported" ExternalReferenceArtifact:
+  manifest.json + its own copy of the reference image, schema 1.0.0 -
+  lifecycle.state is always "imported"; import never approves
+        ↓
+approve-reference --reference <imported-artifact-root> --output <dir> [--supersedes <root>]
+→ read + validate the target through the existing reader; refuse anything
+  not currently in the "imported" lifecycle state
+→ persist a brand-new "approved" ExternalReferenceArtifact instance (same
+  referenceRequestId, fresh referenceId) carrying a sourceReference back to
+  the imported artifact's image - no image bytes are copied again, and the
+  imported artifact's own manifest is never modified
+```
+
+`approve-reference` is the only explicit reference-approval act - it is never
+inferred from a successful import. Supersession (`--supersedes`) is
+represented only as a forward pointer on the newer artifact; the artifact it
+supersedes is never rewritten, so prior reference evidence remains immutable
+regardless of how many later references supersede it.
+
+This is exercised by unit tests covering the pure image-format/dimension
+boundary, identity, the domain validator, writer/reader round-trip symmetry,
+the application-level import/approve use cases, and `runCli()`-level CLI
+coverage (no Chromium involved - see `tests/unit/externalReference*.test.ts`
+and `tests/unit/cliExternalReference.test.ts`).
+
 ## Future workflows
 
 The future sequence preserves the current engines and adds external-reference
@@ -228,7 +272,9 @@ The planned non-graphical reference path is conceptually:
 
 ```text
 external visual reference
-→ explicit reference identity/provenance/applicability
+→ explicit reference identity/provenance (implemented - see "Current
+  external-reference foundation workflow" above; applicability/theme/
+  viewport compatibility is not yet implemented)
 → bounded reference regions + authored design intent + tolerances
 → explicit reference-region ↔ runtime-target binding
 → candidate rendered through the existing Chromium observation engine

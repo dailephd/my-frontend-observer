@@ -594,6 +594,113 @@ engine, persistence, baseline approval, and CLI exposure. Bounded
 agent-context and runtime/static correlation contracts are v0.6 - see "v0.6
 bounded agent context and correlation contract" above for the full released
 model. The text/config-driven coding-agent review plus non-graphical external
-visual-reference foundation is v0.7, next. Viewer consumption of that reference
-model follows in v0.8; dual-context annotation follows in v0.9; both visual entry
-modes converge with the existing workflow in v0.10.
+visual-reference foundation is v0.7 - see "v0.7 Prompt 1 external-reference
+artifact contract" below for the foundation layer implemented so far. Viewer
+consumption of that reference model follows in v0.8; dual-context annotation
+follows in v0.9; both visual entry modes converge with the existing workflow
+in v0.10.
+
+## v0.7 Prompt 1 external-reference artifact contract
+
+Implemented, unreleased. This is the foundation layer only: identity,
+provenance, bounded image metadata, and a two-state lifecycle for one
+externally supplied design-reference image. It implements no region,
+geometry, relationship, requirement, tolerance, binding, or fidelity-
+evaluation contract - those belong to later v0.7 prompts.
+
+An external reference is a distinct evidence root, not a variant of
+`ObservationArtifact`: it never reuses `ARTIFACT_KIND`/`SCHEMA_VERSION`
+(observation), `COMPARISON_ARTIFACT_KIND`, or `CONTRACT_ARTIFACT_KIND`, and
+those existing types gain no new field from this contract.
+
+```ts
+const EXTERNAL_REFERENCE_ARTIFACT_KIND = 'my-frontend-observer/external-reference';
+const EXTERNAL_REFERENCE_SCHEMA_VERSION = '1.0.0'; // independent of package.json version and every other family's schema version
+
+type ExternalReferenceImageFormat = 'png' | 'jpeg' | 'webp';
+
+interface ExternalReferenceImageReference {
+  path: string; // bare relative filename within the artifact's own directory
+  format: ExternalReferenceImageFormat;
+  width: number;
+  height: number;
+  byteLength: number;
+  sha256: string; // identity-bearing content hash of the raw image bytes
+}
+
+// Points back to the imported artifact that owns the image, without copying its bytes - mirrors ComparisonSourceObservationReference.
+interface ExternalReferenceSourceReference {
+  referenceId: string;
+  referenceRequestId: string;
+  producer: { name: 'my-frontend-observer'; version: string };
+  schemaVersion: '1.0.0';
+  image: ExternalReferenceImageReference;
+}
+
+// Exactly two persisted states - no literal 'superseded' variant (see below).
+type ExternalReferenceLifecycleState = { state: 'imported' } | { state: 'approved'; approvedAt: string };
+
+interface ExternalReferenceArtifactBase {
+  artifactKind: 'my-frontend-observer/external-reference';
+  schemaVersion: '1.0.0';
+  referenceRequestId: string; // deterministic logical identity - shared by an imported artifact and every artifact produced by approving it
+  referenceId: string; // fresh per-persisted-instance identity
+  producer: { name: 'my-frontend-observer'; version: string };
+  provenance: { importedAt: string; label?: string };
+  supersedesReferenceId?: string; // explicit, forward-only supersession of a prior reference's referenceId
+  diagnostics: Diagnostic[];
+  completion: CompletionState;
+}
+
+// lifecycle.state === 'imported': owns the image.
+interface ImportedExternalReferenceArtifact extends ExternalReferenceArtifactBase {
+  lifecycle: { state: 'imported' };
+  image: ExternalReferenceImageReference;
+}
+
+// lifecycle.state === 'approved': references, never copies, the imported artifact's image.
+interface ApprovedExternalReferenceArtifact extends ExternalReferenceArtifactBase {
+  lifecycle: { state: 'approved'; approvedAt: string };
+  sourceReference: ExternalReferenceSourceReference;
+}
+
+type ExternalReferenceArtifact = ImportedExternalReferenceArtifact | ApprovedExternalReferenceArtifact;
+```
+
+Key rules:
+
+- `referenceRequestId` is a pure function of `{imageSha256, format, width,
+  height, supersedesReferenceId}` only - never a filesystem path, output
+  location, label, or timestamp. Byte-identical image content imported from a
+  different operational root produces the same `referenceRequestId`;
+  changing any of those fields changes it.
+- `referenceId` is fresh (nonce-based) on every persisted write, including
+  every approval of an already-imported reference.
+- Importing an image never approves it (`lifecycle.state` is always
+  `'imported'` immediately after import, regardless of a supplied label or
+  supersession target). Approval is a single explicit act
+  (`approveExternalReference`, mirroring `approveAndPersistBaseline`) that
+  refuses anything not currently in the `'imported'` state.
+- Approving persists a *new* artifact instance (same `referenceRequestId`,
+  fresh `referenceId`) carrying a `sourceReference` back to the imported
+  artifact - it never mutates the imported artifact's own manifest, and never
+  copies the image bytes a second time.
+- Supersession is represented only as a forward pointer
+  (`supersedesReferenceId` on the newer artifact); there is deliberately no
+  literal `'superseded'` lifecycle state, so an existing persisted artifact's
+  own manifest is never rewritten - immutability holds unconditionally rather
+  than depending on careful mutation discipline.
+- Supported formats are frozen to exactly `png`/`jpeg`/`webp`, detected from
+  header/magic bytes only (never a caller-declared file extension), bounded
+  to `EXTERNAL_REFERENCE_MAX_IMAGE_BYTES` (20,000,000 bytes) and
+  `[EXTERNAL_REFERENCE_MIN_DIMENSION_PX, EXTERNAL_REFERENCE_MAX_DIMENSION_PX]`
+  (`[1, 8192]`) pixels per side. No OCR, no raster decode, no computer
+  vision, no automatic region detection.
+
+Persisted as `<outputLocation>/<referenceId>/manifest.json` (+
+`reference.<ext>` for an `'imported'` artifact only), via the same atomic
+temp-dir-then-rename discipline as every other artifact family
+(`src/artifacts/externalReferenceArtifactWriter.ts` /
+`externalReferenceArtifactReader.ts`). CLI: `import-reference <image-file>
+--output <dir> [--label] [--supersedes <root>]` and `approve-reference
+--reference <root> --output <dir> [--supersedes <root>]`.
