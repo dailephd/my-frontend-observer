@@ -340,13 +340,20 @@ lab code in this repository - those remain separate sibling-repository
 responsibilities per the Milestone 6 ownership split in
 `docs/PROJECT_MILESTONES.md`.
 
-## Planned v0.7–v0.10 reference-evidence architecture constraints
+## v0.7 (implemented, unreleased) and planned v0.8–v0.10 reference-evidence architecture constraints
 
-The external visual-reference capability is future work. It must extend the
-current v0.1-v0.6 evidence architecture rather than becoming a UI-only feature
-or a parallel visual-comparison stack.
+The external visual-reference capability (v0.7) is implemented in the
+current development state - see "v0.7 Prompt 1" through "v0.7 Prompt 8"
+below for the actual architecture, and `docs/CURRENT_STATE.md` for release
+state (package version remains `0.6.0`; v0.7 is unreleased). It extends the
+existing v0.1-v0.6 evidence architecture rather than becoming a UI-only
+feature or a parallel visual-comparison stack. v0.8 (interactive viewer),
+v0.9 (structured visual annotation), and v0.10 (full graphical human-LLM
+workflow) remain future and unimplemented; the constraints below apply to
+that still-future work, except where a paragraph explicitly says an item is
+now implemented.
 
-The planned evidence domains remain distinct:
+The evidence domains remain distinct:
 
 ```text
 runtime observation A ↔ runtime observation B
@@ -356,7 +363,8 @@ approved baseline/per-change contract ↔ candidate runtime evidence
 → existing canonical contract evaluation
 
 external visual reference ↔ candidate runtime evidence
-→ future reference applicability + structured fidelity evaluation
+→ reference applicability + structured fidelity evaluation (v0.7,
+  implemented, unreleased - see "v0.7 Prompt 4" and "v0.7 Prompt 6" below)
 ```
 
 An external reference is not an `ObservationArtifact`, and a reference region
@@ -403,11 +411,17 @@ incompatible/incomparable rather than a fabricated visual difference set.
 Planning should extend or reuse the canonical comparability/state model rather
 than create unrelated reference-only state semantics.
 
+The constraints above were carried out by the actual v0.7 implementation
+described in "v0.7 Prompt 1" through "v0.7 Prompt 8" below: explicit
+identity/provenance, applicability/compatibility, region-to-target
+bindings, requested/expected-dependent/protected/preserved reuse, and the
+non-mutating Chromium/correlation boundaries all remain as constrained
+here. They continue to apply unchanged to the still-future v0.8-v0.10 work.
+
 The exact public artifact names, schema versions, persistence layout, supported
 image formats, style-evidence vocabulary, tolerance primitives, and image-
-similarity mechanisms are not frozen by this architecture document. They must be
-designed from the current repository through the v0.7 planning workflow and
-must follow existing identity, provenance, validation, boundedness, and portable-
+similarity mechanisms were frozen by the actual v0.7 implementation below,
+not by this architecture document. They followed existing identity, provenance, validation, boundedness, and portable-
 artifact precedents.
 
 ## Retained v0.1 architecture constraints

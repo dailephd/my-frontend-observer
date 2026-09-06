@@ -23,10 +23,13 @@ The retained repository contains:
   and standardized documentation.
 
 The package bin (`src/cli.ts`) now exposes the real current public CLI
-surface described below (`observe`, `compare`, `approve-baseline`,
-`save-change-contract`, `evaluate-contract`), while remaining a thin
-parsing/dispatch/presentation boundary; it is no longer the not-implemented
-placeholder.
+surface described below - the five commands released as part of `0.6.0`
+(`observe`, `compare`, `approve-baseline`, `save-change-contract`,
+`evaluate-contract`) plus three additional commands implemented as part of
+the unreleased v0.7 work (`import-reference`, `approve-reference`,
+`evaluate-reference-fidelity` - see "v0.7 Prompt 1/6 status" below) - while
+remaining a thin parsing/dispatch/presentation boundary; it is no longer the
+not-implemented placeholder.
 
 ## v0.1 progress (Batch 1–6; implemented and released as 0.1.0)
 
@@ -635,6 +638,235 @@ v0.7 coding-agent workflow - no runtime binding or fidelity evaluation yet.
   reference-region/runtime-target binding, reference-vs-candidate fidelity
   evaluation, viewer, and annotation.
 
+## v0.7 Prompt 4 status (Reference Applicability and Candidate-State Compatibility) - implemented, unreleased
+
+Additive extension of the Prompt 1/2/3 foundation above. Still not the full
+v0.7 coding-agent workflow - no runtime binding or fidelity evaluation yet.
+
+- **Domain** (`src/domain/explicitState.ts`): a small, closed, caller/
+  configuration-supplied state model (`theme`, `applicationState`,
+  `authenticatedState`) shared by both `ObservationArtifact.requestConfig.explicitState`
+  and `ExternalReferenceArtifact.applicability` - never inferred from
+  screenshot pixels, CSS, DOM, URLs, or any other runtime signal. Labels are
+  bounded opaque identities (`^[A-Za-z0-9_-]{1,64}$`) compared by exact,
+  case-sensitive equality only. `authenticatedState` is a closed
+  `'authenticated' | 'unauthenticated'` vocabulary with no field capable of
+  holding a credential, token, or cookie.
+- **Domain** (`src/domain/externalReferenceApplicability.ts`): adds an
+  optional CSS-pixel `viewport` to the shared state model - deliberately
+  distinct from the reference image's own pixel dimensions (`image.width`/
+  `height`), which a reference image may be captured at any resolution/DPI
+  relative to.
+- **Domain** (`src/domain/externalReferenceCompatibility.ts`):
+  `evaluateReferenceCandidateCompatibility(reference, candidate)` answers
+  "does this reference describe the same frontend state as this candidate
+  observation?" by reusing v0.4's own `ComparabilityResult`/`ComparabilityReason`
+  vocabulary and a newly-extracted, shared pure helper
+  (`assessOptionalComparabilityDimension`, exported from
+  `comparisonEngine.ts`) rather than a parallel model. The same helper now
+  also drives v0.4's own `evaluateComparability`, which additionally assesses
+  theme/authenticated-state/application-state when both observations declare
+  `explicitState` - every historical observation pair without it keeps its
+  exact prior unassessed-only behavior (a frozen regression vector proves
+  this). A dimension the reference constrains but the candidate omits (or
+  vice versa) is `unassessed`, never fabricated as a match or a mismatch.
+- **Schema**: `ExternalReferenceArtifact` gained one additive, optional
+  `applicability?: ExternalReferenceApplicability` field; `ObservationArtifact.requestConfig`
+  gained one additive, optional `explicitState?: ExplicitStateDimensions`
+  field. No schema version bump on either family.
+- **Identity**: `buildExternalReferenceRequestIdentity` gained an additive,
+  optional trailing `applicability` parameter; `buildRequestIdentity` gained
+  an additive, optional trailing `explicitState` parameter - both omitted
+  from their hashed views (never `null`) when absent, so every earlier call
+  site keeps producing byte-identical identity.
+- **CLI**: `import-reference` gained an optional `--applicability-file <json-file>`;
+  `observe` gained an optional `--state-file <json-file>` (both unwrapped
+  raw-object files, following `--scroll-scenario-file`'s exact convention).
+  `import-reference`/`approve-reference` now also print an
+  `Applicability: declared|none` line.
+- **Export/public boundary**: `src/index.ts` exports the complete new
+  explicit-state/applicability/compatibility type/constant/validator/function
+  surface, following the same grouping order as every existing family.
+- **Validated on the canonical worktree**: `npm run typecheck`, `npm run
+  lint`, `npm test` (45 files, 857 tests), `npm run test:browser` (9 files,
+  120 tests, unchanged), `npm run test:security`, `npm run build`, `npm run
+  check:docs`, `git diff --check`, and `npm pack --dry-run` all pass with
+  zero changes to any pre-existing test.
+- **Not implemented in this stage** (explicitly deferred to later v0.7
+  prompts): reference-region/runtime-target binding, reference-vs-candidate
+  fidelity evaluation, bounded fidelity context, the end-to-end correction
+  workflow, viewer, and annotation.
+
+## v0.7 Prompt 5 status (Explicit Reference-Region <-> Runtime-Target Binding) - implemented, unreleased
+
+Additive extension of the Prompt 1-4 foundation above. Still not the full
+v0.7 coding-agent workflow - no fidelity evaluation yet.
+
+- **Domain** (`src/domain/externalReferenceRuntimeBinding.ts`):
+  `evaluateReferenceRuntimeBindings(reference, candidate, declarations)`
+  answers "which stable v0.2 runtime target does this candidate resolve for
+  each explicitly declared reference region?" A binding declaration
+  (`{referenceRegion, runtimeTarget}`) is explicit user/configuration input
+  - never inferred from geometry, matching names, or source code; two
+  strings with the same textual value in the reference-region and
+  runtime-target identity domains never bind to each other merely because
+  they match. Reuses `evaluateReferenceCandidateCompatibility` (Prompt 4) as
+  a hard gate and `targetPresence` (v0.4, exported additively) as the sole
+  "how do I read a `TargetEvidenceRecord`'s resolution" rule - no second
+  target resolver, no browser launch. Status vocabulary: `bound` / `ambiguous`
+  / `unavailable`, each with closed reason codes. An unknown reference
+  region fails the whole evaluation closed (structural, candidate-independent);
+  an unknown/ambiguous/unavailable runtime target produces a per-declaration
+  `unavailable`/`ambiguous` result, never a guessed target. Bounded at
+  `MAX_REFERENCE_RUNTIME_BINDINGS` (20).
+- **Persistence**: none - a pure, on-demand function over already-persisted/
+  in-memory evidence, no new artifact family.
+- **CLI**: none added - deliberately deferred to Prompt 6, the capability's
+  first concrete consumer.
+- **Export/public boundary**: `src/index.ts` exports the complete new
+  binding type/constant/validator/function surface.
+- **Validated on the canonical worktree**: `npm run typecheck`, `npm run
+  lint`, `npm test` (46 files, 889 tests), `npm run test:browser` (9 files,
+  120 tests, unchanged), `npm run test:security`, `npm run build`, `npm run
+  check:docs`, `git diff --check`, and `npm pack --dry-run` all pass with
+  zero changes to any pre-existing test.
+- **Not implemented in this stage** (explicitly deferred to later v0.7
+  prompts): reference-vs-candidate fidelity evaluation, bounded fidelity
+  context, the end-to-end correction workflow, viewer, and annotation.
+
+## v0.7 Prompt 6 status (Structured Reference-vs-Candidate Fidelity Evaluation) - implemented, unreleased
+
+Additive extension of the Prompt 1-5 foundation above. The first point in
+the v0.7 stack where a reference's authored expectation is actually
+compared against live candidate evidence.
+
+- **Domain** (`src/domain/externalReferenceFidelity.ts`):
+  `evaluateReferenceCandidateFidelity(reference, candidate, bindings)`
+  evaluates in a frozen order - reference/candidate structural validation ->
+  Prompt 3 adequacy -> Prompt 4 compatibility -> Prompt 5 binding ->
+  per-requirement evaluation - and never fabricates an ordinary PASS/FAIL
+  past an earlier blocking gate: overall `state` is `'not-evaluated'` /
+  `'pass'` / `'fail'`, with `blockedBy` preserved for the first two gates.
+  Establishes one explicit, deterministic reference-image-pixel <->
+  CSS-pixel coordinate scale from `reference.applicability.viewport` and the
+  image's own dimensions, gated by an independent (never a design-tolerance)
+  aspect-ratio coherence check. Reuses Prompt 3 tolerances
+  (`exact`/`absolute-reference-px`/`percent`) and v0.4's
+  `deriveLayoutRelationships` (family-scoped lookup, the same bug class
+  Prompt 3 already fixed) unchanged - no duplicated geometry or
+  comparability logic.
+- **Persistence**: none - a pure, on-demand function; the CLI-facing
+  `evaluateReferenceCandidateFidelityFromArtifactRoots` application-service
+  wrapper only reads already-persisted artifacts, it does not write one.
+- **CLI**: `evaluate-reference-fidelity --reference --candidate
+  [--bindings-file] [--enforce]` - the CLI surface Prompt 5 deferred,
+  following `evaluate-contract`'s exact `--enforce`/exit-code precedent.
+  Persists nothing; there is no `--output` flag.
+- **Export/public boundary**: `src/index.ts` exports the complete new
+  fidelity-result type/constant/validator/function surface plus the
+  application-service wrapper.
+- **Validated on the canonical worktree**: `npm run typecheck`, `npm run
+  lint`, `npm test` (48 files, 927 tests), `npm run test:browser` (9 files,
+  120 tests, unchanged), `npm run test:security`, `npm run build`, `npm run
+  check:docs`, `git diff --check`, and `npm pack --dry-run` all pass with
+  zero changes to any pre-existing test.
+- **Not implemented in this stage** (explicitly deferred to later v0.7
+  prompts): bounded fidelity context integration, the end-to-end correction
+  workflow, viewer, and annotation.
+
+## v0.7 Prompt 7 status (Bounded Reference-Fidelity Projection and v0.6 Bounded-Agent-Context Integration) - implemented, unreleased
+
+Additive extension of the v0.6 bounded-agent-context architecture and the
+Prompt 1-6 foundation above.
+
+- **Domain** (`src/domain/referenceFidelityProjection.ts`):
+  `projectReferenceFidelity()` selects, prioritizes (failed-required, then
+  unavailable-required, then other non-pass), and bounds Prompt 6's
+  non-passing requirement results (`MAX_FIDELITY_MISMATCHES`, 15) and
+  passing protected/preserved context (`MAX_FIDELITY_PROTECTED_CONTEXT`, 10)
+  for a coding agent's bounded context - passing requirements are never
+  dumped by default.
+- **Integration**: `projectBoundedAgentContext` (v0.6) itself, not a second
+  context system, gained one new optional input (`fidelity`,
+  `fidelityRequired?`): fidelity-relevant runtime targets fold into the
+  exact same required/permitted-target allocation and omission/truncation/
+  adequacy machinery v0.5 contract clauses already compete in, so a
+  `not-evaluated` fidelity always degrades adequacy away from `'adequate'`,
+  never silently reported as "no problems". A new `fidelity?:
+  BoundedReferenceFidelityProjection` field on `BoundedAgentContextArtifact`
+  mirrors `correlations?`'s own additive precedent - no schema version bump.
+  v0.6's own runtime/static correlation is reused entirely unchanged.
+- **Identity**: `buildBoundedAgentContextRequestIdentity` gained a final
+  optional `fidelity` parameter (omit-when-absent; verified byte-identical
+  for every pre-Prompt-7 call site).
+- **Persistence / CLI**: none - bounded agent context remains
+  library-only, exactly as v0.6 established it.
+- **Export/public boundary**: `src/index.ts` exports the complete new
+  fidelity-projection type/constant/function surface.
+- **Validated on the canonical worktree**: `npm run typecheck`, `npm run
+  lint`, `npm test` (49 files, 981 tests), `npm run test:browser` (9 files,
+  120 tests, unchanged), `npm run test:security`, `npm run build`, `npm run
+  check:docs`, `git diff --check`, and `npm pack --dry-run` all pass with
+  zero changes to any pre-existing test.
+- **Not implemented in this stage** (explicitly deferred to Prompt 8):
+  the end-to-end coding-agent correction workflow, viewer, and annotation.
+
+## v0.7 Prompt 8 status (Controlled End-to-End External-Reference Coding-Agent Correction Workflow) - implemented, unreleased
+
+The first complete v0.7 correction cycle, composing every Prompt 1-7 and
+v0.1/v0.4/v0.5/v0.6 owner - this completes the v0.7 (End-to-End Coding-Agent
+Frontend Change Review) milestone's core workflow.
+
+- **Domain** (`src/domain/referenceCorrectionWorkflow.ts`,
+  `referenceCorrectionIdentity.ts`): `prepareReferenceCorrection()`
+  evaluates the approved reference against the current (pre-change)
+  observation (Prompt 6) and, when evaluable, projects a bounded
+  coding-agent handoff (Prompt 7/v0.6) - a `not-evaluated` fidelity is
+  reported as `status: 'blocked-not-evaluated'`, never a fabricated
+  handoff. `reviewReferenceCorrectionAttempt()` composes one overall result
+  from a fresh post-edit candidate: `compareObservations` (v0.4) ->
+  `evaluateReferenceCandidateFidelity` (Prompt 6) -> `evaluateFrontendContract`
+  (v0.5) -> overall `'not-evaluated'`/`'pass'`/`'fail'`, where `'pass'`
+  requires *both* reference fidelity `'pass'` *and* v0.5 contract evaluation
+  `'PASS'` - matching the design reference is necessary but never
+  sufficient. Review identity is a deterministic hash of
+  `{referenceRequestId, baselineObservationId, baselineContractId,
+  baselineContractClauses, changeContractId, changeContractClauses,
+  bindingDeclarations}` (including actual contract *clause content*, not
+  merely the caller-authored contract id labels) - `reviewReferenceCorrectionAttempt`
+  recomputes and rejects any call whose supplied review id does not match,
+  enforcing "no hidden baseline change" structurally. Attempt identity is a
+  deterministic hash of `{reviewRequestId, candidateObservationId}`. Both
+  functions are pure, so no prior attempt can ever be overwritten.
+- **External implementation boundary**: absolute - neither this module nor
+  anything it calls opens, parses, or writes any target source file; real
+  candidate capture remains the caller's own responsibility through the
+  existing, unmodified `runBrowserCapture`/`buildObservationArtifact`
+  pipeline. No automatic baseline/reference approval ever occurs.
+- **Persistence / CLI**: none - both operations remain pure, in-memory,
+  programmatic functions; no `--output` flag, no new command.
+- **Real-Chromium proof** (`tests/browser/referenceCorrectionWorkflow.test.ts`):
+  a deterministic, test-only "controlled external actor" (living entirely
+  outside `src/`) edits a disposable, repository-local copy of a tracked
+  HTML fixture template, proving a full success correction, a protected-
+  regression case (candidate visually matches the reference but a real
+  Chromium-observed element becomes hidden - still overall `FAIL`), a
+  two-attempt correction iteration (both attempts traceable to the same
+  baseline), and an incompatible-viewport blocking case that never produces
+  a handoff. The tracked template remains byte-identical before and after.
+- **Export/public boundary**: `src/index.ts` exports the complete new
+  workflow/identity type/constant/function surface.
+- **Validated on the canonical worktree**: `npm run typecheck`, `npm run
+  lint`, `npm test` (50 files, 1000 tests), `npm run test:browser` (10
+  files, 124 tests), `npm run test:security`, `npm run build`, `npm run
+  check:docs`, `git diff --check`, `npm pack --dry-run`, and a real
+  installed-packed-candidate smoke all pass with zero regressions to any
+  pre-existing test.
+- **Not implemented in this stage** (remain future, v0.8+): interactive
+  viewer, structured visual annotation, and automatic baseline/reference
+  approval (approval remains an explicit, separate action through the
+  existing `approve-baseline`/`approve-reference` commands).
+
 ## Not implemented
 
 - v0.5 baseline-selection/discovery policy (the caller must supply which
@@ -642,18 +874,27 @@ v0.7 coding-agent workflow - no runtime binding or fidelity evaluation yet.
   baseline" command), source ownership, orchestrator/lab product
   integration, viewer, and annotation all remain unimplemented in this
   repository. (v0.6's bounded runtime projection and runtime/static
-  correlation *are* now implemented - see "v0.6 status" above.) The rest of
-  v0.7 (state compatibility, binding, fidelity evaluation, and the
-  coding-agent correction loop) remains unimplemented beyond the Prompt
-  1/2/3 foundation above.
+  correlation, and the complete v0.7 external-reference correction workflow
+  described above, *are* now implemented.) A CLI surface for Prompt 8's
+  correction workflow specifically remains unimplemented by design
+  (programmatic-only, library-level use is the current supported entry
+  point) - see "v0.7 Prompt 8 status" above.
 
 ## Next target
 
 v0.1-v0.6 are implemented, validated, and released (`0.1.0`, `0.2.0`,
 `0.3.0`, `0.4.0`, `0.5.0`, `0.6.0`). v0.7 (End-to-End Coding-Agent Frontend
-Change Review) is in progress: the external-reference artifact foundation
-(Prompt 1), explicit reference regions/relationships (Prompt 2), and
-selected design requirements/tolerance semantics/reference-evidence
-adequacy (Prompt 3) are implemented and unreleased; v0.7 Prompt 4
-(reference applicability/state compatibility and comparability foundation)
-is next.
+Change Review) is fully implemented and unreleased as of Prompt 8: the
+external-reference artifact foundation (Prompt 1), explicit reference
+regions/relationships (Prompt 2), selected design requirements/tolerance
+semantics/reference-evidence adequacy (Prompt 3), reference applicability
+and candidate-state compatibility (Prompt 4), explicit reference-region/
+runtime-target binding (Prompt 5), structured reference-vs-candidate
+fidelity evaluation (Prompt 6), bounded reference-fidelity projection into
+the existing v0.6 bounded-agent-context (Prompt 7), and the controlled
+end-to-end correction workflow with real-Chromium proof (Prompt 8) are all
+implemented and unreleased. The package version remains `0.6.0` pending a
+separate v0.7 pre-release readiness, cross-platform, and security
+validation stage - see `docs/ROADMAP.md` for v0.7's full scope and
+`docs/reports/v0.7-implementation-completeness-documentation-reconciliation.md`
+for the completeness audit that confirmed this state.

@@ -185,6 +185,13 @@ package is justified.
 
 ## v0.7 — End-to-End Coding-Agent Frontend Change Review
 
+Current status: implemented in the current development state (Prompts 1-8),
+unreleased - package version remains `0.6.0`. See `docs/CURRENT_STATE.md`
+and `docs/reports/v0.7-implementation-completeness-documentation-reconciliation.md`
+for the completeness audit. The required capabilities, constraints, and
+acceptance criteria below are preserved as originally planned and describe
+what the implementation actually satisfies.
+
 Objective/problem: prove the core practical outcome before graphical work: a
 text/config-driven coding-agent correction loop that cannot call a local
 requested mutation successful while protected behavior regresses, and establish

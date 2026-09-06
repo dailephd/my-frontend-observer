@@ -597,6 +597,118 @@ invalid CLI syntax, an unreadable/malformed `--reference`/`--candidate`
 target, a malformed `--bindings-file`, or an invalid/out-of-bound binding
 declaration.
 
+## `import-reference`
+
+**Current status: implemented, unreleased (v0.7 Prompt 1, extended by
+Prompts 2/3/4).** Persists a new `ExternalReferenceArtifact` in the
+`imported` lifecycle state (external-reference schema `1.0.0`).
+
+```text
+my-frontend-observer import-reference <image-file> --output <directory> [options]
+```
+
+Required:
+
+- `<image-file>` — local path to a PNG, JPEG, or WebP external
+  design-reference image.
+- `--output <directory>` — portable, relative output location for the
+  external-reference artifact.
+
+Options:
+
+- `--label <text>` — optional human-readable label, stored as pure
+  provenance — never part of the reference's logical identity.
+- `--supersedes <path>` — root directory of a prior external-reference
+  artifact (imported or approved) that this import explicitly supersedes.
+  The prior artifact is never modified.
+- `--regions-file <json-file>` — local JSON file of the form
+  `{ "regions": [...] }` declaring explicit, meaningful reference-image
+  regions (id plus a `{x, y, width, height}` rectangle in reference-image
+  pixels, origin at the image's top-left corner). Optional — a reference
+  imported without this flag behaves exactly as in v0.7 Prompt 1. Region
+  content participates in the reference's logical identity; the file path
+  itself never does.
+- `--requirements-file <json-file>` — local JSON file of the form
+  `{ "requirements": [...] }` declaring explicit, user-selected design
+  requirements over the regions above — what actually matters for later
+  candidate evaluation, never inferred merely because a region
+  property/relationship exists. Each requirement has a `category`
+  (`requested` | `expected-dependent` | `protected` | `preserved` —
+  `unexpected` is never authorable), a `subject` (a region property, a
+  region-to-region relationship, or a derived two-region measurement), and
+  — for property/measurement subjects — a `tolerance` (`exact` |
+  `absolute-reference-px` | `percent`; relationship subjects must omit
+  tolerance). Requires `--regions-file` (or an already-present region set)
+  supplying every region a requirement refers to. Optional — a reference
+  imported without this flag behaves exactly as in v0.7 Prompt 1/2.
+  Requirement content participates in the reference's logical identity.
+- `--applicability-file <json-file>` — local JSON file declaring the
+  runtime frontend state this reference is intended to represent:
+  `{ "viewport": { "width", "height" }, "theme": "...", "applicationState":
+  "...", "authenticatedState": "authenticated"|"unauthenticated" }` (each
+  field independently optional; at least one required). `viewport` here is
+  the CSS-pixel runtime viewport the design represents — distinct from the
+  reference image's own pixel dimensions, which are never assumed equal.
+  Never inferred from the image — caller-declared metadata only, used for
+  later reference/candidate compatibility evaluation (see
+  [CONTRACTS.md](CONTRACTS.md) "v0.7 Prompt 4"). Optional — a reference
+  imported without this flag behaves exactly as in v0.7 Prompt 1/2/3.
+  Applicability content participates in the reference's logical identity.
+
+Detects the image format from its header bytes only (never from the file
+extension), reads its pixel dimensions from the same bounded header bytes
+(never decoding pixel data), and persists a new external-reference artifact
+in the `imported` lifecycle state — importing never approves it. On
+success, prints a concise result (including the accepted region/requirement
+counts, the resulting reference-side requirement adequacy — `adequate`,
+`partial`, or `inadequate` — and whether applicability was declared) and
+exits `0`. On an unreadable file, an unsupported or undetectable format,
+invalid/out-of-bound dimensions, an over-limit file size, an unresolvable
+`--supersedes` target, an invalid region, an invalid requirement, or invalid
+applicability, prints structured diagnostics to stderr and exits nonzero.
+
+## `approve-reference`
+
+**Current status: implemented, unreleased (v0.7 Prompt 1).** Persists a new
+`ExternalReferenceArtifact` in the `approved` lifecycle state
+(external-reference schema `1.0.0`).
+
+```text
+my-frontend-observer approve-reference --reference <external-reference-artifact-root> --output <directory> [options]
+```
+
+Required:
+
+- `--reference <path>` — root directory of the already-imported
+  external-reference artifact (the directory containing its
+  `manifest.json`) to approve.
+- `--output <directory>` — portable, relative output location for the
+  newly persisted approved artifact.
+
+Options:
+
+- `--supersedes <path>` — root directory of a prior external-reference
+  artifact (imported or approved) that this approval explicitly
+  supersedes. The prior artifact is never modified.
+
+This is the only explicit reference-approval act in the observer — approval
+is never inferred from a successful import or from any later fidelity
+evaluation. Approving persists a brand-new artifact instance (a fresh
+`referenceId` sharing the imported artifact's `referenceRequestId`) that
+carries a reference back to the imported artifact's image rather than a
+second copy of its bytes; the imported artifact's own manifest is never
+modified. Any regions, requirements, and applicability already declared on
+the imported artifact are carried forward unchanged (not re-validated
+against new input, not re-derived) — approval never adds, removes, or edits
+regions, requirements, or applicability. Only a reference currently in the
+`imported` lifecycle state can be approved. On success, prints a concise
+result (including the carried-forward region/requirement counts,
+reference-side requirement adequacy, and whether applicability was
+declared) and exits `0`. On an unreadable/malformed `--reference` target, a
+target that is not in the `imported` state, an unresolvable `--supersedes`
+target, or a persistence failure, prints structured diagnostics to stderr
+and exits nonzero.
+
 ## Foundation commands
 
 - `npm install` — install dependencies (includes the `playwright` runtime

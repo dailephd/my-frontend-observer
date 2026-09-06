@@ -48,8 +48,25 @@ runtime/static correlation boundary (`correlated`/`ambiguous`/
 `unavailable`), exported from `src/index.ts` with no new CLI command.
 External visual-reference artifacts, reference-region modeling,
 reference-vs-candidate fidelity evaluation, viewer support for references, and
-reference annotation are not implemented in `0.6.0`. v0.7–v0.10 remain future
-and unimplemented.
+reference annotation are not implemented in the published `0.6.0` package.
+
+In the current, unreleased development state on top of `0.6.0`, the
+complete v0.7 (End-to-End Coding-Agent Frontend Change Review) scope is now
+implemented: the external-reference artifact foundation and explicit
+approval lifecycle, explicit reference regions and reusable geometry
+relationships, selected design requirements/tolerances/reference-evidence
+adequacy, reference applicability and candidate-state compatibility,
+explicit reference-region-to-runtime-target binding, structured
+reference-vs-candidate fidelity evaluation, its integration into the
+existing v0.6 bounded-agent-context, and a controlled, programmatic
+end-to-end correction workflow proven against real Chromium (success,
+protected-regression, and multi-attempt correction-iteration cases). See
+`docs/CURRENT_STATE.md` for the full Prompt-by-Prompt record and
+`docs/reports/v0.7-implementation-completeness-documentation-reconciliation.md`
+for the completeness audit. This work has not been released - the published
+package version remains `0.6.0` pending a separate pre-release readiness
+stage. v0.8–v0.10 (interactive viewer, structured visual annotation, and
+the full graphical human–LLM workflow) remain future and unimplemented.
 
 The revised dependency path reaches practical coding-agent use before graphical
 interaction and establishes the non-UI external-reference model before the
@@ -62,15 +79,17 @@ runtime observation and stable identity
   `0.6.0` - see above)
 → text/config-driven coding-agent change review
   + external visual-reference evidence foundation
-  + reference-vs-candidate structured fidelity evaluation (v0.7, next)
+  + reference-vs-candidate structured fidelity evaluation
+  + controlled end-to-end correction workflow (v0.7, implemented,
+    unreleased - see docs/CURRENT_STATE.md)
 → interactive viewer with reference/candidate inspection
 → structured visual annotation on runtime screenshots and external references
 → full visual human–LLM workflow with actual-frontend-driven and
   reference-driven entry modes
 ```
 
-The future reference model is not a second observer or a screenshot-cloning
-system. An external reference is desired-design evidence, not an earlier runtime
+The implemented reference model is not a second observer or a
+screenshot-cloning system. An external reference is desired-design evidence, not an earlier runtime
 observation, and reference design vs candidate remains distinct from before vs
 after comparison and contract vs candidate evaluation. Structured geometry,
 relationships, explicit design intent, applicability state, provenance, and

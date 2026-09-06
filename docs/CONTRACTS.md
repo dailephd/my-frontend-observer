@@ -490,13 +490,15 @@ blockers; on the canonical worktree, `npm run typecheck`, `npm run lint`,
 `npm test` (627 tests), `npm run test:browser` (120 tests), `npm run
 test:security`, `npm run build`, and `npm run check:docs` all pass.
 
-## Planned v0.7+ external visual-reference contract direction
+## v0.7 external visual-reference contract direction (implemented, unreleased; v0.8+ still future)
 
-External visual-reference support is future work and is not part of the
-published `0.6.0` contract. The exact public type names, artifact kinds, schema
-versions, persistence layout, and command/programmatic entry points must be
-designed during v0.7 planning from current repository precedent. This section
-freezes only the contract boundaries that later planning must preserve.
+External visual-reference support is implemented in the current development
+state (see "v0.7 Prompt 1" through "v0.7 Prompt 8" below) but is not part of
+the published `0.6.0` contract. The exact public type names, artifact kinds,
+schema versions, persistence layout, and command/programmatic entry points
+were designed during v0.7 implementation from current repository precedent,
+following the constraints below; v0.8-v0.10 remain future and must continue
+to preserve them.
 
 **Distinct evidence domain**: an external reference is desired-design evidence,
 not an `ObservationArtifact` and not the "before" side of a v0.4

@@ -117,9 +117,11 @@ validation of the installed `compare` command
 
 This text/config-driven workflow shipped in `0.5.0` and remains current in
 `0.6.0`. It is layered downstream of the two workflows above - it does not
-replace them, and it is not yet the complete v0.7 coding-agent workflow (no
-coding-agent correction loop or external-reference evidence foundation lives in
-this repository yet; baseline selection remains caller-supplied):
+replace them. The complete v0.7 coding-agent workflow (the external-reference
+evidence foundation and end-to-end correction loop) is implemented on top of
+it in the current development state, unreleased - see "Current
+external-reference foundation workflow" and "Current reference correction
+workflow" below; baseline selection here remains caller-supplied:
 
 ```text
 observe before
@@ -235,10 +237,9 @@ tolerance semantics, and reference-evidence adequacy, (Prompt 4) explicit
 reference applicability (viewport/theme/application-state/authenticated-
 state) and reference/candidate compatibility, and (Prompt 5) explicit
 reference-region <-> runtime-target binding, for one externally supplied
-design-reference image. It implements no fidelity-evaluation behavior yet
-(see "Planned v0.7 reference-driven correction flow" below), and it never
-launches a browser or reads/writes any observation, comparison, or contract
-artifact:
+design-reference image. Structured fidelity-evaluation behavior (Prompt 6)
+follows further below in this section, and it never launches a browser or
+reads/writes any observation, comparison, or contract artifact:
 
 ```text
 import-reference <image-file> --output <dir> [--label] [--supersedes <root>] [--regions-file <json-file>] [--requirements-file <json-file>] [--applicability-file <json-file>]
@@ -474,11 +475,17 @@ the proof - only its disposable, repository-local copy is ever edited. See
 `docs/CONTRACTS.md` "v0.7 Prompt 8 controlled end-to-end external-reference
 coding-agent correction workflow" for the full contract.
 
-## Future workflows
+## Future workflows (v0.8–v0.10)
 
-The future sequence preserves the current engines and adds external-reference
-evidence before the viewer so that later graphical interfaces consume rather
-than invent the reference model:
+v0.7 (text/config-driven coding-agent change review, the external
+visual-reference evidence foundation, structured reference-vs-candidate
+fidelity evaluation, and the end-to-end correction workflow) is implemented
+in the current development state - see "Current external-reference
+foundation workflow" and "Current reference correction workflow" above, and
+`docs/CURRENT_STATE.md` for release state (package version remains
+`0.6.0`; v0.7 is unreleased). The still-future sequence on top of it
+preserves the current engines and lets later graphical interfaces consume
+rather than invent the reference model:
 
 ```text
 stable targets and bounded runtime behavior
@@ -492,15 +499,17 @@ stable targets and bounded runtime behavior
 → v0.7 text/config-driven coding-agent change review
   + external visual-reference evidence foundation
   + structured reference-vs-candidate fidelity evaluation
+  + end-to-end correction workflow (implemented, unreleased - see above)
 → v0.8 interactive viewer with reference/candidate inspection
 → v0.9 structured visual annotation on runtime screenshots and references
 → v0.10 full visual human–LLM workflow with both actual-frontend-driven and
   reference-driven entry modes
 ```
 
-### Planned v0.7 reference-driven correction flow
+### v0.7 reference-driven correction flow (implemented, unreleased)
 
-The planned non-graphical reference path is conceptually:
+The non-graphical reference path, now implemented exactly as originally
+planned, is:
 
 ```text
 external visual reference
@@ -508,9 +517,11 @@ external visual reference
   + bounded reference regions and reusable geometry relationships
   + selected design requirements, tolerance semantics, and reference-
   evidence adequacy
+  + explicit applicability/theme/viewport compatibility
   (all implemented - see "Current external-reference foundation workflow"
-  above; applicability/theme/viewport compatibility is not yet implemented)
-→ explicit reference-region ↔ runtime-target binding (not yet implemented)
+  above)
+→ explicit reference-region ↔ runtime-target binding (implemented - v0.7
+  Prompt 5)
 → candidate rendered through the existing Chromium observation engine
 → structured reference-vs-candidate evaluation
 → bounded measurable fidelity mismatches
@@ -525,18 +536,18 @@ external visual reference
 
 This does not turn an imported image into an observation or approved baseline.
 Reference design vs candidate remains distinct from before vs after comparison.
-Executable reference requirements must reuse the existing canonical requested/
+Executable reference requirements reuse the existing canonical requested/
 expected-dependent/protected/preserved semantics. Informational reference detail
 may remain non-executable. Pixel/image similarity can supplement structured
-geometry/relationship/style evidence where reliable, but it must never become
+geometry/relationship/style evidence where reliable, but it never becomes
 the only success criterion.
 
-Theme, application state, viewport, and other applicability dimensions must be
+Theme, application state, viewport, and other applicability dimensions are
 checked before reference fidelity is interpreted. A mismatched reference and
-candidate state must yield an explicit incompatible/incomparable outcome rather
+candidate state yields an explicit incompatible/incomparable outcome rather
 than fabricated visual failures.
 
-The v0.7 coding-agent workflow and reference foundation remain unimplemented in
-this repository. v0.7 must work without the v0.8 viewer or v0.9 annotation
-system. v0.8 must consume the v0.7 reference/evaluation model rather than create
-a second UI-only one.
+The v0.7 coding-agent workflow and reference foundation are implemented in
+this repository (unreleased) and work without the v0.8 viewer or v0.9
+annotation system. v0.8 must consume the v0.7 reference/evaluation model
+rather than create a second UI-only one.

@@ -66,42 +66,76 @@ module). Bounded runtime projections may include existing screenshot *path
 references* (never embedded bytes), consistent with every other artifact
 family's existing reference-not-embed discipline.
 
-## Planned external visual-reference security and privacy boundary (v0.7+)
+## External visual-reference security and privacy boundary (v0.7, implemented, unreleased)
 
-External visual-reference support is future work and is not implemented in
-`0.6.0`. When implemented, imported reference images must remain local-first
-evidence. Importing or evaluating a reference must not require uploading the
-image, screenshot, source code, annotation, or derived evidence to an external
-service.
+External visual-reference support (`import-reference`/`approve-reference`/
+`evaluate-reference-fidelity`, plus the programmatic correction-workflow
+coordinator) is implemented in the current development state, on top of the
+still-published `0.6.0` package. Imported reference images remain
+local-first evidence: `import-reference` reads a local file path only,
+never a URL, and no code path in this repository uploads a reference image,
+a candidate screenshot, source code, or any derived evidence to an external
+service. Reference/candidate compatibility and fidelity evaluation are pure,
+in-process computations over already-loaded artifacts - neither launches a
+network request.
 
-The v0.7 planning/implementation workflow must define bounded local-file safety
-for supported reference formats and must decide explicit limits such as accepted
-formats, maximum dimensions/filesize, decode/parse failure behavior, and whether
-reference bytes are copied into observer-owned storage or referenced from an
-approved project-local location. The exact policy is not frozen here.
+Bounded local-file safety for reference images is a frozen, source-verified
+policy, not an open decision: `EXTERNAL_REFERENCE_SUPPORTED_IMAGE_FORMATS`
+(`png`/`jpeg`/`webp`, detected from header/magic bytes only, never from a
+caller-declared file extension), `EXTERNAL_REFERENCE_MAX_IMAGE_BYTES`
+(20,000,000 bytes), and `[EXTERNAL_REFERENCE_MIN_DIMENSION_PX,
+EXTERNAL_REFERENCE_MAX_DIMENSION_PX]` (`[1, 8192]` pixels per side, parsed
+from the same bounded header bytes, never a full pixel decode) are all
+enforced before any artifact is persisted; an unsupported/undetectable
+format, an over-limit file, or invalid/out-of-bound dimensions is rejected
+outright (`unsupported-image-format`/`invalid-image-dimensions`/
+`image-too-large`), never silently clamped or accepted.
 
-Reference images are untrusted data, not executable content. A reference reader
-must not evaluate embedded code, dynamically load scripts, or treat image
-metadata as an instruction source. If future formats can contain active or
-complex embedded content, their parser/decoder boundary must be reviewed
-explicitly rather than inheriting a generic file-loading mechanism.
+Reference images are treated as untrusted data, not executable content: the
+format/dimension detector never evaluates embedded code, never dynamically
+loads a script, and never treats image metadata as an instruction source -
+only bounded header-byte inspection is performed, no general-purpose image
+or video codec is invoked. Explicit, caller-supplied state
+(`--state-file`/`--applicability-file`, `theme`/`applicationState`/
+`authenticatedState`) is a closed, bounded label vocabulary with no field
+capable of holding a credential, token, cookie, session id, or authorization
+header - `authenticatedState` accepts only the literal values
+`'authenticated'`/`'unauthenticated'`.
 
-Reference artifacts and downstream correction packets must preserve path
-privacy and boundedness. Operational absolute paths must not become semantic
-identity merely because a reference was imported from that location. Heavy
-image bytes should be referenced rather than copied repeatedly into every
-comparison, viewer state, annotation artifact, or agent-context packet.
+Reference artifacts and the bounded correction handoff preserve path privacy
+and boundedness: every reference/observation/binding/fidelity/context
+identity function is a pure hash of semantic content only - an operational
+file path (the image path, a `--regions-file`/`--requirements-file`/
+`--applicability-file`/`--state-file`/`--bindings-file` path, or an artifact
+root directory) is never included in any logical identity, and importing
+the same semantic reference content from two different filesystem locations
+produces the same `referenceRequestId`. The bounded coding-agent handoff
+(`ReferenceCorrectionHandoff`) never embeds raw reference image bytes, a
+full `ObservationArtifact`, or a source excerpt - only stable identifiers,
+bounded fidelity mismatch records, and evidence path *references*.
 
-The privacy model must also distinguish a raw imported image from an approved
-reference. Import must not silently promote an image to a project baseline,
-active reference, or superseding design authority. Approval and supersession
-must be explicit and auditable.
+Import never silently promotes an image to an approved reference: only the
+explicit `approve-reference` command (or `approveExternalReference`
+programmatically) transitions a reference out of the `'imported'` lifecycle
+state, and the v0.7 correction workflow's `prepareReferenceCorrection`/
+`reviewReferenceCorrectionAttempt` both fail closed if the supplied
+reference is not already approved. Neither function - nor anything either
+calls - ever invokes `approveExternalReference` or
+`approveAndPersistBaseline` itself; a `'pass'` review result is reported as
+`approvalEligible: true`, a plain flag, never an automatic approval action.
 
-Reference/candidate comparison must not broaden the existing browser/network
-boundary. Candidate rendering continues through the current loopback-only
-Chromium observation path unless a later separately approved roadmap change
-expands that policy. External references themselves do not authorize remote
-navigation or third-party network requests.
+Reference/candidate comparison and fidelity evaluation do not broaden the
+existing browser/network boundary: candidate rendering continues through the
+existing loopback-only Chromium observation path unchanged, and reference
+evaluation itself never launches a browser at all (it consumes only
+already-captured `ObservationArtifact` evidence). The v0.7 correction
+workflow never edits target source: `src/domain/referenceCorrectionWorkflow.ts`
+and everything it imports contain no filesystem-write call, no
+`child_process` invocation, and no patch-application mechanism - the actual
+source edit between review attempts is always the responsibility of an
+external implementation actor (a human or a coding agent), never this
+package's own product code. No remote AI/model-provider dependency was
+introduced anywhere in v0.7.
 
 ## Not yet addressed
 
@@ -111,8 +145,12 @@ granted), and any non-loopback/remote browsing mode remain unimplemented and
 out of scope. `my-frontend-observer@0.6.0` is published to npm, and a
 pre-release readiness CI workflow (Windows/Linux/macOS packed-candidate
 validation) already exists (see `docs/CI_CD.md`); these are no longer future
-decisions. External visual-reference import/evaluation, reference annotation,
-and viewer handling remain future v0.7+ concerns. Those facts do not expand the
-security scope above: remote browsing, certificate handling, permission-prompt
-handling, and the exact future reference-file limits remain separate,
+decisions. The v0.7 external-reference/correction-workflow security
+properties above are implemented and unreleased (package version remains
+`0.6.0`); cross-platform pre-release security validation of that v0.7 work
+belongs to a separate, later pre-release readiness stage. Viewer and
+annotation (v0.8/v0.9) remain future, unimplemented concerns with their own
+security review still to come. Those facts do not expand the security scope
+above: remote browsing, certificate handling, permission-prompt handling,
+and future viewer/annotation-specific file handling remain separate,
 unimplemented concerns.

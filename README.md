@@ -132,6 +132,45 @@ exported from `src/index.ts` (bounded-agent-context schema `1.0.0`). See
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how it fits the existing
 pipeline.
 
+### External-reference correction workflow (v0.7, implemented, unreleased)
+
+The complete v0.7 external-reference foundation and end-to-end correction
+workflow is implemented in this development state (package version still
+`0.6.0` - see "Current status" above). `import-reference` and
+`approve-reference` persist an externally supplied design-reference image
+(with optional regions, selected requirements/tolerances, and applicability
+state); `evaluate-reference-fidelity --reference --candidate
+[--bindings-file] [--enforce]` compares an already-persisted candidate
+observation against it, gated by reference adequacy, reference/candidate
+compatibility, and explicit region-to-target bindings:
+
+```powershell
+my-frontend-observer import-reference design.png --output references --regions-file regions.json --requirements-file requirements.json --applicability-file applicability.json
+my-frontend-observer approve-reference --reference references/<id> --output references
+my-frontend-observer evaluate-reference-fidelity --reference references/<approved-id> --candidate observations/<id> --bindings-file bindings.json
+```
+
+(From a source checkout, use `node dist/cli.js import-reference ...` etc.
+instead.)
+
+`import-reference`/`approve-reference`/`evaluate-reference-fidelity` never
+launch a browser or edit any file outside their own declared output
+location; `evaluate-reference-fidelity` persists nothing. A programmatic,
+library-only correction-workflow coordinator
+(`prepareReferenceCorrection`/`reviewReferenceCorrectionAttempt`, exported
+from `src/index.ts`, no CLI command) composes the full cycle - reference
+fidelity (reused unchanged) plus canonical v0.4 comparison and v0.5 contract
+evaluation - into one overall result: matching the reference is necessary
+but never sufficient, so a candidate that visually satisfies the reference
+while regressing an active protected/preserved contract clause still
+resolves to overall `FAIL`. my-frontend-observer never edits target source
+itself; an external implementation actor (a human or a coding agent, never
+this package) makes the actual source change between review attempts. See
+[docs/CONTRACTS.md](docs/CONTRACTS.md) and
+[docs/WORKFLOWS.md](docs/WORKFLOWS.md) for the exact contract and workflow,
+and [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md) for the full
+Prompt-by-Prompt implementation record.
+
 Validation:
 
 ```powershell
@@ -150,7 +189,8 @@ Planning authorities:
 - [Project Milestones](docs/PROJECT_MILESTONES.md): complete ordered capability
   design and cross-milestone rules.
 - [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.6 are
-  released, v0.7+ remain future.
+  released; v0.7 is implemented in this development state but unreleased
+  (package version remains `0.6.0`); v0.8+ remain future.
 - [Current State](docs/CURRENT_STATE.md): retained scaffold and release state.
 
 No sibling ecosystem repository is a runtime dependency of the retained
