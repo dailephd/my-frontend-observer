@@ -1,10 +1,11 @@
 # Current State
 
-The project is published at package version `0.6.0` (roadmap v0.6, Bounded
-Agent Context and Native my-dev-kit Ecosystem Integration; observation
-schema `1.2.0`; comparison schema `1.0.0`; frontend contract schema
-`1.0.0`; evaluation artifact schema `1.0.0`; bounded-agent-context schema
-`1.0.0`) - see "v0.6 status" below.
+The project is published at package version `0.7.0` (roadmap v0.7,
+End-to-End Coding-Agent Frontend Change Review; observation schema `1.2.0`;
+comparison schema `1.0.0`; frontend contract schema `1.0.0`; evaluation
+artifact schema `1.0.0`; bounded-agent-context schema `1.0.0`;
+external-reference schema `1.0.0`) - see "v0.7 Prompt 8 status" below for
+the final, complete v0.7 state.
 
 ## Greenfield foundation established
 
@@ -23,10 +24,10 @@ The retained repository contains:
   and standardized documentation.
 
 The package bin (`src/cli.ts`) now exposes the real current public CLI
-surface described below - the five commands released as part of `0.6.0`
+surface described below - the five commands released through `0.6.0`
 (`observe`, `compare`, `approve-baseline`, `save-change-contract`,
-`evaluate-contract`) plus three additional commands implemented as part of
-the unreleased v0.7 work (`import-reference`, `approve-reference`,
+`evaluate-contract`) plus three additional commands released as part of
+`0.7.0` (`import-reference`, `approve-reference`,
 `evaluate-reference-fidelity` - see "v0.7 Prompt 1/6 status" below) - while
 remaining a thin parsing/dispatch/presentation boundary; it is no longer the
 not-implemented placeholder.
@@ -453,7 +454,7 @@ evaluation artifact schema `1.0.0`; new bounded-agent-context schema
   code lives in this repository - those are separate sibling-repository
   deliverables, not part of `my-frontend-observer`'s v0.6 surface.
 
-## v0.7 Prompt 1 status (External Visual Reference Foundation) - implemented, unreleased
+## v0.7 Prompt 1 status (External Visual Reference Foundation) - released as `0.7.0`
 
 Only the foundation layer of the v0.7 external-reference architecture is
 implemented: an observer-owned `ExternalReferenceArtifact` family
@@ -512,7 +513,7 @@ two-state lifecycle. This is not the full v0.7 coding-agent workflow.
   fidelity evaluation, theme/application-state compatibility evaluation,
   viewer, and annotation.
 
-## v0.7 Prompt 2 status (Explicit Reference Regions, Geometry, and Reusable Reference Relationships) - implemented, unreleased
+## v0.7 Prompt 2 status (Explicit Reference Regions, Geometry, and Reusable Reference Relationships) - released as `0.7.0`
 
 Additive extension of the Prompt 1 foundation above. Still not the full v0.7
 coding-agent workflow - no design requirements, tolerances, adequacy,
@@ -569,7 +570,7 @@ binding, or fidelity evaluation yet.
   evaluation, reference-region/runtime-target binding, reference-vs-candidate
   fidelity evaluation, viewer, and annotation.
 
-## v0.7 Prompt 3 status (Selected Design Requirements, Tolerance Semantics, and Reference-Evidence Adequacy) - implemented, unreleased
+## v0.7 Prompt 3 status (Selected Design Requirements, Tolerance Semantics, and Reference-Evidence Adequacy) - released as `0.7.0`
 
 Additive extension of the Prompt 1/2 foundation above. Still not the full
 v0.7 coding-agent workflow - no runtime binding or fidelity evaluation yet.
@@ -638,7 +639,7 @@ v0.7 coding-agent workflow - no runtime binding or fidelity evaluation yet.
   reference-region/runtime-target binding, reference-vs-candidate fidelity
   evaluation, viewer, and annotation.
 
-## v0.7 Prompt 4 status (Reference Applicability and Candidate-State Compatibility) - implemented, unreleased
+## v0.7 Prompt 4 status (Reference Applicability and Candidate-State Compatibility) - released as `0.7.0`
 
 Additive extension of the Prompt 1/2/3 foundation above. Still not the full
 v0.7 coding-agent workflow - no runtime binding or fidelity evaluation yet.
@@ -697,7 +698,7 @@ v0.7 coding-agent workflow - no runtime binding or fidelity evaluation yet.
   fidelity evaluation, bounded fidelity context, the end-to-end correction
   workflow, viewer, and annotation.
 
-## v0.7 Prompt 5 status (Explicit Reference-Region <-> Runtime-Target Binding) - implemented, unreleased
+## v0.7 Prompt 5 status (Explicit Reference-Region <-> Runtime-Target Binding) - released as `0.7.0`
 
 Additive extension of the Prompt 1-4 foundation above. Still not the full
 v0.7 coding-agent workflow - no fidelity evaluation yet.
@@ -734,7 +735,7 @@ v0.7 coding-agent workflow - no fidelity evaluation yet.
   prompts): reference-vs-candidate fidelity evaluation, bounded fidelity
   context, the end-to-end correction workflow, viewer, and annotation.
 
-## v0.7 Prompt 6 status (Structured Reference-vs-Candidate Fidelity Evaluation) - implemented, unreleased
+## v0.7 Prompt 6 status (Structured Reference-vs-Candidate Fidelity Evaluation) - released as `0.7.0`
 
 Additive extension of the Prompt 1-5 foundation above. The first point in
 the v0.7 stack where a reference's authored expectation is actually
@@ -774,7 +775,7 @@ compared against live candidate evidence.
   prompts): bounded fidelity context integration, the end-to-end correction
   workflow, viewer, and annotation.
 
-## v0.7 Prompt 7 status (Bounded Reference-Fidelity Projection and v0.6 Bounded-Agent-Context Integration) - implemented, unreleased
+## v0.7 Prompt 7 status (Bounded Reference-Fidelity Projection and v0.6 Bounded-Agent-Context Integration) - released as `0.7.0`
 
 Additive extension of the v0.6 bounded-agent-context architecture and the
 Prompt 1-6 foundation above.
@@ -811,7 +812,7 @@ Prompt 1-6 foundation above.
 - **Not implemented in this stage** (explicitly deferred to Prompt 8):
   the end-to-end coding-agent correction workflow, viewer, and annotation.
 
-## v0.7 Prompt 8 status (Controlled End-to-End External-Reference Coding-Agent Correction Workflow) - implemented, unreleased
+## v0.7 Prompt 8 status (Controlled End-to-End External-Reference Coding-Agent Correction Workflow) - released as `0.7.0`
 
 The first complete v0.7 correction cycle, composing every Prompt 1-7 and
 v0.1/v0.4/v0.5/v0.6 owner - this completes the v0.7 (End-to-End Coding-Agent
@@ -882,19 +883,22 @@ Frontend Change Review) milestone's core workflow.
 
 ## Next target
 
-v0.1-v0.6 are implemented, validated, and released (`0.1.0`, `0.2.0`,
-`0.3.0`, `0.4.0`, `0.5.0`, `0.6.0`). v0.7 (End-to-End Coding-Agent Frontend
-Change Review) is fully implemented and unreleased as of Prompt 8: the
-external-reference artifact foundation (Prompt 1), explicit reference
-regions/relationships (Prompt 2), selected design requirements/tolerance
-semantics/reference-evidence adequacy (Prompt 3), reference applicability
-and candidate-state compatibility (Prompt 4), explicit reference-region/
-runtime-target binding (Prompt 5), structured reference-vs-candidate
-fidelity evaluation (Prompt 6), bounded reference-fidelity projection into
-the existing v0.6 bounded-agent-context (Prompt 7), and the controlled
-end-to-end correction workflow with real-Chromium proof (Prompt 8) are all
-implemented and unreleased. The package version remains `0.6.0` pending a
-separate v0.7 pre-release readiness, cross-platform, and security
-validation stage - see `docs/ROADMAP.md` for v0.7's full scope and
+v0.1-v0.7 are implemented, validated, and released (`0.1.0`, `0.2.0`,
+`0.3.0`, `0.4.0`, `0.5.0`, `0.6.0`, `0.7.0`). v0.7 (End-to-End Coding-Agent
+Frontend Change Review) is now fully implemented and released: the
+external-reference artifact foundation, explicit reference
+regions/relationships, selected design requirements/tolerance
+semantics/reference-evidence adequacy, reference applicability
+and candidate-state compatibility, explicit reference-region/
+runtime-target binding, structured reference-vs-candidate
+fidelity evaluation, bounded reference-fidelity projection into
+the existing v0.6 bounded-agent-context, and the controlled
+end-to-end correction workflow with real-Chromium proof are all
+implemented and released as package version `0.7.0`, following a completed
+pre-release readiness, cross-platform, and security validation stage - see
+`docs/ROADMAP.md` for v0.7's full scope,
 `docs/reports/v0.7-implementation-completeness-documentation-reconciliation.md`
-for the completeness audit that confirmed this state.
+for the completeness audit, and
+`docs/reports/v0.7-pre-release-readiness.md` for the cross-platform
+readiness validation that preceded this release. v0.8+ remain future - see
+`docs/ROADMAP.md`.

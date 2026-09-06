@@ -66,12 +66,11 @@ module). Bounded runtime projections may include existing screenshot *path
 references* (never embedded bytes), consistent with every other artifact
 family's existing reference-not-embed discipline.
 
-## External visual-reference security and privacy boundary (v0.7, implemented, unreleased)
+## External visual-reference security and privacy boundary (v0.7, released as `0.7.0`)
 
 External visual-reference support (`import-reference`/`approve-reference`/
 `evaluate-reference-fidelity`, plus the programmatic correction-workflow
-coordinator) is implemented in the current development state, on top of the
-still-published `0.6.0` package. Imported reference images remain
+coordinator) is released as part of the published `0.7.0` package. Imported reference images remain
 local-first evidence: `import-reference` reads a local file path only,
 never a URL, and no code path in this repository uploads a reference image,
 a candidate screenshot, source code, or any derived evidence to an external
@@ -142,13 +141,13 @@ introduced anywhere in v0.7.
 Certificate-failure-specific handling, permission-prompt-specific handling
 (Chromium's default deny-all applies; no permission is ever explicitly
 granted), and any non-loopback/remote browsing mode remain unimplemented and
-out of scope. `my-frontend-observer@0.6.0` is published to npm, and a
+out of scope. `my-frontend-observer@0.7.0` is published to npm, and a
 pre-release readiness CI workflow (Windows/Linux/macOS packed-candidate
 validation) already exists (see `docs/CI_CD.md`); these are no longer future
 decisions. The v0.7 external-reference/correction-workflow security
-properties above are implemented and unreleased (package version remains
-`0.6.0`); cross-platform pre-release security validation of that v0.7 work
-belongs to a separate, later pre-release readiness stage. Viewer and
+properties above are released as part of `0.7.0`, following a completed
+cross-platform pre-release security validation stage (see
+`docs/reports/v0.7-pre-release-readiness.md`). Viewer and
 annotation (v0.8/v0.9) remain future, unimplemented concerns with their own
 security review still to come. Those facts do not expand the security scope
 above: remote browsing, certificate handling, permission-prompt handling,

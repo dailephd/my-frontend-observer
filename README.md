@@ -6,8 +6,9 @@ in [docs/PROJECT_DESCRIPTION.md](docs/PROJECT_DESCRIPTION.md).
 
 ## Current status
 
-`v0.6.0`, Bounded Agent Context and Native my-dev-kit Ecosystem Integration,
-is the current published release. It builds on `v0.5.0`, Executable Frontend
+`v0.7.0`, End-to-End Coding-Agent Frontend Change Review, is the current
+published release. It builds on `v0.6.0`, Bounded Agent Context and Native
+my-dev-kit Ecosystem Integration, and `v0.5.0`, Executable Frontend
 Contracts and Explicit Change Scope: `my-frontend-observer observe` launches a real,
 sandboxed Chromium browser, enforces a loopback-only safety policy, captures
 a viewport screenshot plus bounded page/target evidence, and persists it as
@@ -132,11 +133,9 @@ exported from `src/index.ts` (bounded-agent-context schema `1.0.0`). See
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how it fits the existing
 pipeline.
 
-### External-reference correction workflow (v0.7, implemented, unreleased)
+### External-reference correction workflow (v0.7.0)
 
-The complete v0.7 external-reference foundation and end-to-end correction
-workflow is implemented in this development state (package version still
-`0.6.0` - see "Current status" above). `import-reference` and
+`import-reference` and
 `approve-reference` persist an externally supplied design-reference image
 (with optional regions, selected requirements/tolerances, and applicability
 state); `evaluate-reference-fidelity --reference --candidate
@@ -169,7 +168,7 @@ this package) makes the actual source change between review attempts. See
 [docs/CONTRACTS.md](docs/CONTRACTS.md) and
 [docs/WORKFLOWS.md](docs/WORKFLOWS.md) for the exact contract and workflow,
 and [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md) for the full
-Prompt-by-Prompt implementation record.
+implementation record.
 
 Validation:
 
@@ -178,6 +177,7 @@ npm run typecheck
 npm run lint
 npm test
 npm run test:browser
+npm run test:security
 npm run build
 npm run check:docs
 ```
@@ -188,9 +188,8 @@ Planning authorities:
   intent and responsibility boundaries.
 - [Project Milestones](docs/PROJECT_MILESTONES.md): complete ordered capability
   design and cross-milestone rules.
-- [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.6 are
-  released; v0.7 is implemented in this development state but unreleased
-  (package version remains `0.6.0`); v0.8+ remain future.
+- [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.7 are
+  released; v0.8+ remain future.
 - [Current State](docs/CURRENT_STATE.md): retained scaffold and release state.
 
 No sibling ecosystem repository is a runtime dependency of the retained

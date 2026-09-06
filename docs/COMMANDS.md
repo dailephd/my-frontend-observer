@@ -533,7 +533,8 @@ same `evaluationRequestId` even though each execution gets a fresh
 
 ## `evaluate-reference-fidelity`
 
-**Current status: implemented, unreleased (v0.7 Prompt 6).** No new artifact
+**Current status: shipped as part of the published `my-frontend-observer@0.7.0`
+package.** No new artifact
 family or schema version — this command persists nothing.
 
 `my-frontend-observer evaluate-reference-fidelity` evaluates whether an
@@ -599,8 +600,8 @@ declaration.
 
 ## `import-reference`
 
-**Current status: implemented, unreleased (v0.7 Prompt 1, extended by
-Prompts 2/3/4).** Persists a new `ExternalReferenceArtifact` in the
+**Current status: shipped as part of the published `my-frontend-observer@0.7.0`
+package.** Persists a new `ExternalReferenceArtifact` in the
 `imported` lifecycle state (external-reference schema `1.0.0`).
 
 ```text
@@ -669,7 +670,8 @@ applicability, prints structured diagnostics to stderr and exits nonzero.
 
 ## `approve-reference`
 
-**Current status: implemented, unreleased (v0.7 Prompt 1).** Persists a new
+**Current status: shipped as part of the published `my-frontend-observer@0.7.0`
+package.** Persists a new
 `ExternalReferenceArtifact` in the `approved` lifecycle state
 (external-reference schema `1.0.0`).
 

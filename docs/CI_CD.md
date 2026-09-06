@@ -164,3 +164,53 @@ pre-release validation. The final pre-release candidate
 (`acd067247c447294a611f37f52eab301b6038ab1c6d493ae65e81c2f1279bfd7`) passed
 Windows, Linux, and macOS using that one hash-verified tarball (GitHub
 Actions run `32304059259`) before the `0.6.0` release below.
+
+## v0.7 packed-candidate coverage (released as `0.7.0`)
+
+The v0.7 pre-release readiness stage identified the same class of gap
+`scripts/ci/runPackedObservationSmoke.mjs` had already closed for every
+prior version: the packed-candidate smoke exercised `observe`/`compare`/
+`approve-baseline`/`save-change-contract`/`evaluate-contract` and the v0.6
+bounded-agent-context/correlation exports, but none of v0.7's new surface.
+This was closed the same way as every prior version's gap - one narrow,
+additive extension to the existing script, never a second parallel
+framework: the installed candidate's `import-reference --help`/
+`approve-reference --help`/`evaluate-reference-fidelity --help`; a real
+external-reference image imported and approved through the installed CLI
+with explicit regions, three requirement kinds (`region-property`,
+`region-relationship`, and both `exact`/`absolute-reference-px` tolerance
+kinds), and a declared `applicability.viewport`; explicit region↔runtime-
+target bindings reusing the existing v0.5 contract-fixture geometry; a
+genuine fidelity `pass` and a genuine fidelity `fail` (each checked with and
+without `--enforce`, mirroring `evaluate-contract`'s own PASS/FAIL/
+`--enforce` proof pattern); an `observe --state-file` explicit-state
+round-trip; and the installed package's programmatic
+`evaluateReferenceCandidateFidelityFromArtifactRoots`/
+`prepareReferenceCorrection`/`reviewReferenceCorrectionAttempt` exports,
+including a `prepareReferenceCorrection` handoff carrying a bounded-agent-
+context artifact (exercising the v0.7 bounded fidelity projection and its
+v0.6 bounded-agent-context integration together) and both a `pass` and a
+`fail` `reviewReferenceCorrectionAttempt` outcome - all resolved from the
+installed package's own `node_modules`, never the source checkout, and all
+re-verified against a re-hash of the pre-existing source observation
+manifest to confirm none of the new calls mutated it.
+
+This was proven cross-platform on the validation branch
+`validation/v0.7-pre-release` at commit
+`b2286bdc9550d70fa1047a1f732968a8eca46a1e`: GitHub Actions run
+[`34054085344`](https://github.com/dailephd/my-frontend-observer/actions/runs/34054085344)
+passed completely - the candidate job (Linux, Node 24) and all three
+`matrix-smoke` lanes (`windows-latest` Node v24.19.0, `ubuntu-latest` Node
+v24.20.0, `macos-latest` Node v24.20.0) - using one shared **pre-version-
+bump implementation candidate** tarball, `my-frontend-observer-0.6.0.tgz`
+(package version still `0.6.0` at that point in the readiness stage - the
+version bump to `0.7.0` happened only afterward, during release
+preparation; this tarball itself was never version `0.7.0`), SHA-256
+`0347b1f3cfd5d311e13b405c0c2fbc2f507e250cb63223d58b4d2d31df029414`,
+independently hash-verified by each of the three matrix lanes before any of
+them ran the smoke (no lane built its own tarball). Every lane's
+`smoke-summary-<os>.json` reported the same v0.7 evidence described above,
+alongside every pre-existing v0.1-v0.6 packed assertion, still passing
+unchanged on all three platforms - see
+`docs/reports/v0.7-pre-release-readiness.md` for the complete readiness
+report.

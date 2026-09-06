@@ -11,11 +11,11 @@ install dependencies (npm install; npx playwright install chromium)
 → validate documentation (npm run check:docs)
 ```
 
-## Current observation workflow (published and current in 0.6.0)
+## Current observation workflow (published and current in 0.7.0)
 
 The real `observe` workflow remains part of the published
-`my-frontend-observer@0.6.0` package. Its browser-observation behavior was
-established in earlier releases and remains unchanged by v0.6. It accepts target
+`my-frontend-observer@0.7.0` package. Its browser-observation behavior was
+established in earlier releases and remains unchanged by v0.6/v0.7. It accepts target
 configuration through either of two input paths, plus one optional runtime
 scroll scenario:
 
@@ -64,10 +64,10 @@ temporary consumer directory outside the repository, on Windows, Linux, and
 macOS (`scripts/ci/runPackedObservationSmoke.mjs`) - the same workflow,
 independent of the source checkout.
 
-## Current comparison workflow (published and current in 0.6.0)
+## Current comparison workflow (published and current in 0.7.0)
 
 **Current status: shipped originally as part of
-`my-frontend-observer@0.4.0` and unchanged through `0.6.0`.** This is a
+`my-frontend-observer@0.4.0` and unchanged through `0.7.0`.** This is a
 separate workflow from the observation workflow above - it consumes two
 already-persisted observation artifacts rather than producing one, and it
 never launches a browser:
@@ -113,15 +113,15 @@ fixture (`scripts/dev/builtCliCompareSmoke.mjs`), and packed-tarball
 validation of the installed `compare` command
 (`scripts/ci/runPackedObservationSmoke.mjs` - see `docs/CI_CD.md`).
 
-## Current frontend contract workflow (published and current in 0.6.0)
+## Current frontend contract workflow (published and current in 0.7.0)
 
 This text/config-driven workflow shipped in `0.5.0` and remains current in
-`0.6.0`. It is layered downstream of the two workflows above - it does not
+`0.7.0`. It is layered downstream of the two workflows above - it does not
 replace them. The complete v0.7 coding-agent workflow (the external-reference
-evidence foundation and end-to-end correction loop) is implemented on top of
-it in the current development state, unreleased - see "Current
-external-reference foundation workflow" and "Current reference correction
-workflow" below; baseline selection here remains caller-supplied:
+evidence foundation and end-to-end correction loop) is layered on top of
+it - see "Current external-reference foundation workflow" and "Current
+reference correction workflow" below; baseline selection here remains
+caller-supplied:
 
 ```text
 observe before
@@ -200,7 +200,7 @@ truncation reporting, and correlation status invariants/determinism/
 deduplication). See `docs/CONTRACTS.md` "v0.6 bounded agent context and
 correlation contract" for the exact shape.
 
-**v0.7 Prompt 7 addition (implemented, unreleased):** `projectBoundedAgentContext`
+**v0.7 Prompt 7 addition (released as `0.7.0`):** `projectBoundedAgentContext`
 now optionally accepts an already-computed v0.7 Prompt 6
 `ReferenceCandidateFidelityEvaluation` (`fidelity`) alongside its existing
 v0.1-v0.5 evidence inputs - never recomputed, never a second fidelity
@@ -228,7 +228,7 @@ behavior described above, including logical identity. See
 `docs/CONTRACTS.md` "v0.7 Prompt 7 bounded reference-fidelity projection and
 v0.6 bounded-agent-context integration" for the full contract.
 
-## Current external-reference foundation workflow (implemented, unreleased - v0.7 Prompts 1-8)
+## Current external-reference foundation workflow (released as `0.7.0`)
 
 This is the foundation layer only - identity, provenance, bounded image
 metadata, a two-state lifecycle, (Prompt 2) explicit reference regions plus
@@ -398,7 +398,7 @@ CLI coverage (no Chromium involved - see `tests/unit/externalReference*.test.ts`
 `tests/unit/cliExternalReference.test.ts`, and
 `tests/unit/cliEvaluateReferenceFidelity.test.ts`).
 
-## Current reference correction workflow (implemented, unreleased - v0.7 Prompt 8)
+## Current reference correction workflow (released as `0.7.0`)
 
 The first complete, controlled correction cycle - a programmatic (library-
 only) workflow, exactly like the v0.6 bounded-context workflow above, with
@@ -479,13 +479,12 @@ coding-agent correction workflow" for the full contract.
 
 v0.7 (text/config-driven coding-agent change review, the external
 visual-reference evidence foundation, structured reference-vs-candidate
-fidelity evaluation, and the end-to-end correction workflow) is implemented
-in the current development state - see "Current external-reference
-foundation workflow" and "Current reference correction workflow" above, and
-`docs/CURRENT_STATE.md` for release state (package version remains
-`0.6.0`; v0.7 is unreleased). The still-future sequence on top of it
-preserves the current engines and lets later graphical interfaces consume
-rather than invent the reference model:
+fidelity evaluation, and the end-to-end correction workflow) is released as
+package version `0.7.0` - see "Current external-reference foundation
+workflow" and "Current reference correction workflow" above, and
+`docs/CURRENT_STATE.md` for release state. The still-future sequence on top
+of it preserves the current engines and lets later graphical interfaces
+consume rather than invent the reference model:
 
 ```text
 stable targets and bounded runtime behavior
@@ -499,16 +498,16 @@ stable targets and bounded runtime behavior
 → v0.7 text/config-driven coding-agent change review
   + external visual-reference evidence foundation
   + structured reference-vs-candidate fidelity evaluation
-  + end-to-end correction workflow (implemented, unreleased - see above)
+  + end-to-end correction workflow (released as `0.7.0` - see above)
 → v0.8 interactive viewer with reference/candidate inspection
 → v0.9 structured visual annotation on runtime screenshots and references
 → v0.10 full visual human–LLM workflow with both actual-frontend-driven and
   reference-driven entry modes
 ```
 
-### v0.7 reference-driven correction flow (implemented, unreleased)
+### v0.7 reference-driven correction flow (released as `0.7.0`)
 
-The non-graphical reference path, now implemented exactly as originally
+The non-graphical reference path, now released exactly as originally
 planned, is:
 
 ```text
@@ -547,7 +546,7 @@ checked before reference fidelity is interpreted. A mismatched reference and
 candidate state yields an explicit incompatible/incomparable outcome rather
 than fabricated visual failures.
 
-The v0.7 coding-agent workflow and reference foundation are implemented in
-this repository (unreleased) and work without the v0.8 viewer or v0.9
+The v0.7 coding-agent workflow and reference foundation are released as
+part of this repository and work without the v0.8 viewer or v0.9
 annotation system. v0.8 must consume the v0.7 reference/evaluation model
 rather than create a second UI-only one.

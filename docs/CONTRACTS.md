@@ -3,7 +3,7 @@
 ## Current contracts
 
 The observation artifact contract is published in the current
-`my-frontend-observer@0.6.0` package and proven both from the source checkout
+`my-frontend-observer@0.7.0` package and proven both from the source checkout
 and from the packed npm tarball, on Windows, Linux, and macOS. The observation
 schema is `1.2.0` (see "v0.2 target contract" and "v0.3 scroll scenario
 contract" below):
@@ -87,7 +87,7 @@ exclusive per invocation, and both converge on the same
 observation produces exactly the same `manifest.json` shape as a
 CSS-shorthand one. Schema `1.1.0` was the v0.2 published artifact schema;
 schema `1.2.0` has been emitted since v0.3 and remains the observation schema
-in the current published v0.6.0 package, for both target-input modes
+in the current published v0.7.0 package, for both target-input modes
 (target semantics are unchanged from v0.2 - see the v0.3 scroll scenario
 contract below for what schema `1.2.0` actually adds). `--targets-file`'s
 local input path is never part of the persisted request identity or
@@ -169,7 +169,7 @@ directly, and its local path is operational input only, exactly like
 ## v0.4 comparison contract (shipped as part of this release)
 
 **Current status: shipped as part of the published `my-frontend-observer@0.4.0`
-package and unchanged through the current `0.6.0` release.** Observation
+package and unchanged through the current `0.7.0` release.** Observation
 schema remains `1.2.0`. Comparison is a distinct artifact kind and schema,
 never a bump to the observation schema:
 
@@ -490,15 +490,14 @@ blockers; on the canonical worktree, `npm run typecheck`, `npm run lint`,
 `npm test` (627 tests), `npm run test:browser` (120 tests), `npm run
 test:security`, `npm run build`, and `npm run check:docs` all pass.
 
-## v0.7 external visual-reference contract direction (implemented, unreleased; v0.8+ still future)
+## v0.7 external visual-reference contract direction (released as `0.7.0`; v0.8+ still future)
 
-External visual-reference support is implemented in the current development
-state (see "v0.7 Prompt 1" through "v0.7 Prompt 8" below) but is not part of
-the published `0.6.0` contract. The exact public type names, artifact kinds,
-schema versions, persistence layout, and command/programmatic entry points
-were designed during v0.7 implementation from current repository precedent,
-following the constraints below; v0.8-v0.10 remain future and must continue
-to preserve them.
+External visual-reference support is released as package version `0.7.0`
+(see "v0.7 Prompt 1" through "v0.7 Prompt 8" below for the exact contract).
+The exact public type names, artifact kinds, schema versions, persistence
+layout, and command/programmatic entry points were designed during v0.7
+implementation from current repository precedent, following the constraints
+below; v0.8-v0.10 remain future and must continue to preserve them.
 
 **Distinct evidence domain**: an external reference is desired-design evidence,
 not an `ObservationArtifact` and not the "before" side of a v0.4
@@ -604,7 +603,7 @@ in v0.10.
 
 ## v0.7 Prompt 1 external-reference artifact contract
 
-Implemented, unreleased. This is the foundation layer only: identity,
+Released as `0.7.0`. This is the foundation layer only: identity,
 provenance, bounded image metadata, and a two-state lifecycle for one
 externally supplied design-reference image. It implements no region,
 geometry, relationship, requirement, tolerance, binding, or fidelity-
@@ -709,7 +708,7 @@ temp-dir-then-rename discipline as every other artifact family
 
 ## v0.7 Prompt 2 explicit reference regions and relationships
 
-Implemented, unreleased. Additive extension of the Prompt 1 contract above:
+Released as `0.7.0`. Additive extension of the Prompt 1 contract above:
 one new, optional `regions?: ReferenceRegion[]` field on
 `ExternalReferenceArtifact` (both lifecycle variants), plus a pure,
 non-persisted relationship-derivation capability. No schema version bump -
@@ -811,7 +810,7 @@ where those later concepts (Prompt 3+) will attach.
 
 ## v0.7 Prompt 3 selected design requirements, tolerance semantics, and reference-evidence adequacy
 
-Implemented, unreleased. Additive extension of the Prompt 1/2 contracts
+Released as `0.7.0`. Additive extension of the Prompt 1/2 contracts
 above: one new, optional `requirements?: ExternalReferenceRequirement[]`
 field on `ExternalReferenceArtifact` (both lifecycle variants). No schema
 version bump - same reasoning as Prompt 2's `regions` field.
@@ -933,7 +932,7 @@ interface ReferenceRequirementAdequacy {
 
 ## v0.7 Prompt 4 reference applicability and candidate-state compatibility
 
-Implemented, unreleased. Additive extension of the Prompt 1/2/3 contracts
+Released as `0.7.0`. Additive extension of the Prompt 1/2/3 contracts
 above: one new, optional `applicability?: ExternalReferenceApplicability`
 field on `ExternalReferenceArtifact` (both lifecycle variants), one new,
 optional `explicitState?: ExplicitStateDimensions` field on
@@ -1074,7 +1073,7 @@ Key rules:
 
 ## v0.7 Prompt 5 explicit reference-region <-> runtime-target binding
 
-Implemented, unreleased. One new pure domain module,
+Released as `0.7.0`. One new pure domain module,
 `domain/externalReferenceRuntimeBinding.ts`, answering "which stable
 observer runtime target, if any, does this candidate observation resolve
 for each explicitly declared reference region?" No new field is added to
@@ -1228,7 +1227,7 @@ Key rules:
 
 ## v0.7 Prompt 6 structured reference-vs-candidate fidelity evaluation
 
-Implemented, unreleased. One new pure domain module,
+Released as `0.7.0`. One new pure domain module,
 `domain/externalReferenceFidelity.ts`, and its CLI-facing counterpart,
 `application/referenceFidelityEvaluationService.ts` plus the new
 `evaluate-reference-fidelity` CLI command - the first point in this whole
@@ -1442,7 +1441,7 @@ Persists nothing; there is no `--output` flag.
 
 ## v0.7 Prompt 7 bounded reference-fidelity projection and v0.6 bounded-agent-context integration
 
-Implemented, unreleased. Additive extension of the v0.6 bounded-agent-context
+Released as `0.7.0`. Additive extension of the v0.6 bounded-agent-context
 contract above and of the v0.7 Prompt 6 fidelity evaluator - no new bounded-
 context artifact family, no second visual-context system, no schema version
 bump (`BOUNDED_AGENT_CONTEXT_SCHEMA_VERSION` stays `1.0.0`, following the
@@ -1642,7 +1641,7 @@ to become the first concrete consumer of `projectBoundedAgentContext`'s
 
 ## v0.7 Prompt 8 controlled end-to-end external-reference coding-agent correction workflow
 
-Implemented, unreleased. One new pure domain module,
+Released as `0.7.0`. One new pure domain module,
 `domain/referenceCorrectionWorkflow.ts`, plus its identity counterpart,
 `domain/referenceCorrectionIdentity.ts` - the first stage that composes
 every Prompt 1-7 and v0.1/v0.4/v0.5/v0.6 owner into one traceable

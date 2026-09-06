@@ -3,16 +3,22 @@
 ## Current package architecture
 
 The current repository is one published TypeScript ESM package
-(`my-frontend-observer@0.6.0`):
+(`my-frontend-observer@0.7.0`):
 
 - `src/cli.ts` is the real, thin public CLI parsing/dispatch/presentation
   boundary for the current command surface (`observe`, `compare`,
-  `approve-baseline`, `save-change-contract`, `evaluate-contract`); argument
-  parsing and output formatting only, per command - the commands do not share
-  domain semantics in the CLI. v0.6 adds no new CLI command.
+  `approve-baseline`, `save-change-contract`, `evaluate-contract`,
+  `import-reference`, `approve-reference`, `evaluate-reference-fidelity`);
+  argument parsing and output formatting only, per command - the commands do
+  not share domain semantics in the CLI. v0.6 added no new CLI command; v0.7
+  added the three external-reference commands.
 - `src/index.ts` is the library entry point re-exporting the observer-owned
   contracts/functions from every layer below, including the v0.6 bounded-agent-
-  context projection and runtime/static correlation surface.
+  context projection and runtime/static correlation surface, and the v0.7
+  external-reference/region/requirement/applicability/compatibility/binding/
+  fidelity/correction-workflow surface (`prepareReferenceCorrection`/
+  `reviewReferenceCorrectionAttempt` remain programmatic-only, with no CLI
+  command).
 - `scripts/clean.mjs` safely removes only the project `dist/` directory.
 - `scripts/check-docs.mjs` validates the canonical documentation foundation,
   roadmap version presence, and the no-batches rule.
@@ -340,14 +346,14 @@ lab code in this repository - those remain separate sibling-repository
 responsibilities per the Milestone 6 ownership split in
 `docs/PROJECT_MILESTONES.md`.
 
-## v0.7 (implemented, unreleased) and planned v0.8–v0.10 reference-evidence architecture constraints
+## v0.7 (released as `0.7.0`) and planned v0.8–v0.10 reference-evidence architecture constraints
 
-The external visual-reference capability (v0.7) is implemented in the
-current development state - see "v0.7 Prompt 1" through "v0.7 Prompt 8"
-below for the actual architecture, and `docs/CURRENT_STATE.md` for release
-state (package version remains `0.6.0`; v0.7 is unreleased). It extends the
-existing v0.1-v0.6 evidence architecture rather than becoming a UI-only
-feature or a parallel visual-comparison stack. v0.8 (interactive viewer),
+The external visual-reference capability (v0.7) is released as package
+version `0.7.0` - see "v0.7 Prompt 1" through "v0.7 Prompt 8" below for the
+actual architecture, and `docs/CURRENT_STATE.md` for release state. It
+extends the existing v0.1-v0.6 evidence architecture rather than becoming a
+UI-only feature or a parallel visual-comparison stack. v0.8 (interactive
+viewer),
 v0.9 (structured visual annotation), and v0.10 (full graphical human-LLM
 workflow) remain future and unimplemented; the constraints below apply to
 that still-future work, except where a paragraph explicitly says an item is
@@ -364,7 +370,7 @@ approved baseline/per-change contract ↔ candidate runtime evidence
 
 external visual reference ↔ candidate runtime evidence
 → reference applicability + structured fidelity evaluation (v0.7,
-  implemented, unreleased - see "v0.7 Prompt 4" and "v0.7 Prompt 6" below)
+  released as `0.7.0` - see "v0.7 Prompt 4" and "v0.7 Prompt 6" below)
 ```
 
 An external reference is not an `ObservationArtifact`, and a reference region
