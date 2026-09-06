@@ -265,7 +265,13 @@ export type { PersistFrontendContractOptions, ApplicationApproveBaselineResult, 
 export { approveAndPersistBaseline, persistPerChangeContract } from './application/frontendContractPersistenceService.js';
 
 export type { CompareObservationsResult } from './domain/comparisonEngine.js';
-export { compareObservations, evaluateComparability, evaluateExpectedDependencies, compareTargetConfiguration } from './domain/comparisonEngine.js';
+export {
+  compareObservations,
+  evaluateComparability,
+  evaluateExpectedDependencies,
+  compareTargetConfiguration,
+  assessOptionalComparabilityDimension,
+} from './domain/comparisonEngine.js';
 
 export type {
   ProjectionProfile,
@@ -447,3 +453,23 @@ export {
   REFERENCE_REQUIREMENT_ADEQUACY_REASON_CODES,
   deriveReferenceRequirementAdequacy,
 } from './domain/externalReferenceRequirements.js';
+
+export type { AuthenticatedState, ExplicitStateDimensions, ExplicitStateValidationResult } from './domain/explicitState.js';
+export {
+  STATE_LABEL_PATTERN,
+  AUTHENTICATED_STATE_VALUES,
+  isValidStateLabel,
+  isValidAuthenticatedState,
+  isValidExplicitStateDimensions,
+} from './domain/explicitState.js';
+
+export type { ApplicableViewport, ExternalReferenceApplicability, ApplicabilityValidationResult } from './domain/externalReferenceApplicability.js';
+export {
+  APPLICABLE_VIEWPORT_MIN,
+  APPLICABLE_VIEWPORT_MAX,
+  isValidApplicableViewport,
+  isValidExternalReferenceApplicability,
+} from './domain/externalReferenceApplicability.js';
+
+export type { ReferenceCandidateCompatibilityResult } from './domain/externalReferenceCompatibility.js';
+export { evaluateReferenceCandidateCompatibility } from './domain/externalReferenceCompatibility.js';

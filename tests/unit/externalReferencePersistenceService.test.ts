@@ -349,4 +349,55 @@ describe('externalReferencePersistenceService', () => {
     const approvedManifest = JSON.parse(await readFile(approved.manifestPath, 'utf8')) as ApprovedExternalReferenceArtifact;
     expect(approvedManifest.requirements).toHaveLength(1);
   });
+
+  // v0.7 Prompt 4: importing with valid applicability persists it and reports hasApplicability.
+  it('imports a reference with valid applicability and reports hasApplicability', async () => {
+    const cwd = await freshCwd();
+    const applicability = { viewport: { width: 1280, height: 720 }, theme: 'dark' };
+    const result = await importExternalReference(buildMinimalPng(800, 600), { outputLocation: '.', cwd, applicability });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok result');
+    expect(result.hasApplicability).toBe(true);
+
+    const manifest = JSON.parse(await readFile(result.manifestPath, 'utf8')) as ImportedExternalReferenceArtifact;
+    expect(manifest.applicability).toEqual(applicability);
+  });
+
+  // Legacy compatibility: importing without applicability has no applicability field and reports hasApplicability: false.
+  it('importing without applicability has no applicability field and reports hasApplicability: false', async () => {
+    const cwd = await freshCwd();
+    const result = await importExternalReference(buildMinimalPng(100, 100), { outputLocation: '.', cwd });
+    if (!result.ok) throw new Error('expected ok result');
+    expect(result.hasApplicability).toBe(false);
+
+    const manifest = JSON.parse(await readFile(result.manifestPath, 'utf8')) as ImportedExternalReferenceArtifact;
+    expect('applicability' in manifest).toBe(false);
+  });
+
+  // Fail-closed: invalid applicability rejects the whole import, nothing persisted.
+  it('rejects import when applicability is invalid, and persists nothing', async () => {
+    const cwd = await freshCwd();
+    const applicability = { viewport: { width: 10, height: 10 } };
+    const result = await importExternalReference(buildMinimalPng(800, 600), { outputLocation: '.', cwd, applicability });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected failure');
+    expect(result.diagnostics[0]?.code).toBe('invalid-reference-applicability');
+    await expect(readdir(cwd)).resolves.toEqual([]);
+  });
+
+  // Approval carries applicability forward unchanged.
+  it('approval carries the imported artifact\'s applicability forward unchanged', async () => {
+    const cwd = await freshCwd();
+    const applicability = { theme: 'dark', authenticatedState: 'authenticated' as const };
+    const imported = await importExternalReference(buildMinimalPng(800, 600), { outputLocation: '.', cwd, applicability });
+    if (!imported.ok) throw new Error('expected import to succeed');
+
+    const approved = await approveExternalReference(imported.artifactRoot, { outputLocation: '.', cwd });
+    expect(approved.ok).toBe(true);
+    if (!approved.ok) throw new Error('expected approval to succeed');
+    expect(approved.hasApplicability).toBe(true);
+
+    const approvedManifest = JSON.parse(await readFile(approved.manifestPath, 'utf8')) as ApprovedExternalReferenceArtifact;
+    expect(approvedManifest.applicability).toEqual(applicability);
+  });
 });

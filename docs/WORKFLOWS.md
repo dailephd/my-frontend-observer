@@ -198,19 +198,21 @@ truncation reporting, and correlation status invariants/determinism/
 deduplication). See `docs/CONTRACTS.md` "v0.6 bounded agent context and
 correlation contract" for the exact shape.
 
-## Current external-reference foundation workflow (implemented, unreleased - v0.7 Prompts 1-3)
+## Current external-reference foundation workflow (implemented, unreleased - v0.7 Prompts 1-4)
 
 This is the foundation layer only - identity, provenance, bounded image
 metadata, a two-state lifecycle, (Prompt 2) explicit reference regions plus
-reusable geometry relationships, and (Prompt 3) selected design requirements,
-tolerance semantics, and reference-evidence adequacy for one externally
-supplied design-reference image. It implements no runtime binding or
-fidelity-evaluation behavior yet (see "Planned v0.7 reference-driven
-correction flow" below), and it never launches a browser or reads/writes any
-observation, comparison, or contract artifact:
+reusable geometry relationships, (Prompt 3) selected design requirements,
+tolerance semantics, and reference-evidence adequacy, and (Prompt 4)
+explicit reference applicability (viewport/theme/application-state/
+authenticated-state) for one externally supplied design-reference image. It
+implements no runtime binding or fidelity-evaluation behavior yet (see
+"Planned v0.7 reference-driven correction flow" below), and it never
+launches a browser or reads/writes any observation, comparison, or contract
+artifact:
 
 ```text
-import-reference <image-file> --output <dir> [--label] [--supersedes <root>] [--regions-file <json-file>] [--requirements-file <json-file>]
+import-reference <image-file> --output <dir> [--label] [--supersedes <root>] [--regions-file <json-file>] [--requirements-file <json-file>] [--applicability-file <json-file>]
 → format detection from header/magic bytes only (png/jpeg/webp; never a
   caller-declared extension), dimension parsing from the same bounded header
   bytes (never a pixel decode), byte-length and dimension bounds checked
@@ -222,15 +224,19 @@ import-reference <image-file> --output <dir> [--label] [--supersedes <root>] [--
   requirement's category/subject/tolerance shape, compute its
   content-derived requirementId, and validate the collection's bounds/
   region-existence/duplicate-subject rules against the regions above)
+→ (--applicability-file only: read + validate the local JSON root shape -
+  the raw, unwrapped applicability object, no wrapper property - then
+  validate its optional viewport/theme/applicationState/authenticatedState
+  fields; caller-declared only, never inferred from the image)
 → (--supersedes only: read + validate the referenced prior external-reference
   artifact through the same reader the writer's counterpart uses)
 → deterministic referenceRequestId (pure function of {imageSha256, format,
-  width, height, supersedesReferenceId, regions?, requirements?} only) +
-  fresh referenceId
+  width, height, supersedesReferenceId, regions?, requirements?,
+  applicability?} only) + fresh referenceId
 → atomic persistence of one "imported" ExternalReferenceArtifact:
-  manifest.json (+ regions/requirements, when supplied) + its own copy of
-  the reference image, schema 1.0.0 - lifecycle.state is always "imported";
-  import never approves
+  manifest.json (+ regions/requirements/applicability, when supplied) + its
+  own copy of the reference image, schema 1.0.0 - lifecycle.state is always
+  "imported"; import never approves
         ↓
 approve-reference --reference <imported-artifact-root> --output <dir> [--supersedes <root>]
 → read + validate the target through the existing reader; refuse anything
@@ -238,19 +244,37 @@ approve-reference --reference <imported-artifact-root> --output <dir> [--superse
 → persist a brand-new "approved" ExternalReferenceArtifact instance (same
   referenceRequestId, fresh referenceId) carrying a sourceReference back to
   the imported artifact's image - no image bytes are copied again, any
-  regions/requirements are carried forward verbatim (never re-validated/
-  re-derived), and the imported artifact's own manifest is never modified
+  regions/requirements/applicability are carried forward verbatim (never
+  re-validated/re-derived), and the imported artifact's own manifest is
+  never modified
 ```
 
 `approve-reference` is the only explicit reference-approval act - it is never
 inferred from a successful import. Supersession (`--supersedes`) is
 represented only as a forward pointer on the newer artifact; the artifact it
 supersedes is never rewritten, so prior reference evidence remains immutable
-regardless of how many later references supersede it. Region/requirement
-content (added/removed/moved/resized/renamed regions; added/removed/changed
-requirements or tolerances) is identity-bearing, so a differently-structured
-reference is always a distinct logical reference, never a silent rewrite of
-an existing one.
+regardless of how many later references supersede it. Region/requirement/
+applicability content (added/removed/moved/resized/renamed regions;
+added/removed/changed requirements or tolerances; a changed applicability
+declaration) is identity-bearing, so a differently-structured reference is
+always a distinct logical reference, never a silent rewrite of an existing
+one.
+
+Separately, `observe` gained an optional `--state-file <json-file>` (the
+raw, unwrapped `{theme?, applicationState?, authenticatedState?}` object -
+caller-declared only, never inferred), persisted as
+`requestConfig.explicitState` on the resulting `ObservationArtifact` and
+folded into that observation's own request identity. A pure, synchronous
+domain function, `evaluateReferenceCandidateCompatibility(reference,
+candidate)`, then answers "does this reference describe the same frontend
+state as this candidate observation?" by comparing
+`reference.applicability` against `candidate.requestConfig`
+(viewport/explicitState) - reusing v0.4's own comparability result/reason
+vocabulary and its underlying per-dimension comparison rule rather than
+inventing a parallel model. This produces no persisted artifact of its own;
+it is a pure function callers invoke on two already-persisted artifacts. See
+`docs/CONTRACTS.md` "v0.7 Prompt 4 reference applicability and
+candidate-state compatibility" for the full contract.
 
 Reference-region relationships (`deriveReferenceRegionRelationships()`) are
 a separate, pure, on-demand derivation over an artifact's own `regions` -

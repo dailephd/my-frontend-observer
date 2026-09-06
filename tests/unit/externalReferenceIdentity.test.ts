@@ -117,4 +117,35 @@ describe('externalReferenceIdentity', () => {
     const withTwoRequirements = buildExternalReferenceRequestIdentity('abc123', 'png', 800, 600, undefined, [regionA], [requirementOne, requirementTwo]);
     expect(withTwoRequirements).not.toBe(withOneRequirement);
   });
+
+  // v0.7 Prompt 4: applicability is likewise omitted entirely (never null) when absent, preserving byte-identical Prompt 1/2/3 hashes.
+  it('omitting applicability produces the exact same identity as before this parameter existed', () => {
+    const withoutApplicabilityParam = buildExternalReferenceRequestIdentity('abc123', 'png', 800, 600, undefined, [regionA], [requirementOne]);
+    const explicitlyUndefined = buildExternalReferenceRequestIdentity('abc123', 'png', 800, 600, undefined, [regionA], [requirementOne], undefined);
+    expect(withoutApplicabilityParam).toBe(explicitlyUndefined);
+  });
+
+  it('same applicability content produces the same request identity regardless of call site', () => {
+    const first = buildExternalReferenceRequestIdentity('abc123', 'png', 800, 600, undefined, undefined, undefined, { theme: 'dark' });
+    const second = buildExternalReferenceRequestIdentity('abc123', 'png', 800, 600, undefined, undefined, undefined, { theme: 'dark' });
+    expect(first).toBe(second);
+  });
+
+  it('changing applicability content changes the request identity', () => {
+    const base = buildExternalReferenceRequestIdentity('abc123', 'png', 800, 600, undefined, undefined, undefined, { theme: 'dark' });
+    const changedTheme = buildExternalReferenceRequestIdentity('abc123', 'png', 800, 600, undefined, undefined, undefined, { theme: 'light' });
+    expect(changedTheme).not.toBe(base);
+
+    const withViewport = buildExternalReferenceRequestIdentity('abc123', 'png', 800, 600, undefined, undefined, undefined, {
+      theme: 'dark',
+      viewport: { width: 1280, height: 720 },
+    });
+    expect(withViewport).not.toBe(base);
+  });
+
+  it('adding or removing applicability changes the request identity', () => {
+    const withoutApplicability = buildExternalReferenceRequestIdentity('abc123', 'png', 800, 600);
+    const withApplicability = buildExternalReferenceRequestIdentity('abc123', 'png', 800, 600, undefined, undefined, undefined, { theme: 'dark' });
+    expect(withApplicability).not.toBe(withoutApplicability);
+  });
 });

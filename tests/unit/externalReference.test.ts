@@ -181,4 +181,34 @@ describe('externalReference validator', () => {
     const artifact = { ...validImported(), regions: [headerRegion], requirements: { id: 'x' } };
     expect(isValidExternalReferenceArtifact(artifact).valid).toBe(false);
   });
+
+  // v0.7 Prompt 4: applicability field (additive, optional).
+  it('a legacy (Prompt 1/2/3) artifact with no applicability field at all remains valid', () => {
+    const legacy = { ...validImported(), regions: [headerRegion] };
+    expect('applicability' in legacy).toBe(false);
+    expect(isValidExternalReferenceArtifact(legacy)).toEqual({ valid: true });
+  });
+
+  it('accepts a valid applicability object on an imported artifact', () => {
+    const withApplicability = { ...validImported(), applicability: { viewport: { width: 1280, height: 720 }, theme: 'dark' } };
+    expect(isValidExternalReferenceArtifact(withApplicability)).toEqual({ valid: true });
+  });
+
+  it('accepts applicability on an approved artifact too', () => {
+    const withApplicability = { ...validApproved(), applicability: { theme: 'dark' } };
+    expect(isValidExternalReferenceArtifact(withApplicability)).toEqual({ valid: true });
+  });
+
+  it('rejects an invalid applicability object', () => {
+    const invalidViewport = { ...validImported(), applicability: { viewport: { width: 10, height: 10 } } };
+    const result = isValidExternalReferenceArtifact(invalidViewport);
+    expect(result.valid).toBe(false);
+    if (!result.valid) expect(result.reason).toContain('applicability:');
+
+    const empty = { ...validImported(), applicability: {} };
+    expect(isValidExternalReferenceArtifact(empty).valid).toBe(false);
+
+    const unsupportedField = { ...validImported(), applicability: { browser: 'chrome' } };
+    expect(isValidExternalReferenceArtifact(unsupportedField).valid).toBe(false);
+  });
 });

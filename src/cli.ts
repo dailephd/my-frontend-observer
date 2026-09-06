@@ -13,6 +13,7 @@ import { evaluateAndPersistFromArtifactRoots } from './application/frontendContr
 import { importExternalReference, approveExternalReference } from './application/externalReferencePersistenceService.js';
 import type { ReferenceRegion } from './domain/externalReferenceRegions.js';
 import type { RawReferenceRequirement } from './domain/externalReferenceRequirements.js';
+import type { ExternalReferenceApplicability } from './domain/externalReferenceApplicability.js';
 
 export interface CliIO {
   stdout: (text: string) => void;
@@ -97,6 +98,19 @@ Options:
                             persisted into the artifact or included in the
                             observation's request identity. May be combined
                             with either --target or --targets-file.
+  --state-file <json-file>  Loads explicit, caller-declared frontend state
+                            identity from a local JSON file: { "theme":
+                            "...", "applicationState": "...",
+                            "authenticatedState": "authenticated"|
+                            "unauthenticated" } (each field independently
+                            optional; at least one required). Never inferred
+                            by the observer from screenshot pixels, CSS, DOM,
+                            or URLs - this is caller-declared metadata only,
+                            used solely for later comparability/compatibility
+                            evaluation. Relative paths resolve from the
+                            current working directory; the file path itself
+                            is never persisted into the artifact or included
+                            in the observation's request identity.
   --output <directory>      Portable, relative output location for the
                             observation artifact.
   --timeout <ms>            Overall request timeout in milliseconds.
@@ -293,24 +307,44 @@ Options:
                           a reference imported without this flag behaves
                           exactly as in v0.7 Prompt 1/2. Requirement content
                           participates in the reference's logical identity.
+  --applicability-file <json-file>  Local JSON file declaring the runtime
+                          frontend state this reference is intended to
+                          represent: { "viewport": { "width", "height" },
+                          "theme": "...", "applicationState": "...",
+                          "authenticatedState": "authenticated"|
+                          "unauthenticated" } (each field independently
+                          optional; at least one required). "viewport" here
+                          is the CSS-pixel runtime viewport the design
+                          represents - distinct from the reference image's
+                          own pixel dimensions, which are never assumed
+                          equal. Never inferred from the image - caller-
+                          declared metadata only, used for later reference/
+                          candidate compatibility evaluation (see
+                          docs/CONTRACTS.md "v0.7 Prompt 4"). Optional - a
+                          reference imported without this flag behaves
+                          exactly as in v0.7 Prompt 1/2/3. Applicability
+                          content participates in the reference's logical
+                          identity.
   --help                 Show this help.
 
 Detects the image format from its header bytes only (never from the file
 extension), reads its pixel dimensions from the same bounded header bytes
 (never decoding pixel data), and persists a new external-reference artifact
 in the "imported" lifecycle state - importing never approves it. On success,
-prints a concise result (including the accepted region/requirement counts
-and the resulting reference-side requirement adequacy: adequate, partial, or
-inadequate) and exits 0. On an unreadable file, an unsupported or
-undetectable format, invalid/out-of-bound dimensions, an over-limit file
-size, an unresolvable --supersedes target, an invalid region (missing/
-duplicate/malformed id, non-finite/negative/zero geometry, a region
-extending outside the image, or more than the bounded maximum region
-count), or an invalid requirement (unsupported category/property/
-measurement/relationship, a tolerance that is missing/inapplicable/out of
-bounds, a reference to an unknown region id, a duplicate requirement
-subject, or more than the bounded maximum requirement count), prints
-structured diagnostics to stderr and exits nonzero.
+prints a concise result (including the accepted region/requirement counts,
+the resulting reference-side requirement adequacy: adequate, partial, or
+inadequate, and whether applicability was declared) and exits 0. On an
+unreadable file, an unsupported or undetectable format, invalid/out-of-bound
+dimensions, an over-limit file size, an unresolvable --supersedes target, an
+invalid region (missing/duplicate/malformed id, non-finite/negative/zero
+geometry, a region extending outside the image, or more than the bounded
+maximum region count), an invalid requirement (unsupported category/
+property/measurement/relationship, a tolerance that is missing/inapplicable/
+out of bounds, a reference to an unknown region id, a duplicate requirement
+subject, or more than the bounded maximum requirement count), or invalid
+applicability (an out-of-bound viewport, an invalid state label, an
+unsupported authenticatedState value, or an empty applicability object),
+prints structured diagnostics to stderr and exits nonzero.
 `;
 
 const APPROVE_REFERENCE_HELP = `Usage:
@@ -336,16 +370,16 @@ evaluation. Approving persists a brand-new artifact instance (a fresh
 referenceId sharing the imported artifact's referenceRequestId) that carries
 a reference back to the imported artifact's image rather than a second copy
 of its bytes; the imported artifact's own manifest is never modified. Any
-regions and requirements already declared on the imported artifact are
-carried forward unchanged (not re-validated against new input, not
-re-derived) - approval never adds, removes, or edits regions or
-requirements. Only a reference currently in the "imported" lifecycle state
-can be approved. On success, prints a concise result (including the
-carried-forward region/requirement counts and reference-side requirement
-adequacy) and exits 0. On an unreadable/malformed --reference target, a
-target that is not in the "imported" state, an
-unresolvable --supersedes target, or a persistence failure, prints structured
-diagnostics to stderr and exits nonzero.
+regions, requirements, and applicability already declared on the imported
+artifact are carried forward unchanged (not re-validated against new input,
+not re-derived) - approval never adds, removes, or edits regions,
+requirements, or applicability. Only a reference currently in the "imported"
+lifecycle state can be approved. On success, prints a concise result
+(including the carried-forward region/requirement counts, reference-side
+requirement adequacy, and whether applicability was declared) and exits 0.
+On an unreadable/malformed --reference target, a target that is not in the
+"imported" state, an unresolvable --supersedes target, or a persistence
+failure, prints structured diagnostics to stderr and exits nonzero.
 `;
 
 function parseViewport(raw: string): { width: number; height: number } | undefined {
@@ -363,7 +397,7 @@ function parseTarget(raw: string): { name: string; selector: string } | undefine
 }
 
 type ParsedObserveArgs =
-  | { ok: true; raw: RawObservationRequest; targetsFilePath?: string; scrollScenarioFilePath?: string }
+  | { ok: true; raw: RawObservationRequest; targetsFilePath?: string; scrollScenarioFilePath?: string; stateFilePath?: string }
   | { ok: false; errors: string[] };
 
 /** CLI-syntax-only parsing: shape/format errors only. Domain bounds and policy are Batch 1's job, not this function's. */
@@ -378,6 +412,8 @@ function parseObserveArgs(argv: readonly string[]): ParsedObserveArgs {
   let targetsFileFlagCount = 0;
   let scrollScenarioFilePath: string | undefined;
   let scrollScenarioFileFlagCount = 0;
+  let stateFilePath: string | undefined;
+  let stateFileFlagCount = 0;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -429,6 +465,18 @@ function parseObserveArgs(argv: readonly string[]): ParsedObserveArgs {
         }
         break;
       }
+      case '--state-file': {
+        const value = argv[(i += 1)];
+        stateFileFlagCount += 1;
+        if (value === undefined) {
+          errors.push('--state-file requires a file path argument');
+        } else if (stateFileFlagCount > 1) {
+          errors.push('--state-file may only be specified once');
+        } else {
+          stateFilePath = value;
+        }
+        break;
+      }
       case '--output':
         outputLocation = argv[(i += 1)];
         break;
@@ -466,6 +514,7 @@ function parseObserveArgs(argv: readonly string[]): ParsedObserveArgs {
     raw,
     ...(targetsFilePath === undefined ? {} : { targetsFilePath }),
     ...(scrollScenarioFilePath === undefined ? {} : { scrollScenarioFilePath }),
+    ...(stateFilePath === undefined ? {} : { stateFilePath }),
   };
 }
 
@@ -565,6 +614,43 @@ function loadRequirementsFile(filePath: string): LoadRequirementsFileResult {
   return { ok: true, requirements: record.requirements };
 }
 
+type LoadApplicabilityFileResult = { ok: true; applicability: unknown } | { ok: false; error: string };
+
+/**
+ * CLI/input-boundary-only responsibility, mirroring `loadStateFile`/
+ * `loadScrollScenarioFile`: read one local JSON file and validate only the
+ * root shape (plain, non-array object) - the file supplies
+ * `ExternalReferenceApplicability` directly (no wrapper field), so there is
+ * no root-field allowlist to enforce here. Every applicability rule
+ * (viewport bounds, state-label pattern, authenticatedState enum) stays
+ * owned by `isValidExternalReferenceApplicability`, not duplicated here. The
+ * file path itself is never returned beyond this function, so it can never
+ * reach the persisted artifact or its identity.
+ */
+function loadApplicabilityFile(filePath: string): LoadApplicabilityFileResult {
+  let rawText: string;
+  try {
+    rawText = readFileSync(filePath, 'utf8');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `--applicability-file could not be read: ${message}` };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `--applicability-file is not valid JSON: ${message}` };
+  }
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return { ok: false, error: '--applicability-file root must be a JSON object' };
+  }
+
+  return { ok: true, applicability: parsed };
+}
+
 type LoadTargetsFileResult = { ok: true; targets: unknown } | { ok: false; error: string };
 
 /**
@@ -646,6 +732,43 @@ function loadScrollScenarioFile(filePath: string): LoadScrollScenarioFileResult 
   }
 
   return { ok: true, scenario: parsed };
+}
+
+type LoadStateFileResult = { ok: true; state: unknown } | { ok: false; error: string };
+
+/**
+ * CLI/input-boundary-only responsibility, mirroring `loadScrollScenarioFile`
+ * exactly: read one local JSON file and validate only the root shape (plain,
+ * non-array object) - the file supplies the value of
+ * `RawObservationRequest.explicitState` directly (no wrapper field), so
+ * there is no root-field allowlist to enforce here. Every state rule
+ * (supported dimension keys, label pattern, authenticatedState enum) stays
+ * owned by `normalizeRequest()`/`isValidExplicitStateDimensions`, not
+ * duplicated here. The file path itself is never returned to the caller
+ * beyond this function, so it can never reach the persisted request/artifact.
+ */
+function loadStateFile(filePath: string): LoadStateFileResult {
+  let rawText: string;
+  try {
+    rawText = readFileSync(filePath, 'utf8');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `--state-file could not be read: ${message}` };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `--state-file is not valid JSON: ${message}` };
+  }
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return { ok: false, error: '--state-file root must be a JSON object' };
+  }
+
+  return { ok: true, state: parsed };
 }
 
 type ParsedCompareArgs =
@@ -1007,7 +1130,16 @@ function parseEvaluateContractArgs(argv: readonly string[]): ParsedEvaluateContr
 }
 
 type ParsedImportReferenceArgs =
-  | { ok: true; imageFilePath: string; outputLocation: string; label?: string; supersedesReferenceRoot?: string; regionsFilePath?: string; requirementsFilePath?: string }
+  | {
+      ok: true;
+      imageFilePath: string;
+      outputLocation: string;
+      label?: string;
+      supersedesReferenceRoot?: string;
+      regionsFilePath?: string;
+      requirementsFilePath?: string;
+      applicabilityFilePath?: string;
+    }
   | { ok: false; errors: string[] };
 
 /** CLI-syntax-only parsing, mirroring `parseApproveBaselineArgs`. The image file path is the one positional argument. */
@@ -1024,6 +1156,8 @@ function parseImportReferenceArgs(argv: readonly string[]): ParsedImportReferenc
   let regionsFileFlagCount = 0;
   let requirementsFilePath: string | undefined;
   let requirementsFileFlagCount = 0;
+  let applicabilityFilePath: string | undefined;
+  let applicabilityFileFlagCount = 0;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -1068,6 +1202,14 @@ function parseImportReferenceArgs(argv: readonly string[]): ParsedImportReferenc
         else requirementsFilePath = value;
         break;
       }
+      case '--applicability-file': {
+        const value = argv[(i += 1)];
+        applicabilityFileFlagCount += 1;
+        if (value === undefined) errors.push('--applicability-file requires a file path argument');
+        else if (applicabilityFileFlagCount > 1) errors.push('--applicability-file may only be specified once');
+        else applicabilityFilePath = value;
+        break;
+      }
       default:
         if (arg === undefined) break;
         if (arg.startsWith('--')) errors.push(`unrecognized argument: ${arg}`);
@@ -1088,6 +1230,7 @@ function parseImportReferenceArgs(argv: readonly string[]): ParsedImportReferenc
     ...(supersedesReferenceRoot === undefined ? {} : { supersedesReferenceRoot }),
     ...(regionsFilePath === undefined ? {} : { regionsFilePath }),
     ...(requirementsFilePath === undefined ? {} : { requirementsFilePath }),
+    ...(applicabilityFilePath === undefined ? {} : { applicabilityFilePath }),
   };
 }
 
@@ -1188,6 +1331,15 @@ async function runObserveCommand(argv: readonly string[], io: CliIO): Promise<nu
       return 1;
     }
     raw = { ...raw, scrollScenario: loaded.scenario };
+  }
+  if (parsedArgs.stateFilePath !== undefined) {
+    const loaded = loadStateFile(parsedArgs.stateFilePath);
+    if (!loaded.ok) {
+      io.stderr(`error: ${loaded.error}\n`);
+      io.stderr(OBSERVE_HELP);
+      return 1;
+    }
+    raw = { ...raw, explicitState: loaded.state };
   }
 
   const normalized = normalizeRequest(raw);
@@ -1447,13 +1599,26 @@ async function runImportReferenceCommand(argv: readonly string[], io: CliIO): Pr
     requirements = loaded.requirements as RawReferenceRequirement[];
   }
 
-  // Exactly one application import attempt: format/dimension validation, an optional region-set validation, an optional requirement-set validation, an optional supersession-target read, persisted at most once.
+  let applicability: ExternalReferenceApplicability | undefined;
+  if (parsedArgs.applicabilityFilePath !== undefined) {
+    const loaded = loadApplicabilityFile(parsedArgs.applicabilityFilePath);
+    if (!loaded.ok) {
+      io.stderr(`error: ${loaded.error}\n`);
+      io.stderr(IMPORT_REFERENCE_HELP);
+      return 1;
+    }
+    // CLI boundary owns file-read syntax only; applicability semantics are owned by isValidExternalReferenceApplicability, called inside importExternalReference.
+    applicability = loaded.applicability as ExternalReferenceApplicability;
+  }
+
+  // Exactly one application import attempt: format/dimension validation, an optional region-set validation, an optional requirement-set validation, an optional applicability validation, an optional supersession-target read, persisted at most once.
   const result = await importExternalReference(imageBytes, {
     outputLocation: parsedArgs.outputLocation,
     ...(parsedArgs.label === undefined ? {} : { label: parsedArgs.label }),
     ...(parsedArgs.supersedesReferenceRoot === undefined ? {} : { supersedesReferenceRoot: parsedArgs.supersedesReferenceRoot }),
     ...(regions === undefined ? {} : { regions }),
     ...(requirements === undefined ? {} : { requirements }),
+    ...(applicability === undefined ? {} : { applicability }),
   });
   if (!result.ok) {
     for (const diagnostic of result.diagnostics) io.stderr(`${formatDiagnostic(diagnostic)}\n`);
@@ -1466,6 +1631,7 @@ async function runImportReferenceCommand(argv: readonly string[], io: CliIO): Pr
   io.stdout(`Image: ${result.imagePath}\n`);
   io.stdout(`Regions: ${result.regionCount}\n`);
   io.stdout(`Requirements: ${result.requirementCount}\n`);
+  io.stdout(`Applicability: ${result.hasApplicability ? 'declared' : 'none'}\n`);
   io.stdout(`Adequacy: ${result.adequacy.status}\n`);
 
   return 0;
@@ -1505,6 +1671,7 @@ async function runApproveReferenceCommand(argv: readonly string[], io: CliIO): P
   io.stdout(`Regions: ${result.regionCount}\n`);
   io.stdout(`Requirements: ${result.requirementCount}\n`);
   io.stdout(`Adequacy: ${result.adequacy.status}\n`);
+  io.stdout(`Applicability: ${result.hasApplicability ? 'declared' : 'none'}\n`);
 
   return 0;
 }

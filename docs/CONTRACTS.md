@@ -928,3 +928,144 @@ interface ReferenceRequirementAdequacy {
   reasons: { code: 'no-selected-requirements' | 'missing-reference-relationship-evidence'; requirementId?: string; detail?: string }[];
 }
 ```
+
+## v0.7 Prompt 4 reference applicability and candidate-state compatibility
+
+Implemented, unreleased. Additive extension of the Prompt 1/2/3 contracts
+above: one new, optional `applicability?: ExternalReferenceApplicability`
+field on `ExternalReferenceArtifact` (both lifecycle variants), one new,
+optional `explicitState?: ExplicitStateDimensions` field on
+`ObservationArtifact.requestConfig`, and one new pure module,
+`domain/externalReferenceCompatibility.ts`, that answers a single question:
+"does this external reference describe the same frontend state as this
+candidate `ObservationArtifact`?" No schema version bump on either artifact
+- same reasoning as Prompt 2/3's additive fields.
+
+**Central distinction**: this is page/state-level compatibility only -
+never geometry, never fidelity, never a visual/pixel comparison, and never
+region-to-runtime-target binding (Prompt 5). It answers "should a
+reference-vs-candidate geometry comparison even be attempted", not "does the
+candidate match the reference". Reference-evidence adequacy (Prompt 3) and
+reference/candidate compatibility (Prompt 4) are deliberately independent:
+a reference can be `adequate` (enough selected requirements to evaluate)
+while simultaneously `incomparable` against a given candidate (wrong
+viewport/theme/state), and vice versa - neither result constrains the
+other.
+
+**State identity is always explicit, never inferred.** `theme`,
+`applicationState`, and `authenticatedState` are caller/configuration-
+supplied labels only. The observer never reads screenshot pixels, CSS, DOM
+classes/text, URLs, source code, filenames, accessibility labels,
+localStorage, or cookies to determine state - there is no automatic state
+detection anywhere in this codebase, and Prompt 4 does not add any. Labels
+are bounded opaque identities (`^[A-Za-z0-9_-]{1,64}$`, the same pattern
+already used for target names and region ids) compared by exact,
+case-sensitive string equality only - `"dark"` and `"one-dark"` are
+unrelated labels, never fuzzy-matched or normalized.
+
+```ts
+// domain/explicitState.ts - shared by both ObservationArtifact and ExternalReferenceArtifact
+type AuthenticatedState = 'authenticated' | 'unauthenticated'; // closed vocabulary - never a place for credentials/tokens/cookies/session ids
+interface ExplicitStateDimensions {
+  theme?: string;
+  applicationState?: string;
+  authenticatedState?: AuthenticatedState;
+}
+// isValidExplicitStateDimensions requires at least one dimension declared and rejects any unsupported field -
+// this is a bounded, closed shape, never an arbitrary Record<string, unknown> metadata bag.
+
+// domain/externalReferenceApplicability.ts
+interface ApplicableViewport { width: number; height: number } // CSS pixels, bounds [200, 3840] mirroring request.ts's own viewport bounds
+interface ExternalReferenceApplicability extends ExplicitStateDimensions {
+  viewport?: ApplicableViewport;
+}
+```
+
+**Reference image size is never the same concept as applicable viewport.**
+`ExternalReferenceImageReference.width/height` (Prompt 1) describes the
+reference image's own pixel dimensions - a property of the image file,
+detected from its header bytes. `applicability.viewport` describes the
+CSS-pixel runtime viewport the design *represents* - a reference image may
+be captured at any resolution or device-pixel-ratio (e.g. a 1920x1080
+screenshot representing a 960x540 CSS-pixel layout at 2x DPR). Nothing in
+`externalReferenceApplicability.ts` reads or derives a viewport from image
+dimensions; `isValidExternalReferenceApplicability` is its own validator
+(not a reuse of `isValidExplicitStateDimensions`, whose "at least one
+dimension" rule would incorrectly reject a viewport-only applicability
+object).
+
+**v0.4 comparability is reused, not duplicated.** `domain/comparison.ts`
+gained four additive reason codes (`viewport-unassessed`, `theme-mismatch`,
+`authenticated-state-mismatch`, `application-state-mismatch` - the
+`*-unassessed` codes for theme/authenticated-state/application-state
+already existed from v0.4) and two optional fields on `ComparabilityReason`
+(`referenceValue?: string`, `candidateValue?: string`, populated only for a
+mismatch reason). `domain/comparisonEngine.ts` gained one new exported pure
+helper, `assessOptionalComparabilityDimension(mismatchCode, unassessedCode,
+beforeValue, afterValue, mismatchMessage, unassessedMessage)`, extracted
+from - and now used by - both v0.4's own `evaluateComparability`
+(Observation-vs-Observation) and the new
+`evaluateReferenceCandidateCompatibility` (Reference-vs-Observation). The
+rule is identical either way: both values defined and equal -> no reason;
+both defined and different -> a `blocking` mismatch reason (with
+`referenceValue`/`candidateValue` populated); either value undefined ->
+an `unassessed` reason. This is a genuine, additive improvement to v0.4's
+own behavior: `evaluateComparability` now assesses theme/authenticated-
+state/application-state as matching or blocking-mismatched whenever *both*
+observations declare `requestConfig.explicitState`, rather than always
+reporting them unassessed - but every historical observation pair (and any
+pair where either side omits `explicitState`) retains the exact old
+unassessed-only behavior, verified by the frozen `evaluateComparability`
+regression test that predates this batch.
+
+```ts
+// domain/externalReferenceCompatibility.ts
+interface ReferenceCandidateCompatibilityResult {
+  referenceId: string;
+  referenceRequestId: string;
+  candidateObservationId: string;
+  candidateRequestId: string;
+  compatibility: ComparabilityResult; // v0.4's own reused result type - state/reasons, never a boolean or a visual score
+}
+function evaluateReferenceCandidateCompatibility(reference: ExternalReferenceArtifact, candidate: ObservationArtifact): ReferenceCandidateCompatibilityResult;
+```
+
+Key rules:
+
+- Pure and synchronous - no browser, no filesystem, no network, no target
+  binding. Only `reference.applicability` and
+  `candidate.requestConfig.viewport`/`candidate.requestConfig.explicitState`
+  are consulted; reference regions/requirements are never read here (a
+  distinct, separate concern - see Prompt 3 above).
+- A dimension the reference constrains but the candidate entirely omits
+  (or vice versa) is `unassessed`, never treated as compatible-by-default
+  and never fabricated as a mismatch - fail-closed, honest non-assessment.
+- A reference that declares no `applicability` at all produces a fully
+  `unassessed` (never automatically `incomparable`, never automatically
+  `comparable` beyond "no blocking reasons found") result across all four
+  dimensions - Prompt 1/2/3 references remain fully usable, just
+  unassessed for compatibility until applicability is authored.
+- No automatic persisted compatibility artifact. This is a pure
+  programmatic result, produced on demand by an application/CLI caller
+  that already holds both a reference and a candidate artifact - inventing
+  a new persisted artifact kind for a value this cheap to recompute would
+  add drift risk (a candidate/reference re-imported later could silently
+  disagree with a stale persisted compatibility record) with no
+  corresponding benefit; this may be revisited only if a later prompt's
+  architecture proves persistence necessary.
+- Identity impact: `buildExternalReferenceRequestIdentity` gained a final
+  optional `applicability` parameter (omitted, never `null`, when absent -
+  byte-identical to Prompt 1/2/3 hashes for every call that doesn't supply
+  it); `buildRequestIdentity` gained a final optional `explicitState`
+  parameter with the identical omission convention. Neither identity
+  function ever takes a file path.
+- CLI: `import-reference` gained an optional `--applicability-file
+  <json-file>` (the raw, unwrapped applicability object - not a
+  `{ "requirements": [...] }`-style wrapper, since applicability is a
+  single object rather than a named list); `observe` gained an optional
+  `--state-file <json-file>` (the raw, unwrapped `ExplicitStateDimensions`
+  object). Both follow the existing `--scroll-scenario-file` convention
+  exactly: relative paths resolve from the current working directory, the
+  path itself is never persisted or included in any identity, and CLI code
+  owns only flag syntax/file reading/JSON parsing/object-root validation -
+  all semantic validation happens in the domain layer.

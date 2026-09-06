@@ -131,13 +131,52 @@ function isSameScrollScenario(before: ScrollScenario | undefined, after: ScrollS
 // --- comparability -----------------------------------------------------------
 
 /**
+ * v0.7 Prompt 4 shared pure dimension-comparison rule, used by both
+ * `evaluateComparability` below (v0.4, ObservationArtifact <-> ObservationArtifact -
+ * both sides always technically present, but `explicitState` sub-fields are
+ * each independently optional) and
+ * `domain/externalReferenceCompatibility.ts#evaluateReferenceCandidateCompatibility`
+ * (v0.7, where the reference-side value is optional by construction - a
+ * reference need not declare an applicable viewport/theme/state at all).
+ * One rule, three outcomes, matching request section 16 G/H/I exactly:
+ * both sides present and equal -> no reason at all (the existing "matching
+ * dimensions produce no reason" convention); both present and different ->
+ * the blocking mismatch reason; either side absent -> the unassessed
+ * reason (never silently treated as compatible, never a fabricated
+ * mismatch merely because one side omitted the dimension).
+ */
+export function assessOptionalComparabilityDimension(
+  mismatchCode: ComparabilityReasonCode,
+  unassessedCode: ComparabilityReasonCode,
+  beforeValue: string | undefined,
+  afterValue: string | undefined,
+  mismatchMessage: (beforeValue: string, afterValue: string) => string,
+  unassessedMessage: string,
+): ComparabilityReason | undefined {
+  if (beforeValue !== undefined && afterValue !== undefined) {
+    if (beforeValue === afterValue) return undefined;
+    return {
+      code: mismatchCode,
+      severity: COMPARABILITY_REASON_SEVERITY[mismatchCode],
+      message: mismatchMessage(beforeValue, afterValue),
+      referenceValue: beforeValue,
+      candidateValue: afterValue,
+    };
+  }
+  return { code: unassessedCode, severity: COMPARABILITY_REASON_SEVERITY[unassessedCode], message: unassessedMessage };
+}
+
+/**
  * Evaluates comparability before any rendered difference is calculated
  * (Batch 1's frozen `ComparabilityResult`/reason vocabulary). Hard
  * incompatibilities (`blocking`) force `incomparable`; producer/browser
- * version and target-configuration mismatches are `warning`-only; the three
- * state dimensions the observer never models (theme, authenticated-state,
- * application-state) are always recorded as `unassessed` - never silently
- * claimed identical.
+ * version and target-configuration mismatches are `warning`-only. The three
+ * state dimensions (theme, authenticated-state, application-state) are
+ * assessed - matching or blocking-mismatched - whenever both observations
+ * declare that dimension via v0.7 Prompt 4's `requestConfig.explicitState`;
+ * otherwise (the entire pre-Prompt-4 case, and any Prompt-4-era observation
+ * that simply omits a dimension) they remain `unassessed`, exactly as
+ * before - never silently claimed identical.
  */
 export function evaluateComparability(before: ObservationArtifact, after: ObservationArtifact): ComparabilityResult {
   const reasons: ComparabilityReason[] = [];
@@ -186,9 +225,38 @@ export function evaluateComparability(before: ObservationArtifact, after: Observ
     add('target-locator-mismatch', 'a stable target name has a changed locator configuration between before and after');
   }
 
-  add('theme-unassessed', 'theme identity is not modeled by the observer');
-  add('authenticated-state-unassessed', 'authenticated-state identity is not modeled by the observer');
-  add('application-state-unassessed', 'application-state identity is not modeled by the observer');
+  const beforeState = before.requestConfig.explicitState;
+  const afterState = after.requestConfig.explicitState;
+
+  const themeReason = assessOptionalComparabilityDimension(
+    'theme-mismatch',
+    'theme-unassessed',
+    beforeState?.theme,
+    afterState?.theme,
+    (b, a) => `before explicit theme "${b}" differs from after explicit theme "${a}"`,
+    'theme identity is not modeled by the observer unless both observations declare requestConfig.explicitState.theme',
+  );
+  if (themeReason) reasons.push(themeReason);
+
+  const authReason = assessOptionalComparabilityDimension(
+    'authenticated-state-mismatch',
+    'authenticated-state-unassessed',
+    beforeState?.authenticatedState,
+    afterState?.authenticatedState,
+    (b, a) => `before explicit authenticatedState "${b}" differs from after explicit authenticatedState "${a}"`,
+    'authenticated-state identity is not modeled by the observer unless both observations declare requestConfig.explicitState.authenticatedState',
+  );
+  if (authReason) reasons.push(authReason);
+
+  const appStateReason = assessOptionalComparabilityDimension(
+    'application-state-mismatch',
+    'application-state-unassessed',
+    beforeState?.applicationState,
+    afterState?.applicationState,
+    (b, a) => `before explicit applicationState "${b}" differs from after explicit applicationState "${a}"`,
+    'application-state identity is not modeled by the observer unless both observations declare requestConfig.explicitState.applicationState',
+  );
+  if (appStateReason) reasons.push(appStateReason);
 
   reasons.sort((a, b) => COMPARABILITY_REASON_CODES.indexOf(a.code) - COMPARABILITY_REASON_CODES.indexOf(b.code));
 

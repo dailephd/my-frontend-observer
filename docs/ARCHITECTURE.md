@@ -490,6 +490,31 @@ distinct from `boundedAgentContext.ts`'s runtime/static-correlation
 an executable requirement automatically - only explicit user/configuration
 selection does that.
 
+v0.7 Prompt 4 adds explicit reference applicability
+(`domain/externalReferenceApplicability.ts`) and observation-side explicit
+state identity (`domain/explicitState.ts`, shared by both artifact
+families), plus one new pure domain module,
+`domain/externalReferenceCompatibility.ts`, that evaluates whether a
+candidate `ObservationArtifact` describes the same frontend state as a
+given `ExternalReferenceArtifact` - see `docs/CONTRACTS.md` "v0.7 Prompt 4
+reference applicability and candidate-state compatibility" for the exact
+shape. This is page/state-level only, never geometry or fidelity, and
+remains a wholly separate concern from Prompt 3's reference-evidence
+adequacy - the two can independently disagree (an adequate reference can be
+incomparable against a given candidate, and vice versa). Rather than
+inventing a second comparability engine, Prompt 4 extracts one new exported
+pure helper from v0.4's own `domain/comparisonEngine.ts`
+(`assessOptionalComparabilityDimension`) and reuses it from both v0.4's
+`evaluateComparability` (Observation-vs-Observation) and the new
+`evaluateReferenceCandidateCompatibility` (Reference-vs-Observation) - the
+one additive behavior change to v0.4 itself is that `evaluateComparability`
+now assesses (rather than always reporting unassessed) theme/authenticated-
+state/application-state whenever both observations declare
+`requestConfig.explicitState`, while every historical/legacy observation
+pair retains the exact prior unassessed-only behavior. No new persisted
+artifact kind is introduced for the compatibility result; it is a pure,
+on-demand function of two already-persisted artifacts.
+
 Reference-region/runtime-target binding and reference-vs-candidate fidelity
 evaluation remain unimplemented; they are later v0.7 prompts building on
 this foundation.

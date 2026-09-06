@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import type { ExternalReferenceImageFormat } from './externalReferenceImage.js';
 import type { ReferenceRegion } from './externalReferenceRegions.js';
 import type { ExternalReferenceRequirement } from './externalReferenceRequirements.js';
+import type { ExternalReferenceApplicability } from './externalReferenceApplicability.js';
 
 /**
  * Deliberately duplicated from domain/identity.ts#canonicalize (itself
@@ -33,10 +34,10 @@ function canonicalize(value: unknown): unknown {
  * detected format/dimensions, the supersession target, or the region set
  * (added/removed/renamed/moved/resized) changes it.
  *
- * `regions`/`requirements` are each omitted from the hashed view entirely
- * when not supplied (rather than included as `null`, unlike `supersedes`) so
- * that every pre-Prompt-2/pre-Prompt-3 call site - and every later call that
- * legitimately has no regions/requirements - keeps producing byte-identical
+ * `regions`/`requirements`/`applicability` are each omitted from the hashed
+ * view entirely when not supplied (rather than included as `null`, unlike
+ * `supersedes`) so that every pre-Prompt-2/3/4 call site - and every later
+ * call that legitimately omits one of them - keeps producing byte-identical
  * identity to the earlier prompt, never a new hash purely because a
  * parameter now exists. Region/requirement order is part of the semantic
  * view (authored order is semantic, mirroring domain/identity.ts's `targets`
@@ -54,6 +55,7 @@ export function buildExternalReferenceRequestIdentity(
   supersedesReferenceId?: string,
   regions?: readonly ReferenceRegion[],
   requirements?: readonly ExternalReferenceRequirement[],
+  applicability?: ExternalReferenceApplicability,
 ): string {
   const semanticView = {
     imageSha256,
@@ -63,6 +65,7 @@ export function buildExternalReferenceRequestIdentity(
     supersedes: supersedesReferenceId ?? null,
     ...(regions !== undefined ? { regions } : {}),
     ...(requirements !== undefined ? { requirements } : {}),
+    ...(applicability !== undefined ? { applicability } : {}),
   };
   const serialized = JSON.stringify(canonicalize(semanticView));
   return createHash('sha256').update(serialized).digest('hex');

@@ -279,4 +279,101 @@ describe('cli import-reference / approve-reference', () => {
     expect(await runCliInDir(dir, ['import-reference', imagePath, '--output', '.', '--requirements-file', unknownFieldPath], unknownFieldOut.io)).toBe(1);
     expect(unknownFieldOut.stderr()).toContain('unsupported top-level field');
   });
+
+  // v0.7 Prompt 4: --applicability-file wires explicit reference applicability through the CLI, and approval carries it forward.
+  it('imports a reference with applicability, reporting it declared; approval carries applicability forward', async () => {
+    const dir = await makeTempDir('mfo-cli-external-reference-applicability-');
+    const imagePath = path.join(dir, 'design.png');
+    await writeFile(imagePath, buildMinimalPng(800, 600));
+    const applicabilityPath = path.join(dir, 'applicability.json');
+    await writeFile(applicabilityPath, JSON.stringify({ viewport: { width: 1280, height: 720 }, theme: 'dark' }), 'utf8');
+
+    const importOut = capture();
+    const importCode = await runCliInDir(dir, ['import-reference', imagePath, '--output', '.', '--applicability-file', applicabilityPath], importOut.io);
+    expect(importCode).toBe(0);
+    expect(importOut.stdout()).toContain('Applicability: declared');
+
+    const artifactRoot = importOut
+      .stdout()
+      .split('\n')
+      .find((line) => line.startsWith('Artifact: '))!
+      .slice('Artifact: '.length);
+    const manifest = JSON.parse(await readFile(path.join(artifactRoot, EXTERNAL_REFERENCE_MANIFEST_FILENAME), 'utf8')) as ImportedExternalReferenceArtifact;
+    expect(manifest.applicability).toEqual({ viewport: { width: 1280, height: 720 }, theme: 'dark' });
+
+    const approveOut = capture();
+    const approveCode = await runCliInDir(dir, ['approve-reference', '--reference', artifactRoot, '--output', '.'], approveOut.io);
+    expect(approveCode).toBe(0);
+    expect(approveOut.stdout()).toContain('Applicability: declared');
+  });
+
+  it('a legacy import-reference invocation without --applicability-file reports applicability as none', async () => {
+    const dir = await makeTempDir('mfo-cli-external-reference-no-applicability-');
+    const imagePath = path.join(dir, 'design.png');
+    await writeFile(imagePath, buildMinimalPng(100, 100));
+
+    const out = capture();
+    const code = await runCliInDir(dir, ['import-reference', imagePath, '--output', '.'], out.io);
+    expect(code).toBe(0);
+    expect(out.stdout()).toContain('Applicability: none');
+  });
+
+  it('exits nonzero with an invalid-reference-applicability diagnostic for an out-of-bound viewport', async () => {
+    const dir = await makeTempDir('mfo-cli-external-reference-bad-applicability-');
+    const imagePath = path.join(dir, 'design.png');
+    await writeFile(imagePath, buildMinimalPng(800, 600));
+    const applicabilityPath = path.join(dir, 'applicability.json');
+    await writeFile(applicabilityPath, JSON.stringify({ viewport: { width: 10, height: 10 } }), 'utf8');
+
+    const out = capture();
+    const code = await runCliInDir(dir, ['import-reference', imagePath, '--output', '.', '--applicability-file', applicabilityPath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('invalid-reference-applicability');
+  });
+
+  it('exits nonzero for a malformed --applicability-file (bad JSON, non-object root)', async () => {
+    const dir = await makeTempDir('mfo-cli-external-reference-bad-applicability-file-');
+    const imagePath = path.join(dir, 'design.png');
+    await writeFile(imagePath, buildMinimalPng(100, 100));
+
+    const badJsonPath = path.join(dir, 'bad.json');
+    await writeFile(badJsonPath, '{ not valid json', 'utf8');
+    const badJsonOut = capture();
+    expect(await runCliInDir(dir, ['import-reference', imagePath, '--output', '.', '--applicability-file', badJsonPath], badJsonOut.io)).toBe(1);
+    expect(badJsonOut.stderr()).toContain('not valid JSON');
+
+    const arrayRootPath = path.join(dir, 'array-root.json');
+    await writeFile(arrayRootPath, '[]', 'utf8');
+    const arrayRootOut = capture();
+    expect(await runCliInDir(dir, ['import-reference', imagePath, '--output', '.', '--applicability-file', arrayRootPath], arrayRootOut.io)).toBe(1);
+    expect(arrayRootOut.stderr()).toContain('root must be a JSON object');
+  });
+
+  it('requires a value: bare --applicability-file fails before any persistence', async () => {
+    const dir = await makeTempDir('mfo-cli-external-reference-bare-applicability-flag-');
+    const imagePath = path.join(dir, 'design.png');
+    await writeFile(imagePath, buildMinimalPng(100, 100));
+
+    const out = capture();
+    const code = await runCliInDir(dir, ['import-reference', imagePath, '--output', '.', '--applicability-file'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--applicability-file requires a file path argument');
+  });
+
+  it('rejects a second --applicability-file flag', async () => {
+    const dir = await makeTempDir('mfo-cli-external-reference-dup-applicability-flag-');
+    const imagePath = path.join(dir, 'design.png');
+    await writeFile(imagePath, buildMinimalPng(100, 100));
+    const applicabilityPath = path.join(dir, 'applicability.json');
+    await writeFile(applicabilityPath, JSON.stringify({ theme: 'dark' }), 'utf8');
+
+    const out = capture();
+    const code = await runCliInDir(
+      dir,
+      ['import-reference', imagePath, '--output', '.', '--applicability-file', applicabilityPath, '--applicability-file', applicabilityPath],
+      out.io,
+    );
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--applicability-file may only be specified once');
+  });
 });

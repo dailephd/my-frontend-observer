@@ -22,6 +22,7 @@ export const DIAGNOSTIC_CODES = [
   'reference-not-found',
   'invalid-reference-region',
   'invalid-reference-requirement',
+  'invalid-reference-applicability',
 ] as const;
 
 export type DiagnosticCode = (typeof DIAGNOSTIC_CODES)[number];
@@ -53,6 +54,7 @@ export const DIAGNOSTIC_SEVERITY: Record<DiagnosticCode, DiagnosticSeverity> = {
   'reference-not-found': 'error',
   'invalid-reference-region': 'error',
   'invalid-reference-requirement': 'error',
+  'invalid-reference-applicability': 'error',
 };
 
 export interface Diagnostic {

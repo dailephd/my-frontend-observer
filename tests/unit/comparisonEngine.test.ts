@@ -13,6 +13,7 @@ import type {
 } from '../../src/domain/schema.js';
 import type { NamedTarget, ScrollScenario } from '../../src/request/request.js';
 import type { EvidenceField } from '../../src/domain/evidence.js';
+import type { ExplicitStateDimensions } from '../../src/domain/explicitState.js';
 
 function rect(x: number, y: number, width: number, height: number): TargetGeometry {
   return { x, y, width, height, right: x + width, bottom: y + height };
@@ -107,6 +108,7 @@ interface ObservationOptions {
   viewport?: { width: number; height: number };
   scrollScenario?: ScrollScenario;
   scrollOwner?: { kind: 'document' } | { kind: 'target'; target: string } | { kind: 'none' } | { kind: 'indeterminate' };
+  explicitState?: ExplicitStateDimensions;
 }
 
 function observation(
@@ -130,6 +132,7 @@ function observation(
       timeoutMs: 30000,
       readiness: { condition: 'load', timeoutMs: 10000 },
       ...(options.scrollScenario ? { scrollScenario: options.scrollScenario } : {}),
+      ...(options.explicitState ? { explicitState: options.explicitState } : {}),
     },
     provenance: { capturedAt: new Date(0).toISOString(), observationMethod: 'test-fixture' },
     pageEvidence,
@@ -168,6 +171,45 @@ describe('evaluateComparability', () => {
     const after = observation([target('a')], { a: matchedTarget(rect(0, 0, 10, 10)) }, {}, { observationId: 'obs-2' });
     const result = evaluateComparability(before, after);
     expect(result.state).toBe('comparable');
+    expect(result.reasons.map((r) => r.code)).toEqual(['theme-unassessed', 'authenticated-state-unassessed', 'application-state-unassessed']);
+  });
+
+  it('v0.7 Prompt 4: assesses theme/authenticatedState/applicationState as matching when both sides declare the same explicitState', () => {
+    const before = observation([target('a')], { a: matchedTarget(rect(0, 0, 10, 10)) }, {}, { explicitState: { theme: 'dark', authenticatedState: 'authenticated', applicationState: 'cart-empty' } });
+    const after = observation(
+      [target('a')],
+      { a: matchedTarget(rect(0, 0, 10, 10)) },
+      {},
+      { observationId: 'obs-2', explicitState: { theme: 'dark', authenticatedState: 'authenticated', applicationState: 'cart-empty' } },
+    );
+    const result = evaluateComparability(before, after);
+    expect(result.state).toBe('comparable');
+    expect(result.reasons).toHaveLength(0);
+  });
+
+  it('v0.7 Prompt 4: reports a blocking mismatch when both sides declare a differing theme/authenticatedState/applicationState', () => {
+    const before = observation([target('a')], { a: matchedTarget(rect(0, 0, 10, 10)) }, {}, { explicitState: { theme: 'dark', authenticatedState: 'authenticated', applicationState: 'cart-empty' } });
+    const after = observation(
+      [target('a')],
+      { a: matchedTarget(rect(0, 0, 10, 10)) },
+      {},
+      { observationId: 'obs-2', explicitState: { theme: 'light', authenticatedState: 'unauthenticated', applicationState: 'cart-full' } },
+    );
+    const result = evaluateComparability(before, after);
+    expect(result.state).toBe('incomparable');
+    const codes = result.reasons.map((r) => r.code);
+    expect(codes).toContain('theme-mismatch');
+    expect(codes).toContain('authenticated-state-mismatch');
+    expect(codes).toContain('application-state-mismatch');
+    for (const reason of result.reasons) {
+      expect(reason.severity).toBe('blocking');
+    }
+  });
+
+  it('v0.7 Prompt 4: remains unassessed when only one side declares explicitState (fail-closed, not a fabricated match or mismatch)', () => {
+    const before = observation([target('a')], { a: matchedTarget(rect(0, 0, 10, 10)) }, {}, { explicitState: { theme: 'dark' } });
+    const after = observation([target('a')], { a: matchedTarget(rect(0, 0, 10, 10)) }, {}, { observationId: 'obs-2' });
+    const result = evaluateComparability(before, after);
     expect(result.reasons.map((r) => r.code)).toEqual(['theme-unassessed', 'authenticated-state-unassessed', 'application-state-unassessed']);
   });
 

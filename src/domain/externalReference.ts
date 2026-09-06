@@ -22,6 +22,8 @@ import type { ReferenceRegion } from './externalReferenceRegions.js';
 import { isValidReferenceRegions } from './externalReferenceRegions.js';
 import type { ExternalReferenceRequirement } from './externalReferenceRequirements.js';
 import { isValidReferenceRequirements } from './externalReferenceRequirements.js';
+import type { ExternalReferenceApplicability } from './externalReferenceApplicability.js';
+import { isValidExternalReferenceApplicability } from './externalReferenceApplicability.js';
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -151,6 +153,17 @@ interface ExternalReferenceArtifactBase {
    * existing persisted artifact.
    */
   requirements?: ExternalReferenceRequirement[];
+  /**
+   * v0.7 Prompt 4 addition (additive, optional - same backward-compatibility
+   * reasoning as `regions`/`requirements`). The runtime frontend state this
+   * reference is intended to represent (applicable viewport/theme/
+   * application-state/authenticated-state) - never the reference image's own
+   * pixel dimensions (see `image.width`/`height` above and
+   * externalReferenceApplicability.ts's doc comment). Identity-bearing
+   * wherever present. Never mutated in place; importing applicability never
+   * implies approval, and approval carries it forward verbatim.
+   */
+  applicability?: ExternalReferenceApplicability;
   diagnostics: Diagnostic[];
   completion: CompletionState;
 }
@@ -265,6 +278,11 @@ export function isValidExternalReferenceArtifact(value: unknown): ExternalRefere
     const regionsForRequirements = (hasRegions ? value.regions : []) as ReferenceRegion[];
     const requirementsValidation = isValidReferenceRequirements(value.requirements, regionsForRequirements);
     if (!requirementsValidation.valid) return { valid: false, reason: `requirements: ${requirementsValidation.reason}` };
+  }
+
+  if ('applicability' in value && value.applicability !== undefined) {
+    const applicabilityValidation = isValidExternalReferenceApplicability(value.applicability);
+    if (!applicabilityValidation.valid) return { valid: false, reason: `applicability: ${applicabilityValidation.reason}` };
   }
 
   return { valid: true };

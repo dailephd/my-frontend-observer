@@ -33,6 +33,13 @@ Options:
   scenario from a local JSON file. May be combined with either `--target` or
   `--targets-file` (it is independent of target configuration). See "Scroll
   scenario (`--scroll-scenario-file`)" below.
+- `--state-file <json-file>` — loads explicit, caller-declared frontend
+  state identity (`theme`, `applicationState`, `authenticatedState`) from a
+  local JSON file. Never inferred by the observer from screenshot pixels,
+  CSS, DOM, or URLs - this is caller-declared metadata only, used solely for
+  later comparability/compatibility evaluation (see "v0.7 Prompt 4 reference
+  applicability and candidate-state compatibility" in `docs/CONTRACTS.md`).
+  Independent of every other flag.
 - `--output <directory>` — portable, relative output location for the
   observation artifact (same contract as the request's `outputLocation`; no
   drive letter, no leading `/`, no `..` segments).
