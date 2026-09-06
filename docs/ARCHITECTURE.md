@@ -353,11 +353,9 @@ version `0.7.0` - see "v0.7 Prompt 1" through "v0.7 Prompt 8" below for the
 actual architecture, and `docs/CURRENT_STATE.md` for release state. It
 extends the existing v0.1-v0.6 evidence architecture rather than becoming a
 UI-only feature or a parallel visual-comparison stack. v0.8 (interactive
-viewer),
-v0.9 (structured visual annotation), and v0.10 (full graphical human-LLM
-workflow) remain future and unimplemented; the constraints below apply to
-that still-future work, except where a paragraph explicitly says an item is
-now implemented.
+viewer), v0.9 (structured visual annotation), and v0.10 (full graphical
+human-LLM workflow) remain future and unimplemented; the constraints below
+apply to that still-future work.
 
 The evidence domains remain distinct:
 
@@ -374,61 +372,61 @@ external visual reference ↔ candidate runtime evidence
 ```
 
 An external reference is not an `ObservationArtifact`, and a reference region
-is not a runtime target. The future implementation must preserve explicit
+is not a runtime target. The released v0.7 implementation preserves explicit
 identity and provenance for the reference image/version, reference regions,
 applicable viewport/theme/application state, authored requirements, tolerances,
 approval/supersession state, and reference-region/runtime-target bindings.
-Bindings may be explicit, ambiguous, unavailable, or another conservatively
-defined state selected during planning; they must never silently become source
-ownership.
+Bindings are explicit and evaluate to `bound`, `ambiguous`, or `unavailable`;
+they never silently become source ownership.
 
 The non-UI reference model and structured reference-vs-candidate evaluation
-must be established in v0.7 before v0.8 consumes them. v0.8 may render
-side-by-side images, overlays, measurements, bindings, provenance, and fidelity
-results, but it must not invent a second reference model or evaluation engine.
-v0.9 may author annotations against either runtime screenshots or external
-references, but both coordinate/identity domains remain explicit and feed the
-same canonical contract/change-scope semantics. v0.10 combines both visual
-entry modes with the existing correction loop.
+were established in v0.7 before v0.8. v0.8 may render side-by-side images,
+overlays, measurements, bindings, provenance, and fidelity results, but it must
+consume those existing engines and must not invent a second reference model or
+evaluation engine. v0.9 may author annotations against either runtime
+screenshots or external references, but both coordinate/identity domains remain
+explicit and feed the same canonical contract/change-scope semantics. v0.10
+combines both visual entry modes with the existing correction loop.
 
-Where a reference requirement is executable, it must map into the existing
-v0.5 requested/expected-dependent/protected/preserved semantics. Informational
-or unassessed reference evidence remains non-executable until explicitly
-promoted. Do not create reference-only PASS/FAIL semantics.
+Where a reference requirement is executable, it uses the existing v0.5
+requested/expected-dependent/protected/preserved semantics. Informational or
+unassessed reference evidence remains non-executable until explicitly selected.
+There is no reference-only PASS/FAIL taxonomy.
 
-The reference evaluation should reuse existing relationship/value conventions
-where they mean the same thing, and extend them only when evidence from a static
-image or approved design intent genuinely requires a distinct type. Pixel or
-image-region similarity may supplement structured evidence, especially for
-asset-sensitive regions, but it must not replace browser-authoritative runtime
-geometry, canonical contract evaluation, or explicit relationship evidence.
+The released reference evaluation reuses existing relationship/value
+conventions where they mean the same thing and adds distinct reference-owned
+units only where the image evidence requires them. v0.7 does not use pixel or
+image-region similarity as a success mechanism; a later bounded similarity
+feature may supplement structured evidence if separately designed, but it must
+not replace browser-authoritative runtime geometry, canonical contract
+evaluation, or explicit relationship evidence.
 
 Candidate rendering still uses the one existing Chromium observation engine.
 The observer remains non-mutating. `my-dev-kit` remains the static/source
 evidence owner, and the v0.6 correlation/bounded-context boundary remains the
 route for attaching relevant source evidence to reference-driven correction
-packets. Heavy reference image bytes should be referenced rather than copied
-into every downstream context/evaluation record.
+packets. Heavy reference image bytes are referenced rather than copied into
+every downstream context/evaluation record.
 
-Theme, application-state, viewport, and other applicability dimensions must be
-checked before reference fidelity is interpreted. If reference and candidate do
-not represent compatible intended states, the result must be explicitly
-incompatible/incomparable rather than a fabricated visual difference set.
-Planning should extend or reuse the canonical comparability/state model rather
-than create unrelated reference-only state semantics.
+Theme, application-state, viewport, and authenticated-state applicability are
+checked before reference fidelity is interpreted through the released v0.7
+compatibility path, which reuses v0.4 comparability conventions. If reference
+and candidate do not represent compatible intended states, the result is
+explicitly incompatible/incomparable rather than a fabricated visual difference
+set. v0.8 must display this result rather than redefine the state model.
 
 The constraints above were carried out by the actual v0.7 implementation
 described in "v0.7 Prompt 1" through "v0.7 Prompt 8" below: explicit
-identity/provenance, applicability/compatibility, region-to-target
-bindings, requested/expected-dependent/protected/preserved reuse, and the
-non-mutating Chromium/correlation boundaries all remain as constrained
-here. They continue to apply unchanged to the still-future v0.8-v0.10 work.
+identity/provenance, applicability/compatibility, region-to-target bindings,
+requested/expected-dependent/protected/preserved reuse, and the non-mutating
+Chromium/correlation boundaries all remain as constrained here. They continue
+to apply unchanged to the still-future v0.8-v0.10 work.
 
 The exact public artifact names, schema versions, persistence layout, supported
-image formats, style-evidence vocabulary, tolerance primitives, and image-
-similarity mechanisms were frozen by the actual v0.7 implementation below,
-not by this architecture document. They followed existing identity, provenance, validation, boundedness, and portable-
-artifact precedents.
+image formats, coordinate model, requirement/tolerance primitives, and fidelity
+behavior were frozen by the actual v0.7 implementation below, not by earlier
+planning language. Style/asset-similarity mechanisms remain future unless
+separately implemented.
 
 ## Retained v0.1 architecture constraints
 
@@ -462,12 +460,12 @@ ownership; orchestrator-consumption and lab-compatibility work are separate
 sibling-repository deliverables, not part of this repository's architecture.
 
 The text/config-driven coding-agent workflow and the non-UI external-reference
-evidence foundation must be operational before the viewer and annotation layers
-are added. Those interfaces consume the same canonical observation,
-relationship, comparison, contract, change-scope, reference, correlation, and
-context boundaries rather than creating parallel engines. The concrete
-implementation plan and module layout must be designed only after the relevant
-version planning workflow inspects the current repositories.
+evidence foundation are operational as of v0.7. The viewer and annotation
+layers must consume the same canonical observation, relationship, comparison,
+contract, change-scope, reference, correlation, and context boundaries rather
+than creating parallel engines. The concrete implementation plan and module
+layout for each future version must be designed only after that version's
+planning workflow inspects the current repositories.
 
 v0.7 Prompt 1 implements only the bottom of that external-reference stack: a
 new, standalone `ExternalReferenceArtifact` evidence root
@@ -625,10 +623,12 @@ them where an external implementation actor edits target source. Overall
 evaluation `'PASS'` - matching the selected design reference is necessary
 but never sufficient, so a candidate that visually satisfies the reference
 while regressing an active protected or preserved contract clause still
-resolves to overall `'fail'`. Review and attempt identity are both
-deterministic hashes of stable semantic inputs (never a timestamp, never an
-operational path), and `reviewReferenceCorrectionAttempt` rejects any call
-whose supplied `reviewRequestId` does not match what its own
+resolves to overall `'fail'`. Review identity is a deterministic hash of
+`{referenceRequestId, baselineObservationId, baselineContractId,
+baselineContractClauses, changeContractId, changeContractClauses,
+bindingDeclarations}`; attempt identity is a deterministic hash of
+`{reviewRequestId, candidateObservationId}`. `reviewReferenceCorrectionAttempt`
+rejects any call whose supplied `reviewRequestId` does not match what its own
 baseline/contract/reference/binding inputs recompute - the mechanism that
 makes "every attempt evaluates against the same approved baseline" an
 enforced invariant, not just a documented one. No new persisted artifact
