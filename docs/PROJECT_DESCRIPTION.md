@@ -79,7 +79,7 @@ running frontend
 → structured runtime evidence
 ```
 
-As the visual workflow matures, it also owns the structured evidence boundary for approved external visual references used to describe desired design intent. That reference evidence remains distinct from browser runtime evidence while being comparable to a rendered candidate through explicit bindings and evaluation.
+It also owns the structured evidence boundary for approved external visual references used to describe desired design intent. That reference evidence remains distinct from browser runtime evidence while being comparable to a rendered candidate through explicit bindings and evaluation.
 
 It owns evidence about:
 
@@ -427,7 +427,7 @@ Structured browser evidence remains essential.
 
 ## Principal capability 3 — Stable rendered-region identity
 
-Meaningful rendered regions need stable logical identities so humans, LLMs, comparisons, annotations, regression contracts, and future reference bindings can refer to the same conceptual runtime region over time.
+Meaningful rendered regions need stable logical identities so humans, LLMs, comparisons, annotations, regression contracts, and reference bindings can refer to the same conceptual runtime region over time.
 
 Examples may include:
 
@@ -476,7 +476,8 @@ VerticalNav.tsx
 
 Source ownership belongs to the static-analysis integration boundary.
 
-A future reference region must likewise have a separate reference identity. Binding:
+A reference region likewise has a separate reference identity. The released
+v0.7 binding model keeps:
 
 ```text
 reference region:
@@ -486,7 +487,7 @@ runtime target:
 primary-navigation
 ```
 
-does not collapse those identities into one.
+as two explicit identity domains rather than collapsing them into one.
 
 ## Principal capability 4 — Rendered layout map
 
@@ -592,7 +593,10 @@ This should make questions such as these answerable from runtime evidence:
 - Did the page become taller or wider after a change?
 - Did viewport behavior change unexpectedly?
 
-Future reference-driven evaluation additionally needs explicit state/applicability identity sufficient to prevent comparing the wrong theme, viewport, or application state as though it were the intended reference state.
+Reference-driven evaluation uses explicit caller-supplied state/applicability
+identity so the observer does not compare the wrong theme, viewport,
+authentication state, or application state as though it were the intended
+reference state.
 
 ## Principal capability 6 — Runtime scrolling, overflow, and visibility
 
@@ -687,7 +691,10 @@ It should not automatically claim that one region caused another region to chang
 
 Expected dependency semantics should come from an explicit contract, user intent, approved reference intent, or another supported source of evidence.
 
-Future reference regions should reuse the canonical relationship vocabulary when the same geometric relation applies, while preserving the fact that reference relationships are authored/derived from a design image rather than browser-observed DOM/runtime facts.
+Reference regions reuse the canonical relationship vocabulary when the same
+geometric relation applies, while preserving the fact that reference
+relationships are derived from explicit reference-image geometry rather than
+browser-observed DOM/runtime facts.
 
 ## Principal capability 8 — Observation artifact
 
@@ -755,7 +762,8 @@ The artifact schema should evolve intentionally and additively where compatible.
 
 Package version and observation schema version must remain separate concepts.
 
-A future external-reference artifact is a separate evidence family. It must not masquerade as an observation merely to reuse an existing serializer.
+The v0.7 `ExternalReferenceArtifact` is a separate evidence family. It does
+not masquerade as an observation merely to reuse an existing serializer.
 
 ## Principal capability 9 — Before/after comparison
 
@@ -808,7 +816,9 @@ Before/after comparison is not part of the first observation version.
 
 The initial observation identity and provenance model must nevertheless preserve enough information to support future comparability decisions.
 
-Before/after comparison remains conceptually distinct from future reference-design versus candidate evaluation. An external desired-state image is not an earlier runtime state.
+Before/after comparison remains conceptually distinct from reference-design
+versus candidate evaluation. An external desired-state image is not an earlier
+runtime state.
 
 ## Principal capability 10 — Explicit change scope
 
@@ -874,7 +884,10 @@ This concept may eventually be represented by an explicit `ChangeContract` or eq
 
 The conceptual name does not require that exact implementation type.
 
-Future reference-derived executable intent must map into this same change-scope model. A visible detail in a reference may remain informational or unassessed until explicitly promoted into requested, expected-dependent, protected, or preserved intent. Do not create a separate reference-only change taxonomy.
+Reference-derived executable intent maps into this same change-scope model. A
+visible detail in a reference may remain informational or unassessed until
+explicitly promoted into requested, expected-dependent, protected, or
+preserved intent. There is no separate reference-only change taxonomy.
 
 ## Principal capability 11 — Frontend regression and change contracts
 
@@ -892,7 +905,7 @@ element A follows element B vertically
 document width does not exceed viewport width
 window owns requested page scrolling
 specified element does not own primary page scrolling
-element begins below the initial viewport
+element begins below initial viewport
 ```
 
 Relationship-oriented contracts should be preferred when they represent user intent more accurately than fixed pixels.
@@ -966,7 +979,9 @@ FAIL
 
 A frontend change must not be declared successful merely because its requested local mutation succeeded.
 
-A future reference-fidelity result supplements these contracts. It does not replace or weaken them.
+Reference fidelity supplements these contracts. It does not replace or weaken
+them, and a fidelity pass cannot override a protected or preserved contract
+failure.
 
 ## Principal capability 12 — Bounded agent context and static/runtime integration
 
@@ -1030,7 +1045,11 @@ bounded agent context
 external coding agent
 ```
 
-When an external reference is active, only task-relevant reference identity, applicable regions, explicit design requirements, measured candidate deltas, failed fidelity conditions, and references to heavy image assets should be added. Do not place the full reference artifact or every image difference into the agent packet by default.
+When an external reference is active, the released v0.7 extension adds only
+task-relevant reference identity, selected design requirements, measurable
+candidate mismatches, bound runtime targets, protected/preserved context, and
+references to heavy image assets. It does not place the full reference artifact
+or every image difference into the agent packet by default.
 
 Runtime/static correlation must be explicit and may be ambiguous. A stable
 runtime target identity must never silently become a source-ownership claim.
@@ -1038,27 +1057,32 @@ The observer owns runtime projection and its correlation/export boundary;
 `my-dev-kit` owns static indexing and retrieval; the orchestrator coordinates
 bounded consumption; the lab owns exact compatibility evaluation.
 
-This integrated, text/config-driven path must support an end-to-end coding-agent
+This integrated, text/config-driven path supports an end-to-end coding-agent
 change review before the viewer or visual annotation becomes a prerequisite.
 The observer does not edit source: an external coding agent makes the change,
-after which the observer rerenders, compares, and evaluates preserved contracts.
+after which the observer rerenders, compares, and evaluates preserved contracts
+and, where applicable, reference fidelity.
 
-## Future capability — External visual reference and reference-driven design evidence
+## Implemented capability (v0.7) — External visual reference and reference-driven design evidence
 
-The project should support approved external visual references as a structured desired-design evidence domain.
+v0.7 supports approved external visual references as a structured desired-design evidence domain.
 
-A reference may be supplied as an image format selected during implementation planning, such as PNG or WebP, with JPEG considered where appropriate. The exact supported formats and limits are not fixed by this document.
+The public `import-reference` command accepts PNG, JPEG, and WebP images. Format
+and dimensions are detected from bounded header bytes rather than trusted from a
+filename extension, and the implementation enforces bounded file-size and image-
+dimension limits. No OCR, image segmentation, computer-vision target discovery,
+or raster-to-code reconstruction is part of this capability.
 
 A raw reference image is evidence, not implementation. It does not reveal hidden DOM structure, source ownership, original CSS, component hierarchy, design tokens, original vector paths, or inaccessible font metadata.
 
-The future reference artifact must preserve enough structured information to answer:
+The `ExternalReferenceArtifact` and its derived evaluation path preserve enough
+structured information to answer:
 
 ```text
 which exact reference image/version was used?
 which regions were defined?
-which measurements came directly from the image?
 which requirements were explicitly authored?
-which relationships were derived or authored?
+which relationships were derived?
 which candidate observation was evaluated?
 which viewport/theme/application state applies?
 which tolerance/evaluation policy was used?
@@ -1067,51 +1091,25 @@ which approval or supersession decision applies?
 
 ### Reference-region model
 
-A user or tool should be able to define bounded meaningful regions such as:
+v0.7 reference regions are explicit, bounded semantic rectangles authored by a
+user or configuration. Each region has a stable `id` and a canonical
+`{x, y, width, height}` rectangle in reference-image pixels with origin at the
+image's top-left corner. `right`, `bottom`, `centerX`, and `centerY` are derived
+on demand from that canonical rectangle and are not redundantly persisted.
+There is no automatic segmentation and no normalized-coordinate region model in
+v0.7.
 
-```text
-popup-shell
-header
-brand-mark
-current-page-card
-destination-card
-crawl-controls
-progress
-status
-message
-footer
-```
-
-A region may preserve geometry such as:
-
-```text
-x
-y
-width
-height
-right
-bottom
-```
-
-and may also support normalized coordinates relative to the reference image where that improves scale-independent comparison. Exact coordinate semantics must be selected during planning.
-
-Reference regions should support the same relationship vocabulary as runtime regions where the concept is genuinely shared, for example:
-
-```text
-A is left of B
-A is above B
-A follows B vertically
-A and B have equal width within tolerance
-A does not overlap B
-```
-
-Do not create an unrelated relationship engine merely because the evidence source is an image.
+Reference regions reuse the same geometry-only relationship predicates used by
+runtime layout relationships where the concept is genuinely shared, including
+horizontal/vertical order, overlap, relative width, geometric fit, and vertical
+sequencing. Reference relationships are derived on demand and do not become
+requirements automatically.
 
 ### Reference-design intent and tolerances
 
 Not every visible pixel is a requirement.
 
-Reference evidence should distinguish:
+Reference evidence distinguishes:
 
 ```text
 visible/derived evidence
@@ -1119,33 +1117,51 @@ explicit authored requirement
 informational/unassessed detail
 ```
 
-Executable reference requirements must ultimately feed the canonical requested/expected-dependent/protected/preserved contract model.
+Executable reference requirements reuse the canonical v0.5 authored categories:
 
-Reference comparison needs property-specific tolerance semantics. Possible categories include:
+```text
+requested
+expected-dependent
+protected
+preserved
+```
 
-- absolute geometry tolerance;
-- normalized positional/size tolerance;
-- relationship tolerance;
-- spacing tolerance;
-- selected color/style tolerance;
-- asset-sensitive image-region evidence where reliable.
+`unexpected` remains derived-only.
 
-Do not use one global pixel-perfect threshold for all properties.
+v0.7 supports selected requirement subjects over region properties,
+region-to-region relationships, and bounded two-region measurements. Numeric
+reference tolerances are explicitly reference-owned and use:
 
-Text rendering, font rasterization, antialiasing, shadows, glow, gradients, and platform differences must not create false structural failures merely because screenshot bytes differ.
+- `exact`;
+- `absolute-reference-px`;
+- `percent`.
+
+Reference-image coordinates and tolerances are not silently treated as CSS
+pixels. Fidelity establishes an explicit full-frame reference-image-pixel to
+CSS-pixel scale from the reference image dimensions and declared applicable
+runtime viewport, with an independent aspect-ratio-coherence gate.
+
+Selected color/style evidence, asset-similarity evidence, or image-region
+similarity are not v0.7 success mechanisms. They may be added later only as
+bounded supplemental evidence and must not replace structured geometry,
+relationships, applicability, or canonical contract evaluation.
 
 ### Reference applicability and comparability
 
 Reference and candidate must represent compatible intended states before ordinary fidelity differences are evaluated.
 
-Relevant dimensions may include:
+v0.7 supports explicit caller-supplied applicability dimensions for:
 
 ```text
 viewport
 theme
 application state
-variant/state name
+authenticated state
 ```
+
+The corresponding candidate state is likewise caller/configuration supplied on
+observation. It is not inferred from screenshot pixels, DOM, CSS, URL, or source
+code.
 
 For example:
 
@@ -1154,13 +1170,15 @@ reference: One Dark / active crawl
 candidate: One Light / idle
 ```
 
-must produce an explicit incompatible/incomparable outcome rather than a meaningless visual-difference list.
+produces an explicit incompatible/incomparable result rather than a meaningless visual-difference list when those dimensions are declared and conflict.
 
-This should extend or reuse the existing comparability/state-identity model where possible rather than creating an unrelated reference-only state system.
+The compatibility implementation reuses the existing v0.4 comparability result
+and per-dimension comparison conventions rather than creating an unrelated
+reference-only state system.
 
 ### Reference-to-runtime binding
 
-The system needs an explicit association between:
+The system uses an explicit association between:
 
 ```text
 reference region
@@ -1172,32 +1190,28 @@ and:
 runtime target
 ```
 
-The binding may be explicit, ambiguous, unavailable, or another conservatively defined state selected during implementation planning.
+Binding declarations are caller/configuration supplied and are never inferred
+from geometry, matching names, or source code. Binding results use the closed
+states:
+
+```text
+bound
+ambiguous
+unavailable
+```
 
 Reference identity, runtime identity, and source identity remain separate domains.
 
 ### Structured reference-vs-candidate evaluation
 
-A future result should combine, as applicable:
+v0.7 combines selected reference requirements with browser-authoritative
+candidate evidence and produces bounded, actionable structured fidelity results.
+Evaluation proceeds through reference structural validation, reference-evidence
+adequacy, reference/candidate compatibility, explicit binding, then each
+selected requirement. An inadequate reference or incompatible candidate is
+`not-evaluated`; it is not fabricated into an ordinary visual failure.
 
-```text
-REFERENCE IMAGE
-+ REFERENCE REGION GEOMETRY
-+ REFERENCE RELATIONSHIPS
-+ EXPLICIT DESIGN INTENT
-+ OPTIONAL IMAGE/ASSET SIMILARITY EVIDENCE
-```
-
-with:
-
-```text
-CANDIDATE SCREENSHOT
-+ CANDIDATE BROWSER GEOMETRY
-+ CANDIDATE RELATIONSHIPS
-+ CANDIDATE COMPUTED EVIDENCE
-```
-
-and produce actionable evidence such as:
+Example evidence remains of the form:
 
 ```text
 Target: current-page-card
@@ -1214,29 +1228,31 @@ Candidate separation: 38px
 Result: fidelity requirement failed
 ```
 
-Pixel or image similarity may supplement this evidence, especially for visual-asset-sensitive regions, but it must not be the sole source of truth.
+Pixel or image similarity is not the success mechanism in v0.7.
 
 ### Reference lifecycle and approval
 
-A random supplied image must not silently become a project baseline or active design authority.
+A random supplied image never silently becomes a project baseline or active design authority.
 
-The future lifecycle should distinguish states conceptually equivalent to:
+The v0.7 persisted lifecycle has exactly two explicit states:
 
 ```text
 imported
-→ measured/annotated
-→ explicitly approved
-→ active
-→ explicitly superseded
+→ approved
 ```
 
-Exact lifecycle names are selected during implementation planning.
+`import-reference` creates a new imported artifact. `approve-reference` is the
+only explicit approval act and creates a new approved artifact instance while
+preserving the imported artifact unchanged. Supersession is represented by a
+forward pointer on the newer artifact and never rewrites the superseded
+artifact. There is no automatic measured, annotated, active, or auto-approved
+lifecycle state in v0.7.
 
 Reference approval is separate from baseline approval. Reference supersession is separate from baseline supersession. A fidelity `PASS` does not approve either one automatically.
 
 ### Multiple references
 
-The system should support explicit reference identities for variants such as:
+The model permits separately identified references for explicit states such as:
 
 ```text
 dark theme / idle
@@ -1255,54 +1271,65 @@ The correct reference must be selected by explicit identity/applicability rules 
 
 A reference region may represent artwork or another asset-sensitive area.
 
-The observer may validate rendered bounds, aspect ratio, transparency where available, selected visual characteristics, and bounded similarity evidence. It must not claim to recover vector paths or hidden source data from a raster reference.
-
-Raster-to-vector reconstruction and image-to-code generation remain external implementation concerns.
+The observer can currently preserve the reference image and structured region
+geometry but does not claim to recover vector paths or hidden source data from a
+raster reference. Raster-to-vector reconstruction and image-to-code generation
+remain external implementation concerns. Bounded asset/image-similarity evidence
+would be a later extension, not a current v0.7 contract.
 
 ### Coding-agent correction packet
 
-The bounded agent context should report measurable reference/candidate mismatches rather than asking the coding agent to reinterpret the entire image each iteration.
+The v0.7 bounded agent context reports measurable reference/candidate mismatches
+rather than asking the coding agent to reinterpret the entire image each
+iteration. It carries relevant failed requirements, bound runtime targets,
+active protected/preserved context, provenance, adequacy/omission/truncation,
+and bounded static/source correlation when supplied by the caller.
 
-Send only relevant regions, failed requirements, active protected/preserved constraints, provenance, and bounded static/source context.
-
-The desired correction loop is:
+The implemented correction loop is:
 
 ```text
-external reference
+approved external reference
 → structured reference evidence
-→ candidate observation
+→ current candidate observation
 → structured fidelity mismatch
-→ bounded source context
+→ bounded runtime/static context
 → external coding agent correction
-→ rerender
-→ reevaluate
-→ human approval or another correction
+→ real Chromium rerender
+→ reevaluate reference fidelity
++ canonical before/after comparison
++ canonical baseline/per-change contract evaluation
+→ PASS or actionable failure
 ```
+
+Matching the reference is necessary but never sufficient: an active protected or
+preserved contract regression still makes the overall correction review fail.
+The observer never edits target source; the implementation actor remains external.
 
 The viewer and annotation systems later consume this reference model. They must not create another one.
 
-## Future capability — Static/runtime source association
+## Implemented foundation (v0.6) — Static/runtime source association
 
-The observer should associate runtime regions with bounded static source
-evidence from `my-dev-kit` where reliable.
+The observer provides an explicit programmatic runtime/static correlation
+boundary for associating stable runtime targets with caller-supplied bounded
+static candidates where reliable.
 
-The desired chain is:
+The chain is:
 
 ```text
 rendered region
 → runtime target identity
 → correlation evidence
-→ my-dev-kit static node or bounded static evidence
+→ my-dev-kit static identity / bounded evidence
 → relevant source retrieval
 ```
 
-`my-frontend-observer` must not implement a competing repository-analysis
-system. It must not duplicate repository crawling, parsing, indexing, source
-graphs, retrieval, architecture inference, or edit-owner analysis. If runtime
-evidence cannot prove source ownership, the observer must preserve uncertainty.
-
-The ecosystem integration needed for bounded coding-agent context belongs on
-the core path after safe-change contracts and before human-interface work.
+Correlation results preserve `correlated`, `ambiguous`, or `unavailable`
+outcomes and competing candidates. The observer does not implement a competing
+repository-analysis system and does not silently turn a runtime target into a
+source owner. `my-dev-kit` remains the owner of repository crawling, parsing,
+indexing, source graphs, architecture, and bounded retrieval. The observer
+package has no runtime dependency on `@dailephd/my-dev-kit`; static candidate
+evidence is supplied through the explicit boundary.
 
 ## Principal capability 13 — Human visual review
 
@@ -1326,9 +1353,9 @@ Selecting a structured runtime or reference region should identify the correspon
 
 Likewise, selecting an image region should eventually support identifying the corresponding known runtime target or reference region when evidence is sufficient.
 
-The viewer must consume the reusable observation, reference, comparison, and contract engines/artifacts.
+The viewer must consume the reusable observation, reference, comparison, contract, correlation, and bounded-context engines/artifacts.
 
-It must not contain a second browser-observation implementation or a second reference-evaluation implementation.
+It must not contain a second browser-observation implementation, a second reference model, a second binding engine, a second reference-evaluation implementation, a second contract engine, or a second bounded-context builder.
 
 ## Future capability — Human visual annotation
 
@@ -1443,13 +1470,17 @@ my-frontend-observer
 
 Neither project should normally import or execute the other merely to perform its native responsibility.
 
-Their evidence may later be correlated by an explicit consumer or integration contract.
+Their evidence may be correlated by an explicit consumer or integration contract.
 
 ## Relationship to `my-dev-kit-orchestrator`
 
 `my-dev-kit-orchestrator` owns workflow coordination rather than runtime observation or reference interpretation.
 
-A future integration may allow the orchestrator to consume a bounded projection or reference to observer evidence, including bounded reference/candidate failure evidence when present.
+The observer's v0.6/v0.7 public programmatic boundaries already expose bounded
+runtime, correlation, fidelity, and correction-handoff evidence suitable for an
+external orchestrator or coding-agent workflow. Orchestrator-side integration
+remains a sibling-repository responsibility rather than code owned by this
+repository.
 
 The orchestrator should not:
 
@@ -1461,15 +1492,13 @@ The orchestrator should not:
 - redefine observer evidence semantics;
 - become the canonical owner of observer artifacts.
 
-The observer should expose machine-consumable artifacts and a clean programmatic boundary so future orchestrator integration does not require parsing human console output.
-
-No orchestrator runtime dependency is required for the first observer versions.
+The observer exposes machine-consumable artifacts and a clean programmatic boundary so orchestrator integration does not require parsing human console output.
 
 ## Relationship to `my-dev-kit-lab`
 
-`my-dev-kit-lab` should eventually evaluate observer compatibility and ecosystem behavior.
+`my-dev-kit-lab` should evaluate observer compatibility and ecosystem behavior when coordinated validation requires it.
 
-Possible future responsibilities include:
+Possible responsibilities include:
 
 - exact readers for supported observer artifact versions;
 - pinned observer fixtures;
@@ -1560,7 +1589,11 @@ The first version should remain intentionally conservative and local.
 
 Safety behavior must be explicit rather than dependent on undocumented browser defaults.
 
-Future external-reference support introduces a separate local-file privacy boundary. Supported image formats, decoding behavior, maximum dimensions/filesize, path privacy, copy-vs-reference policy, and handling of malformed/untrusted files must be explicitly designed before reference import ships. Reference files are data, not executable instructions.
+External-reference support has a separate local-file privacy boundary. v0.7
+detects PNG/JPEG/WebP from header bytes, reads dimensions from bounded header
+bytes without decoding pixels, enforces file-size/dimension bounds, keeps
+operational paths out of semantic identity, and treats reference files as data,
+not executable instructions.
 
 ## Target immutability
 
@@ -1670,7 +1703,7 @@ deterministic fixture infrastructure
 browser-level validation
 ```
 
-As later capabilities arrive, the architecture may add:
+The architecture has added, and later capabilities may continue to add:
 
 ```text
 relationship engine
@@ -1733,7 +1766,7 @@ Its architecture should leave room for:
 
 The CLI must not own browser logic directly.
 
-The bounded agent context, static/runtime integration, text-driven coding-agent review, and non-graphical external-reference evidence foundation belong to the core path after comparison/contracts. The graphical viewer and annotation system follow as human-interface enhancements.
+The bounded agent context, static/runtime integration, text-driven coding-agent review, and non-graphical external-reference evidence foundation are on the core path after comparison/contracts. The graphical viewer and annotation system follow as human-interface enhancements.
 
 ## Evidence boundedness
 
@@ -1775,7 +1808,7 @@ Required evidence adequacy must not mean merely that some evidence was captured.
 
 If required configured evidence is missing, partial, or unavailable, the observer must say so.
 
-The same rule applies to references. Do not send every region, pixel delta, style sample, or image byte to a coding agent when only a bounded subset is relevant to the requested correction. Reference artifacts should expose omission/truncation where limits matter.
+The same rule applies to references. Do not send every region, pixel delta, style sample, or image byte to a coding agent when only a bounded subset is relevant to the requested correction. Reference artifacts and bounded fidelity context expose omission/truncation where limits matter.
 
 ## Evidence provenance
 
@@ -1799,12 +1832,12 @@ Observation artifacts should record appropriate provenance such as:
 - capture identity;
 - derivation method for derived facts.
 
-Reference evidence should likewise preserve, as applicable:
+Reference evidence likewise preserves, as applicable:
 
 - exact reference identity/version;
 - image reference and format/dimensions;
 - region identity and coordinate semantics;
-- direct image measurements versus authored constraints versus derived interpretations;
+- authored requirements versus derived relationships;
 - applicability state;
 - approval/supersession state;
 - binding evidence;
@@ -1831,7 +1864,10 @@ The project should establish stable machine-readable diagnostics for cases such 
 - artifact write failure;
 - browser failure.
 
-Future reference support should similarly make malformed/unsupported reference data, ambiguous/unavailable reference-to-runtime binding, incompatible reference/candidate state, unavailable style/image evidence, and bounded/truncated reference evidence explicit rather than fabricating normal values.
+Current reference support likewise makes malformed/unsupported reference data,
+ambiguous/unavailable reference-to-runtime binding, incompatible
+reference/candidate state, unavailable candidate evidence, and bounded fidelity
+omissions explicit rather than fabricating normal values.
 
 Do not silently select an arbitrary target when selection is ambiguous.
 
@@ -1943,7 +1979,7 @@ Where the browser exposes it reliably, capture useful semantic/accessibility inf
 - landmark identity;
 - relevant state.
 
-This can help a human or LLM identify regions more reliably than position alone and can assist reliable binding between an authored reference region and a runtime target when supported by explicit evidence.
+This can help a human or LLM identify regions more reliably than position alone. Reference-to-runtime binding remains explicit and is never inferred merely because semantic evidence looks similar.
 
 The project is not initially intended to replace a dedicated accessibility-audit product.
 
@@ -1985,7 +2021,7 @@ Given:
 
 the structured observation should be stable enough for meaningful comparison.
 
-Given the same approved reference content, reference configuration, region definitions, applicability identity, and tolerance policy, the reference's logical identity/evaluation request should likewise be stable where the eventual contract defines determinism.
+Given the same approved reference content, reference configuration, region definitions, applicability identity, and tolerance policy, the reference's logical identity and fidelity evaluation are deterministic according to the v0.7 contract.
 
 Fields that are naturally unstable must either:
 
@@ -2048,7 +2084,7 @@ Those capabilities may appear later according to Project Milestones and `ROADMAP
 2. Browser runtime is authoritative for rendered geometry.
 3. Source code and rendered output are different evidence domains.
 4. External desired-design references are a third evidence domain, distinct from runtime observations and source code.
-5. `my-dev-kit` owns static repository/source evidence; `my-frontend-observer` owns runtime browser evidence and its future structured reference-evidence boundary.
+5. `my-dev-kit` owns static repository/source evidence; `my-frontend-observer` owns runtime browser evidence and its structured reference-evidence boundary.
 6. Stable runtime-region identity does not automatically imply known source ownership.
 7. Reference-region identity does not automatically imply runtime-target identity or source ownership.
 8. Observed dimensions are measurements, not automatically fixed design constants.
@@ -2135,7 +2171,7 @@ LLM reasoning
 coding-agent implementation
 ```
 
-The critical path must first prove:
+The critical path has established:
 
 ```text
 render and observe
@@ -2143,20 +2179,10 @@ render and observe
 → compare
 → enforce requested/dependent/protected/preserved scope
 → combine bounded runtime and static evidence
-→ provide context to an external coding agent
-→ rerender and reject regressions
-```
-
-The same non-graphical critical path must establish external-reference evidence before a viewer becomes responsible for displaying it:
-
-```text
-approved reference
-→ reference identity/regions/relationships/applicability/intent
-→ explicit reference-to-runtime binding
-→ structured reference-vs-candidate evaluation
-→ bounded measurable correction evidence
-→ external coding agent
-→ rerender and reevaluate
+→ establish external-reference identity/regions/requirements/applicability/binding
+→ evaluate reference fidelity
+→ provide bounded context to an external coding agent
+→ rerender and reject fidelity or protected-contract regressions
 ```
 
 Only after those core workflows work should the human visual branch add:
