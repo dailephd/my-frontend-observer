@@ -1,5 +1,84 @@
 # Changelog
 
+## 0.7.0 - 2026-09-06
+
+End-to-End Coding-Agent Frontend Change Review.
+
+- External-reference artifact and lifecycle: `import-reference`/
+  `approve-reference` persist an externally supplied PNG/JPEG/WebP
+  design-reference image (header-only format/dimension detection - no
+  decode, no OCR, no computer vision) through an explicit two-state
+  (`imported`/`approved`) lifecycle. Supersession is represented only as a
+  forward pointer to a newer artifact - an existing persisted artifact's own
+  manifest is never rewritten.
+- Explicit reference regions and geometry relationships: user/configuration-
+  authored rectangles over the reference image, related to each other
+  through the same six geometry-only relationship families (horizontal
+  order, vertical order, area overlap, relative width, geometric fit,
+  vertical sequencing) already used for runtime targets - derived on demand,
+  never persisted.
+- Selected design requirements and tolerance semantics: explicit,
+  never-inferred requirements over region properties, region-to-region
+  relationships, and derived two-region measurements, reusing v0.5's
+  requested/expected-dependent/protected/preserved categories directly.
+  Three reference-owned tolerance kinds (`exact`/`absolute-reference-px`/
+  `percent`) stay distinct from runtime CSS-pixel comparison tolerances.
+- Reference-evidence adequacy: `adequate`/`partial`/`inadequate` reporting on
+  whether a reference's own definition actually supports its selected
+  requirements, independent of any runtime target or candidate.
+- Explicit applicability and candidate-state compatibility: a shared, closed
+  state model (`theme`/`applicationState`/`authenticatedState`, plus an
+  applicable CSS-pixel `viewport`) declares which runtime frontend state a
+  reference represents. `evaluateReferenceCandidateCompatibility` and
+  `observe`'s new `--state-file` reuse v0.4's comparability vocabulary to
+  determine whether a reference and a candidate describe the same state -
+  an undeclared dimension is never fabricated as a match or a mismatch.
+- Explicit reference-region-to-runtime-target binding: fidelity evaluation
+  requires an explicit `{referenceRegion, runtimeTarget}` declaration for
+  every region a requirement depends on - never inferred from geometry,
+  matching names, or source code.
+- Structured reference-vs-candidate fidelity evaluation: `evaluate-
+  reference-fidelity --reference --candidate [--bindings-file] [--enforce]`
+  evaluates every selected requirement against live candidate evidence
+  through one explicit reference-image-pixel-to-CSS-pixel coordinate scale,
+  producing an honest `not-evaluated`/`pass`/`fail` result that never
+  fabricates a verdict past a blocked reference-adequacy or
+  reference/candidate-compatibility gate.
+- Bounded fidelity integration with v0.6 agent context: `projectBoundedAgentContext`
+  gained an optional `fidelity` input so fidelity mismatches compete for the
+  same bounded required/permitted-target allocation and adequacy machinery
+  v0.5 contract clauses already use - a `not-evaluated` fidelity always
+  degrades adequacy rather than being silently reported as "no problems".
+- End-to-end external-reference correction workflow: the programmatic,
+  library-only `prepareReferenceCorrection`/`reviewReferenceCorrectionAttempt`
+  compose reference fidelity, v0.4 comparison, and v0.5 contract evaluation
+  into one overall result - matching the reference is necessary but never
+  sufficient, so a candidate that visually satisfies the reference while
+  regressing an active protected/preserved contract clause still resolves to
+  overall `FAIL`. Neither function edits target source, launches a browser,
+  or calls a remote AI provider; an external implementation actor (a human
+  or a coding agent) makes the actual change between review attempts.
+- Real-browser regression protection: a dedicated Chromium-driven test
+  proves a full success correction, a protected-regression case, a
+  two-attempt correction iteration against the same baseline, and an
+  incompatible-viewport blocking case, all against a disposable,
+  repository-local fixture copy the observer itself never edits.
+- Three new public CLI commands (`import-reference`, `approve-reference`,
+  `evaluate-reference-fidelity`) and a complete new programmatic export
+  surface (`src/index.ts`) for the reference/region/requirement/
+  applicability/compatibility/binding/fidelity/correction-workflow types and
+  functions. External-reference schema is `1.0.0`, independent of the
+  observation, comparison, frontend-contract, evaluation, and
+  bounded-agent-context schema versions, none of which changed.
+- Cross-platform packed-candidate validation: the pre-version-bump
+  implementation candidate tarball `my-frontend-observer-0.6.0.tgz`
+  (SHA-256 `0347b1f3cfd5d311e13b405c0c2fbc2f507e250cb63223d58b4d2d31df029414`)
+  was hash-verified and proven on Windows, Linux, and macOS, including an
+  installed-package smoke of every new v0.7 CLI command and programmatic
+  export alongside every pre-existing v0.1-v0.6 packed behavior, before this
+  release's version bump - see
+  `docs/reports/v0.7-pre-release-readiness.md`.
+
 ## 0.6.0 - 2026-08-19
 
 Bounded Agent Context and Native my-dev-kit Ecosystem Integration.

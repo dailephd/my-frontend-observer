@@ -9,11 +9,16 @@ import {
   MAX_CORRELATION_RECORDS,
   MAX_STATIC_CANDIDATES_PER_TARGET,
   MAX_TEXT_SUMMARY_CHARS,
+  MAX_FIDELITY_MISMATCHES,
+  MAX_FIDELITY_PROTECTED_CONTEXT,
   isValidBoundedAgentContextArtifact,
+  isValidBoundedReferenceFidelityProjection,
   type BoundedAgentContextArtifact,
   type BoundedRuntimeTargetProjection,
   type RuntimeStaticCorrelationRecord,
+  type BoundedReferenceFidelityProjection,
 } from '../../src/domain/boundedAgentContext.js';
+import type { ReferenceRequirementFidelityResult } from '../../src/domain/externalReferenceFidelity.js';
 import { PRODUCER_NAME } from '../../src/domain/schema.js';
 
 function baseArtifact(overrides: Partial<BoundedAgentContextArtifact> = {}): BoundedAgentContextArtifact {
@@ -238,5 +243,114 @@ describe('isValidBoundedAgentContextArtifact', () => {
         expect(result.reason.length).toBeGreaterThan(0);
       }
     }
+  });
+
+  // v0.7 Prompt 7 additions --------------------------------------------------
+
+  function fidelityProjection(overrides: Partial<BoundedReferenceFidelityProjection> = {}): BoundedReferenceFidelityProjection {
+    return {
+      referenceId: 'ref-1',
+      referenceRequestId: 'ref-req-1',
+      candidateObservationId: 'obs-1',
+      candidateRequestId: 'req-1',
+      adequacy: { status: 'adequate', totalRequirements: 1, evaluableRequirements: 1, unavailableRequirements: 0, reasons: [] },
+      state: 'pass',
+      mismatches: [],
+      protectedContext: [],
+      ...overrides,
+    };
+  }
+
+  it('accepts an artifact without a fidelity field at all (backward compatible)', () => {
+    expect('fidelity' in baseArtifact()).toBe(false);
+    expect(isValidBoundedAgentContextArtifact(baseArtifact())).toEqual({ valid: true });
+  });
+
+  it('accepts an artifact with a valid fidelity field', () => {
+    const artifact = baseArtifact({ adequacy: { state: 'adequate', reasons: [] }, fidelity: fidelityProjection() });
+    expect(isValidBoundedAgentContextArtifact(artifact)).toEqual({ valid: true });
+  });
+
+  it('accepts sources.referenceId/referenceRequestId', () => {
+    const artifact = baseArtifact({
+      adequacy: { state: 'adequate', reasons: [] },
+      sources: { observationIds: ['obs-1'], referenceId: 'ref-1', referenceRequestId: 'ref-req-1' },
+    });
+    expect(isValidBoundedAgentContextArtifact(artifact)).toEqual({ valid: true });
+  });
+
+  it('rejects an invalid fidelity field', () => {
+    const artifact = baseArtifact({ adequacy: { state: 'adequate', reasons: [] }, fidelity: { not: 'valid' } as unknown as BoundedReferenceFidelityProjection });
+    expect(isValidBoundedAgentContextArtifact(artifact).valid).toBe(false);
+  });
+});
+
+describe('isValidBoundedReferenceFidelityProjection', () => {
+  function fidelityRequirementResult(overrides: Partial<ReferenceRequirementFidelityResult> & { requirementId: string }): ReferenceRequirementFidelityResult {
+    return {
+      category: 'requested',
+      subject: { kind: 'region-property', region: 'card', property: 'width' },
+      boundRuntimeTargets: ['t-1'],
+      status: 'pass',
+      ...overrides,
+    };
+  }
+
+  function fidelityProjection(overrides: Partial<BoundedReferenceFidelityProjection> = {}): BoundedReferenceFidelityProjection {
+    return {
+      referenceId: 'ref-1',
+      referenceRequestId: 'ref-req-1',
+      candidateObservationId: 'obs-1',
+      candidateRequestId: 'req-1',
+      adequacy: { status: 'adequate', totalRequirements: 1, evaluableRequirements: 1, unavailableRequirements: 0, reasons: [] },
+      state: 'pass',
+      mismatches: [],
+      protectedContext: [],
+      ...overrides,
+    };
+  }
+
+  it('accepts a minimal valid projection', () => {
+    expect(isValidBoundedReferenceFidelityProjection(fidelityProjection())).toBe(true);
+  });
+
+  it('accepts a not-evaluated projection with blockedBy set', () => {
+    const projection = fidelityProjection({
+      state: 'not-evaluated',
+      blockedBy: 'incompatible',
+      compatibility: { state: 'incomparable', reasons: [{ code: 'viewport-mismatch', severity: 'blocking', message: 'viewport mismatch' }] },
+    });
+    expect(isValidBoundedReferenceFidelityProjection(projection)).toBe(true);
+  });
+
+  it('accepts mismatches exactly at MAX_FIDELITY_MISMATCHES and rejects one over', () => {
+    const atLimit = Array.from({ length: MAX_FIDELITY_MISMATCHES }, (_, i) => fidelityRequirementResult({ requirementId: `r-${i}`, status: 'fail' }));
+    expect(isValidBoundedReferenceFidelityProjection(fidelityProjection({ mismatches: atLimit }))).toBe(true);
+
+    const overLimit = [...atLimit, fidelityRequirementResult({ requirementId: 'r-over', status: 'fail' })];
+    expect(isValidBoundedReferenceFidelityProjection(fidelityProjection({ mismatches: overLimit }))).toBe(false);
+  });
+
+  it('accepts protectedContext exactly at MAX_FIDELITY_PROTECTED_CONTEXT and rejects one over', () => {
+    const atLimit = Array.from({ length: MAX_FIDELITY_PROTECTED_CONTEXT }, (_, i) => fidelityRequirementResult({ requirementId: `p-${i}`, category: 'protected' }));
+    expect(isValidBoundedReferenceFidelityProjection(fidelityProjection({ protectedContext: atLimit }))).toBe(true);
+
+    const overLimit = [...atLimit, fidelityRequirementResult({ requirementId: 'p-over', category: 'protected' })];
+    expect(isValidBoundedReferenceFidelityProjection(fidelityProjection({ protectedContext: overLimit }))).toBe(false);
+  });
+
+  it('rejects a malformed mismatch entry', () => {
+    const projection = fidelityProjection({ mismatches: [{ requirementId: 'bad' } as unknown as ReferenceRequirementFidelityResult] });
+    expect(isValidBoundedReferenceFidelityProjection(projection)).toBe(false);
+  });
+
+  it('rejects an unavailable mismatch missing reasonCode/detail', () => {
+    const projection = fidelityProjection({ mismatches: [fidelityRequirementResult({ requirementId: 'r1', status: 'unavailable' })] });
+    expect(isValidBoundedReferenceFidelityProjection(projection)).toBe(false);
+  });
+
+  it('rejects a non-object value', () => {
+    expect(isValidBoundedReferenceFidelityProjection(null)).toBe(false);
+    expect(isValidBoundedReferenceFidelityProjection('x')).toBe(false);
   });
 });

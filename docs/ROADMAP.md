@@ -185,9 +185,19 @@ package is justified.
 
 ## v0.7 — End-to-End Coding-Agent Frontend Change Review
 
-Objective/problem: prove the core practical outcome before graphical work—a
+Current status: released as `0.7.0`. See `docs/CURRENT_STATE.md`,
+`docs/reports/v0.7-implementation-completeness-documentation-reconciliation.md`
+for the completeness audit, and
+`docs/reports/v0.7-pre-release-readiness.md` for the cross-platform
+readiness validation that preceded release. The required capabilities,
+constraints, and acceptance criteria below are preserved as originally
+planned and describe what the implementation actually satisfies.
+
+Objective/problem: prove the core practical outcome before graphical work: a
 text/config-driven coding-agent correction loop that cannot call a local
-requested mutation successful while protected behavior regresses.
+requested mutation successful while protected behavior regresses, and establish
+the non-graphical evidence foundation required when the desired frontend is
+supplied as an external visual reference rather than an earlier runtime state.
 
 Required capabilities:
 
@@ -195,180 +205,309 @@ Required capabilities:
 capture approved baseline
 → preserve baseline contracts
 → human expresses requested change in text/config
+  and may supply an external visual reference
 → construct requested/dependent/protected/preserved scope
+→ when a reference is supplied, establish explicit reference identity,
+  applicable viewport/theme/application-state identity, reference regions,
+  authored design intent, tolerances, and reference-to-runtime target binding
 → generate bounded runtime evidence
+→ evaluate reference design vs candidate where applicable
 → obtain relevant bounded static evidence
 → assemble coding-agent context
 → external coding agent modifies target source
 → observer captures new state
 → compare before/after
+→ reevaluate reference design vs candidate where applicable
 → evaluate requested changes
 → evaluate expected dependent changes
 → verify protected properties
 → rerun baseline contracts
-→ PASS or actionable regression failure
+→ PASS or actionable regression/fidelity failure
 ```
 
+The external reference is evidence, not source code and not an earlier
+`ObservationArtifact`. Reference design vs candidate is therefore a distinct
+comparison category from before vs after and contract vs candidate. The first
+reference model must preserve deterministic reference identity and provenance,
+image dimensions/format, explicit bounded reference regions, coordinate
+semantics, reusable layout relationships where appropriate, authored design
+requirements, tolerances, applicability state, approval/supersession history,
+and explicit reference-region to runtime-target bindings whose status may be
+explicit, ambiguous, unavailable, or otherwise conservatively represented.
+Exact artifact/type names are selected during version-start architecture work;
+this roadmap does not freeze a schema name.
+
+Reference applicability must be evaluated before fidelity differences are
+interpreted. A dark-theme active-state reference compared with a light-theme
+idle candidate must become an explicit incompatible/incomparable result rather
+than a meaningless list of visual failures. Planning must extend or reuse the
+canonical comparability/state-identity model instead of creating a
+reference-only state system.
+
+Reference-derived executable intent must feed the existing v0.5 canonical
+requested/expected-dependent/protected/preserved contract semantics. Visible
+reference details may remain informational or unassessed until a human or
+explicit configuration promotes them into requirements. Do not create a second
+reference-only PASS/FAIL taxonomy.
+
+Structured evidence is primary: geometry, spacing, selected style evidence,
+relationships, applicability, and contract intent must remain inspectable and
+traceable. Bounded screenshot-region or asset-similarity evidence may supplement
+structured evidence where reliable, but pixel/image similarity alone must not
+determine success. Text rendering, antialiasing, glow, shadows, gradients, and
+platform/font differences require property-specific or evidence-specific
+tolerance semantics rather than one global pixel-perfect threshold.
+
+The coding-agent handoff must be actionable and bounded. Instead of only saying
+"match the reference," it should be able to report the relevant target,
+reference measurement, candidate measurement, delta, failed relationship or
+style requirement, active protected/preserved constraints, provenance, and
+bounded static/source context. Heavy image bytes and unrelated regions must not
+be embedded into every agent packet when references suffice.
+
 Unexpected changes remain explicit. Existing approved baseline contracts and
-the new per-change contract both remain active unless explicitly superseded.
+the new per-change contract both remain active unless explicitly superseded. A
+reference-fidelity pass never authorizes a protected regression or silently
+replaces an approved baseline/reference.
 
 Architectural/evidence constraints: the observer does not edit target source; an
-external coding agent or implementation tool does. All runtime, static,
-workflow, implementation, and verification identities remain traceable to their
-owners. One canonical observer, relationship, comparison, contract, and
-change-scope implementation serves CLI/programmatic and later UI consumers. The
-workflow must not require an interactive viewer, visual drawing, or annotation
-authoring.
+external coding agent or implementation tool does. All runtime, reference,
+static, workflow, implementation, and verification identities remain separate
+and traceable to their owners. One canonical observer, relationship,
+comparison/evaluation, contract, change-scope, reference, and bounded-context
+model must serve later UI consumers. Reference regions are not runtime targets,
+and neither identity silently becomes source ownership.
 
 Dependencies/ecosystem/compatibility: depends on v0.6 bounded integrated agent
 context and v0.1–v0.5 evidence/contract foundations. Use compatible exact
 observer, `my-dev-kit`, orchestrator, and lab contract versions established by
 v0.6; the lab remains optional for ordinary edits once compatibility is proven.
+The new reference evidence must be project-local and portable, with heavy image
+content referenced rather than duplicated throughout downstream artifacts.
 
-Exclusions: graphical inspection as a prerequisite, visual annotation, observer
-source editing, autonomous approval, hidden contract supersession, and treating
-all differences as failures.
+Exclusions: graphical inspection as a prerequisite, graphical annotation
+authoring, observer source editing, autonomous approval, hidden baseline or
+reference supersession, automatic image-to-code generation, raster-to-HTML or
+raster-to-SVG reconstruction, a general computer-vision framework, a Figma or
+Canva replacement, and pixel-diff-only acceptance.
 
 Acceptance: controlled successful and failing changes complete end-to-end. The
-required failure case has a requested change succeed while a protected property
-or preserved invariant fails, producing overall failure and actionable
-evidence. The agent receives bounded runtime/static context, edits externally,
-the observer rerenders, all active contracts rerun, and the result is traceable.
-Version-start planning must decide the text/config request format, coding-agent
-handoff boundary, controlled target/change mechanism, approval/baseline history,
-failure reporting, and exact workflow entry points.
+required baseline failure case has a requested change succeed while a protected
+property or preserved invariant fails, producing overall failure and actionable
+evidence. A reference-driven proof case additionally supplies an approved
+external reference, binds selected reference regions to runtime targets,
+produces measurable structured reference/candidate mismatches, sends only
+relevant correction evidence plus bounded static context to the external coding
+agent, rerenders, and reevaluates. A reference-fidelity success must still fail
+overall when an active baseline/per-change contract fails. Version-start
+planning must decide the text/config request format, reference artifact and
+lifecycle contract, supported image formats and size bounds, coordinate model,
+region/relationship representation, applicability/theme/application-state
+identity, tolerance and selected style-evidence model, optional image-similarity
+boundaries, coding-agent handoff boundary, controlled target/change mechanism,
+approval/baseline/reference history, failure reporting, and exact workflow entry
+points.
 
 ## v0.8 — Interactive Local Observation Viewer
 
 Objective/problem: let developers inspect and understand the same canonical
 evidence already used by the operational coding-agent workflow without opening
-raw artifact files manually.
+raw artifact files manually, including external design references and their
+candidate-fidelity evidence when present.
 
-Required capabilities: local artifact/context readers; screenshot and stable
-target inspection; geometry, semantics, scrolling/overflow, visibility,
-relationships, and before/after views; diagnostics and honest evidence states;
-requested/dependent/protected/preserved/unexpected classifications; baseline and
-per-change contract results; source-correlation evidence with uncertainty; and
-navigation between relevant raw evidence and bounded agent-context references.
+Required capabilities: local artifact/context/reference readers; screenshot and
+stable target inspection; external-reference image and reference-region
+inspection; geometry, semantics, scrolling/overflow, visibility, relationships,
+and before/after views; reference/candidate views; diagnostics and honest
+evidence states; requested/dependent/protected/preserved/unexpected
+classifications; baseline and per-change contract results; reference
+applicability and fidelity results; reference-region/runtime-target binding and
+ambiguity; source-correlation evidence with uncertainty; and navigation between
+relevant raw evidence and bounded agent-context references.
+
+The viewer should support a clear reference/candidate inspection mode with, as
+appropriate, side-by-side images, overlays, synchronized region selection and
+zoom, reference and candidate measurements, difference highlighting,
+provenance, binding status, and contract/reference evaluation results. It must
+show unsupported, partial, unavailable, derived, ambiguous, and incomparable
+states honestly rather than converting them into apparent fidelity scores.
 
 Architectural/evidence constraints: the viewer consumes existing observation,
-relationship, comparison, contract, change-scope, correlation, and bounded
-context engines/contracts. It must not create a second observer, relationship
-engine, comparison engine, contract engine, correlation implementation, or
-context builder. CLI/programmatic paths remain first-class, and viewer state
-does not mutate targets.
+relationship, comparison, contract, change-scope, correlation, bounded-context,
+and v0.7 reference/evaluation engines/contracts. It must not create a second
+observer, relationship engine, comparison engine, contract engine, reference
+model, reference-evaluation engine, correlation implementation, or context
+builder. CLI/programmatic paths remain first-class, viewer state does not mutate
+targets, and merely opening/importing a reference in the viewer does not
+silently approve or supersede it.
 
 Dependencies/ecosystem/compatibility: depends on the proven v0.7 workflow and
-stable v0.1–v0.6 artifacts/contracts. It may display ecosystem correlation but
-does not redefine it. Viewer readers must declare supported artifact/context
-versions and show unsupported, missing, partial, derived, and ambiguous evidence
-honestly.
+stable v0.1–v0.7 artifacts/contracts. It may display ecosystem correlation but
+does not redefine it. Viewer readers must declare supported artifact/context/
+reference versions and show unsupported, missing, partial, derived, ambiguous,
+and incomparable evidence honestly.
 
 Exclusions: annotation authoring, source editing, a second workflow engine,
-cloud hosting, and making the viewer mandatory for observation or coding-agent
-review.
+automatic design generation, cloud hosting, and making the viewer mandatory for
+observation or coding-agent review.
 
 Acceptance: a developer can inspect screenshots, targets, runtime behavior,
-relationships, changes, contracts, diagnostics, change scope, and correlation
-evidence through the UI, and the displayed evidence is demonstrably the same
-canonical evidence used by CLI/programmatic and coding-agent workflows.
-Version-start planning must choose UI technology, local process boundary,
-reader/version strategy, coordinate/overlay behavior, and large-artifact loading
-policy from the then-current repository.
+relationships, changes, contracts, diagnostics, change scope, correlation, and
+reference/candidate evidence through the UI, and the displayed evidence is
+demonstrably the same canonical evidence used by CLI/programmatic and
+coding-agent workflows. A developer can select a reference region and see the
+bound runtime target and measured mismatch where available without the viewer
+recomputing a second result. Version-start planning must choose UI technology,
+local process boundary, reader/version strategy, reference/candidate layout,
+coordinate/overlay behavior, synchronized selection/zoom behavior, and
+large-artifact loading policy from the then-current repository.
 
 ## v0.9 — Human Visual Annotation and Design-Intent Capture
 
 Objective/problem: add structured visual human intent to the already working
 v0.7 coding-agent workflow through the v0.8 viewer without inventing a separate
-change-semantics system.
+change-semantics system, and allow that intent to be authored against either a
+runtime observation or an external visual reference.
 
 Required capabilities: a bounded annotation set chosen during planning, such as
 point/select, rectangle/area, arrow, line/boundary, textual note, preserve,
 resize, move, remove, and inspect; structured annotation artifacts preserving
-observation/screenshot identity, geometry, type, text, provenance, and reliable
-target/relationship association; save/reload; annotated screenshot references;
-and explicit interpretation/confirmation state.
+their annotation context (runtime observation or external reference), source
+observation/screenshot or reference identity, geometry, type, text, provenance,
+and reliable target/relationship/reference-region association; save/reload;
+annotated image references; and explicit interpretation/confirmation state.
+
+Runtime-screenshot annotations and external-reference annotations are separate
+coordinate/identity domains. The annotation model must never assume that a
+reference-region identity is a runtime-target identity. Coordinate transforms,
+selection, overlays, persistence, and provenance must preserve which source
+image the annotation belongs to.
 
 Canonical intent flow:
 
 ```text
-visual annotation
-→ target/relationship binding
+runtime screenshot annotation OR external reference annotation
+→ target/relationship/reference-region binding
 → candidate requested/dependent/protected/preserved intent
 → explicit confirmation/interpretation where necessary
 → canonical change contract
 ```
 
-Architectural/evidence constraints: annotation feeds the existing canonical
-change-scope, contract, bounded-context, and coding-agent workflow. It must not
-create annotation-only requested/protected semantics or different PASS/FAIL
-rules. Ambiguous drawings never silently become strong requirements. Original
-raw observations remain immutable.
+For external references, annotation may also define or refine meaningful
+reference regions and relationships, mark an asset-sensitive region, identify
+which visual details are informational, and promote selected geometry/style/
+relationship requirements into the canonical contract. A visible pixel never
+becomes a hard requirement merely because it exists in the image.
 
-Dependencies/ecosystem/compatibility: depends on stable identity, contracts,
-v0.7 coding-agent review, and v0.8 viewer/coordinate mapping. Structured
-annotation/context versions must be explicit and remain traceable to supported
-observation and screenshot identities.
+Architectural/evidence constraints: annotation feeds the existing canonical
+reference, change-scope, contract, bounded-context, and coding-agent workflow. It
+must not create annotation-only or reference-only requested/protected semantics
+or different PASS/FAIL rules. Ambiguous drawings never silently become strong
+requirements. Original raw observations and imported reference images remain
+immutable evidence; annotation and approval/supersession state are separate.
+
+Dependencies/ecosystem/compatibility: depends on stable runtime identity,
+reference identity, contracts, v0.7 coding-agent review/reference evaluation,
+and v0.8 viewer/coordinate mapping. Structured annotation/context/reference
+versions must be explicit and remain traceable to supported observation,
+screenshot, and external-reference identities.
 
 Exclusions: flattening intent into pixels only, bypassing confirmation,
-replacing text/config requests, source editing, or making annotation mandatory
-for ordinary coding-agent changes.
+replacing text/config requests, image-to-code generation, source editing, or
+making annotation mandatory for ordinary coding-agent changes.
 
-Acceptance: annotations remain structured and traceable, survive save/reload,
-bind to stable targets/relationships where reliable, require confirmation when
-ambiguous, and can drive the existing coding-agent review through the canonical
-contract model. Version-start planning must select the first annotation set,
-coordinate transforms, persistence/versioning, interpretation/confirmation
-workflow, conflicts, and annotated-image derivation.
+Acceptance: a user can annotate either an existing observation or an external
+reference in the viewer; annotations survive save/reload; their source context
+remains explicit; target/relationship/reference-region associations remain
+available where reliable; preserve/resize/move/remove/inspect intent can be
+represented where supported; reference regions and selected design requirements
+can be authored without turning every pixel into a contract; ambiguous intent
+requires explicit interpretation or confirmation; and annotations can drive the
+existing coding-agent change-review workflow through the canonical contract and
+reference models. Version-start planning must select the first annotation set,
+coordinate transforms for both source contexts, persistence/versioning,
+interpretation/confirmation workflow, conflicts, region-authoring behavior, and
+annotated-image derivation.
 
 ## v0.10 — Full Visual Human–LLM Frontend Change Workflow
 
 Objective/problem: complete the visual communication branch by combining the
-already operational coding-agent loop with graphical inspection and structured
-annotation.
+already operational coding-agent loop with graphical inspection, external design
+references, and structured annotation.
 
-Required workflow:
+Two visual entry modes must coexist:
 
 ```text
+actual-frontend-driven
 human views actual captured frontend
 → points/draws/annotates requested design change
-→ observer binds intent to stable runtime regions
-→ change scope is constructed/confirmed
-→ bounded runtime evidence is produced
+```
+
+and:
+
+```text
+reference-driven
+human supplies/selects an approved external visual reference
+→ views reference beside the actual captured frontend
+→ identifies/annotates relevant reference regions and intent
+→ binds confirmed reference intent to stable runtime regions
+```
+
+Both then converge on the same canonical workflow:
+
+```text
+confirmed requested/dependent/protected/preserved scope
+→ bounded runtime + relevant reference evidence is produced
 → bounded static evidence is obtained
 → coding-agent context is assembled
 → external coding agent modifies source
 → observer rerenders
-→ requested/dependent/protected/preserved behavior is evaluated
-→ viewer shows PASS/failure evidence
+→ before/after comparison runs
+→ reference design vs candidate evaluation runs when applicable
+→ requested/dependent/protected/preserved behavior and baseline contracts run
+→ unexpected changes remain explicit
+→ viewer shows PASS or actionable failure evidence
 → human approves or requests correction
-→ successful state may become the new approved baseline
+→ successful state may become the new approved baseline and/or explicitly
+  supersede an approved reference according to project policy
 ```
 
-Architectural/evidence constraints: a visual request does not erase existing
-baseline contracts. Unless explicitly superseded, existing approved contracts
-plus the new visual/per-change contract must both pass. Unexpected changes
-remain visible. Runtime, static, annotation, workflow, implementation, and
-approval evidence remain separate and traceable. The observer stays
-non-mutating; the orchestrator coordinates bounded evidence; the lab is not
-required for every normal edit.
+Architectural/evidence constraints: a visual request or reference does not
+erase existing baseline contracts. Unless explicitly superseded, existing
+approved contracts plus the new visual/per-change contract must both pass.
+Reference fidelity is an additional evidence/evaluation dimension, not blanket
+authorization for unrelated change. Runtime, reference, static, annotation,
+workflow, implementation, approval, baseline, and supersession evidence remain
+separate and traceable. The observer stays non-mutating; the orchestrator
+coordinates bounded evidence; the lab is not required for every normal edit.
+
+A mature result may therefore combine before/after results, reference/candidate
+results, persistent-baseline evaluation, per-change evaluation, and unexpected
+changes. A reference-fidelity pass with a protected or preserved contract
+failure is overall failure. A raw imported image never silently becomes an
+approved reference, and an approved reference never silently supersedes an
+existing baseline or another approved reference.
 
 Dependencies/ecosystem/compatibility: depends on all prior versions, especially
-the v0.7 core loop, v0.8 viewer, and v0.9 annotation intent model. Use exact
-compatible observer/static/orchestrator/context/annotation/viewer contracts and
-retain the four-project responsibility split.
+the v0.7 core/reference loop, v0.8 viewer, and v0.9 dual-context annotation
+intent model. Use exact compatible observer/static/orchestrator/context/
+reference/annotation/viewer contracts and retain the four-project responsibility
+split.
 
 Exclusions: replacing the external coding agent with observer source editing,
-visual intent silently overriding baseline contracts, opaque AI-only verdicts,
-untraceable baseline replacement, and making lab evaluation part of every edit.
+visual/reference intent silently overriding baseline contracts, autonomous
+image-to-code generation, automatic raster-to-vector reconstruction, opaque
+AI-only verdicts, untraceable baseline/reference replacement, and making lab
+evaluation part of every edit.
 
-Acceptance: demonstrate a successful visual change; a requested visual change
-that introduces a protected/invariant regression; actionable viewer failure
-evidence; a correction cycle; human approval/new-baseline history; and compatible
+Acceptance: demonstrate a successful actual-frontend-driven visual change; a
+successful reference-driven design-replication change; measurable actionable
+reference/candidate failure evidence; a requested visual/reference change that
+introduces a protected-property or preserved-invariant regression; a correction
+cycle; human approval and explicit baseline/reference history; and compatible
 integrated ecosystem evidence. A protected/invariant failure must fail overall
-even when the requested local visual change succeeds. Version-start planning
-must settle visual workflow entry points, approval identity and authority,
-baseline governance, correction iteration history, artifact retention, and
+even when the requested local visual change or reference-fidelity requirement
+succeeds. Version-start planning must settle visual workflow entry points,
+approval identity and authority, reference selection/applicability, baseline and
+reference governance, correction iteration history, artifact retention, and
 cross-version compatibility.
-
-

@@ -8,6 +8,7 @@ import { DIAGNOSTIC_CODES, DIAGNOSTIC_SEVERITY } from './diagnostics.js';
 import type { CompletionState } from './completion.js';
 import type { NormalizedObservationRequest } from '../request/request.js';
 import { SCROLL_DELTA_MAX_ABS } from '../request/request.js';
+import { isValidExplicitStateDimensions } from './explicitState.js';
 
 export const ARTIFACT_KIND = 'my-frontend-observer/observation' as const;
 export const SCHEMA_VERSION = '1.2.0' as const;
@@ -599,6 +600,11 @@ export function isValidObservationArtifact(value: unknown): SchemaValidationResu
   if (isPlainObject(value.requestConfig) && 'scrollScenario' in value.requestConfig && value.requestConfig.scrollScenario !== undefined) {
     if (!isValidRequestScrollScenario(value.requestConfig.scrollScenario)) {
       return { valid: false, reason: 'requestConfig.scrollScenario is invalid' };
+    }
+  }
+  if (isPlainObject(value.requestConfig) && 'explicitState' in value.requestConfig && value.requestConfig.explicitState !== undefined) {
+    if (!isValidExplicitStateDimensions(value.requestConfig.explicitState).valid) {
+      return { valid: false, reason: 'requestConfig.explicitState is invalid' };
     }
   }
   if ('scrollScenarioEvidence' in value && value.scrollScenarioEvidence !== undefined) {

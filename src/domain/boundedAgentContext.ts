@@ -17,6 +17,12 @@
 import { isValidEvidenceReference, type EvidenceReference } from './relationships.js';
 import { PRODUCER_NAME } from './schema.js';
 import type { ArtifactReference, TargetGeometry, TargetVisibility, OverflowEvidence, ScrollOwnerInterpretation } from './schema.js';
+import type { ReferenceRequirementAdequacy } from './externalReferenceRequirements.js';
+import { isValidReferenceRequirementAdequacy } from './externalReferenceRequirements.js';
+import type { ComparabilityResult } from './comparison.js';
+import { isValidComparabilityResult } from './comparison.js';
+import type { ReferenceRequirementFidelityResult, ReferenceFidelityState, ReferenceFidelityBlockReason } from './externalReferenceFidelity.js';
+import { REFERENCE_FIDELITY_STATES, REFERENCE_FIDELITY_BLOCK_REASONS, isValidReferenceRequirementFidelityResult } from './externalReferenceFidelity.js';
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -65,6 +71,14 @@ export const MAX_STATIC_CANDIDATES_PER_TARGET = 5;
 export const MAX_TEXT_SUMMARY_CHARS = 2000;
 /** Bounds StaticCandidateReference.evidenceRefs and RuntimeStaticCorrelationRecord.runtimeEvidenceRefs - reuses MAX_RELATIONSHIP_EVIDENCE_PER_TARGET's value so no nested collection in this contract is unbounded. */
 export const MAX_EVIDENCE_REFS_PER_CORRELATION_FIELD = MAX_RELATIONSHIP_EVIDENCE_PER_TARGET;
+/**
+ * v0.7 Prompt 7 addition: bounds `BoundedReferenceFidelityProjection.mismatches`
+ * - a judgment-call cap in the same spirit as the Batch 1 bounds above (no
+ * measured fixture corpus exists yet for this concept either).
+ */
+export const MAX_FIDELITY_MISMATCHES = 15;
+/** Bounds `BoundedReferenceFidelityProjection.protectedContext` - reuses `MAX_RELATIONSHIP_EVIDENCE_PER_TARGET`'s value for the same "small, bounded per-topic context list" reason. */
+export const MAX_FIDELITY_PROTECTED_CONTEXT = MAX_RELATIONSHIP_EVIDENCE_PER_TARGET;
 
 // ---------------------------------------------------------------------------
 // Adequacy (explicit, non-boolean, structured reasons)
@@ -175,12 +189,15 @@ export interface BoundedAgentContextSourceReferences {
   changeContractId?: string;
   evaluationId?: string;
   evaluationRequestId?: string;
+  /** v0.7 Prompt 7 addition (additive, optional - a pre-Prompt-7 context predates this field entirely and remains valid without it). The `ExternalReferenceArtifact` a bounded fidelity projection, when present, was derived from. */
+  referenceId?: string;
+  referenceRequestId?: string;
 }
 
 function isValidSourceReferences(value: unknown): value is BoundedAgentContextSourceReferences {
   if (!isPlainObject(value)) return false;
   if (!Array.isArray(value.observationIds) || value.observationIds.length === 0 || !value.observationIds.every(isNonEmptyString)) return false;
-  const optionalStringFields = ['comparisonId', 'comparisonRequestId', 'baselineContractId', 'changeContractId', 'evaluationId', 'evaluationRequestId'] as const;
+  const optionalStringFields = ['comparisonId', 'comparisonRequestId', 'baselineContractId', 'changeContractId', 'evaluationId', 'evaluationRequestId', 'referenceId', 'referenceRequestId'] as const;
   for (const field of optionalStringFields) {
     if (value[field] !== undefined && !isNonEmptyString(value[field])) return false;
   }
@@ -329,6 +346,59 @@ export function isValidRuntimeStaticCorrelationRecord(value: unknown): value is 
 }
 
 // ---------------------------------------------------------------------------
+// v0.7 Prompt 7: bounded reference-fidelity projection (additive - a
+// pre-Prompt-7 caller/context predates this concept entirely and remains
+// valid without it). Reuses v0.7 Prompt 3/4/6 types wholesale rather than
+// re-deriving or duplicating any of their fields - this is a bounded,
+// prioritized SELECTION of already-computed `ReferenceRequirementFidelityResult`
+// values (Prompt 6), never a second fidelity-evaluation engine.
+// ---------------------------------------------------------------------------
+
+/**
+ * Bounded, prioritized subset of one `evaluateReferenceCandidateFidelity`
+ * result, shaped for a coding-agent's bounded context rather than exhaustive
+ * reporting. `mismatches` holds only non-`pass` requirement results (failed/
+ * unavailable), highest-priority first, bounded to `MAX_FIDELITY_MISMATCHES`;
+ * `protectedContext` holds passing `protected`/`preserved` requirement
+ * results surfaced as "do not break this" constraints (disjoint from
+ * `mismatches` - a *failing* protected/preserved requirement already
+ * appears there, at the highest priority), bounded to
+ * `MAX_FIDELITY_PROTECTED_CONTEXT`. Both arrays are empty when
+ * `state !== 'pass'` would still fabricate content, or when
+ * `state === 'not-evaluated'` - an earlier Prompt 6 blocking gate is always
+ * reported via `blockedBy`, never silently converted into "no problems".
+ */
+export interface BoundedReferenceFidelityProjection {
+  referenceId: string;
+  referenceRequestId: string;
+  candidateObservationId: string;
+  candidateRequestId: string;
+  adequacy: ReferenceRequirementAdequacy;
+  compatibility?: ComparabilityResult;
+  state: ReferenceFidelityState;
+  blockedBy?: ReferenceFidelityBlockReason;
+  mismatches: ReferenceRequirementFidelityResult[];
+  protectedContext: ReferenceRequirementFidelityResult[];
+}
+
+export function isValidBoundedReferenceFidelityProjection(value: unknown): value is BoundedReferenceFidelityProjection {
+  if (!isPlainObject(value)) return false;
+  if (!isNonEmptyString(value.referenceId)) return false;
+  if (!isNonEmptyString(value.referenceRequestId)) return false;
+  if (!isNonEmptyString(value.candidateObservationId)) return false;
+  if (!isNonEmptyString(value.candidateRequestId)) return false;
+  if (!isValidReferenceRequirementAdequacy(value.adequacy)) return false;
+  if (value.compatibility !== undefined && !isValidComparabilityResult(value.compatibility)) return false;
+  if (typeof value.state !== 'string' || !(REFERENCE_FIDELITY_STATES as readonly string[]).includes(value.state)) return false;
+  if (value.blockedBy !== undefined && !(REFERENCE_FIDELITY_BLOCK_REASONS as readonly string[]).includes(value.blockedBy as string)) return false;
+  if (!Array.isArray(value.mismatches) || !value.mismatches.every(isValidReferenceRequirementFidelityResult)) return false;
+  if (value.mismatches.length > MAX_FIDELITY_MISMATCHES) return false;
+  if (!Array.isArray(value.protectedContext) || !value.protectedContext.every(isValidReferenceRequirementFidelityResult)) return false;
+  if (value.protectedContext.length > MAX_FIDELITY_PROTECTED_CONTEXT) return false;
+  return true;
+}
+
+// ---------------------------------------------------------------------------
 // Top-level artifact
 // ---------------------------------------------------------------------------
 
@@ -354,6 +424,17 @@ export interface BoundedAgentContextArtifact {
    * field absent.
    */
   correlations?: RuntimeStaticCorrelationRecord[];
+  /**
+   * v0.7 Prompt 7 addition (additive, optional - same backward-compatibility
+   * reasoning as `correlations`: a pre-Prompt-7 context predates this field
+   * entirely and remains valid without it). Absent means no reference-
+   * fidelity evidence was requested for this context - distinct from an
+   * evaluated-but-passing fidelity result (`fidelity.state === 'pass'`,
+   * `mismatches: []`) or a blocked one (`fidelity.state === 'not-evaluated'`,
+   * `blockedBy` set) - both of which are always present, structured,
+   * inspectable states when this field is present at all.
+   */
+  fidelity?: BoundedReferenceFidelityProjection;
 }
 
 export type BoundedAgentContextValidationResult = { valid: true } | { valid: false; reason: string };
@@ -394,6 +475,9 @@ export function isValidBoundedAgentContextArtifact(value: unknown): BoundedAgent
     if (value.correlations.length > MAX_CORRELATION_RECORDS) {
       return { valid: false, reason: `correlations exceeds the frozen limit of ${MAX_CORRELATION_RECORDS}` };
     }
+  }
+  if (value.fidelity !== undefined && !isValidBoundedReferenceFidelityProjection(value.fidelity)) {
+    return { valid: false, reason: 'fidelity is invalid' };
   }
   return { valid: true };
 }

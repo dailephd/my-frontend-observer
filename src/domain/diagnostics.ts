@@ -15,6 +15,14 @@ export const DIAGNOSTIC_CODES = [
   'bounded-truncated-evidence',
   'artifact-write-failure',
   'browser-runtime-failure',
+  'unsupported-image-format',
+  'invalid-image-dimensions',
+  'image-too-large',
+  'unsupported-schema-version',
+  'reference-not-found',
+  'invalid-reference-region',
+  'invalid-reference-requirement',
+  'invalid-reference-applicability',
 ] as const;
 
 export type DiagnosticCode = (typeof DIAGNOSTIC_CODES)[number];
@@ -39,6 +47,14 @@ export const DIAGNOSTIC_SEVERITY: Record<DiagnosticCode, DiagnosticSeverity> = {
   'bounded-truncated-evidence': 'warning',
   'artifact-write-failure': 'error',
   'browser-runtime-failure': 'error',
+  'unsupported-image-format': 'error',
+  'invalid-image-dimensions': 'error',
+  'image-too-large': 'error',
+  'unsupported-schema-version': 'error',
+  'reference-not-found': 'error',
+  'invalid-reference-region': 'error',
+  'invalid-reference-requirement': 'error',
+  'invalid-reference-applicability': 'error',
 };
 
 export interface Diagnostic {

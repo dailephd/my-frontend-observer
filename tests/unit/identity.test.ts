@@ -127,6 +127,34 @@ describe('v0.3 scrollScenario request identity', () => {
   });
 });
 
+describe('v0.7 Prompt 4 explicitState request identity', () => {
+  it('a no-explicitState request keeps the exact same requestId as the pre-Prompt-4 frozen vector', () => {
+    expect(buildRequestIdentity(baseRequest())).toBe('e37e913c07056ef1d4a9d4dce2762dd7b07cabfe51742cad4e6d4ec5a7d23d9d');
+  });
+
+  it('the same explicitState produces the same requestId', () => {
+    const a = baseRequest({ explicitState: { theme: 'dark' } });
+    const b = baseRequest({ explicitState: { theme: 'dark' } });
+    expect(buildRequestIdentity(a)).toBe(buildRequestIdentity(b));
+  });
+
+  it('a request with explicitState differs from the same request without it', () => {
+    const withState = baseRequest({ explicitState: { theme: 'dark' } });
+    const withoutState = baseRequest();
+    expect(buildRequestIdentity(withState)).not.toBe(buildRequestIdentity(withoutState));
+  });
+
+  it('a different explicitState value produces a different requestId', () => {
+    const a = baseRequest({ explicitState: { theme: 'dark' } });
+    const b = baseRequest({ explicitState: { theme: 'light' } });
+    expect(buildRequestIdentity(a)).not.toBe(buildRequestIdentity(b));
+
+    const c = baseRequest({ explicitState: { authenticatedState: 'authenticated' } });
+    const d = baseRequest({ explicitState: { authenticatedState: 'unauthenticated' } });
+    expect(buildRequestIdentity(c)).not.toBe(buildRequestIdentity(d));
+  });
+});
+
 describe('buildObservationIdentity', () => {
   it('TST-026: never collides and is never timestamp-shaped, across 1000 calls', () => {
     const requestIdentity = buildRequestIdentity(baseRequest());

@@ -241,31 +241,40 @@ export function deriveTargetClipping(record: TargetEvidenceRecord): TargetClippi
  * `subject`/`related` once per pair and each family is evaluated exactly
  * once for that fixed direction.
  */
-function horizontalOrderOf(a: TargetGeometry, b: TargetGeometry, tolerance: number): HorizontalOrderRelationship {
+/**
+ * Exported (v0.7 Prompt 2 addition, additive-only - no formula changed) so
+ * that domain/externalReferenceRegionRelationships.ts can derive the same
+ * geometry-only relationship families for reference-image regions without
+ * duplicating these formulas. Every parameter is structurally just
+ * `{x,y,width,height,right,bottom}` - these predicates have never depended on
+ * anything runtime/browser-specific, so reusing them for a reference
+ * region's derived rectangle is exact reuse, not a reinterpretation.
+ */
+export function horizontalOrderOf(a: TargetGeometry, b: TargetGeometry, tolerance: number): HorizontalOrderRelationship {
   if (a.right <= b.x + tolerance) return 'left-of';
   if (b.right <= a.x + tolerance) return 'right-of';
   return 'horizontally-overlapping';
 }
 
-function verticalOrderOf(a: TargetGeometry, b: TargetGeometry, tolerance: number): VerticalOrderRelationship {
+export function verticalOrderOf(a: TargetGeometry, b: TargetGeometry, tolerance: number): VerticalOrderRelationship {
   if (a.bottom <= b.y + tolerance) return 'above';
   if (b.bottom <= a.y + tolerance) return 'below';
   return 'vertically-overlapping';
 }
 
-function areaOverlapOf(a: TargetGeometry, b: TargetGeometry, tolerance: number): AreaOverlapRelationship {
+export function areaOverlapOf(a: TargetGeometry, b: TargetGeometry, tolerance: number): AreaOverlapRelationship {
   const overlapWidth = Math.min(a.right, b.right) - Math.max(a.x, b.x);
   const overlapHeight = Math.min(a.bottom, b.bottom) - Math.max(a.y, b.y);
   return overlapWidth > tolerance && overlapHeight > tolerance ? 'overlaps' : 'does-not-overlap';
 }
 
-function relativeWidthOf(a: TargetGeometry, b: TargetGeometry, tolerance: number): RelativeWidthRelationship {
+export function relativeWidthOf(a: TargetGeometry, b: TargetGeometry, tolerance: number): RelativeWidthRelationship {
   if (a.width > b.width + tolerance) return 'wider-than';
   if (a.width < b.width - tolerance) return 'narrower-than';
   return 'equal-width-within-tolerance';
 }
 
-function geometricFitOf(a: TargetGeometry, b: TargetGeometry, tolerance: number): GeometricFitRelationship {
+export function geometricFitOf(a: TargetGeometry, b: TargetGeometry, tolerance: number): GeometricFitRelationship {
   const fits = a.x >= b.x - tolerance && a.y >= b.y - tolerance && a.right <= b.right + tolerance && a.bottom <= b.bottom + tolerance;
   return fits ? 'fits-inside' : 'does-not-fit-inside';
 }
@@ -280,7 +289,7 @@ function geometricFitOf(a: TargetGeometry, b: TargetGeometry, tolerance: number)
  * condition, so whichever of the pair is algebraically "above" the other
  * becomes `relatedTarget` and the one that follows becomes `subjectTarget`.
  */
-function verticalSequenceOf(
+export function verticalSequenceOf(
   x: { name: string; geometry: TargetGeometry },
   y: { name: string; geometry: TargetGeometry },
   tolerance: number,

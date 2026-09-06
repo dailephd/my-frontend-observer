@@ -150,33 +150,53 @@ export const COMPARABILITY_REASON_CODES = [
   'schema-version-mismatch',
   'page-url-mismatch',
   'viewport-mismatch',
+  'viewport-unassessed',
   'scroll-scenario-mismatch',
   'browser-engine-mismatch',
   'producer-version-mismatch',
   'browser-version-mismatch',
   'target-set-mismatch',
   'target-locator-mismatch',
+  'theme-mismatch',
   'theme-unassessed',
+  'authenticated-state-mismatch',
   'authenticated-state-unassessed',
+  'application-state-mismatch',
   'application-state-unassessed',
 ] as const;
 export type ComparabilityReasonCode = (typeof COMPARABILITY_REASON_CODES)[number];
 
 export type ComparabilityReasonSeverity = 'blocking' | 'warning' | 'unassessed';
 
+/**
+ * v0.7 Prompt 4 additions: `viewport-unassessed` (a reference need not
+ * declare an applicable viewport - see externalReferenceApplicability.ts -
+ * whereas an ObservationArtifact's viewport is always present, so v0.4's own
+ * comparability never needed this variant before), `theme-mismatch`,
+ * `authenticated-state-mismatch`, `application-state-mismatch` (blocking -
+ * these three dimensions are now assessed, not merely unassessed, whenever
+ * explicit state is present on both sides being compared - see
+ * comparisonEngine.ts#assessOptionalComparabilityDimension). The
+ * corresponding `-unassessed` variants are unchanged and still apply
+ * whenever explicit state is missing from either side.
+ */
 export const COMPARABILITY_REASON_SEVERITY: Record<ComparabilityReasonCode, ComparabilityReasonSeverity> = {
   'artifact-kind-mismatch': 'blocking',
   'schema-version-mismatch': 'blocking',
   'page-url-mismatch': 'blocking',
   'viewport-mismatch': 'blocking',
+  'viewport-unassessed': 'unassessed',
   'scroll-scenario-mismatch': 'blocking',
   'browser-engine-mismatch': 'blocking',
   'producer-version-mismatch': 'warning',
   'browser-version-mismatch': 'warning',
   'target-set-mismatch': 'warning',
   'target-locator-mismatch': 'warning',
+  'theme-mismatch': 'blocking',
   'theme-unassessed': 'unassessed',
+  'authenticated-state-mismatch': 'blocking',
   'authenticated-state-unassessed': 'unassessed',
+  'application-state-mismatch': 'blocking',
   'application-state-unassessed': 'unassessed',
 };
 
@@ -184,6 +204,16 @@ export interface ComparabilityReason {
   code: ComparabilityReasonCode;
   severity: ComparabilityReasonSeverity;
   message: string;
+  /**
+   * v0.7 Prompt 4 addition (additive, optional - existing v0.4
+   * before/after-observation reasons never set these; they already embed
+   * both values in `message`). Used by reference/candidate compatibility
+   * reasons (externalReferenceCompatibility.ts) to expose the two compared
+   * values structurally, not just as prose - e.g. `"one-dark"`/`"one-light"`
+   * for a theme mismatch, or `"480x620"` for a viewport dimension.
+   */
+  referenceValue?: string;
+  candidateValue?: string;
 }
 
 function isValidComparabilityReason(value: unknown): value is ComparabilityReason {
@@ -191,7 +221,10 @@ function isValidComparabilityReason(value: unknown): value is ComparabilityReaso
   const code = value.code;
   if (typeof code !== 'string' || !(COMPARABILITY_REASON_CODES as readonly string[]).includes(code)) return false;
   if (value.severity !== COMPARABILITY_REASON_SEVERITY[code as ComparabilityReasonCode]) return false;
-  return typeof value.message === 'string';
+  if (typeof value.message !== 'string') return false;
+  if ('referenceValue' in value && value.referenceValue !== undefined && typeof value.referenceValue !== 'string') return false;
+  if ('candidateValue' in value && value.candidateValue !== undefined && typeof value.candidateValue !== 'string') return false;
+  return true;
 }
 
 export interface ComparabilityResult {

@@ -2,6 +2,8 @@ import type { Diagnostic } from '../domain/diagnostics.js';
 import { orderDiagnostics } from '../domain/diagnostics.js';
 import { classifyUrl } from '../safety/policy.js';
 import { normalizeOutputLocation } from './paths.js';
+import type { ExplicitStateDimensions } from '../domain/explicitState.js';
+import { isValidExplicitStateDimensions } from '../domain/explicitState.js';
 
 export type TargetLocator =
   | { kind: 'role'; role: string; name?: string }
@@ -57,6 +59,16 @@ export interface NormalizedObservationRequest {
   timeoutMs: number;
   readiness: ReadinessConfig;
   scrollScenario?: ScrollScenario;
+  /**
+   * v0.7 Prompt 4 addition (additive, optional). Explicit, caller/config-
+   * supplied frontend state identity for this observation - never inferred
+   * by the observer from screenshot pixels, CSS, DOM, URLs, or any other
+   * browser-observed evidence (see domain/explicitState.ts). Used only by
+   * comparability/compatibility evaluation (domain/comparisonEngine.ts,
+   * domain/externalReferenceCompatibility.ts); omitting it preserves every
+   * pre-Prompt-4 observation/comparison behavior unchanged.
+   */
+  explicitState?: ExplicitStateDimensions;
 }
 
 export interface RawObservationRequest {
@@ -67,6 +79,7 @@ export interface RawObservationRequest {
   timeoutMs?: unknown;
   readiness?: unknown;
   scrollScenario?: unknown;
+  explicitState?: unknown;
 }
 
 export type NormalizeRequestResult = { ok: true; request: NormalizedObservationRequest } | { ok: false; diagnostics: Diagnostic[] };
@@ -524,6 +537,16 @@ export function normalizeRequest(raw: RawObservationRequest): NormalizeRequestRe
     }
   }
 
+  let explicitState: ExplicitStateDimensions | undefined;
+  if (raw.explicitState !== undefined) {
+    const validated = isValidExplicitStateDimensions(raw.explicitState);
+    if (validated.valid) {
+      explicitState = raw.explicitState as ExplicitStateDimensions;
+    } else {
+      diagnostics.push({ code: 'invalid-request', severity: 'error', message: `explicitState ${validated.reason}` });
+    }
+  }
+
   if (diagnostics.length > 0 || targetUrl === undefined) {
     return { ok: false, diagnostics: orderDiagnostics(diagnostics) };
   }
@@ -538,6 +561,7 @@ export function normalizeRequest(raw: RawObservationRequest): NormalizeRequestRe
       timeoutMs,
       readiness: { condition: readinessCondition, timeoutMs: readinessTimeoutMs },
       ...(scrollScenario ? { scrollScenario } : {}),
+      ...(explicitState ? { explicitState } : {}),
     },
   };
 }

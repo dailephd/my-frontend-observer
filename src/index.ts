@@ -264,8 +264,15 @@ export { DEFAULT_EVALUATION_OUTPUT_LOCATION, evaluateAndPersist, evaluateAndPers
 export type { PersistFrontendContractOptions, ApplicationApproveBaselineResult, ApplicationPersistChangeContractResult } from './application/frontendContractPersistenceService.js';
 export { approveAndPersistBaseline, persistPerChangeContract } from './application/frontendContractPersistenceService.js';
 
-export type { CompareObservationsResult } from './domain/comparisonEngine.js';
-export { compareObservations, evaluateComparability, evaluateExpectedDependencies, compareTargetConfiguration } from './domain/comparisonEngine.js';
+export type { CompareObservationsResult, TargetPresence } from './domain/comparisonEngine.js';
+export {
+  compareObservations,
+  evaluateComparability,
+  evaluateExpectedDependencies,
+  compareTargetConfiguration,
+  assessOptionalComparabilityDimension,
+  targetPresence,
+} from './domain/comparisonEngine.js';
 
 export type {
   ProjectionProfile,
@@ -285,6 +292,7 @@ export type {
   RuntimeStaticCorrelationRecord,
   BoundedAgentContextArtifact,
   BoundedAgentContextValidationResult,
+  BoundedReferenceFidelityProjection,
 } from './domain/boundedAgentContext.js';
 export {
   BOUNDED_AGENT_CONTEXT_ARTIFACT_KIND,
@@ -298,18 +306,24 @@ export {
   MAX_STATIC_CANDIDATES_PER_TARGET,
   MAX_TEXT_SUMMARY_CHARS,
   MAX_EVIDENCE_REFS_PER_CORRELATION_FIELD,
+  MAX_FIDELITY_MISMATCHES,
+  MAX_FIDELITY_PROTECTED_CONTEXT,
   ADEQUACY_STATES,
   ADEQUACY_REASON_CODES,
   OMISSION_REASONS,
   CORRELATION_STATUSES,
   STATIC_CANDIDATE_KINDS,
   isValidBoundedAgentContextArtifact,
+  isValidBoundedReferenceFidelityProjection,
 } from './domain/boundedAgentContext.js';
 
 export { buildBoundedAgentContextRequestIdentity, buildBoundedAgentContextInstanceIdentity } from './domain/boundedAgentContextIdentity.js';
 
 export type { ProjectBoundedAgentContextInput, ProjectBoundedAgentContextResult } from './domain/boundedAgentContextProjection.js';
 export { projectBoundedAgentContext } from './domain/boundedAgentContextProjection.js';
+
+export type { ProjectReferenceFidelityOptions, ProjectReferenceFidelityOutput } from './domain/referenceFidelityProjection.js';
+export { projectReferenceFidelity } from './domain/referenceFidelityProjection.js';
 
 export type {
   StaticCandidateEvidenceInput,
@@ -329,3 +343,196 @@ export { readObservationArtifact } from './artifacts/artifactReader.js';
 
 export type { CompareAndPersistOptions, ApplicationComparisonResult } from './application/comparisonService.js';
 export { DEFAULT_COMPARISON_OUTPUT_LOCATION, compareAndPersist, compareAndPersistFromArtifactRoots } from './application/comparisonService.js';
+
+export type { ExternalReferenceImageFormat, ImageDimensions } from './domain/externalReferenceImage.js';
+export {
+  EXTERNAL_REFERENCE_SUPPORTED_IMAGE_FORMATS,
+  isExternalReferenceImageFormat,
+  EXTERNAL_REFERENCE_MAX_IMAGE_BYTES,
+  EXTERNAL_REFERENCE_MIN_DIMENSION_PX,
+  EXTERNAL_REFERENCE_MAX_DIMENSION_PX,
+  detectExternalReferenceImageFormat,
+  readExternalReferenceImageDimensions,
+  isValidExternalReferenceImageDimensions,
+  fileExtensionForFormat,
+} from './domain/externalReferenceImage.js';
+
+export type {
+  ExternalReferenceImageReference,
+  ExternalReferenceSourceReference,
+  ExternalReferenceLifecycleState,
+  ExternalReferenceProvenance,
+  ImportedExternalReferenceArtifact,
+  ApprovedExternalReferenceArtifact,
+  ExternalReferenceArtifact,
+  ExternalReferenceValidationResult,
+} from './domain/externalReference.js';
+export {
+  EXTERNAL_REFERENCE_ARTIFACT_KIND,
+  EXTERNAL_REFERENCE_SCHEMA_VERSION,
+  isValidExternalReferenceImageReference,
+  isValidExternalReferenceSourceReference,
+  isValidExternalReferenceLifecycleState,
+  isValidExternalReferenceProvenance,
+  isValidExternalReferenceArtifact,
+  isImportedExternalReferenceArtifact,
+  isApprovedExternalReferenceArtifact,
+} from './domain/externalReference.js';
+
+export { buildExternalReferenceRequestIdentity, buildExternalReferenceInstanceIdentity } from './domain/externalReferenceIdentity.js';
+
+export type { PersistedExternalReferenceResult, WriteExternalReferenceArtifactOptions } from './artifacts/externalReferenceArtifactWriter.js';
+export { EXTERNAL_REFERENCE_MANIFEST_FILENAME, writeExternalReferenceArtifact } from './artifacts/externalReferenceArtifactWriter.js';
+
+export type { ReadExternalReferenceArtifactResult } from './artifacts/externalReferenceArtifactReader.js';
+export { readExternalReferenceArtifact } from './artifacts/externalReferenceArtifactReader.js';
+
+export type {
+  ImportExternalReferenceOptions,
+  ApproveExternalReferenceOptions,
+  ApplicationImportExternalReferenceResult,
+  ApplicationApproveExternalReferenceResult,
+} from './application/externalReferencePersistenceService.js';
+export { importExternalReference, approveExternalReference } from './application/externalReferencePersistenceService.js';
+
+export type { ReferenceRegionRectangle, ReferenceRegion, ReferenceRegionGeometry, ReferenceRegionValidationResult } from './domain/externalReferenceRegions.js';
+export {
+  REFERENCE_REGION_ID_PATTERN,
+  MAX_REFERENCE_REGIONS,
+  deriveReferenceRegionGeometry,
+  isValidReferenceRegionRectangle,
+  isValidReferenceRegion,
+  isValidReferenceRegions,
+} from './domain/externalReferenceRegions.js';
+
+export type {
+  ReferenceRegionRelationship,
+  ReferenceRegionRelationshipGraph,
+  DeriveReferenceRegionRelationshipsOptions,
+  DeriveReferenceRegionRelationshipsResult,
+} from './domain/externalReferenceRegionRelationships.js';
+export {
+  MAX_REFERENCE_REGION_PAIRS,
+  REFERENCE_REGION_RELATIONSHIP_FAMILY_COUNT,
+  MAX_REFERENCE_REGION_RELATIONSHIP_RECORDS,
+  isValidReferenceRegionRelationship,
+  isValidReferenceRegionRelationshipGraph,
+  deriveReferenceRegionRelationships,
+} from './domain/externalReferenceRegionRelationships.js';
+
+export { buildReferenceRequirementIdentity } from './domain/externalReferenceRequirementIdentity.js';
+
+export type {
+  ReferenceRequirementRegionProperty,
+  ReferenceRequirementMeasurement,
+  ReferenceRequirementTolerance,
+  RegionPropertyRequirementSubject,
+  RegionRelationshipRequirementSubject,
+  RegionMeasurementRequirementSubject,
+  ReferenceRequirementSubject,
+  RawReferenceRequirement,
+  ExternalReferenceRequirement,
+  ReferenceRequirementValidationResult,
+  ReferenceRequirementExpectation,
+  ReferenceRequirementAdequacyState,
+  ReferenceRequirementAdequacyReasonCode,
+  ReferenceRequirementAdequacyReason,
+  ReferenceRequirementAdequacy,
+} from './domain/externalReferenceRequirements.js';
+export {
+  MAX_REFERENCE_REQUIREMENTS,
+  REFERENCE_REQUIREMENT_REGION_PROPERTIES,
+  isReferenceRequirementRegionProperty,
+  REFERENCE_REQUIREMENT_MEASUREMENTS,
+  isReferenceRequirementMeasurement,
+  deriveReferenceRequirementMeasurement,
+  REFERENCE_REQUIREMENT_TOLERANCE_ABSOLUTE_PX_MIN,
+  REFERENCE_REQUIREMENT_TOLERANCE_ABSOLUTE_PX_MAX,
+  REFERENCE_REQUIREMENT_TOLERANCE_PERCENT_MIN,
+  REFERENCE_REQUIREMENT_TOLERANCE_PERCENT_MAX,
+  isValidReferenceRequirementTolerance,
+  isValidReferenceRequirementSubjectShape,
+  isValidRawReferenceRequirement,
+  buildReferenceRequirement,
+  isValidReferenceRequirementShape,
+  isValidReferenceRequirements,
+  deriveReferenceRequirementExpectation,
+  REFERENCE_REQUIREMENT_ADEQUACY_STATES,
+  REFERENCE_REQUIREMENT_ADEQUACY_REASON_CODES,
+  deriveReferenceRequirementAdequacy,
+  isValidReferenceRequirementAdequacy,
+} from './domain/externalReferenceRequirements.js';
+
+export type { AuthenticatedState, ExplicitStateDimensions, ExplicitStateValidationResult } from './domain/explicitState.js';
+export {
+  STATE_LABEL_PATTERN,
+  AUTHENTICATED_STATE_VALUES,
+  isValidStateLabel,
+  isValidAuthenticatedState,
+  isValidExplicitStateDimensions,
+} from './domain/explicitState.js';
+
+export type { ApplicableViewport, ExternalReferenceApplicability, ApplicabilityValidationResult } from './domain/externalReferenceApplicability.js';
+export {
+  APPLICABLE_VIEWPORT_MIN,
+  APPLICABLE_VIEWPORT_MAX,
+  isValidApplicableViewport,
+  isValidExternalReferenceApplicability,
+} from './domain/externalReferenceApplicability.js';
+
+export type { ReferenceCandidateCompatibilityResult } from './domain/externalReferenceCompatibility.js';
+export { evaluateReferenceCandidateCompatibility } from './domain/externalReferenceCompatibility.js';
+
+export type {
+  ReferenceRuntimeBindingStatus,
+  ReferenceRuntimeBindingReasonCode,
+  ReferenceRuntimeBindingDeclaration,
+  ReferenceRuntimeBindingValidationResult,
+  ReferenceRuntimeBindingResult,
+  ReferenceRuntimeBindingEvaluation,
+  EvaluateReferenceRuntimeBindingsResult,
+} from './domain/externalReferenceRuntimeBinding.js';
+export {
+  RUNTIME_TARGET_NAME_PATTERN,
+  MAX_REFERENCE_RUNTIME_BINDINGS,
+  REFERENCE_RUNTIME_BINDING_STATUSES,
+  REFERENCE_RUNTIME_BINDING_REASON_CODES,
+  isValidReferenceRuntimeBindingDeclarations,
+  evaluateReferenceRuntimeBindings,
+} from './domain/externalReferenceRuntimeBinding.js';
+
+export type {
+  ReferenceRequirementFidelityStatus,
+  ReferenceRequirementFidelityReasonCode,
+  ReferenceRequirementFidelityResult,
+  ReferenceFidelityState,
+  ReferenceFidelityBlockReason,
+  ReferenceCandidateFidelityEvaluation,
+  EvaluateReferenceCandidateFidelityResult,
+  EvaluateReferenceCandidateFidelityOptions,
+} from './domain/externalReferenceFidelity.js';
+export {
+  REFERENCE_REQUIREMENT_FIDELITY_STATUSES,
+  REFERENCE_REQUIREMENT_FIDELITY_REASON_CODES,
+  REFERENCE_FIDELITY_STATES,
+  REFERENCE_FIDELITY_BLOCK_REASONS,
+  evaluateReferenceCandidateFidelity,
+  isValidReferenceRequirementFidelityResult,
+} from './domain/externalReferenceFidelity.js';
+
+export type { EvaluateReferenceFidelityOptions, ApplicationReferenceFidelityResult } from './application/referenceFidelityEvaluationService.js';
+export { evaluateReferenceCandidateFidelityFromArtifactRoots } from './application/referenceFidelityEvaluationService.js';
+
+export { buildReferenceCorrectionReviewIdentity, buildReferenceCorrectionAttemptIdentity } from './domain/referenceCorrectionIdentity.js';
+
+export type {
+  PrepareReferenceCorrectionInput,
+  PrepareReferenceCorrectionStatus,
+  ReferenceCorrectionHandoff,
+  PrepareReferenceCorrectionResult,
+  ReferenceCorrectionOverallState,
+  ReviewReferenceCorrectionAttemptInput,
+  ReferenceCorrectionAttemptResult,
+  ReviewReferenceCorrectionAttemptResult,
+} from './domain/referenceCorrectionWorkflow.js';
+export { REFERENCE_CORRECTION_OVERALL_STATES, prepareReferenceCorrection, reviewReferenceCorrectionAttempt } from './domain/referenceCorrectionWorkflow.js';

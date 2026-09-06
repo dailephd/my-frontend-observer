@@ -66,14 +66,90 @@ module). Bounded runtime projections may include existing screenshot *path
 references* (never embedded bytes), consistent with every other artifact
 family's existing reference-not-embed discipline.
 
+## External visual-reference security and privacy boundary (v0.7, released as `0.7.0`)
+
+External visual-reference support (`import-reference`/`approve-reference`/
+`evaluate-reference-fidelity`, plus the programmatic correction-workflow
+coordinator) is released as part of the published `0.7.0` package. Imported reference images remain
+local-first evidence: `import-reference` reads a local file path only,
+never a URL, and no code path in this repository uploads a reference image,
+a candidate screenshot, source code, or any derived evidence to an external
+service. Reference/candidate compatibility and fidelity evaluation are pure,
+in-process computations over already-loaded artifacts - neither launches a
+network request.
+
+Bounded local-file safety for reference images is a frozen, source-verified
+policy, not an open decision: `EXTERNAL_REFERENCE_SUPPORTED_IMAGE_FORMATS`
+(`png`/`jpeg`/`webp`, detected from header/magic bytes only, never from a
+caller-declared file extension), `EXTERNAL_REFERENCE_MAX_IMAGE_BYTES`
+(20,000,000 bytes), and `[EXTERNAL_REFERENCE_MIN_DIMENSION_PX,
+EXTERNAL_REFERENCE_MAX_DIMENSION_PX]` (`[1, 8192]` pixels per side, parsed
+from the same bounded header bytes, never a full pixel decode) are all
+enforced before any artifact is persisted; an unsupported/undetectable
+format, an over-limit file, or invalid/out-of-bound dimensions is rejected
+outright (`unsupported-image-format`/`invalid-image-dimensions`/
+`image-too-large`), never silently clamped or accepted.
+
+Reference images are treated as untrusted data, not executable content: the
+format/dimension detector never evaluates embedded code, never dynamically
+loads a script, and never treats image metadata as an instruction source -
+only bounded header-byte inspection is performed, no general-purpose image
+or video codec is invoked. Explicit, caller-supplied state
+(`--state-file`/`--applicability-file`, `theme`/`applicationState`/
+`authenticatedState`) is a closed, bounded label vocabulary with no field
+capable of holding a credential, token, cookie, session id, or authorization
+header - `authenticatedState` accepts only the literal values
+`'authenticated'`/`'unauthenticated'`.
+
+Reference artifacts and the bounded correction handoff preserve path privacy
+and boundedness: every reference/observation/binding/fidelity/context
+identity function is a pure hash of semantic content only - an operational
+file path (the image path, a `--regions-file`/`--requirements-file`/
+`--applicability-file`/`--state-file`/`--bindings-file` path, or an artifact
+root directory) is never included in any logical identity, and importing
+the same semantic reference content from two different filesystem locations
+produces the same `referenceRequestId`. The bounded coding-agent handoff
+(`ReferenceCorrectionHandoff`) never embeds raw reference image bytes, a
+full `ObservationArtifact`, or a source excerpt - only stable identifiers,
+bounded fidelity mismatch records, and evidence path *references*.
+
+Import never silently promotes an image to an approved reference: only the
+explicit `approve-reference` command (or `approveExternalReference`
+programmatically) transitions a reference out of the `'imported'` lifecycle
+state, and the v0.7 correction workflow's `prepareReferenceCorrection`/
+`reviewReferenceCorrectionAttempt` both fail closed if the supplied
+reference is not already approved. Neither function - nor anything either
+calls - ever invokes `approveExternalReference` or
+`approveAndPersistBaseline` itself; a `'pass'` review result is reported as
+`approvalEligible: true`, a plain flag, never an automatic approval action.
+
+Reference/candidate comparison and fidelity evaluation do not broaden the
+existing browser/network boundary: candidate rendering continues through the
+existing loopback-only Chromium observation path unchanged, and reference
+evaluation itself never launches a browser at all (it consumes only
+already-captured `ObservationArtifact` evidence). The v0.7 correction
+workflow never edits target source: `src/domain/referenceCorrectionWorkflow.ts`
+and everything it imports contain no filesystem-write call, no
+`child_process` invocation, and no patch-application mechanism - the actual
+source edit between review attempts is always the responsibility of an
+external implementation actor (a human or a coding agent), never this
+package's own product code. No remote AI/model-provider dependency was
+introduced anywhere in v0.7.
+
 ## Not yet addressed
 
 Certificate-failure-specific handling, permission-prompt-specific handling
 (Chromium's default deny-all applies; no permission is ever explicitly
 granted), and any non-loopback/remote browsing mode remain unimplemented and
-out of scope. `my-frontend-observer@0.5.0` is published to npm, and a
+out of scope. `my-frontend-observer@0.7.0` is published to npm, and a
 pre-release readiness CI workflow (Windows/Linux/macOS packed-candidate
 validation) already exists (see `docs/CI_CD.md`); these are no longer future
-decisions. Those facts do not expand the security scope above: remote
-browsing, certificate handling, and permission-prompt handling remain
-separate, unimplemented concerns.
+decisions. The v0.7 external-reference/correction-workflow security
+properties above are released as part of `0.7.0`, following a completed
+cross-platform pre-release security validation stage (see
+`docs/reports/v0.7-pre-release-readiness.md`). Viewer and
+annotation (v0.8/v0.9) remain future, unimplemented concerns with their own
+security review still to come. Those facts do not expand the security scope
+above: remote browsing, certificate handling, permission-prompt handling,
+and future viewer/annotation-specific file handling remain separate,
+unimplemented concerns.

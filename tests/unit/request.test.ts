@@ -338,4 +338,57 @@ describe('normalizeRequest', () => {
       expect(result.ok).toBe(true);
     });
   });
+
+  describe('v0.7 Prompt 4 explicitState contract', () => {
+    it('accepts a request with no explicitState, unchanged from Prompt 3', () => {
+      const result = normalizeRequest({ targetUrl: 'http://localhost:3000/' });
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error('expected ok');
+      expect('explicitState' in result.request).toBe(false);
+    });
+
+    it('accepts a single declared dimension', () => {
+      const result = normalizeRequest({ targetUrl: 'http://localhost/', explicitState: { theme: 'dark' } });
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error('expected ok');
+      expect(result.request.explicitState).toEqual({ theme: 'dark' });
+    });
+
+    it('accepts all three dimensions declared together', () => {
+      const result = normalizeRequest({
+        targetUrl: 'http://localhost/',
+        explicitState: { theme: 'dark', applicationState: 'cart-empty', authenticatedState: 'authenticated' },
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error('expected ok');
+      expect(result.request.explicitState).toEqual({ theme: 'dark', applicationState: 'cart-empty', authenticatedState: 'authenticated' });
+    });
+
+    it('rejects an empty explicitState object', () => {
+      const result = normalizeRequest({ targetUrl: 'http://localhost/', explicitState: {} });
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error('expected failure');
+      expect(result.diagnostics[0]?.code).toBe('invalid-request');
+    });
+
+    it('rejects an unsupported field on explicitState', () => {
+      const result = normalizeRequest({ targetUrl: 'http://localhost/', explicitState: { theme: 'dark', locale: 'en-US' } });
+      expect(result.ok).toBe(false);
+    });
+
+    it('rejects an invalid theme label', () => {
+      const result = normalizeRequest({ targetUrl: 'http://localhost/', explicitState: { theme: '' } });
+      expect(result.ok).toBe(false);
+    });
+
+    it('rejects an invalid authenticatedState value', () => {
+      const result = normalizeRequest({ targetUrl: 'http://localhost/', explicitState: { authenticatedState: 'logged-in' } });
+      expect(result.ok).toBe(false);
+    });
+
+    it('rejects a non-object explicitState', () => {
+      const result = normalizeRequest({ targetUrl: 'http://localhost/', explicitState: 'dark' });
+      expect(result.ok).toBe(false);
+    });
+  });
 });

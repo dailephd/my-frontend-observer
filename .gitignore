@@ -4,5 +4,7 @@ coverage/
 observations/
 *.tgz
 .my-dev-kit/
+.my-dev-kit-context/
+.my-dev-kit-workflow/
 .my-dev-kit-orchestrator/
 .idea/

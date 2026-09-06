@@ -14,14 +14,17 @@ function canonicalize(value: unknown): unknown {
 
 /**
  * Pure function of {targetUrl, viewport, targets (order preserved -
- * semantic), readiness.condition, scrollScenario} only. timeoutMs,
- * readiness.timeoutMs, and outputLocation never affect the result - this is
- * the frozen definition of "same configuration" for this batch. A request
- * with no `scrollScenario` omits the key entirely (rather than setting it to
- * `undefined`) so the v0.2 identity for scenario-less requests is unchanged
- * by this v0.3 extension. Only the requested action configuration
- * participates - never runtime scroll results, movement success/failure, or
- * scroll-owner interpretation, which are runtime evidence, not identity.
+ * semantic), readiness.condition, scrollScenario, explicitState} only.
+ * timeoutMs, readiness.timeoutMs, and outputLocation never affect the
+ * result - this is the frozen definition of "same configuration" for this
+ * batch. A request with no `scrollScenario`/`explicitState` omits the key
+ * entirely (rather than setting it to `undefined`) so the identity for a
+ * request missing either is unchanged by the batch that introduced it (v0.3
+ * for scrollScenario, v0.7 Prompt 4 for explicitState). Only the requested
+ * action configuration participates - never runtime scroll results,
+ * movement success/failure, or scroll-owner interpretation, which are
+ * runtime evidence, not identity; likewise `explicitState` is the
+ * caller-declared state identity only, never browser-observed evidence.
  */
 export function buildRequestIdentity(request: NormalizedObservationRequest): string {
   const semanticView = {
@@ -30,6 +33,7 @@ export function buildRequestIdentity(request: NormalizedObservationRequest): str
     targets: request.targets.map((target) => ({ name: target.name.toLowerCase(), locators: target.locators })),
     readinessCondition: request.readiness.condition,
     ...(request.scrollScenario ? { scrollScenario: request.scrollScenario } : {}),
+    ...(request.explicitState ? { explicitState: request.explicitState } : {}),
   };
   const serialized = JSON.stringify(canonicalize(semanticView));
   return createHash('sha256').update(serialized).digest('hex');

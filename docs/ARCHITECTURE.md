@@ -3,15 +3,22 @@
 ## Current package architecture
 
 The current repository is one published TypeScript ESM package
-(`my-frontend-observer@0.5.0`):
+(`my-frontend-observer@0.7.0`):
 
 - `src/cli.ts` is the real, thin public CLI parsing/dispatch/presentation
   boundary for the current command surface (`observe`, `compare`,
-  `approve-baseline`, `save-change-contract`, `evaluate-contract`); argument
-  parsing and output formatting only, per command - the commands do not share
-  domain semantics in the CLI.
+  `approve-baseline`, `save-change-contract`, `evaluate-contract`,
+  `import-reference`, `approve-reference`, `evaluate-reference-fidelity`);
+  argument parsing and output formatting only, per command - the commands do
+  not share domain semantics in the CLI. v0.6 added no new CLI command; v0.7
+  added the three external-reference commands.
 - `src/index.ts` is the library entry point re-exporting the observer-owned
-  contracts/functions from every layer below.
+  contracts/functions from every layer below, including the v0.6 bounded-agent-
+  context projection and runtime/static correlation surface, and the v0.7
+  external-reference/region/requirement/applicability/compatibility/binding/
+  fidelity/correction-workflow surface (`prepareReferenceCorrection`/
+  `reviewReferenceCorrectionAttempt` remain programmatic-only, with no CLI
+  command).
 - `scripts/clean.mjs` safely removes only the project `dist/` directory.
 - `scripts/check-docs.mjs` validates the canonical documentation foundation,
   roadmap version presence, and the no-batches rule.
@@ -339,6 +346,90 @@ lab code in this repository - those remain separate sibling-repository
 responsibilities per the Milestone 6 ownership split in
 `docs/PROJECT_MILESTONES.md`.
 
+## v0.7 (released as `0.7.0`) and planned v0.8–v0.10 reference-evidence architecture constraints
+
+The external visual-reference capability (v0.7) is released as package
+version `0.7.0` - see "v0.7 Prompt 1" through "v0.7 Prompt 8" below for the
+actual architecture, and `docs/CURRENT_STATE.md` for release state. It
+extends the existing v0.1-v0.6 evidence architecture rather than becoming a
+UI-only feature or a parallel visual-comparison stack. v0.8 (interactive
+viewer),
+v0.9 (structured visual annotation), and v0.10 (full graphical human-LLM
+workflow) remain future and unimplemented; the constraints below apply to
+that still-future work, except where a paragraph explicitly says an item is
+now implemented.
+
+The evidence domains remain distinct:
+
+```text
+runtime observation A ↔ runtime observation B
+→ existing before/after comparison
+
+approved baseline/per-change contract ↔ candidate runtime evidence
+→ existing canonical contract evaluation
+
+external visual reference ↔ candidate runtime evidence
+→ reference applicability + structured fidelity evaluation (v0.7,
+  released as `0.7.0` - see "v0.7 Prompt 4" and "v0.7 Prompt 6" below)
+```
+
+An external reference is not an `ObservationArtifact`, and a reference region
+is not a runtime target. The future implementation must preserve explicit
+identity and provenance for the reference image/version, reference regions,
+applicable viewport/theme/application state, authored requirements, tolerances,
+approval/supersession state, and reference-region/runtime-target bindings.
+Bindings may be explicit, ambiguous, unavailable, or another conservatively
+defined state selected during planning; they must never silently become source
+ownership.
+
+The non-UI reference model and structured reference-vs-candidate evaluation
+must be established in v0.7 before v0.8 consumes them. v0.8 may render
+side-by-side images, overlays, measurements, bindings, provenance, and fidelity
+results, but it must not invent a second reference model or evaluation engine.
+v0.9 may author annotations against either runtime screenshots or external
+references, but both coordinate/identity domains remain explicit and feed the
+same canonical contract/change-scope semantics. v0.10 combines both visual
+entry modes with the existing correction loop.
+
+Where a reference requirement is executable, it must map into the existing
+v0.5 requested/expected-dependent/protected/preserved semantics. Informational
+or unassessed reference evidence remains non-executable until explicitly
+promoted. Do not create reference-only PASS/FAIL semantics.
+
+The reference evaluation should reuse existing relationship/value conventions
+where they mean the same thing, and extend them only when evidence from a static
+image or approved design intent genuinely requires a distinct type. Pixel or
+image-region similarity may supplement structured evidence, especially for
+asset-sensitive regions, but it must not replace browser-authoritative runtime
+geometry, canonical contract evaluation, or explicit relationship evidence.
+
+Candidate rendering still uses the one existing Chromium observation engine.
+The observer remains non-mutating. `my-dev-kit` remains the static/source
+evidence owner, and the v0.6 correlation/bounded-context boundary remains the
+route for attaching relevant source evidence to reference-driven correction
+packets. Heavy reference image bytes should be referenced rather than copied
+into every downstream context/evaluation record.
+
+Theme, application-state, viewport, and other applicability dimensions must be
+checked before reference fidelity is interpreted. If reference and candidate do
+not represent compatible intended states, the result must be explicitly
+incompatible/incomparable rather than a fabricated visual difference set.
+Planning should extend or reuse the canonical comparability/state model rather
+than create unrelated reference-only state semantics.
+
+The constraints above were carried out by the actual v0.7 implementation
+described in "v0.7 Prompt 1" through "v0.7 Prompt 8" below: explicit
+identity/provenance, applicability/compatibility, region-to-target
+bindings, requested/expected-dependent/protected/preserved reuse, and the
+non-mutating Chromium/correlation boundaries all remain as constrained
+here. They continue to apply unchanged to the still-future v0.8-v0.10 work.
+
+The exact public artifact names, schema versions, persistence layout, supported
+image formats, style-evidence vocabulary, tolerance primitives, and image-
+similarity mechanisms were frozen by the actual v0.7 implementation below,
+not by this architecture document. They followed existing identity, provenance, validation, boundedness, and portable-
+artifact precedents.
+
 ## Retained v0.1 architecture constraints
 
 v0.1 planning preserved these approved boundaries without treating module
@@ -370,9 +461,178 @@ correlation/export contracts within this repository, preserving independent
 ownership; orchestrator-consumption and lab-compatibility work are separate
 sibling-repository deliverables, not part of this repository's architecture.
 
-The text/config-driven coding-agent workflow must be operational before the
-viewer and annotation layers are added. Those interfaces consume the same
-canonical observation, relationship, comparison, contract, change-scope,
-correlation, and context boundaries rather than creating parallel engines.
-The concrete implementation plan and module layout must be designed only after
-the relevant version planning workflow inspects the current repositories.
+The text/config-driven coding-agent workflow and the non-UI external-reference
+evidence foundation must be operational before the viewer and annotation layers
+are added. Those interfaces consume the same canonical observation,
+relationship, comparison, contract, change-scope, reference, correlation, and
+context boundaries rather than creating parallel engines. The concrete
+implementation plan and module layout must be designed only after the relevant
+version planning workflow inspects the current repositories.
+
+v0.7 Prompt 1 implements only the bottom of that external-reference stack: a
+new, standalone `ExternalReferenceArtifact` evidence root
+(`src/domain/externalReference.ts`, `externalReferenceImage.ts`,
+`externalReferenceIdentity.ts`, `src/artifacts/externalReferenceArtifact{Writer,Reader}.ts`,
+`src/application/externalReferencePersistenceService.ts`) with its own
+identity, provenance, bounded image metadata, and a two-state
+(`imported`/`approved`) lifecycle - see `docs/CONTRACTS.md` "v0.7 Prompt 1
+external-reference artifact contract" for the exact shape. It follows the
+same identity/persistence/diagnostics/export conventions as every existing
+artifact family (deterministic canonicalize-then-sha256 request identity,
+nonce-based fresh instance identity, atomic temp-dir-then-rename persistence,
+the shared `DIAGNOSTIC_CODES` vocabulary) without reusing or duplicating the
+observation, comparison, or contract engines themselves - an external
+reference is desired-design evidence, never an `ObservationArtifact`, an
+approved baseline, or a runtime target.
+
+v0.7 Prompt 2 adds explicit reference regions and reusable reference-region
+relationships on top of that foundation (`domain/externalReferenceRegions.ts`,
+`externalReferenceRegionRelationships.ts`) - see `docs/CONTRACTS.md` "v0.7
+Prompt 2 explicit reference regions and relationships" for the exact shape.
+The relationship-derivation predicates are reused verbatim (now exported
+additively) from `domain/relationships.ts` rather than reimplemented, so
+reference-region geometry and runtime-target geometry can never diverge on
+the same underlying formula; only the geometry-only relationship families
+apply, since a static image exposes no DOM, scroll, or viewport evidence.
+v0.7 Prompt 3 adds selected design requirements, tolerance semantics, and
+reference-evidence adequacy on top of that region model
+(`domain/externalReferenceRequirements.ts`,
+`externalReferenceRequirementIdentity.ts`) - see `docs/CONTRACTS.md` "v0.7
+Prompt 3 selected design requirements, tolerance semantics, and
+reference-evidence adequacy" for the exact shape. Requirement categories are
+the exact v0.5 `AuthoredChangeScopeCategory` vocabulary, imported directly
+rather than reinvented, since that type carries no runtime-only coupling of
+its own; tolerance is a genuinely new, reference-owned type (never a reuse
+of `frontendContracts.ts`'s runtime/CSS-pixel-implicit `ContractTolerance`);
+and reference-evidence adequacy is a small, independently-owned vocabulary
+distinct from `boundedAgentContext.ts`'s runtime/static-correlation
+`Adequacy`. A region property or derived relationship is never promoted to
+an executable requirement automatically - only explicit user/configuration
+selection does that.
+
+v0.7 Prompt 4 adds explicit reference applicability
+(`domain/externalReferenceApplicability.ts`) and observation-side explicit
+state identity (`domain/explicitState.ts`, shared by both artifact
+families), plus one new pure domain module,
+`domain/externalReferenceCompatibility.ts`, that evaluates whether a
+candidate `ObservationArtifact` describes the same frontend state as a
+given `ExternalReferenceArtifact` - see `docs/CONTRACTS.md` "v0.7 Prompt 4
+reference applicability and candidate-state compatibility" for the exact
+shape. This is page/state-level only, never geometry or fidelity, and
+remains a wholly separate concern from Prompt 3's reference-evidence
+adequacy - the two can independently disagree (an adequate reference can be
+incomparable against a given candidate, and vice versa). Rather than
+inventing a second comparability engine, Prompt 4 extracts one new exported
+pure helper from v0.4's own `domain/comparisonEngine.ts`
+(`assessOptionalComparabilityDimension`) and reuses it from both v0.4's
+`evaluateComparability` (Observation-vs-Observation) and the new
+`evaluateReferenceCandidateCompatibility` (Reference-vs-Observation) - the
+one additive behavior change to v0.4 itself is that `evaluateComparability`
+now assesses (rather than always reporting unassessed) theme/authenticated-
+state/application-state whenever both observations declare
+`requestConfig.explicitState`, while every historical/legacy observation
+pair retains the exact prior unassessed-only behavior. No new persisted
+artifact kind is introduced for the compatibility result; it is a pure,
+on-demand function of two already-persisted artifacts.
+
+v0.7 Prompt 5 adds explicit reference-region <-> runtime-target binding
+(`domain/externalReferenceRuntimeBinding.ts`) - see `docs/CONTRACTS.md`
+"v0.7 Prompt 5 explicit reference-region <-> runtime-target binding" for
+the exact shape. It answers only "which stable v0.2 runtime target does
+this candidate observation resolve for each explicitly declared reference
+region", strictly downstream of Prompt 4's compatibility gate (reused
+verbatim, never duplicated) and strictly upstream of v0.6's own
+runtime/static correlation - the two identity domains (a Prompt 2
+`ReferenceRegion.id` and a v0.2 `NamedTarget.name`) never collapse into
+each other, and this stage stops at the runtime target, never reaching
+source ownership. Following v0.6's uncertainty discipline
+(`domain/boundedAgentContextCorrelation.ts`), binding never guesses through
+ambiguity - an ambiguously or unavailably resolved v0.2 target is reported
+as such, never silently treated as bound - though the actual per-status
+mapping (`bound`/`ambiguous`/`unavailable`) is binding's own, independently
+owned vocabulary, not a reuse of v0.6's `correlated`/`ambiguous`/
+`unavailable` correlation-status semantics (a different evidence boundary:
+correlation ranks *static candidates* for one runtime target, whereas
+binding resolves *one runtime target's own existence* for one declared
+correspondence). No second target resolver, no browser execution, and no
+new persisted artifact family were introduced; neither
+`ExternalReferenceArtifact` nor `ObservationArtifact` is mutated to carry a
+binding result, since a reference may later be evaluated against several
+candidates and an observation against several references.
+
+v0.7 Prompt 6 adds structured reference-vs-candidate fidelity evaluation
+(`domain/externalReferenceFidelity.ts`, `application/referenceFidelityEvaluationService.ts`,
+and the `evaluate-reference-fidelity` CLI command) - the first point in this
+stack where a reference's authored expectation is compared against live
+candidate evidence. See `docs/CONTRACTS.md` "v0.7 Prompt 6 structured
+reference-vs-candidate fidelity evaluation" for the exact shape. It is
+downstream of every prior v0.7 prompt and reuses each verbatim: Prompt 3's
+`deriveReferenceRequirementAdequacy`/`deriveReferenceRequirementExpectation`/
+`deriveReferenceRequirementMeasurement` (never redefined), Prompt 4's
+`evaluateReferenceCandidateCompatibility` (a hard gate, never duplicated),
+and Prompt 5's `evaluateReferenceRuntimeBindings` (the sole source of
+runtime-target identity - no automatic binding, no second target resolver).
+It also reuses v0.4's `deriveLayoutRelationships` for runtime relationship
+evidence, scoped to the exact requested relationship family (the same
+Prompt 3 bug-fix precedent). The one genuinely new problem this prompt
+solves is the reference-image-pixel <-> CSS-pixel coordinate mapping: a
+single explicit, deterministic full-frame scale derived from
+`reference.applicability.viewport` and the reference image's own
+dimensions, with a tiny independent aspect-ratio-coherence check (never a
+design tolerance) gating whether that mapping exists at all. No new
+persisted artifact family, no browser execution, and no source-ownership
+attribution - this is reference fidelity only, a separate concern from any
+later v0.5 baseline/per-change contract result or v0.7 overall verdict.
+
+v0.7 Prompt 7 adds bounded reference-fidelity projection into the existing
+v0.6 bounded-agent-context architecture (`domain/referenceFidelityProjection.ts`,
+plus additive extensions to `domain/boundedAgentContext.ts`,
+`domain/boundedAgentContextIdentity.ts`, and
+`domain/boundedAgentContextProjection.ts`) - see `docs/CONTRACTS.md` "v0.7
+Prompt 7 bounded reference-fidelity projection and v0.6 bounded-agent-
+context integration" for the exact shape. `projectBoundedAgentContext`
+itself, not a new parallel context system, gains one new optional input (an
+already-computed Prompt 6 fidelity evaluation): fidelity-relevant runtime
+targets fold into the exact same required/permitted-target-allocation,
+evidence-tiering, omission/truncation, and adequacy machinery v0.5 contract
+clauses already compete in, and a new `fidelity?` field on
+`BoundedAgentContextArtifact` (mirroring `correlations?`'s own additive,
+non-version-bumping precedent from v0.6 Batch 3) carries a bounded,
+priority-ordered selection of Prompt 6's non-passing requirement results
+plus passing protected/preserved context. No second bounded-context
+architecture, no recomputation of Prompt 2-6/v0.4/v0.5 logic, and no change
+to v0.6's own runtime/static correlation (`deriveRuntimeStaticCorrelations`/
+`attachRuntimeStaticCorrelations` are untouched and reused exactly as
+before) - a caller joins fidelity, target, and correlation evidence by the
+one stable v0.2 runtime target id all three already share. Every new field
+is optional and additive; a pre-Prompt-7 caller supplying no fidelity
+evidence receives byte-identical output, including logical identity.
+
+v0.7 Prompt 8 adds the first complete, controlled end-to-end external-
+reference correction workflow (`domain/referenceCorrectionWorkflow.ts`,
+`domain/referenceCorrectionIdentity.ts`) - see `docs/CONTRACTS.md` "v0.7
+Prompt 8 controlled end-to-end external-reference coding-agent correction
+workflow" for the exact shape. This is a narrowly-scoped coordinator, not a
+second workflow engine: it exposes exactly two pure operations -
+`prepareReferenceCorrection` (pre-change evidence -> a bounded coding-agent
+handoff, built from Prompt 1/3/4/5/6/7's existing engines) and
+`reviewReferenceCorrectionAttempt` (a fresh post-edit candidate -> one
+composed overall result, built from v0.4's `compareObservations`, v0.7
+Prompt 6's `evaluateReferenceCandidateFidelity`, and v0.5's
+`evaluateFrontendContract`) - with an explicit, un-automatable seam between
+them where an external implementation actor edits target source. Overall
+`'pass'` requires both reference fidelity `'pass'` and v0.5 contract
+evaluation `'PASS'` - matching the selected design reference is necessary
+but never sufficient, so a candidate that visually satisfies the reference
+while regressing an active protected or preserved contract clause still
+resolves to overall `'fail'`. Review and attempt identity are both
+deterministic hashes of stable semantic inputs (never a timestamp, never an
+operational path), and `reviewReferenceCorrectionAttempt` rejects any call
+whose supplied `reviewRequestId` does not match what its own
+baseline/contract/reference/binding inputs recompute - the mechanism that
+makes "every attempt evaluates against the same approved baseline" an
+enforced invariant, not just a documented one. No new persisted artifact
+family, no CLI surface, and - most importantly - no code path anywhere in
+this module (or anything it calls) that opens, parses, or writes a target
+source file: real candidate capture remains the caller's own responsibility
+through the existing, unmodified real-Chromium observation pipeline.

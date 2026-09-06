@@ -358,4 +358,39 @@ describe('isValidObservationArtifact', () => {
       expect(isValidObservationArtifact(artifact).valid).toBe(false);
     });
   });
+
+  describe('v0.7 Prompt 4 requestConfig.explicitState', () => {
+    it('accepts a valid requestConfig.explicitState shape', () => {
+      const artifact = {
+        ...minimalValidArtifact(),
+        requestConfig: {
+          ...minimalValidArtifact().requestConfig,
+          explicitState: { theme: 'dark', authenticatedState: 'authenticated' },
+        },
+      };
+      expect(isValidObservationArtifact(artifact)).toEqual({ valid: true });
+    });
+
+    it('rejects an invalid requestConfig.explicitState shape (empty object)', () => {
+      const artifact = {
+        ...minimalValidArtifact(),
+        requestConfig: {
+          ...minimalValidArtifact().requestConfig,
+          explicitState: {},
+        },
+      };
+      expect(isValidObservationArtifact(artifact).valid).toBe(false);
+    });
+
+    it('rejects an invalid requestConfig.explicitState shape (unsupported authenticatedState value)', () => {
+      const artifact = {
+        ...minimalValidArtifact(),
+        requestConfig: {
+          ...minimalValidArtifact().requestConfig,
+          explicitState: { authenticatedState: 'logged-in' },
+        },
+      };
+      expect(isValidObservationArtifact(artifact).valid).toBe(false);
+    });
+  });
 });

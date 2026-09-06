@@ -2,10 +2,11 @@
 
 ## Current contracts
 
-The observation artifact contract is published as `my-frontend-observer@0.5.0`
-and proven both from the source checkout and from the packed npm tarball,
-on Windows, Linux, and macOS. The observation schema is `1.2.0` (see "v0.2
-target contract" and "v0.3 scroll scenario contract" below):
+The observation artifact contract is published in the current
+`my-frontend-observer@0.7.0` package and proven both from the source checkout
+and from the packed npm tarball, on Windows, Linux, and macOS. The observation
+schema is `1.2.0` (see "v0.2 target contract" and "v0.3 scroll scenario
+contract" below):
 
 - artifact kind `my-frontend-observer/observation`, schema version `1.2.0`
   (independent of the package version);
@@ -29,7 +30,9 @@ target contract" and "v0.3 scroll scenario contract" below):
   provenance are all present in every persisted manifest.
 
 This contract is implemented and published; no public programmatic-API
-compatibility promise has been made.
+compatibility promise has been made for the observation engine itself. v0.6
+additionally publishes the bounded-agent-context/correlation programmatic surface
+described later in this document.
 
 ## v0.2 target contract (shipped as part of this release)
 
@@ -84,7 +87,7 @@ exclusive per invocation, and both converge on the same
 observation produces exactly the same `manifest.json` shape as a
 CSS-shorthand one. Schema `1.1.0` was the v0.2 published artifact schema;
 schema `1.2.0` has been emitted since v0.3 and remains the observation schema
-in the current published v0.6.0 package, for both target-input modes
+in the current published v0.7.0 package, for both target-input modes
 (target semantics are unchanged from v0.2 - see the v0.3 scroll scenario
 contract below for what schema `1.2.0` actually adds). `--targets-file`'s
 local input path is never part of the persisted request identity or
@@ -166,8 +169,9 @@ directly, and its local path is operational input only, exactly like
 ## v0.4 comparison contract (shipped as part of this release)
 
 **Current status: shipped as part of the published `my-frontend-observer@0.4.0`
-package.** Observation schema remains `1.2.0`. Comparison is a distinct
-artifact kind and schema, never a bump to the observation schema:
+package and unchanged through the current `0.7.0` release.** Observation
+schema remains `1.2.0`. Comparison is a distinct artifact kind and schema,
+never a bump to the observation schema:
 
 - artifact kind: `my-frontend-observer/comparison`;
 - comparison schema: `1.0.0`.
@@ -486,6 +490,86 @@ blockers; on the canonical worktree, `npm run typecheck`, `npm run lint`,
 `npm test` (627 tests), `npm run test:browser` (120 tests), `npm run
 test:security`, `npm run build`, and `npm run check:docs` all pass.
 
+## v0.7 external visual-reference contract direction (released as `0.7.0`; v0.8+ still future)
+
+External visual-reference support is released as package version `0.7.0`
+(see "v0.7 Prompt 1" through "v0.7 Prompt 8" below for the exact contract).
+The exact public type names, artifact kinds, schema versions, persistence
+layout, and command/programmatic entry points were designed during v0.7
+implementation from current repository precedent, following the constraints
+below; v0.8-v0.10 remain future and must continue to preserve them.
+
+**Distinct evidence domain**: an external reference is desired-design evidence,
+not an `ObservationArtifact` and not the "before" side of a v0.4
+`ComparisonArtifact`. Reference design vs candidate is distinct from both
+before vs after comparison and frontend-contract evaluation. The implementation
+must not fake this distinction by wrapping a raster image in an observation
+shape.
+
+**Reference identity and provenance**: a future reference contract must preserve
+a deterministic logical reference identity/version where appropriate, source
+image reference plus dimensions/format, provenance, bounded region definitions,
+applicable viewport/theme/application-state identity, authored design intent,
+relationship/style evidence where supported, limits/diagnostics, and approval/
+supersession history. Operational filesystem paths must not become semantic
+identity. A raw imported image never silently becomes an approved active
+reference.
+
+**Reference regions and runtime targets stay distinct**: a reference region
+must have its own identity and coordinate semantics. Reference-region to runtime-
+target association must be explicit and capable of representing ambiguity or
+unavailability. Runtime target identity and reference identity must never
+silently become static source ownership; static association still goes through
+the v0.6 runtime/static correlation boundary.
+
+**Applicability before fidelity**: viewport, theme, application state, and
+other selected compatibility dimensions must be evaluated before ordinary
+reference/candidate differences are produced. If the reference and candidate
+represent different intended states, the result must be explicitly incompatible
+or incomparable rather than filled with fabricated visual failures. Planning
+should reuse or extend the canonical v0.4 comparability conventions where they
+mean the same thing rather than invent an unrelated reference-only state model.
+
+**Canonical contract semantics remain authoritative**: executable reference-
+derived requirements must map into the existing v0.5 authored categories
+`requested`, `expected-dependent`, `protected`, or `preserved`. The derived-only
+`unexpected` classification remains derived-only. Informational or unassessed
+reference evidence may stay outside executable contract evaluation until
+explicitly promoted. A second reference-only PASS/FAIL taxonomy is forbidden.
+
+**Tolerance separation**: reference-fidelity tolerances are not automatically
+the same as v0.4 `ComparisonConfig.geometryTolerancePx` or v0.5 contract
+tolerances. Planning must define property-specific semantics for reference
+geometry, spacing, selected style evidence, text/font rendering differences,
+asset-sensitive regions, and optional image similarity. One global pixel-perfect
+threshold is not an acceptable contract.
+
+**Structured evidence first**: geometry, relationships, authored requirements,
+applicability, provenance, and selected bounded style/asset evidence remain
+inspectable primary evidence. Screenshot-region or image-similarity evidence may
+supplement them where reliable, but pixel similarity alone must not determine
+success and must never override active baseline/per-change contracts.
+
+**Bounded correction evidence**: future reference/candidate results must support
+a bounded projection suitable for coding-agent correction, such as reference
+measurement, candidate measurement, delta, failed relationship/style condition,
+relevant reference/runtime identities, provenance, and active protected/
+preserved constraints. Heavy reference image bytes should be referenced, not
+copied into every downstream context packet.
+
+**Approval and supersession**: reference import, reference approval, baseline
+approval, reference supersession, and baseline supersession are separate acts.
+A reference-fidelity `PASS`, a frontend-contract `PASS`, or a successful
+before/after comparison must not silently approve or replace any reference or
+baseline.
+
+The planned v0.8 viewer must consume this v0.7 reference/evaluation contract;
+it must not create a UI-only reference model. v0.9 annotations may originate
+from runtime screenshots or external references but must preserve which source
+identity/coordinate system they belong to and feed the same canonical contract
+semantics. v0.10 combines both entry modes into the full correction/approval
+workflow.
+
 ## Approved v0.1 design inputs
 
 The historical greenfield scaffold plan recorded these v0.1 design decisions:
@@ -509,7 +593,1258 @@ change-scope contracts belong to v0.5 - see "v0.5 frontend contract and
 evaluation" above for the full shipped contract model, identity, evaluation
 engine, persistence, baseline approval, and CLI exposure. Bounded
 agent-context and runtime/static correlation contracts are v0.6 - see "v0.6
-bounded agent context and correlation contract" above for the full
-implemented (release-pending) model. The text/config-driven coding-agent
-review contract is v0.7, next. Viewer and annotation contracts follow in
-v0.8 and v0.9 and converge with the existing workflow in v0.10.
+bounded agent context and correlation contract" above for the full released
+model. The text/config-driven coding-agent review plus non-graphical external
+visual-reference foundation is v0.7 - see "v0.7 Prompt 1 external-reference
+artifact contract" below for the foundation layer implemented so far. Viewer
+consumption of that reference model follows in v0.8; dual-context annotation
+follows in v0.9; both visual entry modes converge with the existing workflow
+in v0.10.
+
+## v0.7 Prompt 1 external-reference artifact contract
+
+Released as `0.7.0`. This is the foundation layer only: identity,
+provenance, bounded image metadata, and a two-state lifecycle for one
+externally supplied design-reference image. It implements no region,
+geometry, relationship, requirement, tolerance, binding, or fidelity-
+evaluation contract - those belong to later v0.7 prompts.
+
+An external reference is a distinct evidence root, not a variant of
+`ObservationArtifact`: it never reuses `ARTIFACT_KIND`/`SCHEMA_VERSION`
+(observation), `COMPARISON_ARTIFACT_KIND`, or `CONTRACT_ARTIFACT_KIND`, and
+those existing types gain no new field from this contract.
+
+```ts
+const EXTERNAL_REFERENCE_ARTIFACT_KIND = 'my-frontend-observer/external-reference';
+const EXTERNAL_REFERENCE_SCHEMA_VERSION = '1.0.0'; // independent of package.json version and every other family's schema version
+
+type ExternalReferenceImageFormat = 'png' | 'jpeg' | 'webp';
+
+interface ExternalReferenceImageReference {
+  path: string; // bare relative filename within the artifact's own directory
+  format: ExternalReferenceImageFormat;
+  width: number;
+  height: number;
+  byteLength: number;
+  sha256: string; // identity-bearing content hash of the raw image bytes
+}
+
+// Points back to the imported artifact that owns the image, without copying its bytes - mirrors ComparisonSourceObservationReference.
+interface ExternalReferenceSourceReference {
+  referenceId: string;
+  referenceRequestId: string;
+  producer: { name: 'my-frontend-observer'; version: string };
+  schemaVersion: '1.0.0';
+  image: ExternalReferenceImageReference;
+}
+
+// Exactly two persisted states - no literal 'superseded' variant (see below).
+type ExternalReferenceLifecycleState = { state: 'imported' } | { state: 'approved'; approvedAt: string };
+
+interface ExternalReferenceArtifactBase {
+  artifactKind: 'my-frontend-observer/external-reference';
+  schemaVersion: '1.0.0';
+  referenceRequestId: string; // deterministic logical identity - shared by an imported artifact and every artifact produced by approving it
+  referenceId: string; // fresh per-persisted-instance identity
+  producer: { name: 'my-frontend-observer'; version: string };
+  provenance: { importedAt: string; label?: string };
+  supersedesReferenceId?: string; // explicit, forward-only supersession of a prior reference's referenceId
+  diagnostics: Diagnostic[];
+  completion: CompletionState;
+}
+
+// lifecycle.state === 'imported': owns the image.
+interface ImportedExternalReferenceArtifact extends ExternalReferenceArtifactBase {
+  lifecycle: { state: 'imported' };
+  image: ExternalReferenceImageReference;
+}
+
+// lifecycle.state === 'approved': references, never copies, the imported artifact's image.
+interface ApprovedExternalReferenceArtifact extends ExternalReferenceArtifactBase {
+  lifecycle: { state: 'approved'; approvedAt: string };
+  sourceReference: ExternalReferenceSourceReference;
+}
+
+type ExternalReferenceArtifact = ImportedExternalReferenceArtifact | ApprovedExternalReferenceArtifact;
+```
+
+Key rules:
+
+- `referenceRequestId` is a pure function of `{imageSha256, format, width,
+  height, supersedesReferenceId}` only - never a filesystem path, output
+  location, label, or timestamp. Byte-identical image content imported from a
+  different operational root produces the same `referenceRequestId`;
+  changing any of those fields changes it.
+- `referenceId` is fresh (nonce-based) on every persisted write, including
+  every approval of an already-imported reference.
+- Importing an image never approves it (`lifecycle.state` is always
+  `'imported'` immediately after import, regardless of a supplied label or
+  supersession target). Approval is a single explicit act
+  (`approveExternalReference`, mirroring `approveAndPersistBaseline`) that
+  refuses anything not currently in the `'imported'` state.
+- Approving persists a *new* artifact instance (same `referenceRequestId`,
+  fresh `referenceId`) carrying a `sourceReference` back to the imported
+  artifact - it never mutates the imported artifact's own manifest, and never
+  copies the image bytes a second time.
+- Supersession is represented only as a forward pointer
+  (`supersedesReferenceId` on the newer artifact); there is deliberately no
+  literal `'superseded'` lifecycle state, so an existing persisted artifact's
+  own manifest is never rewritten - immutability holds unconditionally rather
+  than depending on careful mutation discipline.
+- Supported formats are frozen to exactly `png`/`jpeg`/`webp`, detected from
+  header/magic bytes only (never a caller-declared file extension), bounded
+  to `EXTERNAL_REFERENCE_MAX_IMAGE_BYTES` (20,000,000 bytes) and
+  `[EXTERNAL_REFERENCE_MIN_DIMENSION_PX, EXTERNAL_REFERENCE_MAX_DIMENSION_PX]`
+  (`[1, 8192]`) pixels per side. No OCR, no raster decode, no computer
+  vision, no automatic region detection.
+
+Persisted as `<outputLocation>/<referenceId>/manifest.json` (+
+`reference.<ext>` for an `'imported'` artifact only), via the same atomic
+temp-dir-then-rename discipline as every other artifact family
+(`src/artifacts/externalReferenceArtifactWriter.ts` /
+`externalReferenceArtifactReader.ts`). CLI: `import-reference <image-file>
+--output <dir> [--label] [--supersedes <root>]` and `approve-reference
+--reference <root> --output <dir> [--supersedes <root>]`.
+
+## v0.7 Prompt 2 explicit reference regions and relationships
+
+Released as `0.7.0`. Additive extension of the Prompt 1 contract above:
+one new, optional `regions?: ReferenceRegion[]` field on
+`ExternalReferenceArtifact` (both lifecycle variants), plus a pure,
+non-persisted relationship-derivation capability. No schema version bump -
+`EXTERNAL_REFERENCE_SCHEMA_VERSION` remains `'1.0.0'`, because the field is
+genuinely optional/additive and every Prompt 1 artifact (which predates this
+field entirely) remains valid without it.
+
+```ts
+// domain/externalReferenceRegions.ts
+interface ReferenceRegionRectangle { x: number; y: number; width: number; height: number; }
+interface ReferenceRegion { id: string; rectangle: ReferenceRegionRectangle; }
+
+// Pure derived geometry - never persisted, always recomputed, so it can never drift from the rectangle above.
+interface ReferenceRegionGeometry {
+  x: number; y: number; width: number; height: number;
+  right: number; bottom: number; centerX: number; centerY: number;
+}
+
+const REFERENCE_REGION_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/; // same convention as request/request.ts's target-name pattern
+const MAX_REFERENCE_REGIONS = 20; // same bound value as request/request.ts's MAX_TARGETS - independently owned, coincidentally equal
+```
+
+Region coordinate semantics: origin at the reference image's top-left
+corner, x increasing rightward, y increasing downward, unit is
+reference-image pixels (explicitly not CSS pixels - a static image has no
+CSS box model), coordinates may be fractional. A region's rectangle must lie
+entirely within its owning image's own already-validated
+width/height - out-of-bounds geometry is rejected outright, never clamped.
+
+Key rules:
+
+- Only `{x, y, width, height}` is canonical/authored. `right`, `bottom`,
+  `centerX`, `centerY` are pure calculations over it
+  (`deriveReferenceRegionGeometry`) - never a second, potentially-drifting
+  stored copy of the same fact.
+- Region content is identity-bearing:
+  `buildExternalReferenceRequestIdentity` gained an additive, optional
+  trailing `regions` parameter. Omitting it entirely (every Prompt 1 call
+  site, and any Prompt 2 call that legitimately has no regions) produces the
+  byte-identical hash Prompt 1 already produced - the parameter is left out
+  of the hashed view rather than defaulted to `null`, unlike
+  `supersedesReferenceId`. Authored region order participates in identity
+  (arrays are never reordered by the shared `canonicalize()`), mirroring
+  `domain/identity.ts`'s treatment of configured targets.
+- Region IDs are unique case-insensitively within one artifact (mirroring
+  `request/request.ts`'s target-name dedup convention exactly).
+- `import-reference` gained an optional `--regions-file <json-file>` of the
+  form `{ "regions": [...] }` (same object-root-wrapper convention as
+  `--targets-file`); a legacy invocation without it behaves exactly as in
+  Prompt 1. `approve-reference` carries an imported artifact's `regions`
+  forward verbatim (never re-validated, never re-derived, never dropped) -
+  approval never adds, removes, or edits regions.
+- One new diagnostic code, `invalid-reference-region` (error), covers every
+  region-validation failure (missing/duplicate/malformed id,
+  non-finite/negative/zero geometry, out-of-image-bounds, over the bounded
+  region count) - deliberately not split into several codes, per the
+  "don't proliferate diagnostics" convention.
+
+Reference-region relationships (`domain/externalReferenceRegionRelationships.ts`)
+reuse the exact same pure, tolerance-aware geometry predicates that
+`domain/relationships.ts#deriveLayoutRelationships` uses for runtime targets
+(`horizontalOrderOf`/`verticalOrderOf`/`areaOverlapOf`/`relativeWidthOf`/
+`geometricFitOf`/`verticalSequenceOf`, now exported additively from that
+module with unchanged formulas) and the same `PairwiseRelationshipKind`
+vocabulary and `EvidenceReference` type - never a duplicated or
+reinterpreted copy. Only the six geometry-only families apply (horizontal
+order, vertical order, area overlap, relative width, geometric fit, vertical
+sequencing); DOM containment, scroll ownership, runtime visibility, and
+page-width-vs-viewport are runtime/browser concepts with no reference-image
+equivalent and are not reused. `fits-inside`/`does-not-fit-inside` is
+geometry-only fit - it never claims DOM containment, which an external image
+cannot expose.
+
+```ts
+interface ReferenceRegionRelationship {
+  kind: PairwiseRelationshipKind;
+  subjectRegion: string;   // deliberately distinct field name from PairwiseLayoutRelationship's subjectTarget
+  relatedRegion: string;
+  evidence: EvidenceReference[]; // e.g. { path: 'regions.header.rectangle' } - never a targetEvidence/browser path
+}
+```
+
+Relationships are **not persisted** on the artifact - `deriveReferenceRegionRelationships(referenceRequestId, regions, options)`
+is a pure, deterministic, synchronous function any caller (a future prompt,
+a test) calls on demand against an artifact's own `regions` field, avoiding
+any possibility of a persisted relationship graph drifting from the region
+data it was derived from. Bounded at `MAX_REFERENCE_REGIONS` regions ->
+`MAX_REFERENCE_REGION_PAIRS` pairs `x` 6 families =
+`MAX_REFERENCE_REGION_RELATIONSHIP_RECORDS` records maximum - the same
+bounding shape as `relationships.ts`'s `MAX_PAIRWISE_RELATIONSHIP_RECORDS`.
+This is a maximum capacity, never a required minimum region count - there is
+no contract requiring any specific number of authored regions.
+
+A reference relationship is a fact about the reference image's geometry
+only. It is not a design requirement, not a pass/fail verdict, and does not
+claim a runtime target or source owner exists - see
+`docs/WORKFLOWS.md` "Current external-reference foundation workflow" for
+where those later concepts (Prompt 3+) will attach.
+
+## v0.7 Prompt 3 selected design requirements, tolerance semantics, and reference-evidence adequacy
+
+Released as `0.7.0`. Additive extension of the Prompt 1/2 contracts
+above: one new, optional `requirements?: ExternalReferenceRequirement[]`
+field on `ExternalReferenceArtifact` (both lifecycle variants). No schema
+version bump - same reasoning as Prompt 2's `regions` field.
+
+**Central distinction**: a region's geometry is REFERENCE EVIDENCE -
+everything visibly/measurably present in the image. A requirement is
+SELECTED DESIGN INTENT - only what the user/configuration explicitly chose
+as mattering for later candidate evaluation. Nothing in this repository ever
+turns a region property or a derived relationship into a requirement
+automatically.
+
+```ts
+// domain/externalReferenceRequirements.ts
+
+// Reused directly from domain/frontendContracts.ts - not reinvented as a
+// "reference-only" taxonomy; that type carries no runtime-only coupling.
+// 'unexpected' remains impossible to author (not a member of this union).
+type AuthoredChangeScopeCategory = 'requested' | 'expected-dependent' | 'protected' | 'preserved';
+type ExpectedDependentMode = 'required' | 'permitted'; // required only (and exactly) when category === 'expected-dependent'
+
+type ReferenceRequirementRegionProperty = 'x' | 'y' | 'width' | 'height' | 'right' | 'bottom' | 'centerX' | 'centerY'; // exactly ReferenceRegionGeometry's own fields
+type ReferenceRequirementMeasurement = 'vertical-gap' | 'horizontal-gap' | 'center-x-delta' | 'center-y-delta' | 'left-edge-delta' | 'right-edge-delta';
+
+type ReferenceRequirementSubject =
+  | { kind: 'region-property'; region: string; property: ReferenceRequirementRegionProperty }
+  | { kind: 'region-relationship'; subjectRegion: string; relatedRegion: string; relationship: PairwiseRelationshipKind } // reused from relationships.ts - geometry-only families only
+  | { kind: 'region-measurement'; subjectRegion: string; relatedRegion: string; measurement: ReferenceRequirementMeasurement };
+
+// Deliberately NOT a reuse of frontendContracts.ts's ContractTolerance: that
+// type's 'absolute-px' is implicitly runtime/CSS pixels. Reference-image
+// pixels are a distinct, explicitly-labeled unit - nothing here assumes
+// 1 reference pixel = 1 CSS pixel (Prompt 6 will need an explicit mapping).
+type ReferenceRequirementTolerance = { kind: 'exact' } | { kind: 'absolute-reference-px'; amount: number } | { kind: 'percent'; amount: number };
+
+interface ExternalReferenceRequirement {
+  requirementId: string; // system-computed from {subject, category, expectedDependentMode, tolerance} only - never authored
+  category: AuthoredChangeScopeCategory;
+  expectedDependentMode?: ExpectedDependentMode;
+  subject: ReferenceRequirementSubject;
+  tolerance?: ReferenceRequirementTolerance; // required for region-property/region-measurement; must be absent for region-relationship
+}
+```
+
+Key rules:
+
+- Requirement identity (`requirementId`) is always system-computed
+  (`buildReferenceRequirementIdentity`, mirroring
+  `frontendContractIdentity.ts#buildClauseIdentity`'s exact shape) - the raw
+  authored input (`RawReferenceRequirement`) has no `requirementId` field at
+  all, and supplying one is a validation error. Unlike v0.5's
+  `BaselineClause`/`PerChangeClause` (which need an author-visible `clauseId`
+  for cross-document `supersedesBaselineClauseIds` references), Prompt 3
+  requirements have no cross-document reference need yet, so trusting an
+  authored id would only invite drift between a user-typed id and the
+  content it claims to identify.
+- The reference-side expected value/relationship is never stored on the
+  requirement or the artifact - `deriveReferenceRequirementExpectation()` is
+  a pure function computed on demand from the artifact's own `regions`,
+  eliminating the exact drift risk of persisting e.g. `width: 424` alongside
+  a region whose rectangle could (in principle) later disagree with it.
+- A requirement referencing a region id that does not exist in the
+  artifact's own `regions` is a **structural validation failure** (rejected
+  at construction/import time), never merely "unavailable" reference
+  evidence - `isValidReferenceRequirements` checks this before any
+  requirement reaches adequacy computation.
+- **Duplicate/conflicting subject rule**: no two requirements in one
+  collection may share the same structural subject (same region+property,
+  or the same unordered region pair + relationship, or + measurement),
+  regardless of category. This single rule covers both "duplicate
+  requirement" and "conflicting categories on the same subject" (e.g. the
+  same region/property authored as both `requested` and `protected`) -
+  v0.5's `evaluateFrontendContract#primitivesConflict` is a *runtime-
+  evaluation-time* detector (it needs before/after `ObservationArtifact`
+  evidence that does not exist yet at this stage) and could not be reused
+  safely; Prompt 3 restricts invalid combinations at authoring time instead,
+  per the documented precedent-review outcome.
+- Bounded at `MAX_REFERENCE_REQUIREMENTS` (50) requirements per artifact -
+  a maximum capacity, never a required minimum (there is no contract
+  requiring any specific number of authored requirements).
+- One new diagnostic code, `invalid-reference-requirement` (error), covers
+  every requirement-authoring validation failure - deliberately not split
+  further, per the "don't proliferate diagnostics" convention already used
+  for `invalid-reference-region`.
+- `import-reference` gained an optional `--requirements-file <json-file>`
+  (`{ "requirements": [...] }`, same object-root-wrapper convention as
+  `--regions-file`/`--targets-file`); `approve-reference` carries an
+  imported artifact's `requirements` forward verbatim (never re-validated,
+  never re-derived, never dropped), exactly mirroring how it already
+  handles `regions`.
+
+**Reference-evidence adequacy** (`deriveReferenceRequirementAdequacy(regions, requirements)`)
+answers only "does the reference definition itself contain enough evidence
+to understand every selected requirement?" - never "does a runtime
+target/candidate exist" (that is Prompt 4/5's responsibility). It is its own
+small, reference-owned vocabulary (`REFERENCE_REQUIREMENT_ADEQUACY_STATES` =
+`'adequate' | 'partial' | 'inadequate'`, and exactly two reason codes,
+`no-selected-requirements` and `missing-reference-relationship-evidence`) -
+deliberately **not** a reuse of
+`boundedAgentContext.ts`'s `Adequacy`/`ADEQUACY_REASON_CODES`, which
+describe runtime-target/static-correlation concerns that do not exist at
+this stage; mislabeling reference adequacy as bounded-agent-context adequacy
+would conflate two genuinely different evidence domains. Zero selected
+requirements is explicitly `inadequate` (a region-rich, fully-valid
+reference is still not usable for a correction task until the user has
+actually selected what matters) - this is a documented product decision,
+not an oversight. The result is never a numeric score, always structured
+and inspectable, with reasons ordered deterministically by authored
+requirement position.
+
+```ts
+interface ReferenceRequirementAdequacy {
+  status: 'adequate' | 'partial' | 'inadequate';
+  totalRequirements: number;
+  evaluableRequirements: number;
+  unavailableRequirements: number;
+  reasons: { code: 'no-selected-requirements' | 'missing-reference-relationship-evidence'; requirementId?: string; detail?: string }[];
+}
+```
+
+## v0.7 Prompt 4 reference applicability and candidate-state compatibility
+
+Released as `0.7.0`. Additive extension of the Prompt 1/2/3 contracts
+above: one new, optional `applicability?: ExternalReferenceApplicability`
+field on `ExternalReferenceArtifact` (both lifecycle variants), one new,
+optional `explicitState?: ExplicitStateDimensions` field on
+`ObservationArtifact.requestConfig`, and one new pure module,
+`domain/externalReferenceCompatibility.ts`, that answers a single question:
+"does this external reference describe the same frontend state as this
+candidate `ObservationArtifact`?" No schema version bump on either artifact
+- same reasoning as Prompt 2/3's additive fields.
+
+**Central distinction**: this is page/state-level compatibility only -
+never geometry, never fidelity, never a visual/pixel comparison, and never
+region-to-runtime-target binding (Prompt 5). It answers "should a
+reference-vs-candidate geometry comparison even be attempted", not "does the
+candidate match the reference". Reference-evidence adequacy (Prompt 3) and
+reference/candidate compatibility (Prompt 4) are deliberately independent:
+a reference can be `adequate` (enough selected requirements to evaluate)
+while simultaneously `incomparable` against a given candidate (wrong
+viewport/theme/state), and vice versa - neither result constrains the
+other.
+
+**State identity is always explicit, never inferred.** `theme`,
+`applicationState`, and `authenticatedState` are caller/configuration-
+supplied labels only. The observer never reads screenshot pixels, CSS, DOM
+classes/text, URLs, source code, filenames, accessibility labels,
+localStorage, or cookies to determine state - there is no automatic state
+detection anywhere in this codebase, and Prompt 4 does not add any. Labels
+are bounded opaque identities (`^[A-Za-z0-9_-]{1,64}$`, the same pattern
+already used for target names and region ids) compared by exact,
+case-sensitive string equality only - `"dark"` and `"one-dark"` are
+unrelated labels, never fuzzy-matched or normalized.
+
+```ts
+// domain/explicitState.ts - shared by both ObservationArtifact and ExternalReferenceArtifact
+type AuthenticatedState = 'authenticated' | 'unauthenticated'; // closed vocabulary - never a place for credentials/tokens/cookies/session ids
+interface ExplicitStateDimensions {
+  theme?: string;
+  applicationState?: string;
+  authenticatedState?: AuthenticatedState;
+}
+// isValidExplicitStateDimensions requires at least one dimension declared and rejects any unsupported field -
+// this is a bounded, closed shape, never an arbitrary Record<string, unknown> metadata bag.
+
+// domain/externalReferenceApplicability.ts
+interface ApplicableViewport { width: number; height: number } // CSS pixels, bounds [200, 3840] mirroring request.ts's own viewport bounds
+interface ExternalReferenceApplicability extends ExplicitStateDimensions {
+  viewport?: ApplicableViewport;
+}
+```
+
+**Reference image size is never the same concept as applicable viewport.**
+`ExternalReferenceImageReference.width/height` (Prompt 1) describes the
+reference image's own pixel dimensions - a property of the image file,
+detected from its header bytes. `applicability.viewport` describes the
+CSS-pixel runtime viewport the design *represents* - a reference image may
+be captured at any resolution or device-pixel-ratio (e.g. a 1920x1080
+screenshot representing a 960x540 CSS-pixel layout at 2x DPR). Nothing in
+`externalReferenceApplicability.ts` reads or derives a viewport from image
+dimensions; `isValidExternalReferenceApplicability` is its own validator
+(not a reuse of `isValidExplicitStateDimensions`, whose "at least one
+dimension" rule would incorrectly reject a viewport-only applicability
+object).
+
+**v0.4 comparability is reused, not duplicated.** `domain/comparison.ts`
+gained four additive reason codes (`viewport-unassessed`, `theme-mismatch`,
+`authenticated-state-mismatch`, `application-state-mismatch` - the
+`*-unassessed` codes for theme/authenticated-state/application-state
+already existed from v0.4) and two optional fields on `ComparabilityReason`
+(`referenceValue?: string`, `candidateValue?: string`, populated only for a
+mismatch reason). `domain/comparisonEngine.ts` gained one new exported pure
+helper, `assessOptionalComparabilityDimension(mismatchCode, unassessedCode,
+beforeValue, afterValue, mismatchMessage, unassessedMessage)`, extracted
+from - and now used by - both v0.4's own `evaluateComparability`
+(Observation-vs-Observation) and the new
+`evaluateReferenceCandidateCompatibility` (Reference-vs-Observation). The
+rule is identical either way: both values defined and equal -> no reason;
+both defined and different -> a `blocking` mismatch reason (with
+`referenceValue`/`candidateValue` populated); either value undefined ->
+an `unassessed` reason. This is a genuine, additive improvement to v0.4's
+own behavior: `evaluateComparability` now assesses theme/authenticated-
+state/application-state as matching or blocking-mismatched whenever *both*
+observations declare `requestConfig.explicitState`, rather than always
+reporting them unassessed - but every historical observation pair (and any
+pair where either side omits `explicitState`) retains the exact old
+unassessed-only behavior, verified by the frozen `evaluateComparability`
+regression test that predates this batch.
+
+```ts
+// domain/externalReferenceCompatibility.ts
+interface ReferenceCandidateCompatibilityResult {
+  referenceId: string;
+  referenceRequestId: string;
+  candidateObservationId: string;
+  candidateRequestId: string;
+  compatibility: ComparabilityResult; // v0.4's own reused result type - state/reasons, never a boolean or a visual score
+}
+function evaluateReferenceCandidateCompatibility(reference: ExternalReferenceArtifact, candidate: ObservationArtifact): ReferenceCandidateCompatibilityResult;
+```
+
+Key rules:
+
+- Pure and synchronous - no browser, no filesystem, no network, no target
+  binding. Only `reference.applicability` and
+  `candidate.requestConfig.viewport`/`candidate.requestConfig.explicitState`
+  are consulted; reference regions/requirements are never read here (a
+  distinct, separate concern - see Prompt 3 above).
+- A dimension the reference constrains but the candidate entirely omits
+  (or vice versa) is `unassessed`, never treated as compatible-by-default
+  and never fabricated as a mismatch - fail-closed, honest non-assessment.
+- A reference that declares no `applicability` at all produces a fully
+  `unassessed` (never automatically `incomparable`, never automatically
+  `comparable` beyond "no blocking reasons found") result across all four
+  dimensions - Prompt 1/2/3 references remain fully usable, just
+  unassessed for compatibility until applicability is authored.
+- No automatic persisted compatibility artifact. This is a pure
+  programmatic result, produced on demand by an application/CLI caller
+  that already holds both a reference and a candidate artifact - inventing
+  a new persisted artifact kind for a value this cheap to recompute would
+  add drift risk (a candidate/reference re-imported later could silently
+  disagree with a stale persisted compatibility record) with no
+  corresponding benefit; this may be revisited only if a later prompt's
+  architecture proves persistence necessary.
+- Identity impact: `buildExternalReferenceRequestIdentity` gained a final
+  optional `applicability` parameter (omitted, never `null`, when absent -
+  byte-identical to Prompt 1/2/3 hashes for every call that doesn't supply
+  it); `buildRequestIdentity` gained a final optional `explicitState`
+  parameter with the identical omission convention. Neither identity
+  function ever takes a file path.
+- CLI: `import-reference` gained an optional `--applicability-file
+  <json-file>` (the raw, unwrapped applicability object - not a
+  `{ "requirements": [...] }`-style wrapper, since applicability is a
+  single object rather than a named list); `observe` gained an optional
+  `--state-file <json-file>` (the raw, unwrapped `ExplicitStateDimensions`
+  object). Both follow the existing `--scroll-scenario-file` convention
+  exactly: relative paths resolve from the current working directory, the
+  path itself is never persisted or included in any identity, and CLI code
+  owns only flag syntax/file reading/JSON parsing/object-root validation -
+  all semantic validation happens in the domain layer.
+
+## v0.7 Prompt 5 explicit reference-region <-> runtime-target binding
+
+Released as `0.7.0`. One new pure domain module,
+`domain/externalReferenceRuntimeBinding.ts`, answering "which stable
+observer runtime target, if any, does this candidate observation resolve
+for each explicitly declared reference region?" No new field is added to
+either `ExternalReferenceArtifact` or `ObservationArtifact` - both remain
+exactly as Prompt 4 left them - and no schema version bump on either.
+
+**Two identity domains, kept strictly separate.** A binding declaration
+names a Prompt 2 `ReferenceRegion.id` and a v0.2 `NamedTarget.name` (the
+stable observer runtime target identity established since v0.2 - never a
+CSS selector, DOM node handle, source file, React component name, or
+my-dev-kit node id). These two strings living in the same textual namespace
+never implies a binding - a region id `"header"` and a target name
+`"header"` bind to each other only because of an explicit declaration, not
+because the strings match (verified by a dedicated test: the same
+observation with and without the explicit declaration produces `bound`
+only in the former case).
+
+```ts
+// domain/externalReferenceRuntimeBinding.ts
+interface ReferenceRuntimeBindingDeclaration {
+  referenceRegion: string; // Prompt 2 ReferenceRegion.id
+  runtimeTarget: string;   // v0.2 NamedTarget.name
+}
+
+const REFERENCE_RUNTIME_BINDING_STATUSES = ['bound', 'ambiguous', 'unavailable'] as const;
+
+interface ReferenceRuntimeBindingResult {
+  referenceRegion: string;
+  runtimeTarget: string;
+  status: 'bound' | 'ambiguous' | 'unavailable';
+  reasonCode?: 'runtime-target-not-configured' | 'runtime-target-not-found' | 'runtime-target-ambiguous' | 'runtime-target-evidence-unavailable';
+  detail: string;
+  targetResolutionStatus?: TargetSelectionStatus; // v0.2's own resolution status, when evidence for it exists
+  targetVisible?: boolean; // provenance only - never affects status
+}
+
+interface ReferenceRuntimeBindingEvaluation {
+  referenceId: string;
+  referenceRequestId: string;
+  candidateObservationId: string;
+  candidateRequestId: string;
+  compatibility: ComparabilityResult; // reused verbatim from v0.7 Prompt 4
+  bindings: ReferenceRuntimeBindingResult[]; // empty exactly when compatibility.state === 'incomparable'
+}
+
+function evaluateReferenceRuntimeBindings(
+  reference: ExternalReferenceArtifact,
+  candidate: ObservationArtifact,
+  declarations: readonly ReferenceRuntimeBindingDeclaration[],
+): { ok: true; evaluation: ReferenceRuntimeBindingEvaluation } | { ok: false; reason: string };
+```
+
+Key rules:
+
+- **Explicit, never inferred.** A binding declaration is user/configuration
+  input asserting a conceptual correspondence; this module never discovers
+  it from screenshot geometry, matching names, matching text, or source
+  code. There is no automatic-matching algorithm anywhere in this module.
+- **Reuses, never duplicates.** The compatibility gate reuses
+  `evaluateReferenceCandidateCompatibility` (Prompt 4) verbatim - viewport/
+  theme/application-state/authenticated-state comparison logic is never
+  re-implemented here. Runtime-target resolution reuses `targetPresence`
+  (v0.4 `comparisonEngine.ts`, now additively exported alongside
+  `assessOptionalComparabilityDimension`) - the exact same "how do I read a
+  `TargetEvidenceRecord`'s resolution" rule v0.4's own before/after target
+  comparison already uses. No second target resolver, no browser launch, no
+  Chromium query, no selector evaluation, no live-DOM inspection - this
+  module consumes only an already-captured `ObservationArtifact`'s
+  `requestConfig.targets`/`targetEvidence`.
+- **Compatibility gates before evaluation, structurally.** If
+  `evaluateReferenceCandidateCompatibility` reports `incomparable`,
+  `bindings` is the empty array and the caller reads the reason from the
+  embedded `compatibility` field - there is no binding-local "incompatible"
+  status; Prompt 4's compatibility result is represented exactly once, not
+  duplicated into a parallel vocabulary.
+- **Two-layer validation.** Reference-region existence, declaration shape,
+  bounds, and duplicate/conflict rules are validated structurally against
+  the `ExternalReferenceArtifact` alone (`isValidReferenceRuntimeBindingDeclarations`)
+  - independent of any candidate, mirroring Prompt 3's "unknown region
+  reference is a structural validation failure" precedent exactly: a
+  declaration naming a nonexistent reference region, or any reference with
+  no `regions` declared at all, fails the whole evaluation closed before a
+  candidate is even considered. Runtime-target availability, by contrast,
+  is evaluated per-candidate inside `evaluateReferenceRuntimeBindings`
+  itself, since the same declaration can be `bound` against one candidate
+  and `unavailable` against another.
+- **Duplicate/conflicting-declaration rule** (mirrors Prompt 3's
+  requirement-subject uniqueness rule): no two declarations may name the
+  same `referenceRegion` (case-insensitively), whether they agree on
+  `runtimeTarget` (an exact duplicate) or disagree (a conflict) - both fail
+  the same way, never silently resolved by keeping the first. The reverse -
+  several distinct reference regions naming the same `runtimeTarget` - is
+  deliberately allowed (e.g. two design sub-regions legitimately
+  corresponding to one runtime container element).
+- **Target-resolution-state handling.** `targetPresence`'s four outcomes
+  map onto binding status as: `matched` -> `bound`; `ambiguous` -> `ambiguous`
+  (the candidate's own configured target resolved ambiguously - never
+  reported bound even though its stable name exists); `not-found` ->
+  `unavailable` (`runtime-target-not-found` - the target was configured but
+  the resolver found nothing on the page); no usable resolution evidence at
+  all -> `unavailable` (`runtime-target-evidence-unavailable`). A declared
+  `runtimeTarget` that was never part of the candidate's configured target
+  set at all is a fifth, CLI/config-boundary-only outcome -> `unavailable`
+  (`runtime-target-not-configured`) - never a dynamic page search.
+- **Hidden-target decision.** A uniquely resolved (`matched`) but hidden
+  target is still reported `bound` - visibility never changes `status`.
+  `targetVisible` (from the existing `TargetVisibility` evidence, when
+  available) is carried as provenance only. Binding identity (does a stable
+  correspondence exist) and later fidelity evaluability (can this evidence
+  actually be used to check the design) are treated as distinct questions;
+  this prompt answers only the former.
+- **Not every region needs a binding.** `isValidReferenceRuntimeBindingDeclarations`
+  never requires full region coverage - a reference may have regions no
+  declaration names at all (they simply have no bound runtime target for
+  this candidate). This is not a completeness gate; Prompt 6 (or later) may
+  add one for the regions that selected requirements actually need.
+- **No persisted artifact family.** `evaluateReferenceRuntimeBindings` is a
+  pure, on-demand function over an already-persisted reference, an
+  already-persisted candidate observation, and an in-memory declaration
+  collection. No `ExternalReferenceBindingArtifact` (or equivalent) is
+  introduced - the same "cheap to recompute, persisting invites drift"
+  reasoning Prompt 4 already applied to its own compatibility result.
+  Neither the reference nor the observation artifact is ever rewritten to
+  carry a binding result: a design reference may later be evaluated against
+  several different candidates, and one observation may be evaluated
+  against several different references, so binding is kept as downstream,
+  candidate-specific, reference-specific derived evidence rather than
+  mutating either immutable source artifact.
+- **No new identity function.** Unlike `buildRequestIdentity`/
+  `buildExternalReferenceRequestIdentity`, no hash-based logical identity is
+  computed for a binding declaration or its evaluated result - there is no
+  persistence and no cross-document reference-by-id need yet (mirroring
+  Prompt 4's `ReferenceCandidateCompatibilityResult`, which took the same
+  approach). Provenance is instead carried directly as plain fields
+  (`referenceId`, `referenceRequestId`, `candidateObservationId`,
+  `candidateRequestId`, plus each result's own `referenceRegion`/
+  `runtimeTarget`) - already deterministic, already sufficient for a caller
+  to trace every result back to its inputs, without inventing a fifth
+  identity-hashing convention for a value this prompt does not persist.
+- **Deterministic ordering.** `bindings` preserves authored declaration
+  order (mirroring the "authored order is semantic" convention already used
+  for regions/requirements) rather than sorting by any derived key.
+- **Bounded.** `MAX_REFERENCE_RUNTIME_BINDINGS` (20) caps the declaration
+  collection, mirroring `MAX_REFERENCE_REGIONS`.
+- **No public CLI surface yet.** Only the programmatic
+  `evaluateReferenceRuntimeBindings`/`isValidReferenceRuntimeBindingDeclarations`
+  functions are exported. A standalone CLI command was deliberately not
+  added merely for symmetry with `import-reference`/`observe`; Prompt 6
+  (structured fidelity evaluation) is expected to become the first concrete
+  consumer and public-surface owner for this capability.
+
+## v0.7 Prompt 6 structured reference-vs-candidate fidelity evaluation
+
+Released as `0.7.0`. One new pure domain module,
+`domain/externalReferenceFidelity.ts`, and its CLI-facing counterpart,
+`application/referenceFidelityEvaluationService.ts` plus the new
+`evaluate-reference-fidelity` CLI command - the first point in this whole
+v0.7 stack where a reference's authored expectation is actually compared
+against live candidate evidence. No new artifact field, no schema version
+bump: this prompt reuses Prompt 1-5's artifacts and result types entirely.
+
+```ts
+// domain/externalReferenceFidelity.ts
+const REFERENCE_REQUIREMENT_FIDELITY_STATUSES = ['pass', 'fail', 'unavailable'] as const;
+const REFERENCE_FIDELITY_STATES = ['not-evaluated', 'pass', 'fail'] as const;
+const REFERENCE_FIDELITY_BLOCK_REASONS = ['reference-inadequate', 'incompatible'] as const;
+
+interface ReferenceRequirementFidelityResult {
+  requirementId: string;
+  category: AuthoredChangeScopeCategory;
+  expectedDependentMode?: ExpectedDependentMode;
+  subject: ReferenceRequirementSubject;
+  boundRuntimeTargets: string[];
+  status: 'pass' | 'fail' | 'unavailable';
+  reasonCode?: 'reference-evidence-unavailable' | 'reference-relationship-not-exhibited' | 'binding-unavailable' | 'candidate-evidence-unavailable' | 'coordinate-mapping-unavailable'; // present iff status === 'unavailable'
+  detail?: string;
+  // region-property/region-measurement subjects only:
+  referenceValue?: number;      // reference-image pixels
+  candidateRawValue?: number;   // CSS pixels, as captured
+  candidateValue?: number;      // candidateRawValue converted into reference-image-pixel space
+  delta?: number;               // candidateValue - referenceValue
+  tolerance?: ReferenceRequirementTolerance;
+  // region-relationship subjects only:
+  expectedRelationship?: PairwiseRelationshipKind;
+  actualRelationship?: PairwiseRelationshipKind;
+}
+
+interface ReferenceCandidateFidelityEvaluation {
+  referenceId: string;
+  referenceRequestId: string;
+  candidateObservationId: string;
+  candidateRequestId: string;
+  adequacy: ReferenceRequirementAdequacy; // reused verbatim from Prompt 3
+  compatibility?: ComparabilityResult;    // reused verbatim from Prompt 4; absent only when adequacy itself is inadequate
+  bindings?: ReferenceRuntimeBindingEvaluation; // reused verbatim from Prompt 5; absent when an earlier gate blocked
+  state: 'not-evaluated' | 'pass' | 'fail';
+  blockedBy?: 'reference-inadequate' | 'incompatible'; // present iff state === 'not-evaluated'
+  requirementResults: ReferenceRequirementFidelityResult[]; // empty iff state === 'not-evaluated'
+}
+
+function evaluateReferenceCandidateFidelity(
+  reference: ExternalReferenceArtifact,
+  candidate: ObservationArtifact,
+  bindingDeclarations: readonly ReferenceRuntimeBindingDeclaration[],
+  options?: { geometryTolerancePx?: number },
+): { ok: true; evaluation: ReferenceCandidateFidelityEvaluation } | { ok: false; reason: string };
+```
+
+**Result vocabulary.** `pass`/`fail`/`unavailable` is reused from v0.5's
+`CLAUSE_RESULT_STATUSES` shape (the same honest three-state idea: a result
+either satisfies its condition, fails it, or cannot be evaluated - never a
+score) but is its own independently-owned constant, deliberately excluding
+v0.5's fourth member, `'conflict'` - Prompt 6 has no cross-requirement
+authoring-conflict concept (each requirement is evaluated independently
+against its own subject), so reusing `conflict` would invite a status this
+prompt can never actually produce.
+
+**Evaluation order (frozen, never reordered):** reference structural
+validation -> candidate structural validation -> binding-declaration
+structural validation -> Prompt 3 reference adequacy -> Prompt 4
+compatibility -> Prompt 5 binding evaluation -> per-requirement candidate-
+evidence/coordinate-mapping checks -> per-requirement tolerance/
+relationship comparison -> overall result. The first three (structural
+validation) failures return `{ ok: false, reason }` - a caller/config error,
+never a fidelity outcome. The next two (adequacy `inadequate`, compatibility
+`incomparable`) short-circuit to `state: 'not-evaluated'` with an empty
+`requirementResults` - an earlier blocking gate never lets an ordinary
+PASS/FAIL requirement set get fabricated past it. `adequacy` "partial" (some,
+but not all, authored requirements individually unavailable) does **not**
+block evaluation - it proceeds normally, and the individual unavailable
+reference-side requirements simply also report `unavailable` at the
+per-requirement level (their own reference-evidence problem, re-derived
+identically by `evaluateOneRequirement`, not looked up from the adequacy
+result).
+
+**Coordinate mapping - the central problem this prompt solves.** Prompt 2
+regions and Prompt 3 tolerances are authored in reference-image pixels;
+`ObservationArtifact` target geometry is CSS pixels. This module establishes
+exactly one explicit, deterministic scale from `reference.applicability.viewport`
+(the CSS-pixel runtime viewport, Prompt 4) and the reference image's own
+pixel dimensions (Prompt 1) - `scaleX = imageWidth / viewportWidth`,
+`scaleY = imageHeight / viewportHeight` - and converts every candidate
+measurement into reference-image-pixel space before comparing it against a
+Prompt 3 tolerance. It never assumes 1 reference-image pixel equals 1 CSS
+pixel, and it never performs cropping, offset, rotation, or perspective
+registration - only a deliberately bounded full-frame mapping. `scaleX`/
+`scaleY` must agree within a small, independently-owned coordinate-mapping-
+validity tolerance (1% relative, never a user-authored design tolerance) or
+the mapping is rejected outright; a reference with no applicable viewport at
+all likewise has no mapping. Either way, every numeric (`region-property`/
+`region-measurement`) requirement becomes `unavailable`/`coordinate-mapping-unavailable`
+- categorical `region-relationship` requirements are unaffected (they never
+need a scale). Horizontal fields (`x`/`width`/`right`/`centerX` and the
+horizontal measurements) always scale by `scaleX`; vertical fields (`y`/
+`height`/`bottom`/`centerY` and the vertical measurements) always scale by
+`scaleY` - this falls out automatically from converting a full
+`TargetGeometry` into a `ReferenceRegionGeometry`-shaped value per axis,
+never a hand-picked per-property axis table.
+
+**Tolerance is reused exactly, never redefined.** A single rule -
+`abs(delta) <= allowedAmount` - covers all three Prompt 3 tolerance kinds:
+`exact` is simply the zero-tolerance case (`allowedAmount = 0`);
+`absolute-reference-px` uses its authored `amount` directly (already in
+reference-image pixels); `percent`'s denominator is `Math.abs(referenceValue)`,
+mirroring v0.5's own `toleranceToPx` "may vary by up to N%" convention
+exactly (independently reimplemented in reference-image-pixel units, never
+imported - `frontendContractEvaluation.ts`'s `ContractTolerance` is a
+different, CSS-pixel-implicit unit). No hidden epsilon is added anywhere;
+subpixel precision is preserved through to the final comparison, so a
+tolerance-boundary value (e.g. delta exactly equal to the allowed amount)
+passes and one unit past it fails, exactly as authored.
+
+**Region-property evaluation** reads `TargetGeometry` from the bound
+target's `targetEvidence` entry, converts it into a `ReferenceRegionGeometry`-
+shaped value (adding `centerX`/`centerY`, computed identically to
+`deriveReferenceRegionGeometry`) both raw (CSS) and scaled (reference-image
+pixels), and reads `[subject.property]` off each - `candidateRawValue`
+(CSS) and `candidateValue` (reference-image pixels) are both reported.
+
+**Region-measurement evaluation** converts *both* bound targets' geometries
+the same way and calls the existing `deriveReferenceRequirementMeasurement`
+(Prompt 3) on the converted geometries directly - reusing Prompt 3's exact
+gap/delta formulas rather than reimplementing a parallel "runtime version"
+of them, and never inventing a generic geometry expression language. A
+geometrically-undefined gap (the two targets overlap on the relevant axis)
+is `unavailable`, mirroring Prompt 3's own reference-side treatment of the
+identical situation.
+
+**Region-relationship evaluation** first confirms the reference itself
+actually exhibits its own selected relationship (`deriveReferenceRequirementExpectation`'s
+`matches` field) - if not, the result is `unavailable`/
+`reference-relationship-not-exhibited` (a reference-authoring problem, never
+a candidate `fail`). It then resolves both bound targets and calls the
+canonical `deriveLayoutRelationships` (v0.4) over the *whole* candidate
+observation - never a second, parallel relationship formula - and looks up
+the pairwise record for the bound target pair **scoped to the exact
+requested relationship family** (an independently-owned, third duplicate of
+the same `RELATIONSHIP_FAMILY_GROUPS` shape already used by
+`frontendContractEvaluation.ts` and `externalReferenceRequirements.ts` -
+this is the same real bug class Prompt 3 fixed: matching the first record
+for a target pair regardless of family would silently compare against the
+wrong relationship kind). A record only derivable in the reversed target
+order is `unavailable`, never auto-flipped - identical to Prompt 3's own
+reference-side handling of the same situation. `pass` requires the
+candidate's actual relationship kind to equal the requirement's authored
+`relationship` exactly.
+
+**Binding gate.** Every subject's dependent reference region(s) must have a
+`bound` (never `ambiguous`/`unavailable`, and never simply absent from the
+supplied declarations) Prompt 5 binding result, or the requirement is
+`unavailable`/`binding-unavailable` - this module never guesses another
+target and never auto-binds based on geometry or names. A `bound` target
+that is not visible (`TargetVisibility.visible !== true`, including when
+visibility evidence itself is unavailable) is treated as having no usable
+geometry - `unavailable`/`candidate-evidence-unavailable` - preserving the
+distinction between "binding succeeded" (Prompt 5's question) and "this
+evidence is usable for fidelity evaluation" (this prompt's question): a
+hidden-but-uniquely-resolved target still has a stable identity, but its
+geometry is never treated as meaningful for a numeric/relationship
+comparison.
+
+**Categories are preserved, never given different PASS/FAIL rules.**
+`category`/`expectedDependentMode` are carried through to each result as
+provenance only; Prompt 3 never implemented a `required`-vs-`permitted`
+directional evaluation difference for its own expectation/adequacy
+derivation (unlike v0.5's runtime-directional contract clauses), so Prompt 6
+does not invent one now - every requirement in the reference's authored
+collection is evaluated by the identical rule and counts identically toward
+the overall result, regardless of category.
+
+**Overall fidelity result.** For an evaluated (non-blocked) pair, `state`
+is `'pass'` only when every requirement result is `'pass'`; any `'fail'` or
+`'unavailable'` result forces `state: 'fail'` - there is no meaningful third
+overall bucket once evaluation has actually run, since "some/all
+unavailable" and "some/all fail" both equally mean "not every selected
+requirement is confirmed satisfied." A reference with zero selected
+requirements never reaches this stage at all - it is `inadequate` (Prompt
+3's own zero-requirements rule) and therefore `not-evaluated`, never a
+meaningless `pass`.
+
+**Persistence decision: none.** `evaluateReferenceCandidateFidelity` (and
+its CLI-facing wrapper, `evaluateReferenceCandidateFidelityFromArtifactRoots`)
+is a pure, on-demand function over already-persisted/in-memory evidence -
+no new `ExternalReferenceFidelityEvaluationArtifact` (or equivalent) is
+introduced. Rationale, identical to Prompt 4/5's own precedent: the result
+is cheap to recompute deterministically from its inputs (a reference, a
+candidate, and a caller-supplied binding-declaration collection), and
+persisting it would invite drift with no corresponding benefit at this
+stage; this may be revisited only if Prompt 7's architecture proves
+persistence necessary.
+
+**CLI**: `evaluate-reference-fidelity --reference <root> --candidate <root>
+[--bindings-file <json-file>] [--enforce]` - the CLI surface Prompt 5
+deliberately deferred. `--bindings-file` follows the exact
+`--requirements-file`/`--regions-file` wrapped-object convention
+(`{ "bindings": [...] }`); CLI code owns only flag syntax/file reading/JSON
+parsing/root-shape validation, with every binding-declaration rule staying
+owned by `isValidReferenceRuntimeBindingDeclarations`. `--enforce` mirrors
+`evaluate-contract`'s exact precedent: it changes only the process exit
+status for an already-computed `state: 'fail'` result, never the printed
+content - and has no effect on `not-evaluated`, which always exits 0 (a
+compatibility/adequacy blocker is a successful, structured, honest
+non-evaluation, never an execution error and never a design mismatch).
+Persists nothing; there is no `--output` flag.
+
+## v0.7 Prompt 7 bounded reference-fidelity projection and v0.6 bounded-agent-context integration
+
+Released as `0.7.0`. Additive extension of the v0.6 bounded-agent-context
+contract above and of the v0.7 Prompt 6 fidelity evaluator - no new bounded-
+context artifact family, no second visual-context system, no schema version
+bump (`BOUNDED_AGENT_CONTEXT_SCHEMA_VERSION` stays `1.0.0`, following the
+exact precedent already set when `correlations?` was added in v0.6 Batch 3).
+
+**Chosen integration owner.** `projectBoundedAgentContext` itself gains one
+new optional input (`fidelity?: ReferenceCandidateFidelityEvaluation`, plus
+`fidelityRequired?: boolean`) rather than a separate `VisualAgentContext`/
+`VisualPromptPacket`/`ReferencePromptBuilder`. This was chosen over a pure
+post-hoc "attach" step (the shape `attachRuntimeStaticCorrelations` uses)
+because fidelity-relevant runtime targets must compete fairly for
+`MAX_RUNTIME_TARGETS` capacity and receive the exact same geometry/
+visibility/screenshot assembly contract-clause-derived targets already get -
+an attach-only step run after target allocation could never produce that. A
+new pure module, `domain/referenceFidelityProjection.ts`
+(`projectReferenceFidelity`), derives the bounded, prioritized fidelity
+content plus the target-id/omission/truncation contributions
+`projectBoundedAgentContext` folds into its own existing pipeline - it is
+not a second fidelity-evaluation engine, only a selection over Prompt 6's
+already-computed result.
+
+```ts
+// domain/boundedAgentContext.ts - additive
+interface BoundedAgentContextSourceReferences {
+  // ...unchanged fields...
+  referenceId?: string;       // new, optional
+  referenceRequestId?: string; // new, optional
+}
+
+const MAX_FIDELITY_MISMATCHES = 15;
+const MAX_FIDELITY_PROTECTED_CONTEXT = 10; // reuses MAX_RELATIONSHIP_EVIDENCE_PER_TARGET's value
+
+interface BoundedReferenceFidelityProjection {
+  referenceId: string;
+  referenceRequestId: string;
+  candidateObservationId: string;
+  candidateRequestId: string;
+  adequacy: ReferenceRequirementAdequacy;   // reused verbatim from Prompt 3
+  compatibility?: ComparabilityResult;      // reused verbatim from Prompt 4
+  state: ReferenceFidelityState;            // reused verbatim from Prompt 6
+  blockedBy?: ReferenceFidelityBlockReason; // reused verbatim from Prompt 6
+  mismatches: ReferenceRequirementFidelityResult[];      // bounded, prioritized non-pass requirements (Prompt 6 type, unmodified)
+  protectedContext: ReferenceRequirementFidelityResult[]; // bounded passing protected/preserved requirements, as "do not break this" context
+}
+
+interface BoundedAgentContextArtifact {
+  // ...unchanged fields...
+  fidelity?: BoundedReferenceFidelityProjection; // new, optional - mirrors `correlations?`'s own additive precedent exactly
+}
+```
+
+**Selection policy** (`domain/referenceFidelityProjection.ts#projectReferenceFidelity`):
+only Prompt 6's non-`pass` requirement results are ever candidates for
+`mismatches` - passing requirements are never dumped by default, satisfying
+this prompt's "bounded coding-agent use" design goal. Each candidate is
+classified into a tier by its authored category/mode, reusing
+`boundedAgentContextProjection.ts#clauseTier`'s exact rule (duplicated, not
+imported, per this repository's established per-module small-helper
+convention - never a reference-specific protected/preserved taxonomy):
+`protected`/`preserved` are always `required`; `expected-dependent` is
+`required` only in `'required'` mode; `requested` and `expected-dependent`/
+`'permitted'` are `optional`.
+
+**Priority policy**: 1) `fail` + `required` tier, 2) `unavailable` +
+`required` tier, 3) any other non-`pass` (optional-tier) result. Within one
+priority class, Prompt 6's own authored requirement order is preserved (a
+stable sort by priority rank only) - never re-ranked by an opaque score.
+The final `mismatches` array is reported in priority order (highest first),
+not restored to authored order, since the whole point of prioritization is
+that the most actionable evidence appears first when the set is large.
+
+**Cap values**: `MAX_FIDELITY_MISMATCHES = 15` and
+`MAX_FIDELITY_PROTECTED_CONTEXT = 10` (reusing
+`MAX_RELATIONSHIP_EVIDENCE_PER_TARGET`'s value) - both judgment-call bounds
+in the same spirit as v0.6 Batch 1's own frozen caps (no measured fixture
+corpus exists yet for either concept).
+
+**Omission/truncation behavior**: reuses `OmissionRecord`/`TruncationRecord`
+wholesale, no second reporting model. When mismatches exceed the cap, a
+`{subject: 'fidelity-mismatches', limit, actualCount, required}` truncation
+is recorded, plus one `{subject: 'fidelity-mismatch:<requirementId>',
+reason: 'required-evidence-lost-by-bound', required: true}` omission for
+*each* dropped required-tier mismatch (optional-tier drops are truncated
+but never separately omitted as "required loss", since they were never
+required). `protectedContext` truncation is always `required: false` - it
+is confirmatory/passing context, never a design-fidelity failure. These
+records are folded into `projectBoundedAgentContext`'s own `omissions`/
+`truncations` arrays *before* its existing aggregate `capOmissions`/
+`capTruncations` calls and its existing adequacy computation run - fidelity
+loss is never a separate adequacy code path, it simply participates in the
+exact same `anyRequiredLoss`/`anyOptionalLoss` rule every other evidence
+source already uses.
+
+**Adequacy behavior**: a `not-evaluated` fidelity (blocked by Prompt 6's own
+`reference-inadequate`/`incompatible` gates) is never converted into "no
+problems" - `projectReferenceFidelity` records an explicit
+`{subject: 'fidelity', reason: 'unsupported-or-unavailable', required,
+detail}` omission, where `required` defaults to `true` (supplying a
+fidelity evaluation to be projected at all is itself the signal that the
+task depends on it, mirroring `CorrelationTargetInput.required`'s existing
+v0.6 convention - callers who want fidelity as purely incidental context set
+`fidelityRequired: false`). A `required: true` fidelity omission, folded
+into the existing adequacy computation, prevents `adequacy.state` from
+remaining `'adequate'` (it becomes `'partial'`, or `'inadequate'` when
+combined with other required loss reaching the existing threshold) - it is
+never silently ignored. A `required: false` omission can degrade adequacy
+to at most `'partial'`, per v0.6's own pre-existing "optional-only loss
+never means inadequate" rule - unchanged, not redefined. A `pass` fidelity
+result contributes no omissions/truncations at all and never degrades
+adequacy.
+
+**Not-evaluated fidelity behavior**: preserved exactly as Prompt 6 reported
+it - `fidelity.state`/`fidelity.blockedBy` on the output artifact are a
+direct pass-through of Prompt 6's own values, with `mismatches`/
+`protectedContext` both empty (there is nothing to select from an empty
+`requirementResults`).
+
+**Per-target organization**: every fidelity mismatch's `boundRuntimeTargets`
+(Prompt 5/6's own field, never truncated) becomes a required- or permitted-
+tier addition to `projectBoundedAgentContext`'s existing target-id sets,
+so those runtime targets receive full `BoundedRuntimeTargetProjection`
+treatment (geometry/visibility/overflow/scrollOwner/screenshotRef) through
+the exact existing assembly code - no duplicated target-projection logic.
+Reference regions are never used as a correlation or target-selection key;
+only the already-bound stable v0.2 runtime target ids are.
+
+**Multi-target relationship representation**: a `region-relationship`
+mismatch's `boundRuntimeTargets` array (already carrying both bound
+targets, from Prompt 6) is used as-is - both targets are added to the
+required/permitted set, so both appear in `targets`. Nothing collapses a
+two-target relationship failure onto a single target.
+
+**Static-correlation reuse**: entirely unchanged. `deriveRuntimeStaticCorrelations`/
+`attachRuntimeStaticCorrelations` are not modified, not called from within
+this prompt's new code, and remain the caller's own separate step -
+`BoundedRuntimeTargetProjection.targetId`/`RuntimeStaticCorrelationRecord.runtimeTargetId`
+already share the same stable v0.2 identity a fidelity mismatch's
+`boundRuntimeTargets` also uses, so a caller (Prompt 8) joins fidelity,
+target, and correlation evidence by that one shared id without this module
+ever needing to read source, run my-dev-kit, or choose among ambiguous
+candidates itself.
+
+**Ambiguous/unavailable correlation behavior**: unaffected - a
+`RuntimeStaticCorrelationRecord` with `status: 'ambiguous'` continues to
+preserve every competing candidate (v0.6's own frozen invariant,
+untouched), and `status: 'unavailable'` never causes a fidelity mismatch
+for that same runtime target to be dropped - the two evidence kinds
+(runtime fidelity, static correlation) are attached independently and
+neither erases the other.
+
+**Provenance**: every included mismatch remains traceable to the reference
+(`sources.referenceId`/`referenceRequestId`, new), the requirement
+(`requirementId`, `category`, `subject` - naming its reference region(s)),
+the Prompt 5 binding (`boundRuntimeTargets`), the candidate
+(`sources.observationIds`), and the full Prompt 6 evidence
+(`referenceValue`/`candidateRawValue`/`candidateValue`/`delta`/`tolerance`
+or `expectedRelationship`/`actualRelationship`) - nothing is replaced by a
+prose-only summary. No raw image bytes are ever embedded (fidelity carries
+only identifiers and numeric/categorical evidence, never pixels), and no
+source-ownership field (`sourceOwner`/`sourceFile`/`component`/`symbol`/
+`causedBy`) is ever produced - Prompt 7 stops at the runtime target exactly
+as Prompt 6 did; v0.6's own, unmodified static correlation is the only
+source-adjacent evidence this context ever carries, and it remains
+evidence, never edit authorization.
+
+**Identity impact**: `buildBoundedAgentContextRequestIdentity` gained a
+final optional `fidelity?: unknown` parameter - omitted (never `null`) from
+the hashed semantic view when absent, so every pre-Prompt-7 call site keeps
+producing its exact byte-identical hash (verified by a frozen-vector-style
+regression test). When present, the caller's already-derived, bounded
+`BoundedReferenceFidelityProjection` (not the raw Prompt 6 evaluation) is
+hashed, so identity changes exactly when the content a caller would
+actually receive changes - never merely because an unselected, dropped
+requirement result changed somewhere upstream. `sources.referenceId`/
+`referenceRequestId` follow the identical omit-when-absent convention.
+Operational paths were never an identity input for this artifact family to
+begin with (no path parameter exists anywhere in this contract), so path
+independence holds trivially.
+
+**Schema-version decision**: no bump. Every new field
+(`BoundedAgentContextSourceReferences.referenceId`/`referenceRequestId`,
+`BoundedAgentContextArtifact.fidelity`) is additive and optional; a
+pre-Prompt-7 artifact/consumer remains fully valid and behaviorally
+unchanged with all of them absent, matching the exact precedent
+`correlations?` already established without a version bump in v0.6 Batch 3.
+
+**Persistence decision: none.** `projectBoundedAgentContext` and
+`projectReferenceFidelity` both remain pure, programmatic, in-memory
+functions - no new writer/reader, no new artifact family. This mirrors
+Prompt 6's own "no persisted fidelity artifact" decision and v0.6's
+existing "bounded agent context is library-only" architecture.
+
+**CLI decision**: none added. v0.6 bounded agent context has never had a
+CLI surface, and this prompt does not introduce one - Prompt 8 is expected
+to become the first concrete consumer of `projectBoundedAgentContext`'s
+(now fidelity-aware) programmatic output.
+
+## v0.7 Prompt 8 controlled end-to-end external-reference coding-agent correction workflow
+
+Released as `0.7.0`. One new pure domain module,
+`domain/referenceCorrectionWorkflow.ts`, plus its identity counterpart,
+`domain/referenceCorrectionIdentity.ts` - the first stage that composes
+every Prompt 1-7 and v0.1/v0.4/v0.5/v0.6 owner into one traceable
+reference-driven correction cycle. It reimplements none of them: reference
+lifecycle/adequacy (Prompt 1/3), compatibility (Prompt 4), binding (Prompt
+5), fidelity (Prompt 6), bounded context (Prompt 7), runtime comparison
+(v0.4 `compareObservations`), and contract evaluation (v0.5
+`evaluateFrontendContract`) are all called, never re-derived. No new
+persisted artifact family, no CLI surface, no remote AI dependency, and no
+mechanism anywhere in this module (or any module it calls) that edits
+target source.
+
+```ts
+// domain/referenceCorrectionWorkflow.ts
+function prepareReferenceCorrection(input: {
+  reference: ExternalReferenceArtifact;       // must be approved
+  baselineObservation: ObservationArtifact;   // approved baseline / pre-change state
+  baselineContract: PersistentBaselineContract;
+  changeContract: PerChangeContract;
+  bindingDeclarations: readonly ReferenceRuntimeBindingDeclaration[];
+  currentObservation: ObservationArtifact;    // fidelity is measured against this (= baselineObservation for the canonical proof)
+  generatedAt: string; producerVersion: string; projectionProfile: ProjectionProfile;
+}): { ok: true; status: 'handoff-ready'; reviewRequestId: string; fidelity: ReferenceCandidateFidelityEvaluation; handoff: ReferenceCorrectionHandoff }
+  | { ok: true; status: 'blocked-not-evaluated'; reviewRequestId: string; fidelity: ReferenceCandidateFidelityEvaluation }
+  | { ok: false; reason: string };
+
+function reviewReferenceCorrectionAttempt(input: {
+  // ...same reference/baselineObservation/baselineContract/changeContract/bindingDeclarations...
+  reviewRequestId: string;              // must match the id prepareReferenceCorrection returned for this exact semantic review
+  candidateObservation: ObservationArtifact; // fresh, post-edit capture
+  priorAttemptId?: string;
+}): { ok: true; attempt: ReferenceCorrectionAttemptResult } | { ok: false; reason: string };
+```
+
+**Workflow architecture.** A narrowly-scoped coordinator, not a second
+workflow engine: it holds no stage catalog, no job scheduler, and no
+generic orchestration graph. It performs exactly two operations - "prepare"
+(pre-change evidence -> bounded handoff) and "review" (post-edit candidate
+-> one composed overall result) - matching this prompt's own explicit
+guidance that the external-edit boundary must remain a visible seam between
+two separate calls, never one command that blocks waiting for an external
+actor.
+
+**New owners introduced**: `prepareReferenceCorrection`,
+`reviewReferenceCorrectionAttempt` (composition only - no new evaluation
+logic), `buildReferenceCorrectionReviewIdentity`/
+`buildReferenceCorrectionAttemptIdentity` (deterministic identity, see
+below), and the plain `ReferenceCorrectionHandoff`/
+`ReferenceCorrectionAttemptResult` result shapes.
+
+**Existing owners reused, verbatim**: `isApprovedExternalReferenceArtifact`
+(Prompt 1), `isValidReferenceRuntimeBindingDeclarations` (Prompt 5),
+`evaluateReferenceCandidateFidelity` (Prompt 6), `projectBoundedAgentContext`
+(Prompt 7, itself now fidelity-aware), `compareObservations` (v0.4),
+`evaluateFrontendContract` (v0.5). None of their internal logic is
+inspected, duplicated, or reimplemented by this module - only their
+top-level results are read.
+
+**Approved-reference/approved-baseline requirement.** `prepareReferenceCorrection`
+and `reviewReferenceCorrectionAttempt` both fail closed (`{ok: false}`) if
+`reference` is not in the `'approved'` lifecycle state (Prompt 1's own
+`isApprovedExternalReferenceArtifact` guard) - an imported-but-unapproved
+reference is never treated as an authoritative target design. Neither
+function ever calls `approveExternalReference`/`approveAndPersistBaseline`
+itself; approval remains the caller's own separate, explicit action.
+
+**Pre-change candidate = approved baseline observation**, for the canonical
+proof: `prepareReferenceCorrection`'s `currentObservation` and
+`baselineObservation` are the same value, so the initial reference fidelity
+can genuinely `FAIL` (measuring the gap between the current, already-
+approved implementation and the desired new design) while the baseline
+itself stays fully valid and approved. A caller's own architecture may
+supply a distinct `currentObservation` only when justified - the workflow
+does not require them to be identical, only that `currentObservation` and
+`candidateObservation` are always independently validated
+`ObservationArtifact`s.
+
+**Preparation (phase A)**: validates the common preconditions (approved
+reference, matching baseline/contract coherence, valid binding
+declarations), evaluates reference fidelity via Prompt 6 against
+`currentObservation`, and - only when that evaluation actually produced a
+result (`state !== 'not-evaluated'`) - projects it into a bounded context
+via Prompt 7/v0.6 and returns the `ReferenceCorrectionHandoff`. A
+`not-evaluated` fidelity (inadequate reference, or reference/candidate
+incompatible state) is reported as `status: 'blocked-not-evaluated'` -
+carrying the full Prompt 6 result for inspection, but never a fabricated
+handoff pretending evidence is adequate. An ambiguous or unavailable
+required binding does **not** block preparation outright - it still
+produces a `handoff-ready` result, with the ambiguity/unavailability
+visible directly in that requirement's own `unavailable`/`binding-
+unavailable` mismatch (Prompt 6's own honest per-requirement reporting,
+unchanged), so the external actor sees exactly why that specific
+requirement cannot yet be assessed.
+
+**The handoff** (`ReferenceCorrectionHandoff`) carries `reviewRequestId`,
+`referenceId`/`referenceRequestId`, `baselineObservationId`,
+`currentObservationId`, the full Prompt 7 `boundedContext` (already
+containing bounded fidelity mismatches, protected/preserved context,
+adequacy/omission/truncation, and - when the caller supplied it - runtime/
+static correlation), and a fixed, four-line `verificationPlan` explaining
+in plain language what will be re-checked after the edit (fresh Chromium
+capture, reference re-evaluation, v0.4/v0.5 re-evaluation, and the exact
+overall-PASS rule) - never reduced to "make it look like the screenshot".
+No raw reference image bytes, no full `ObservationArtifact`, and no source
+excerpt are ever included.
+
+**Handoff persistence: none.** The handoff is a plain, JSON-serializable,
+in-memory value returned directly to the caller - no new writer/reader, no
+new artifact family. A caller that needs the handoff to cross a process/
+session boundary (e.g. to hand it to an external coding-agent process) is
+free to serialize it with its own mechanism; observer product code does not
+own a persisted handoff artifact. This was a deliberate "smallest possible"
+choice: the handoff's only genuinely new identity is `reviewRequestId`
+(already deterministic and recomputable from stable inputs - see below), so
+nothing about it requires observer-managed persistence to remain
+traceable.
+
+**Review identity** (`buildReferenceCorrectionReviewIdentity`): a pure
+function of `{referenceRequestId, baselineObservationId,
+baselineContractId, baselineContractClauses, changeContractId,
+changeContractClauses, bindingDeclarations}` only - never a timestamp,
+never an operational file path. Deliberately hashes each contract's own
+authored `clauses` content, not merely its `baselineId`/`contractId` label:
+unlike this repository's content-derived identities elsewhere (e.g.
+`ObservationArtifact.observationId`), a `PersistentBaselineContract`'s
+`baselineId` and a `PerChangeContract`'s `contractId` are plain, caller-
+authored strings (`approveAndPersistBaseline` persists `contract.baselineId`
+verbatim, never recomputing it from `clauses`) - so two structurally valid
+contracts could in principle share an id while authoring different clauses.
+Hashing clause content directly closes that gap (caught during this
+prompt's own independent-judge review before being reported PASS - see the
+report's Tooling incidents section). `reviewReferenceCorrectionAttempt`
+recomputes this same hash from its own inputs and rejects the call
+(`{ok: false}`) if the caller-supplied `reviewRequestId` does not match -
+this is the mechanism that makes "no hidden baseline change" an enforced
+invariant rather than a documented intention: an attempt claiming to belong
+to a review while actually supplying a different baseline observation,
+baseline contract (id or clause content), per-change contract (id or clause
+content), reference, or binding set can never silently succeed.
+
+**Attempt identity** (`buildReferenceCorrectionAttemptIdentity`): a pure,
+deterministic function of `{reviewRequestId, candidateObservationId}` only
+- deliberately never a fresh random nonce. Every candidate observation
+already carries its own fresh, collision-resistant instance identity (v0.1's
+`buildObservationIdentity`), so hashing it together with the review it was
+captured for gives an attempt id that is both reproducible (the same
+review+candidate pair always yields the same `attemptId`) and guaranteed
+distinct per real capture.
+
+**Attempt history**: caller-managed, not observer-persisted. Because both
+workflow functions are pure (no internal mutable state, no side effects),
+an already-returned `ReferenceCorrectionAttemptResult` can never be
+overwritten by a later call - a caller that keeps every attempt result it
+receives (in memory, in its own log, or in its own storage) has a complete,
+immutable, traceable history for free, linked via each attempt's own
+`reviewRequestId` (shared across all attempts of one review),
+`priorAttemptId` (an optional, purely informational link to the immediately
+preceding attempt, carried through unchanged - never consulted by the
+evaluation logic itself), and `attemptId`.
+
+**Baseline-across-attempts rule**: enforced structurally, not merely
+documented. Every call to `reviewReferenceCorrectionAttempt` requires the
+caller to re-supply `baselineObservation`/`baselineContract` in full, and
+`compareObservations`/`evaluateFrontendContract` are always invoked with
+that same baseline against the fresh `candidateObservation` - there is no
+code path anywhere in this module that compares one candidate against a
+prior candidate instead. Combined with the `reviewRequestId` coherence
+check above, a caller cannot silently swap in a different baseline between
+attempts of the same review without the call being rejected.
+
+**Overall result composition.** `ReferenceCorrectionOverallState =
+'not-evaluated' | 'pass' | 'fail'`:
+
+- `fidelity.state === 'not-evaluated'` -> overall `'not-evaluated'` - Prompt
+  6's own explicit blocked state is preserved exactly, never collapsed into
+  an ordinary `'fail'`.
+- otherwise, `fidelity.state === 'pass' && contractEvaluation.overallVerdict === 'PASS'`
+  -> overall `'pass'`; anything else -> overall `'fail'`.
+
+A structurally-incomparable baseline/candidate pair is *not* given its own
+third overall bucket - v0.5's own `evaluateFrontendContract` already
+returns `'FAIL'` (never `'PASS'`) for that case, per its own established,
+unmodified precedent, and this workflow reuses that decision rather than
+re-litigating it. `approvalEligible` is a plain, read-only boolean
+(`true` iff `overallState === 'pass'`) - it is never itself an approval
+action; the caller must still invoke the existing explicit
+`approveAndPersistBaseline`/`approveExternalReference` owners separately,
+and neither is ever called from within this module.
+
+**Correction iteration**: `reviewReferenceCorrectionAttempt` is called once
+per candidate; the caller decides whether and when to call it again after
+another external edit. There is no loop, no polling, no automatic retry,
+and no mechanism in this module that itself waits for or drives an external
+implementation step - the production boundary between "prepare a handoff"
+and "review a candidate" is the explicit seam a human or an external
+process controls.
+
+**Source-editing boundary**: absolute. Neither this module nor anything it
+calls opens, reads, parses, or writes any target source file; both public
+operations accept only already-captured `ObservationArtifact`s and already-
+approved contract/reference artifacts. Real-Chromium candidate capture is
+always the caller's own responsibility, through the existing, unmodified
+observation pipeline (`runBrowserCapture`/`buildObservationArtifact`, the
+same functions `application/observationPersistence.ts#observe` already
+uses) - Prompt 8 adds no second browser adapter, screenshot engine, target
+resolver, or evidence-capture path.

@@ -49,11 +49,11 @@ describe('runCli - top-level', () => {
     expect(out.stderr()).toContain('observe');
   });
 
-  it('observe --help documents --url/--viewport/--target/--targets-file/--scroll-scenario-file/--output/--timeout', async () => {
+  it('observe --help documents --url/--viewport/--target/--targets-file/--scroll-scenario-file/--state-file/--output/--timeout', async () => {
     const out = capture();
     const code = await runCli(['observe', '--help'], out.io);
     expect(code).toBe(0);
-    for (const flag of ['--url', '--viewport', '--target', '--targets-file', '--scroll-scenario-file', '--output', '--timeout']) {
+    for (const flag of ['--url', '--viewport', '--target', '--targets-file', '--scroll-scenario-file', '--state-file', '--output', '--timeout']) {
       expect(out.stdout()).toContain(flag);
     }
     expect(out.stdout()).toContain('window-scroll-by');
@@ -488,6 +488,103 @@ describe('runCli observe --scroll-scenario-file (v0.3 Batch 4 CLI/input boundary
     const code = await runCli(['observe', '--url', 'http://example.com/', '--scroll-scenario-file', relativePath], out.io);
     expect(code).toBe(1);
     expect(out.stderr()).toContain('[unsafe-url]');
+  });
+});
+
+describe('runCli observe --state-file (v0.7 Prompt 4 CLI/input boundary)', () => {
+  const tempDirs: string[] = [];
+
+  afterEach(async () => {
+    await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+  });
+
+  async function writeStateFile(content: string): Promise<string> {
+    const dir = await mkdtemp(path.join(tmpdir(), 'mfo-cli-state-'));
+    tempDirs.push(dir);
+    const filePath = path.join(dir, 'state.json');
+    await writeFile(filePath, content, 'utf8');
+    return filePath;
+  }
+
+  it('requires a value: bare --state-file fails before browser launch', async () => {
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--state-file'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--state-file requires a file path argument');
+  });
+
+  it('rejects a second --state-file flag', async () => {
+    const filePath = await writeStateFile(JSON.stringify({ theme: 'dark' }));
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--state-file', filePath, '--state-file', filePath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--state-file may only be specified once');
+  });
+
+  it('reports a clear error for a missing/unreadable file', async () => {
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--state-file', '/does/not/exist-state.json'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--state-file could not be read');
+  });
+
+  it('reports a clear error for invalid JSON', async () => {
+    const filePath = await writeStateFile('{ not valid json');
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--state-file', filePath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--state-file is not valid JSON');
+  });
+
+  it('rejects a non-object root (array, null, string)', async () => {
+    for (const content of ['[]', 'null', '"dark"']) {
+      const filePath = await writeStateFile(content);
+      const out = capture();
+      const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--state-file', filePath], out.io);
+      expect(code).toBe(1);
+      expect(out.stderr()).toContain('--state-file root must be a JSON object');
+    }
+  });
+
+  it('passes an unsupported field through to the existing domain validator, not an ad hoc CLI error', async () => {
+    const filePath = await writeStateFile(JSON.stringify({ theme: 'dark', locale: 'en-US' }));
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--state-file', filePath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('[invalid-request]');
+  });
+
+  it('passes an invalid authenticatedState value through to the existing domain validator', async () => {
+    const filePath = await writeStateFile(JSON.stringify({ authenticatedState: 'logged-in' }));
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://127.0.0.1/x', '--state-file', filePath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('[invalid-request]');
+  });
+
+  it('accepts a relative state-file path resolved from the current working directory', async () => {
+    const filePath = await writeStateFile(JSON.stringify({ theme: 'dark' }));
+    const relativePath = path.relative(process.cwd(), filePath);
+    const out = capture();
+    const code = await runCli(['observe', '--url', 'http://example.com/', '--state-file', relativePath], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('[unsafe-url]');
+  });
+
+  it('is compatible with --scroll-scenario-file (an independent, non-conflicting flag)', async () => {
+    const statePath = await writeStateFile(JSON.stringify({ theme: 'dark' }));
+    const dir = await mkdtemp(path.join(tmpdir(), 'mfo-cli-state-combo-'));
+    tempDirs.push(dir);
+    const scenarioPath = path.join(dir, 'scroll.json');
+    await writeFile(scenarioPath, JSON.stringify({ action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 100 } }), 'utf8');
+    const out = capture();
+    const code = await runCli(
+      ['observe', '--url', 'http://example.com/', '--state-file', statePath, '--scroll-scenario-file', scenarioPath],
+      out.io,
+    );
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('[unsafe-url]');
+    expect(out.stderr()).not.toContain('cannot be combined');
   });
 });
 
