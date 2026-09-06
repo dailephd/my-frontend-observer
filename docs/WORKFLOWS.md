@@ -198,16 +198,17 @@ truncation reporting, and correlation status invariants/determinism/
 deduplication). See `docs/CONTRACTS.md` "v0.6 bounded agent context and
 correlation contract" for the exact shape.
 
-## Current external-reference foundation workflow (implemented, unreleased - v0.7 Prompts 1-4)
+## Current external-reference foundation workflow (implemented, unreleased - v0.7 Prompts 1-5)
 
 This is the foundation layer only - identity, provenance, bounded image
 metadata, a two-state lifecycle, (Prompt 2) explicit reference regions plus
 reusable geometry relationships, (Prompt 3) selected design requirements,
-tolerance semantics, and reference-evidence adequacy, and (Prompt 4)
-explicit reference applicability (viewport/theme/application-state/
-authenticated-state) for one externally supplied design-reference image. It
-implements no runtime binding or fidelity-evaluation behavior yet (see
-"Planned v0.7 reference-driven correction flow" below), and it never
+tolerance semantics, and reference-evidence adequacy, (Prompt 4) explicit
+reference applicability (viewport/theme/application-state/authenticated-
+state) and reference/candidate compatibility, and (Prompt 5) explicit
+reference-region <-> runtime-target binding, for one externally supplied
+design-reference image. It implements no fidelity-evaluation behavior yet
+(see "Planned v0.7 reference-driven correction flow" below), and it never
 launches a browser or reads/writes any observation, comparison, or contract
 artifact:
 
@@ -275,6 +276,24 @@ inventing a parallel model. This produces no persisted artifact of its own;
 it is a pure function callers invoke on two already-persisted artifacts. See
 `docs/CONTRACTS.md` "v0.7 Prompt 4 reference applicability and
 candidate-state compatibility" for the full contract.
+
+Building on that gate, a second pure, synchronous domain function,
+`evaluateReferenceRuntimeBindings(reference, candidate, declarations)`,
+answers "which stable v0.2 runtime target does this candidate resolve for
+each explicitly declared reference region?" `declarations` is explicit
+user/configuration input (`{referenceRegion, runtimeTarget}` pairs) - never
+inferred from geometry, matching names, or source code. It runs the Prompt
+4 compatibility gate first (reused, never duplicated): an `incomparable`
+reference/candidate pair produces zero evaluated bindings, the blocker
+visible only through the embedded `compatibility` field. Otherwise each
+declaration is resolved against the candidate's own already-captured
+`requestConfig.targets`/`targetEvidence` only - no browser, no second
+target resolver - using the same `targetPresence` classification v0.4's own
+`evaluateComparability` already relies on, yielding `bound`/`ambiguous`/
+`unavailable` per declaration. Like compatibility, this produces no
+persisted artifact of its own and mutates neither the reference nor the
+candidate. See `docs/CONTRACTS.md` "v0.7 Prompt 5 explicit reference-region
+<-> runtime-target binding" for the full contract.
 
 Reference-region relationships (`deriveReferenceRegionRelationships()`) are
 a separate, pure, on-demand derivation over an artifact's own `regions` -

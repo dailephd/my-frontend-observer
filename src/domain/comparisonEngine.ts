@@ -269,9 +269,16 @@ export function evaluateComparability(before: ObservationArtifact, after: Observ
 
 // --- direct target/page differences ------------------------------------------
 
-type TargetPresence = 'matched' | 'not-found' | 'ambiguous' | 'unavailable';
+/**
+ * v0.7 Prompt 5 additive export (previously module-private): the canonical
+ * classification of one configured target's resolution outcome, reused
+ * as-is by `domain/externalReferenceRuntimeBinding.ts` so reference-region/
+ * runtime-target binding evaluation never re-derives or duplicates this
+ * "how do I read a TargetEvidenceRecord's resolution" rule.
+ */
+export type TargetPresence = 'matched' | 'not-found' | 'ambiguous' | 'unavailable';
 
-function targetPresence(record: TargetEvidenceRecord | undefined): TargetPresence {
+export function targetPresence(record: TargetEvidenceRecord | undefined): TargetPresence {
   if (!record) return 'unavailable';
   const resolution = evidenceValue(record.resolution);
   if (!resolution) return 'unavailable';

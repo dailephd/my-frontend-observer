@@ -1069,3 +1069,157 @@ Key rules:
   path itself is never persisted or included in any identity, and CLI code
   owns only flag syntax/file reading/JSON parsing/object-root validation -
   all semantic validation happens in the domain layer.
+
+## v0.7 Prompt 5 explicit reference-region <-> runtime-target binding
+
+Implemented, unreleased. One new pure domain module,
+`domain/externalReferenceRuntimeBinding.ts`, answering "which stable
+observer runtime target, if any, does this candidate observation resolve
+for each explicitly declared reference region?" No new field is added to
+either `ExternalReferenceArtifact` or `ObservationArtifact` - both remain
+exactly as Prompt 4 left them - and no schema version bump on either.
+
+**Two identity domains, kept strictly separate.** A binding declaration
+names a Prompt 2 `ReferenceRegion.id` and a v0.2 `NamedTarget.name` (the
+stable observer runtime target identity established since v0.2 - never a
+CSS selector, DOM node handle, source file, React component name, or
+my-dev-kit node id). These two strings living in the same textual namespace
+never implies a binding - a region id `"header"` and a target name
+`"header"` bind to each other only because of an explicit declaration, not
+because the strings match (verified by a dedicated test: the same
+observation with and without the explicit declaration produces `bound`
+only in the former case).
+
+```ts
+// domain/externalReferenceRuntimeBinding.ts
+interface ReferenceRuntimeBindingDeclaration {
+  referenceRegion: string; // Prompt 2 ReferenceRegion.id
+  runtimeTarget: string;   // v0.2 NamedTarget.name
+}
+
+const REFERENCE_RUNTIME_BINDING_STATUSES = ['bound', 'ambiguous', 'unavailable'] as const;
+
+interface ReferenceRuntimeBindingResult {
+  referenceRegion: string;
+  runtimeTarget: string;
+  status: 'bound' | 'ambiguous' | 'unavailable';
+  reasonCode?: 'runtime-target-not-configured' | 'runtime-target-not-found' | 'runtime-target-ambiguous' | 'runtime-target-evidence-unavailable';
+  detail: string;
+  targetResolutionStatus?: TargetSelectionStatus; // v0.2's own resolution status, when evidence for it exists
+  targetVisible?: boolean; // provenance only - never affects status
+}
+
+interface ReferenceRuntimeBindingEvaluation {
+  referenceId: string;
+  referenceRequestId: string;
+  candidateObservationId: string;
+  candidateRequestId: string;
+  compatibility: ComparabilityResult; // reused verbatim from v0.7 Prompt 4
+  bindings: ReferenceRuntimeBindingResult[]; // empty exactly when compatibility.state === 'incomparable'
+}
+
+function evaluateReferenceRuntimeBindings(
+  reference: ExternalReferenceArtifact,
+  candidate: ObservationArtifact,
+  declarations: readonly ReferenceRuntimeBindingDeclaration[],
+): { ok: true; evaluation: ReferenceRuntimeBindingEvaluation } | { ok: false; reason: string };
+```
+
+Key rules:
+
+- **Explicit, never inferred.** A binding declaration is user/configuration
+  input asserting a conceptual correspondence; this module never discovers
+  it from screenshot geometry, matching names, matching text, or source
+  code. There is no automatic-matching algorithm anywhere in this module.
+- **Reuses, never duplicates.** The compatibility gate reuses
+  `evaluateReferenceCandidateCompatibility` (Prompt 4) verbatim - viewport/
+  theme/application-state/authenticated-state comparison logic is never
+  re-implemented here. Runtime-target resolution reuses `targetPresence`
+  (v0.4 `comparisonEngine.ts`, now additively exported alongside
+  `assessOptionalComparabilityDimension`) - the exact same "how do I read a
+  `TargetEvidenceRecord`'s resolution" rule v0.4's own before/after target
+  comparison already uses. No second target resolver, no browser launch, no
+  Chromium query, no selector evaluation, no live-DOM inspection - this
+  module consumes only an already-captured `ObservationArtifact`'s
+  `requestConfig.targets`/`targetEvidence`.
+- **Compatibility gates before evaluation, structurally.** If
+  `evaluateReferenceCandidateCompatibility` reports `incomparable`,
+  `bindings` is the empty array and the caller reads the reason from the
+  embedded `compatibility` field - there is no binding-local "incompatible"
+  status; Prompt 4's compatibility result is represented exactly once, not
+  duplicated into a parallel vocabulary.
+- **Two-layer validation.** Reference-region existence, declaration shape,
+  bounds, and duplicate/conflict rules are validated structurally against
+  the `ExternalReferenceArtifact` alone (`isValidReferenceRuntimeBindingDeclarations`)
+  - independent of any candidate, mirroring Prompt 3's "unknown region
+  reference is a structural validation failure" precedent exactly: a
+  declaration naming a nonexistent reference region, or any reference with
+  no `regions` declared at all, fails the whole evaluation closed before a
+  candidate is even considered. Runtime-target availability, by contrast,
+  is evaluated per-candidate inside `evaluateReferenceRuntimeBindings`
+  itself, since the same declaration can be `bound` against one candidate
+  and `unavailable` against another.
+- **Duplicate/conflicting-declaration rule** (mirrors Prompt 3's
+  requirement-subject uniqueness rule): no two declarations may name the
+  same `referenceRegion` (case-insensitively), whether they agree on
+  `runtimeTarget` (an exact duplicate) or disagree (a conflict) - both fail
+  the same way, never silently resolved by keeping the first. The reverse -
+  several distinct reference regions naming the same `runtimeTarget` - is
+  deliberately allowed (e.g. two design sub-regions legitimately
+  corresponding to one runtime container element).
+- **Target-resolution-state handling.** `targetPresence`'s four outcomes
+  map onto binding status as: `matched` -> `bound`; `ambiguous` -> `ambiguous`
+  (the candidate's own configured target resolved ambiguously - never
+  reported bound even though its stable name exists); `not-found` ->
+  `unavailable` (`runtime-target-not-found` - the target was configured but
+  the resolver found nothing on the page); no usable resolution evidence at
+  all -> `unavailable` (`runtime-target-evidence-unavailable`). A declared
+  `runtimeTarget` that was never part of the candidate's configured target
+  set at all is a fifth, CLI/config-boundary-only outcome -> `unavailable`
+  (`runtime-target-not-configured`) - never a dynamic page search.
+- **Hidden-target decision.** A uniquely resolved (`matched`) but hidden
+  target is still reported `bound` - visibility never changes `status`.
+  `targetVisible` (from the existing `TargetVisibility` evidence, when
+  available) is carried as provenance only. Binding identity (does a stable
+  correspondence exist) and later fidelity evaluability (can this evidence
+  actually be used to check the design) are treated as distinct questions;
+  this prompt answers only the former.
+- **Not every region needs a binding.** `isValidReferenceRuntimeBindingDeclarations`
+  never requires full region coverage - a reference may have regions no
+  declaration names at all (they simply have no bound runtime target for
+  this candidate). This is not a completeness gate; Prompt 6 (or later) may
+  add one for the regions that selected requirements actually need.
+- **No persisted artifact family.** `evaluateReferenceRuntimeBindings` is a
+  pure, on-demand function over an already-persisted reference, an
+  already-persisted candidate observation, and an in-memory declaration
+  collection. No `ExternalReferenceBindingArtifact` (or equivalent) is
+  introduced - the same "cheap to recompute, persisting invites drift"
+  reasoning Prompt 4 already applied to its own compatibility result.
+  Neither the reference nor the observation artifact is ever rewritten to
+  carry a binding result: a design reference may later be evaluated against
+  several different candidates, and one observation may be evaluated
+  against several different references, so binding is kept as downstream,
+  candidate-specific, reference-specific derived evidence rather than
+  mutating either immutable source artifact.
+- **No new identity function.** Unlike `buildRequestIdentity`/
+  `buildExternalReferenceRequestIdentity`, no hash-based logical identity is
+  computed for a binding declaration or its evaluated result - there is no
+  persistence and no cross-document reference-by-id need yet (mirroring
+  Prompt 4's `ReferenceCandidateCompatibilityResult`, which took the same
+  approach). Provenance is instead carried directly as plain fields
+  (`referenceId`, `referenceRequestId`, `candidateObservationId`,
+  `candidateRequestId`, plus each result's own `referenceRegion`/
+  `runtimeTarget`) - already deterministic, already sufficient for a caller
+  to trace every result back to its inputs, without inventing a fifth
+  identity-hashing convention for a value this prompt does not persist.
+- **Deterministic ordering.** `bindings` preserves authored declaration
+  order (mirroring the "authored order is semantic" convention already used
+  for regions/requirements) rather than sorting by any derived key.
+- **Bounded.** `MAX_REFERENCE_RUNTIME_BINDINGS` (20) caps the declaration
+  collection, mirroring `MAX_REFERENCE_REGIONS`.
+- **No public CLI surface yet.** Only the programmatic
+  `evaluateReferenceRuntimeBindings`/`isValidReferenceRuntimeBindingDeclarations`
+  functions are exported. A standalone CLI command was deliberately not
+  added merely for symmetry with `import-reference`/`observe`; Prompt 6
+  (structured fidelity evaluation) is expected to become the first concrete
+  consumer and public-surface owner for this capability.

@@ -515,6 +515,30 @@ pair retains the exact prior unassessed-only behavior. No new persisted
 artifact kind is introduced for the compatibility result; it is a pure,
 on-demand function of two already-persisted artifacts.
 
-Reference-region/runtime-target binding and reference-vs-candidate fidelity
-evaluation remain unimplemented; they are later v0.7 prompts building on
-this foundation.
+v0.7 Prompt 5 adds explicit reference-region <-> runtime-target binding
+(`domain/externalReferenceRuntimeBinding.ts`) - see `docs/CONTRACTS.md`
+"v0.7 Prompt 5 explicit reference-region <-> runtime-target binding" for
+the exact shape. It answers only "which stable v0.2 runtime target does
+this candidate observation resolve for each explicitly declared reference
+region", strictly downstream of Prompt 4's compatibility gate (reused
+verbatim, never duplicated) and strictly upstream of v0.6's own
+runtime/static correlation - the two identity domains (a Prompt 2
+`ReferenceRegion.id` and a v0.2 `NamedTarget.name`) never collapse into
+each other, and this stage stops at the runtime target, never reaching
+source ownership. Following v0.6's uncertainty discipline
+(`domain/boundedAgentContextCorrelation.ts`), binding never guesses through
+ambiguity - an ambiguously or unavailably resolved v0.2 target is reported
+as such, never silently treated as bound - though the actual per-status
+mapping (`bound`/`ambiguous`/`unavailable`) is binding's own, independently
+owned vocabulary, not a reuse of v0.6's `correlated`/`ambiguous`/
+`unavailable` correlation-status semantics (a different evidence boundary:
+correlation ranks *static candidates* for one runtime target, whereas
+binding resolves *one runtime target's own existence* for one declared
+correspondence). No second target resolver, no browser execution, and no
+new persisted artifact family were introduced; neither
+`ExternalReferenceArtifact` nor `ObservationArtifact` is mutated to carry a
+binding result, since a reference may later be evaluated against several
+candidates and an observation against several references.
+
+Reference-vs-candidate fidelity evaluation remains unimplemented; it is the
+next v0.7 prompt building on this foundation.

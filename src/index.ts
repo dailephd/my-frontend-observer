@@ -264,13 +264,14 @@ export { DEFAULT_EVALUATION_OUTPUT_LOCATION, evaluateAndPersist, evaluateAndPers
 export type { PersistFrontendContractOptions, ApplicationApproveBaselineResult, ApplicationPersistChangeContractResult } from './application/frontendContractPersistenceService.js';
 export { approveAndPersistBaseline, persistPerChangeContract } from './application/frontendContractPersistenceService.js';
 
-export type { CompareObservationsResult } from './domain/comparisonEngine.js';
+export type { CompareObservationsResult, TargetPresence } from './domain/comparisonEngine.js';
 export {
   compareObservations,
   evaluateComparability,
   evaluateExpectedDependencies,
   compareTargetConfiguration,
   assessOptionalComparabilityDimension,
+  targetPresence,
 } from './domain/comparisonEngine.js';
 
 export type {
@@ -473,3 +474,21 @@ export {
 
 export type { ReferenceCandidateCompatibilityResult } from './domain/externalReferenceCompatibility.js';
 export { evaluateReferenceCandidateCompatibility } from './domain/externalReferenceCompatibility.js';
+
+export type {
+  ReferenceRuntimeBindingStatus,
+  ReferenceRuntimeBindingReasonCode,
+  ReferenceRuntimeBindingDeclaration,
+  ReferenceRuntimeBindingValidationResult,
+  ReferenceRuntimeBindingResult,
+  ReferenceRuntimeBindingEvaluation,
+  EvaluateReferenceRuntimeBindingsResult,
+} from './domain/externalReferenceRuntimeBinding.js';
+export {
+  RUNTIME_TARGET_NAME_PATTERN,
+  MAX_REFERENCE_RUNTIME_BINDINGS,
+  REFERENCE_RUNTIME_BINDING_STATUSES,
+  REFERENCE_RUNTIME_BINDING_REASON_CODES,
+  isValidReferenceRuntimeBindingDeclarations,
+  evaluateReferenceRuntimeBindings,
+} from './domain/externalReferenceRuntimeBinding.js';
