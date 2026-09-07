@@ -713,14 +713,23 @@ and exits nonzero.
 
 ## `view`
 
-**Current status: v0.8 Batch 1 (Viewer runtime and PWA foundation).** Starts
-one loopback-only Node viewer server and serves the same React + TypeScript +
-Vite application to a normal browser or an installed Progressive Web App.
-This batch establishes only the runtime/build shell — it does not read or
-interpret Observer artifacts, so the viewer UI is presently an honest
-foundation shell (identity, session status, and placeholder navigation/
-workspace/details regions) rather than an evidence browser. Evidence
-indexing and inspection begin in later v0.8 batches.
+**Current status: v0.8 Batch 2 (Evidence indexing, canonical readers, and
+lazy data boundary).** Starts one loopback-only Node viewer server and
+serves the same React + TypeScript + Vite application to a normal browser or
+an installed Progressive Web App. `--root` is now also used as a bounded,
+read-only evidence-discovery root: the server exposes a metadata-first
+`GET /api/index` of recognized Observer evidence beneath it, an on-demand
+`GET /api/artifacts/<handle>` for one selected supported artifact, and an
+on-demand `GET /api/media/<handle>/<role>` for its owned/referenced media
+(observation screenshots; imported/approved external-reference images) —
+see `docs/ARCHITECTURE.md` "v0.8 Batch 2" for the exact discovery bounds,
+classification model, and handle/media-resolution contract. The viewer UI
+shows this real, honestly-stated evidence (supported/unsupported-version/
+malformed/unrecognized) with on-demand loading on selection; it still does
+not render screenshots, SVG overlays, or comparison/contract/reference
+visualizations — that begins in Batch 3. Every route remains strictly
+read-only: no artifact is ever created, modified, or interpreted beyond its
+existing canonical reader/validator.
 
 ```text
 my-frontend-observer view --root <evidence-root> [options]
@@ -747,9 +756,11 @@ Options:
 - `--help` — show `view` usage.
 
 The server binds only to `127.0.0.1` (never `0.0.0.0`), serves only the
-built viewer application assets plus one minimal read-only `/api/status`
-endpoint, and never exposes the supplied evidence root as a generic static
-directory. It accepts no write methods and mutates nothing. On success,
+built viewer application assets plus the bounded, read-only `/api/status`,
+`/api/index`, `/api/artifacts/<handle>`, and `/api/media/<handle>/<role>`
+endpoints described above, and never exposes the supplied evidence root as a
+generic static directory or arbitrary filesystem path. It accepts no write
+methods and mutates nothing. On success,
 prints the viewer URL and keeps running (serving the viewer) until
 interrupted. On invalid syntax, a missing/non-directory `--root`, an
 invalid `--port`, or a port already in use, prints structured diagnostics to

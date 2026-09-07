@@ -1,7 +1,10 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import { createReadStream } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { getProducerInfo } from '../domain/schema.js';
+import { buildEvidenceIndexMetadata, loadArtifactByHandle } from './evidence/index.js';
+import { resolveMedia } from './evidence/mediaResolver.js';
 
 /** Batch 1 viewer protocol identity: the shape of GET /api/status. Bumped independently of package/schema versions if the status contract itself changes. */
 export const VIEWER_PROTOCOL_VERSION = '1.0.0';
@@ -102,9 +105,52 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
     return;
   }
 
+  if (pathname === '/api/index') {
+    const result = await buildEvidenceIndexMetadata(state.root);
+    const body = JSON.stringify({ ok: true, records: result.records, truncated: result.truncated });
+    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+    res.end(method === 'HEAD' ? undefined : body);
+    return;
+  }
+
+  const artifactMatch = /^\/api\/artifacts\/([^/]+)$/.exec(pathname);
+  if (artifactMatch) {
+    const handle = decodeURIComponentSafe(artifactMatch[1] as string);
+    if (handle === undefined) {
+      writeJsonError(res, method, 400, 'malformed artifact handle');
+      return;
+    }
+    const result = await loadArtifactByHandle(state.root, handle);
+    if (!result.ok) {
+      const status = result.reason === 'unknown-handle' ? 404 : 409;
+      const body: Record<string, unknown> =
+        result.reason === 'unknown-handle' ? { ok: false, error: 'unknown viewer artifact handle' } : { ok: false, error: 'artifact is not currently loadable', metadata: result.metadata };
+      writeJsonBody(res, method, status, body);
+      return;
+    }
+    writeJsonBody(res, method, 200, { ok: true, handle: result.detail.handle, family: result.detail.family, artifact: result.detail.artifact });
+    return;
+  }
+
+  const mediaMatch = /^\/api\/media\/([^/]+)\/([^/]+)$/.exec(pathname);
+  if (mediaMatch) {
+    const handle = decodeURIComponentSafe(mediaMatch[1] as string);
+    const role = decodeURIComponentSafe(mediaMatch[2] as string);
+    if (handle === undefined || role === undefined) {
+      writeJsonError(res, method, 400, 'malformed media request');
+      return;
+    }
+    const resolution = await resolveMedia(state.root, handle, role);
+    if (!resolution.ok) {
+      writeJsonError(res, method, 404, resolution.reason);
+      return;
+    }
+    await streamFile(resolution.absolutePath, resolution.mimeType, res, method);
+    return;
+  }
+
   if (pathname.startsWith('/api/')) {
-    res.writeHead(404, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
-    res.end(method === 'HEAD' ? undefined : JSON.stringify({ ok: false, error: 'unknown viewer API route' }));
+    writeJsonError(res, method, 404, 'unknown viewer API route');
     return;
   }
 
@@ -128,6 +174,45 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
     res.writeHead(503, { 'content-type': 'text/plain; charset=utf-8' });
     res.end('viewer assets are not built - run the package build before starting the viewer');
   }
+}
+
+function decodeURIComponentSafe(value: string): string | undefined {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return undefined;
+  }
+}
+
+function writeJsonBody(res: ServerResponse, method: string, status: number, body: Record<string, unknown>): void {
+  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+  res.end(method === 'HEAD' ? undefined : JSON.stringify(body));
+}
+
+function writeJsonError(res: ServerResponse, method: string, status: number, error: string): void {
+  writeJsonBody(res, method, status, { ok: false, error });
+}
+
+/** Streams one already-resolved, already-contained media file. Never used for arbitrary paths - callers must have gone through mediaResolver.ts's handle/role validation first. */
+async function streamFile(absolutePath: string, mimeType: string, res: ServerResponse, method: string): Promise<void> {
+  let size: number;
+  try {
+    size = (await stat(absolutePath)).size;
+  } catch {
+    writeJsonError(res, method, 404, 'media file not found on disk');
+    return;
+  }
+  res.writeHead(200, { 'content-type': mimeType, 'content-length': size, 'cache-control': 'no-store' });
+  if (method === 'HEAD') {
+    res.end();
+    return;
+  }
+  await new Promise<void>((resolvePromise, reject) => {
+    const stream = createReadStream(absolutePath);
+    stream.on('error', reject);
+    stream.on('end', resolvePromise);
+    stream.pipe(res);
+  });
 }
 
 async function tryServeFile(path: string, res: ServerResponse, method: string): Promise<boolean> {

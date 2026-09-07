@@ -57,9 +57,11 @@ describe('viewer shell (real Chromium against the built PWA)', () => {
       // Status banner reaches the "available" state (real fetch to the real running server) and shows the exact supplied root.
       await page.getByText(evidenceRoot, { exact: false }).waitFor({ timeout: 10_000 });
 
-      // The three Batch 1 foundation regions exist and are honest placeholders, not fabricated evidence.
+      // The three foundation regions exist and are honest, not fabricated. Since v0.8 Batch 2, the navigation region is
+      // a live (metadata-first) evidence index rather than a static placeholder - against this empty evidence root it
+      // must say so honestly, never silently reverting to the pre-indexing placeholder text.
+      await page.getByText('No recognized Observer evidence found under this root yet.').waitFor({ timeout: 10_000 });
       const bodyText = await page.textContent('body');
-      expect(bodyText).toContain('Evidence navigation will appear here');
       expect(bodyText).toContain('No observation, comparison, contract, or reference viewing is implemented yet');
       expect(bodyText).toContain('Details and diagnostics for the selected evidence will appear here');
     } finally {

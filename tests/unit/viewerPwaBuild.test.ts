@@ -71,4 +71,17 @@ describe('viewer PWA build output', () => {
       expect(url).toMatch(/\.(js|css|html|png|webmanifest)"$/);
     }
   });
+
+  it('v0.8 Batch 2: the evidence index/artifact/media routes are covered by the same /api/ navigation denylist - no separate runtime-caching rule was introduced for them', async () => {
+    const swSource = await readFile(path.join(viewerDist, 'sw.js'), 'utf8');
+    // Still exactly one registerRoute call after Batch 2's server-side additions (/api/index, /api/artifacts/*, /api/media/*)
+    // - they are all under the already-denylisted /api/ prefix, so no new precache/runtime-caching rule was needed or added.
+    const registerRouteCalls = swSource.match(/registerRoute\(/g) ?? [];
+    expect(registerRouteCalls.length).toBe(1);
+    const precacheMatch = /precacheAndRoute\(\[(.*?)],\{}\)/.exec(swSource);
+    const precacheEntries = precacheMatch?.[1] ?? '';
+    expect(precacheEntries).not.toContain('/api/index');
+    expect(precacheEntries).not.toContain('/api/artifacts');
+    expect(precacheEntries).not.toContain('/api/media');
+  });
 });

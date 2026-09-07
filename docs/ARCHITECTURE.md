@@ -491,6 +491,79 @@ This batch introduces no second observer, relationship engine, comparison
 engine, contract engine, reference model, or bounded-context builder — there
 is nothing yet for the viewer to consume beyond its own runtime identity.
 
+## v0.8 Batch 2 (Evidence indexing, canonical readers, and lazy data boundary) — implemented
+
+Batch 2 adds the safe, read-only data boundary between existing on-disk
+Observer evidence and the Batch 1 viewer runtime, entirely under
+`src/viewerServer/evidence/`. It introduces no new persisted artifact family,
+no schema migration, and no second validator — every recognized candidate is
+decided exclusively by the existing canonical reader/validator for its
+family (`src/artifacts/*Reader.ts`).
+
+```text
+GET /api/index                     bounded discovery + classification -> metadata only
+GET /api/artifacts/<handle>        one canonical-reader read, on demand -> full projection
+GET /api/media/<handle>/<role>     one resolved, contained media file, streamed on demand
+```
+
+- **Discovery** (`evidence/discovery.ts`): a bounded, deterministic walk
+  beneath `--root` that opens only files literally named `manifest.json` (the
+  one filename every current persisted family uses) — no other file is ever
+  read or classified, so arbitrary files can never become evidence merely by
+  existing under the root. Directory entries that are symlinks/junctions are
+  never followed. Bounds (`evidence/limits.ts`): traversal depth 6,
+  directories visited 2000, candidate manifests 1000, index records 500,
+  manifest read size 2,000,000 bytes — chosen after inspecting that every
+  current writer produces a shallow `<outputLocation>/<id>/manifest.json`
+  shape (see `docs/CONTRACTS.md`), not a deep tree.
+- **Classification is not validation** (`evidence/classify.ts`): peeks only
+  `artifactKind`/`schemaVersion` (plus, where the shared kind is ambiguous,
+  tries each existing reader/validator in turn — e.g. baseline vs. per-change
+  contract) to decide *which* existing canonical reader to call; the reader's
+  own structural validator remains the sole authority. Six honest, mutually
+  exclusive states: `supported`, `unsupported-version`, `invalid-structure`,
+  `unrecognized-kind`, `malformed-json`, `unreadable` — never collapsed into
+  one boolean, and never conflated with an artifact's own `completion`
+  state (passed through separately, only for the families that carry one:
+  observation and external-reference). A manifest declaring the
+  `bounded-agent-context` kind is classified `unrecognized-kind`: v0.6/v0.7
+  never added a disk writer/reader for that family (confirmed via direct
+  source inspection and `@dailephd/my-dev-kit` search), so Batch 2 does not
+  invent persistence-shaped handling for it.
+- **Viewer handles** (`evidence/handles.ts`, `evidence/pathSafety.ts`): a
+  handle is a family-prefixed, percent-encoded, root-relative directory path
+  — never a raw filesystem path accepted from the browser. Every route that
+  accepts a handle re-decodes and re-resolves it against the evidence root,
+  re-checks containment, and re-classifies that one candidate before serving
+  anything; a handle whose backing directory or manifest no longer matches
+  what was indexed fails closed as unknown, never stale.
+- **Ephemeral projection** (`evidence/projection.ts`): `EvidenceMetadataRecord`
+  (bounded, `/api/index`-shaped: handle, family, support state, logical id,
+  schema version, completion where applicable, media availability summary,
+  a handful of related ids) and `EvidenceArtifactDetail` (the already-
+  validated domain object, wrapped with `handle`/`family` — no new evidence
+  schema, no recomputation, no persistence).
+- **Media resolution** (`evidence/mediaResolver.ts`): `screenshot` (observation),
+  `image` (imported external reference), and `source-image` (approved
+  external reference) are the only three recognized roles. An approved
+  reference's image is never assumed to live in the approved artifact's own
+  directory — its `sourceReference.referenceId` is looked up against the
+  current index to find the actual owning imported artifact
+  (`evidence/index.ts#findImportedReferenceDir`), exactly matching the v0.7
+  reference-ownership contract in `docs/CONTRACTS.md`. A genuinely missing
+  screenshot/image/source artifact is reported as 404, never fabricated.
+- **PWA cache boundary preserved, not re-verified from scratch**: every new
+  route lives under `/api/`, already covered by Batch 1's
+  `denylist:[/^\/api\//]` navigation-fallback rule — no new `runtimeCaching`
+  entry was needed or added (`tests/unit/viewerPwaBuild.test.ts` asserts this
+  against the real built `sw.js`).
+- **Minimal UI** (`viewer/src/hooks/useEvidenceIndex.ts`,
+  `useArtifactDetail.ts`, `components/EvidenceList.tsx`,
+  `ArtifactPreview.tsx`): a bounded evidence list (metadata-first) plus
+  on-demand full-artifact loading on selection, with every support state
+  shown honestly. No screenshot rendering, SVG overlay, or comparison/
+  contract/reference visualization exists yet — that begins in Batch 3.
+
 ## Retained v0.1 architecture constraints
 
 v0.1 planning preserved these approved boundaries without treating module
