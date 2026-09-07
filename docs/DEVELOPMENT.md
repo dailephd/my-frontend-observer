@@ -163,6 +163,20 @@ it locally after `npm run build` (Chromium must already be installed):
 node scripts/dev/builtCliFrontendContractsBrowserSmoke.mjs
 ```
 
+Since v0.8 Batch 1, `npm run build` also builds the browser-side viewer app
+(`viewer/`) with Vite into `dist/viewer` (see `docs/ARCHITECTURE.md` "v0.8
+Batch 1"). `npm run typecheck` additionally type-checks `viewer/tsconfig.json`
+alongside the existing `tsconfig.json`. To smoke-test the built viewer
+locally after `npm run build`:
+
+```powershell
+node dist/cli.js view --root <any-existing-directory> --no-open
+```
+
+then open the printed `http://127.0.0.1:4319` URL in a browser (or stop with
+Ctrl+C). This starts a real, loopback-only server serving the actual built
+PWA - it never reads or modifies anything under `--root` in this batch.
+
 Unlike `scripts/ci/runPackedObservationSmoke.mjs`, none of these five dev
 smokes is wired into any CI workflow or is a release gate - they are
 source-checkout development evidence only, proving the built CLI's

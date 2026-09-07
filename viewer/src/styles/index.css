@@ -1,0 +1,127 @@
+:root {
+  color-scheme: light dark;
+  --bg: #0f172a;
+  --panel: #1e293b;
+  --border: #334155;
+  --text: #e2e8f0;
+  --text-dim: #94a3b8;
+  --accent: #38bdf8;
+  --error-bg: #450a0a;
+  --error-border: #dc2626;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.app-shell__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-shell__identity {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.app-shell__title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.app-shell__subtitle {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.status-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 1rem;
+  font-size: 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.status-banner--loading {
+  color: var(--text-dim);
+}
+
+.status-banner--ok {
+  color: var(--text-dim);
+}
+
+.status-banner--error {
+  background: var(--error-bg);
+  color: #fecaca;
+  border-bottom-color: var(--error-border);
+}
+
+.app-shell__body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 220px 1fr 280px;
+  min-height: 0;
+}
+
+.app-shell__nav,
+.app-shell__workspace,
+.app-shell__details {
+  padding: 1rem;
+  overflow: auto;
+}
+
+.app-shell__nav {
+  border-right: 1px solid var(--border);
+}
+
+.app-shell__details {
+  border-left: 1px solid var(--border);
+}
+
+.placeholder-note {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.install-affordance {
+  font-size: 0.8rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.install-affordance--available {
+  background: var(--accent);
+  color: #0f172a;
+  border-color: var(--accent);
+  cursor: pointer;
+}
+
+.install-affordance--unavailable {
+  color: var(--text-dim);
+}

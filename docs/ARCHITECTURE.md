@@ -428,6 +428,69 @@ behavior were frozen by the actual v0.7 implementation below, not by earlier
 planning language. Style/asset-similarity mechanisms remain future unless
 separately implemented.
 
+## v0.8 Batch 1 (Viewer runtime and PWA foundation) — implemented
+
+Batch 1 of the frozen `docs/plans/v0.8-implementation-plan.md` establishes
+only the viewer runtime/build shell — no evidence indexing, artifact reading,
+or evidence UI. It does not implement any of the v0.7-derived reference/
+fidelity/binding display constraints above; those remain future work for
+later v0.8 batches, which must consume this runtime boundary rather than
+redefine it.
+
+```text
+my-frontend-observer view --root <evidence-root>
+        |
+        v
+  thin CLI dispatch (src/cli.ts: parseViewArgs/runViewCommand)
+        |
+        v
+  viewer application seam (src/viewerServer/viewerService.ts: startViewer)
+        |
+        v
+  Node local server, loopback-only (src/viewerServer/httpServer.ts)
+        |
+        +---------------------+----------------------+
+        |                                             |
+        v                                             v
+  built viewer assets (dist/viewer)          GET /api/status
+  (React + TypeScript + Vite PWA)            (session/root identity only)
+```
+
+- **Node server boundary** (`src/viewerServer/`): binds only to `127.0.0.1`
+  on one fixed default port (`4319`, `src/viewerServer/port.ts`); serves only
+  the built viewer assets plus the one read-only status endpoint; resolves
+  every requested path against the built assets root and fails closed on any
+  path that would resolve outside it; accepts no write HTTP methods; performs
+  no artifact reading, browser observation, or mutation. `--root` is
+  validated operationally (exists, is a directory) and exposed only as an
+  opaque status string — it is never interpreted as Observer evidence in this
+  batch.
+- **Browser application** (`viewer/`): a React + TypeScript + Vite app, built
+  independently of `src/` via `viewer/tsconfig.json` and `viewer/vite.config.ts`,
+  output to `dist/viewer` inside the existing package `dist` allowlist (no
+  second npm package). Renders an honest foundation shell only — product
+  identity, live session status via `/api/status`, and placeholder
+  navigation/workspace/details regions — never fabricated evidence.
+- **PWA**: `vite-plugin-pwa` generates a web app manifest (`standalone`
+  display, stable `start_url`/`scope`, installability icons) and a service
+  worker that precaches only the built application shell. It declares no
+  `runtimeCaching` rules, so future evidence/media/API routes remain
+  network/server-backed rather than silently served as stale cached truth
+  when the local server is unavailable (enforced by
+  `tests/unit/viewerPwaBuild.test.ts`, which asserts on the actual built
+  `sw.js`, not a hand-written approximation). An install affordance appears
+  only when the browser actually fires `beforeinstallprompt`; its absence is
+  shown honestly, never as a disabled-looking fake control.
+- **CLI**: `view --root <evidence-root> [--port <n>] [--no-open]` remains a
+  thin dispatcher — it parses syntax, delegates once to `startViewer`, prints
+  the URL/root, and optionally best-effort opens the system browser (failure
+  there is never fatal to server startup). All v0.1-v0.7 commands are
+  unchanged.
+
+This batch introduces no second observer, relationship engine, comparison
+engine, contract engine, reference model, or bounded-context builder — there
+is nothing yet for the viewer to consume beyond its own runtime identity.
+
 ## Retained v0.1 architecture constraints
 
 v0.1 planning preserved these approved boundaries without treating module

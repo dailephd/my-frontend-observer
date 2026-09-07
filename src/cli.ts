@@ -16,6 +16,9 @@ import type { ReferenceRegion } from './domain/externalReferenceRegions.js';
 import type { RawReferenceRequirement } from './domain/externalReferenceRequirements.js';
 import type { ExternalReferenceApplicability } from './domain/externalReferenceApplicability.js';
 import type { ReferenceRuntimeBindingDeclaration } from './domain/externalReferenceRuntimeBinding.js';
+import { startViewer } from './viewerServer/viewerService.js';
+import { openInDefaultBrowser } from './viewerServer/openBrowser.js';
+import { DEFAULT_VIEWER_PORT } from './viewerServer/port.js';
 
 export interface CliIO {
   stdout: (text: string) => void;
@@ -62,12 +65,49 @@ Commands:
                         reference/candidate compatibility, and explicit
                         region-to-target bindings. Prints a structured
                         result; persists nothing.
+  view                   Start the local, loopback-only viewer server and
+                        print its URL for a normal browser or an installed
+                        Progressive Web App.
 
 Options:
   --help     Show this help.
   --version  Print the package version.
 
 Run "my-frontend-observer <command> --help" for command-specific options.
+`;
+
+const VIEW_HELP = `Usage:
+  my-frontend-observer view --root <evidence-root> [options]
+
+Required:
+  --root <path>   Local evidence-root directory the viewer session
+                  represents. Validated operationally (must exist and be a
+                  directory) - this batch does not read or interpret any
+                  Observer artifacts under it.
+
+Options:
+  --port <n>      TCP port to bind, in [0, 65535]. Defaults to ${DEFAULT_VIEWER_PORT}.
+                  An explicit alternate port is a different web origin than
+                  the default - an installed PWA is not portable across
+                  origins. If the requested port is already in use, this
+                  command fails with an actionable error; it never silently
+                  falls back to a different port.
+  --no-open       Do not attempt to open the system default browser after
+                  the server starts. Browser auto-open is a best-effort
+                  convenience only: its failure is never fatal and never
+                  affects server startup success.
+  --help          Show this help.
+
+Starts one Node HTTP server bound only to 127.0.0.1, serving the built
+React + TypeScript + Vite viewer application (and its PWA manifest/service
+worker) plus one minimal read-only status endpoint. The server never writes
+to the supplied evidence root, never exposes it as a generic static
+directory, and never launches a browser observation. The process keeps
+running (serving the viewer) until interrupted. On success, prints the
+viewer URL and exits only when the server stops. On invalid syntax, a
+missing/non-directory --root, an invalid --port, or a port already in use,
+prints structured diagnostics to stderr and exits nonzero without starting
+a server.
 `;
 
 const OBSERVE_HELP = `Usage:
@@ -1909,6 +1949,106 @@ async function runEvaluateReferenceFidelityCommand(argv: readonly string[], io: 
   return 0;
 }
 
+type ParsedViewArgs = { ok: true; root: string; port?: number; noOpen: boolean } | { ok: false; errors: string[] };
+
+/** CLI-syntax-only parsing, mirroring `parseApproveBaselineArgs`. `--port` shape/range checking happens here; root existence/directory-ness is the application layer's job (see `startViewer`). */
+function parseViewArgs(argv: readonly string[]): ParsedViewArgs {
+  const errors: string[] = [];
+  let root: string | undefined;
+  let rootFlagCount = 0;
+  let port: number | undefined;
+  let portFlagCount = 0;
+  let noOpen = false;
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    switch (arg) {
+      case '--root': {
+        const value = argv[(i += 1)];
+        rootFlagCount += 1;
+        if (value === undefined) errors.push('--root requires a path argument');
+        else if (rootFlagCount > 1) errors.push('--root may only be specified once');
+        else root = value;
+        break;
+      }
+      case '--port': {
+        const value = argv[(i += 1)];
+        portFlagCount += 1;
+        if (value === undefined) {
+          errors.push('--port requires a numeric argument');
+        } else if (portFlagCount > 1) {
+          errors.push('--port may only be specified once');
+        } else {
+          const parsed = Number(value);
+          if (!Number.isInteger(parsed) || parsed < 0 || parsed > 65535) {
+            errors.push(`--port must be an integer between 0 and 65535; got ${JSON.stringify(value)}`);
+          } else {
+            port = parsed;
+          }
+        }
+        break;
+      }
+      case '--no-open':
+        noOpen = true;
+        break;
+      default:
+        errors.push(`unrecognized argument: ${arg}`);
+    }
+  }
+
+  if (root === undefined) errors.push('--root is required');
+  if (errors.length > 0) return { ok: false, errors };
+  return { ok: true, root: root as string, ...(port === undefined ? {} : { port }), noOpen };
+}
+
+/**
+ * Thin orchestration only: parse args, delegate to the existing
+ * `startViewer` application function exactly once, print status, and
+ * optionally attempt a best-effort browser open. Never parses Observer
+ * artifacts, never derives evidence, never mutates anything. Returns as soon
+ * as the server is confirmed listening (or has failed to start) - the
+ * process itself keeps running afterward only because the server's open
+ * listening socket keeps the Node event loop alive, not because this
+ * function blocks.
+ */
+async function runViewCommand(argv: readonly string[], io: CliIO): Promise<number> {
+  if (argv.includes('--help')) {
+    io.stdout(VIEW_HELP);
+    return 0;
+  }
+
+  const parsedArgs = parseViewArgs(argv);
+  if (!parsedArgs.ok) {
+    for (const error of parsedArgs.errors) io.stderr(`error: ${error}\n`);
+    io.stderr(VIEW_HELP);
+    return 1;
+  }
+
+  const result = await startViewer({
+    root: parsedArgs.root,
+    ...(parsedArgs.port === undefined ? {} : { port: parsedArgs.port }),
+  });
+  if (!result.ok) {
+    for (const diagnostic of result.diagnostics) io.stderr(`${formatDiagnostic(diagnostic)}\n`);
+    return 1;
+  }
+
+  io.stdout(`Viewer: ${result.url}\n`);
+  io.stdout(`Root: ${result.root}\n`);
+  io.stdout(`Press Ctrl+C to stop.\n`);
+
+  if (!parsedArgs.noOpen) {
+    try {
+      await openInDefaultBrowser(result.url);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      io.stderr(`note: could not open the default browser automatically: ${message}\n`);
+    }
+  }
+
+  return 0;
+}
+
 /** Testable CLI entry point: pure function of argv (+ injectable IO), no direct process.exit. */
 export async function runCli(argv: readonly string[], io: CliIO = defaultIO): Promise<number> {
   const [command, ...rest] = argv;
@@ -1958,6 +2098,10 @@ export async function runCli(argv: readonly string[], io: CliIO = defaultIO): Pr
 
   if (command === 'evaluate-reference-fidelity') {
     return runEvaluateReferenceFidelityCommand(rest, io);
+  }
+
+  if (command === 'view') {
+    return runViewCommand(rest, io);
   }
 
   io.stderr(`error: unrecognized command "${command}"\n`);

@@ -711,6 +711,50 @@ target that is not in the `imported` state, an unresolvable `--supersedes`
 target, or a persistence failure, prints structured diagnostics to stderr
 and exits nonzero.
 
+## `view`
+
+**Current status: v0.8 Batch 1 (Viewer runtime and PWA foundation).** Starts
+one loopback-only Node viewer server and serves the same React + TypeScript +
+Vite application to a normal browser or an installed Progressive Web App.
+This batch establishes only the runtime/build shell — it does not read or
+interpret Observer artifacts, so the viewer UI is presently an honest
+foundation shell (identity, session status, and placeholder navigation/
+workspace/details regions) rather than an evidence browser. Evidence
+indexing and inspection begin in later v0.8 batches.
+
+```text
+my-frontend-observer view --root <evidence-root> [options]
+```
+
+Required:
+
+- `--root <path>` — local evidence-root directory the viewer session
+  represents. Validated operationally (must exist and be a directory); this
+  batch never reads or interprets any Observer artifacts under it.
+
+Options:
+
+- `--port <n>` — TCP port to bind, in `[0, 65535]`. Defaults to `4319`
+  (chosen after checking that no fixture or test in this repository binds a
+  fixed port — see `tests/fixtures/server.ts`, which always uses `0`/
+  OS-assigned). An explicit alternate port is a different web origin than
+  the default; an installed PWA is not portable across origins. If the
+  requested port is already in use, the command fails with an actionable
+  diagnostic — it never silently falls back to a different port.
+- `--no-open` — do not attempt to open the system default browser after the
+  server starts. Auto-open is a best-effort convenience only: its failure is
+  never fatal and never affects server startup success.
+- `--help` — show `view` usage.
+
+The server binds only to `127.0.0.1` (never `0.0.0.0`), serves only the
+built viewer application assets plus one minimal read-only `/api/status`
+endpoint, and never exposes the supplied evidence root as a generic static
+directory. It accepts no write methods and mutates nothing. On success,
+prints the viewer URL and keeps running (serving the viewer) until
+interrupted. On invalid syntax, a missing/non-directory `--root`, an
+invalid `--port`, or a port already in use, prints structured diagnostics to
+stderr and exits nonzero without starting a server.
+
 ## Foundation commands
 
 - `npm install` — install dependencies (includes the `playwright` runtime
@@ -730,8 +774,14 @@ and exits nonzero.
   safety/navigation failure) — a discoverable entry point for security
   review tooling; it is a subset of, not a replacement for, `npm test` and
   `npm run test:browser`.
-- `npm run build` — clean and compile `src/` (including `src/cli.ts`) to
-  `dist/`.
+- `npm run build` — clean, then compile `src/` (including `src/cli.ts`) to
+  `dist/`, then build the viewer web app (`viewer/`) with Vite into
+  `dist/viewer/` (v0.8 Batch 1). Both outputs ship inside the existing
+  `dist` package allowlist — there is no second npm package.
+- `npm run typecheck` also type-checks the browser-side viewer project
+  (`viewer/tsconfig.json`) in addition to `tsconfig.json`, since the viewer's
+  DOM/JSX-targeting TypeScript config is intentionally separate from the
+  Node-only `src/` compilation.
 - `npm run check:docs` — validate canonical documents and roadmap structure.
 - `npm pack --dry-run` — inspect the public package's tarball inventory
   before publishing. The real tarball has been installed and exercised in a
