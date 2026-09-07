@@ -74,18 +74,19 @@ describe('viewer evidence data boundary (real Chromium, real persisted evidence)
     }
   });
 
-  it('selecting a supported non-observation record triggers real on-demand loading and shows its full raw payload', async () => {
-    // Since v0.8 Batch 3, "observation" selection renders the real SVG workspace instead (see tests/browser/observationSvgWorkspace.test.ts)
-    // - "comparison" still exercises the plain Batch 2 on-demand-load/raw-JSON path this test protects.
+  it('selecting a supported non-visualized-family record triggers real on-demand loading and shows its full raw payload', async () => {
+    // Since v0.8 Batch 3, "observation" renders the real SVG workspace, and since Batch 4 "comparison"/"contract-evaluation" render
+    // their own real workspaces too (see tests/browser/observationSvgWorkspace.test.ts, comparisonEvaluationWorkspace.test.ts) -
+    // "baseline-contract" still exercises the plain Batch 2 on-demand-load/raw-JSON path this test protects.
     const page = await browser.newPage();
     try {
       await page.goto(server.url);
-      const item = page.locator('.evidence-list__item', { hasText: 'comparison' }).first();
+      const item = page.locator('.evidence-list__item', { hasText: 'baseline-contract' }).first();
       await item.waitFor({ timeout: 10_000 });
       await item.click();
-      await page.getByText('Loaded comparison', { exact: false }).waitFor({ timeout: 10_000 });
+      await page.getByText('Loaded baseline-contract', { exact: false }).waitFor({ timeout: 10_000 });
       const bodyText = await page.textContent('body');
-      expect(bodyText).toContain('comparability');
+      expect(bodyText).toContain('sourceObservation');
     } finally {
       await page.close();
     }
@@ -104,14 +105,14 @@ describe('viewer evidence data boundary (real Chromium, real persisted evidence)
     }
   });
 
-  it('shows no comparison/contract/reference visualization for non-observation families (observation SVG/screenshot display is Batch 3 scope, covered separately)', async () => {
+  it('shows no visualization for families that still use the plain raw-JSON preview (baseline-contract; observation/comparison/contract-evaluation visualization is covered separately)', async () => {
     const page = await browser.newPage();
     try {
       await page.goto(server.url);
-      const item = page.locator('.evidence-list__item', { hasText: 'comparison' }).first();
+      const item = page.locator('.evidence-list__item', { hasText: 'baseline-contract' }).first();
       await item.waitFor({ timeout: 10_000 });
       await item.click();
-      await page.getByText('Loaded comparison', { exact: false }).waitFor({ timeout: 10_000 });
+      await page.getByText('Loaded baseline-contract', { exact: false }).waitFor({ timeout: 10_000 });
       expect(await page.locator('img').count()).toBe(0);
       expect(await page.locator('svg').count()).toBe(0);
     } finally {

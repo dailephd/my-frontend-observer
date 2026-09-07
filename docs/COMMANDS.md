@@ -713,31 +713,43 @@ and exits nonzero.
 
 ## `view`
 
-**Current status: v0.8 Batch 3 (Runtime observation inspection and SVG
-overlays).** Starts one loopback-only Node viewer server and serves the same
-React + TypeScript + Vite application to a normal browser or an installed
-Progressive Web App. `--root` is used as a bounded, read-only
+**Current status: v0.8 Batch 4 (Before/after comparison and contract/
+change-scope inspection).** Starts one loopback-only Node viewer server and
+serves the same React + TypeScript + Vite application to a normal browser or
+an installed Progressive Web App. `--root` is used as a bounded, read-only
 evidence-discovery root: the server exposes a metadata-first `GET
 /api/index` of recognized Observer evidence beneath it, an on-demand `GET
 /api/artifacts/<handle>` for one selected supported artifact, an on-demand
 `GET /api/media/<handle>/<role>` for its owned/referenced media (observation
-screenshots; imported/approved external-reference images), and — new this
-batch — an on-demand `GET /api/observations/<handle>/relationships` that
-returns the existing canonical `deriveLayoutRelationships(...)` result for
-one selected observation (never a second relationship engine) — see
-`docs/ARCHITECTURE.md` "v0.8 Batch 2"/"v0.8 Batch 3" for the exact discovery
-bounds, classification model, coordinate mapping, and handle/media-resolution
-contract. Selecting a supported `observation` record now shows a real visual
-workspace: its screenshot (loaded through the existing media endpoint),
-SVG-overlaid target rectangles in the observation's own canonical coordinate
-domain, target selection synchronized between the list/SVG/inspector, and
-canonical relationship display. Every other evidence family still shows the
-bounded metadata/raw-payload view established in Batch 2; comparison/
-contract/reference visualization remains out of scope until later batches.
-Every route remains strictly read-only: no artifact is ever created,
-modified, or interpreted beyond its existing canonical reader/validator, and
-`deriveLayoutRelationships` is a pure function that never re-launches a
-browser or re-resolves a target.
+screenshots; imported/approved external-reference images), an on-demand `GET
+/api/observations/<handle>/relationships` that returns the existing
+canonical `deriveLayoutRelationships(...)` result for one selected
+observation, and — new this batch — `GET /api/comparisons/<handle>/view` and
+`GET /api/evaluations/<handle>/view`, which resolve a comparison's/
+evaluation's linked source observations/contracts/comparison by **exact
+canonical identity** within the current evidence root (never by folder name
+or similarity) and report `resolved`/`missing`/`ambiguous` — never a second
+copy of the linked artifact's own payload, and never a recomputed
+`compareObservations`/`evaluateFrontendContract` result — see
+`docs/ARCHITECTURE.md` "v0.8 Batch 2"/"v0.8 Batch 3"/"v0.8 Batch 4" for the
+exact discovery bounds, classification model, coordinate mapping, and
+handle/media/linked-evidence-resolution contracts. Selecting a supported
+`observation` record shows the Batch 3 screenshot/SVG workspace. Selecting a
+supported `comparison` record shows a real before/after side-by-side visual
+workspace (reusing that same screenshot/SVG machinery) plus the persisted
+differences/relationship-changes/comparability/dependency evidence.
+Selecting a supported `contract-evaluation` record shows the persisted
+`overallVerdict` (PASS/FAIL) prominently, every clause result grouped by its
+authored category (requested/expected-dependent/protected/preserved) or
+shown as an active/superseded baseline invariant, and unexpected changes —
+with target-scoped results able to highlight the exact stable runtime target
+in the before/after panes. Every other evidence family still shows the
+bounded metadata/raw-payload view established in Batch 2; external-reference
+visualization remains out of scope until a later batch. Every route remains
+strictly read-only: no artifact is ever created, modified, or interpreted
+beyond its existing canonical reader/validator, and `deriveLayoutRelationships`/
+`compareObservations`/`evaluateFrontendContract` are pure functions this
+batch never invokes for viewer reconstruction.
 
 ```text
 my-frontend-observer view --root <evidence-root> [options]

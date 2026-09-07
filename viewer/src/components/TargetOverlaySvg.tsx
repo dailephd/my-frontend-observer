@@ -34,6 +34,7 @@ export function TargetOverlaySvg({
   selected,
   onSelect,
   toggles,
+  highlightNames,
 }: {
   artifact: ObservationArtifact;
   screenshotUrl: string;
@@ -42,6 +43,8 @@ export function TargetOverlaySvg({
   selected: string | undefined;
   onSelect: (name: string) => void;
   toggles: OverlayToggles;
+  /** Batch 4 additive, optional: extra target names to visually emphasize (e.g. both endpoints of a selected relationship-subject difference) without changing the single interactive `selected`/`aria-pressed` target. */
+  highlightNames?: ReadonlySet<string> | undefined;
 }) {
   const { width, height } = artifact.requestConfig.viewport;
 
@@ -89,10 +92,11 @@ export function TargetOverlaySvg({
             const g = geometryOf(t);
             if (g === undefined) return null;
             const isSelected = t.name === selected;
+            const isHighlighted = !isSelected && (highlightNames?.has(t.name) ?? false);
             return (
               <g key={t.name} data-target-name={t.name}>
                 <rect
-                  className={`target-overlay-svg__rect${isSelected ? ' target-overlay-svg__rect--selected' : ''}`}
+                  className={`target-overlay-svg__rect${isSelected ? ' target-overlay-svg__rect--selected' : ''}${isHighlighted ? ' target-overlay-svg__rect--highlighted' : ''}`}
                   data-target-name={t.name}
                   x={g.x}
                   y={g.y}

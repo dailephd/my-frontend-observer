@@ -6,6 +6,8 @@ import { getProducerInfo } from '../domain/schema.js';
 import { buildEvidenceIndexMetadata, loadArtifactByHandle } from './evidence/index.js';
 import { resolveMedia } from './evidence/mediaResolver.js';
 import { getObservationRelationships } from './evidence/observationView.js';
+import { getComparisonView } from './evidence/comparisonView.js';
+import { getEvaluationView } from './evidence/evaluationView.js';
 
 /** Batch 1 viewer protocol identity: the shape of GET /api/status. Bumped independently of package/schema versions if the status contract itself changes. */
 export const VIEWER_PROTOCOL_VERSION = '1.0.0';
@@ -172,6 +174,44 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
       return;
     }
     writeJsonBody(res, method, 200, { ok: true, graph: result.graph });
+    return;
+  }
+
+  const comparisonViewMatch = /^\/api\/comparisons\/([^/]+)\/view$/.exec(pathname);
+  if (comparisonViewMatch) {
+    const handle = decodeURIComponentSafe(comparisonViewMatch[1] as string);
+    if (handle === undefined) {
+      writeJsonError(res, method, 400, 'malformed comparison handle');
+      return;
+    }
+    const result = await getComparisonView(state.root, handle);
+    if (!result.ok) {
+      const status = result.reason === 'unknown-handle' ? 404 : 409;
+      const error =
+        result.reason === 'unknown-handle' ? 'unknown viewer artifact handle' : result.reason === 'not-a-comparison' ? 'view is only defined for comparison evidence' : 'comparison is not currently loadable';
+      writeJsonBody(res, method, status, { ok: false, error });
+      return;
+    }
+    writeJsonBody(res, method, 200, { ok: true, before: result.before, after: result.after });
+    return;
+  }
+
+  const evaluationViewMatch = /^\/api\/evaluations\/([^/]+)\/view$/.exec(pathname);
+  if (evaluationViewMatch) {
+    const handle = decodeURIComponentSafe(evaluationViewMatch[1] as string);
+    if (handle === undefined) {
+      writeJsonError(res, method, 400, 'malformed evaluation handle');
+      return;
+    }
+    const result = await getEvaluationView(state.root, handle);
+    if (!result.ok) {
+      const status = result.reason === 'unknown-handle' ? 404 : 409;
+      const error =
+        result.reason === 'unknown-handle' ? 'unknown viewer artifact handle' : result.reason === 'not-an-evaluation' ? 'view is only defined for contract-evaluation evidence' : 'evaluation is not currently loadable';
+      writeJsonBody(res, method, status, { ok: false, error });
+      return;
+    }
+    writeJsonBody(res, method, 200, { ok: true, comparison: result.comparison, baseline: result.baseline, change: result.change, before: result.before, after: result.after });
     return;
   }
 

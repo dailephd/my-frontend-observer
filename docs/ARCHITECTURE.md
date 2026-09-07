@@ -650,6 +650,90 @@ denylists - no service-worker configuration change was needed
 (`tests/unit/viewerPwaBuild.test.ts` asserts this against the real built
 `sw.js`).
 
+## v0.8 Batch 4 (Before/after comparison and contract/change-scope inspection) — implemented
+
+Batch 4 exposes the existing v0.4 `ComparisonArtifact` and v0.5
+`FrontendContractEvaluationArtifact` through the viewer, entirely under
+`src/viewerServer/evidence/{linkedEvidence,comparisonView,evaluationView}.ts`
+and `viewer/src/components/{ComparisonWorkspace,EvaluationWorkspace,
+ComparisonObservationPane,ClauseResultRow}.tsx`. **`compareObservations` and
+`evaluateFrontendContract` are never called anywhere in this batch** - every
+displayed comparison/evaluation field is read unchanged from its persisted
+artifact via the existing Batch 2 `GET /api/artifacts/<handle>`.
+
+- **Exact linked-evidence resolution** (`evidence/linkedEvidence.ts`): given
+  a `ComparisonSourceObservationReference`/`FrontendContractObservationReference`,
+  a `comparisonId`+`comparisonRequestId` pair, or a `baselineId`/`contractId`,
+  resolves the matching indexed artifact by **exact identity only**
+  (`observationId`+`requestId`+`producer.version`+`observationSchemaVersion`
+  for observations; the id fields themselves for comparisons/contracts) -
+  never by folder name, screenshot filename, URL, target-set, or geometry
+  similarity. Zero matches → `missing`; two or more exact matches →
+  `ambiguous` (never silently picks one). Mirrors the exact bounded-walk
+  pattern Batch 2's `findImportedReferenceDir` already established.
+- **Two additive, read-only routes**: `GET /api/comparisons/<handle>/view`
+  (resolves the comparison's `before`/`after`) and
+  `GET /api/evaluations/<handle>/view` (resolves `comparison`, `baseline`,
+  `change`, `before`, `after`) - both under `/api/`, both GET/HEAD-only, both
+  returning only resolved-handle-or-missing-or-ambiguous status, never a
+  duplicated copy of the linked artifact's own payload (the browser fetches
+  that separately through the existing `GET /api/artifacts/<handle>`, reusing
+  Batch 2's on-demand-loading contract exactly).
+- **Before/after visual reuse, not reimplementation**: `ComparisonObservationPane.tsx`
+  is built entirely from Batch 3's existing lower-level primitives
+  (`useArtifactDetail`, `orderedTargets`, `TargetOverlaySvg`) - no second
+  screenshot-loading, coordinate-transform, or geometry-rendering code
+  exists. The comparison's own persisted `relationshipsBefore`/
+  `relationshipsAfter` are passed directly into `TargetOverlaySvg`'s existing
+  `relationships` prop - never recomputed via `deriveLayoutRelationships`.
+  `TargetOverlaySvg` gained one small additive, optional `highlightNames`
+  prop (alongside the existing single-select `selected`) so a
+  relationship-subject difference or a two-target contract primitive
+  (`targets-do-not-overlap`, `target-fits-inside`, etc.) can emphasize both
+  named targets at once without changing Batch 3's existing single-select
+  interaction contract.
+- **Difference/relationship-change/clause presentation is evidence display,
+  not re-derivation**: `ComparisonWorkspace.tsx` renders `differences`,
+  `relationshipChanges`, `configurationChanges` (kept visually distinct from
+  appeared/disappeared runtime differences), and `expectedDependencyEvidence`
+  exactly as persisted, labeling dependency outcomes as explicit non-causal
+  evidence. `comparability` (comparable/comparable-with-warnings/incomparable
+  plus blocking/warning/unassessed reasons) is shown honestly; an
+  `incomparable` result is visually unmistakable
+  (`.comparability-banner--incomparable`).
+- **Clause joining by exact `clauseId` only** (`EvaluationWorkspace.tsx`):
+  baseline clauses (from the linked `PersistentBaselineContract`) and
+  per-change clauses (from the linked `PerChangeContract`) are joined to the
+  evaluation's `clauseResults` by exact id - never by target/primitive-shape/
+  category/position. A `clauseId` absent from both loaded contracts is shown
+  as an honest "unresolved clause definition", never fabricated. Baseline
+  clause active/superseded status comes exclusively from the evaluation
+  artifact's own `activeBaselineClauseIds`/`supersededBaselineClauseIds` -
+  never recomputed from clause overlap. `pass`/`fail`/`unavailable`/
+  `conflict` are preserved exactly (never collapsed to a boolean);
+  `unavailable` shows its reason, `conflict` shows its reason and
+  `conflictingClauseIds`.
+- **Overall verdict is authoritative and unmistakable**: `overallVerdict`
+  (`PASS`/`FAIL`) is rendered directly from the artifact, in a large
+  `.overall-verdict--PASS`/`.overall-verdict--FAIL` banner - the UI never
+  computes it from visible rows. The required safety case (a `requested`
+  clause `pass` alongside a `protected`/`preserved` clause `fail` still
+  producing overall `FAIL`) and the all-pass case are both proven against
+  real, canonically-evaluated fixtures (`tests/support/evidenceFixtures.ts#writeFullPipelineFixture`/
+  `writeAllPassPipelineFixture`) in real Chromium
+  (`tests/browser/comparisonEvaluationWorkspace.test.ts`) - `overallVerdict`
+  is never hand-edited to construct either demonstration.
+- **Target/relationship cross-highlighting uses only explicit canonical
+  identity**: `primitiveTargetNames()` (`viewer/src/contract/clauseTargets.ts`)
+  extracts a contract primitive's named target field(s) (`target`, `targetA`/
+  `targetB`, `target`+`container`, `subjectTarget`/`relatedTarget`) by an
+  exhaustive switch over `ContractPrimitiveKind` - page-level primitives
+  (`document-width-fits-viewport`, `scroll-owner-is-document`) return no
+  names, so clicking them never fabricates a target highlight.
+- **PWA cache boundary preserved**: both new routes live under `/api/`,
+  already covered by Batch 1's `navigateFallbackDenylist`; verified against
+  the real built `sw.js`.
+
 ## Retained v0.1 architecture constraints
 
 v0.1 planning preserved these approved boundaries without treating module

@@ -312,6 +312,190 @@ export async function writeFullPipelineFixture(dir: string): Promise<FullPipelin
   };
 }
 
+/**
+ * Batch 4: the deliberate all-pass counterpart to `writeFullPipelineFixture`
+ * - same shape/clause set, but `rightAd` (protected) is genuinely unchanged
+ * and `navigation` (preserved-unclipped) genuinely never becomes clipped, so
+ * every clause - requested, expected-dependent, protected, preserved -
+ * passes and `overallVerdict` is real, canonical `PASS` (never hand-edited).
+ */
+export async function writeAllPassPipelineFixture(dir: string): Promise<FullPipelineFixture> {
+  const before = buildObservation('obs-before', [target('navigation'), target('workspace'), target('rightAd')], {
+    navigation: matchedTarget(rect(0, 0, 190, 600)),
+    workspace: matchedTarget(rect(200, 0, 600, 600)),
+    rightAd: matchedTarget(rect(900, 0, 200, 600)),
+  });
+  const after = buildObservation('obs-after', [target('navigation'), target('workspace'), target('rightAd')], {
+    navigation: matchedTarget(
+      rect(0, 0, 140, 600),
+      { display: 'block', position: 'static', overflowX: 'hidden', overflowY: 'visible' },
+      { scrollWidth: 140, scrollHeight: 600, clientWidth: 140, clientHeight: 600, scrollTop: 0, scrollLeft: 0 }, // scrollWidth === clientWidth: genuinely never clipped
+    ),
+    workspace: matchedTarget(rect(200, 0, 650, 600)),
+    rightAd: matchedTarget(rect(900, 0, 200, 600)), // unchanged from before: genuinely satisfies the protected clause
+  });
+
+  const beforeWritten = await writeObservationArtifact(before, new Uint8Array([1, 2, 3]), { cwd: dir });
+  const afterWritten = await writeObservationArtifact(after, new Uint8Array([4, 5, 6]), { cwd: dir });
+  if (!beforeWritten.ok || !afterWritten.ok) throw new Error('expected observation writes to succeed');
+
+  const compared = compareObservations(before, after);
+  if (!compared.ok) throw new Error(`expected ok comparison: ${compared.reason}`);
+  const comparisonWritten = await writeComparisonArtifact(compared.artifact, 'comparisons', { cwd: dir });
+  if (!comparisonWritten.ok) throw new Error('expected comparison write to succeed');
+
+  const baseline = buildBaselineContract();
+  const change = buildChangeContract({
+    clauses: [
+      { clauseId: 'requested-nav', primitive: { kind: 'property-decreases', target: 'navigation', property: 'width' }, category: 'requested', supportingEvidence: [] },
+      { clauseId: 'expected-workspace', primitive: { kind: 'property-increases', target: 'workspace', property: 'width' }, category: 'expected-dependent', expectedDependentMode: 'required', supportingEvidence: [] },
+      { clauseId: 'protected-rightad', primitive: { kind: 'property-unchanged-within-tolerance', target: 'rightAd', property: 'width', tolerance: { kind: 'exact' } }, category: 'protected', supportingEvidence: [] },
+      { clauseId: 'preserved-nav-unclipped', primitive: { kind: 'target-not-clipped', target: 'navigation' }, category: 'preserved', supportingEvidence: [] },
+    ],
+  });
+  const baselineWritten = await writePersistentBaselineContract(baseline, 'baselines', { cwd: dir });
+  const changeWritten = await writePerChangeContract(change, 'contracts', { cwd: dir });
+  if (!baselineWritten.ok || !changeWritten.ok) throw new Error('expected contract writes to succeed');
+
+  const evaluated = await evaluateAndPersistFromArtifactRoots(beforeWritten.artifactRoot, afterWritten.artifactRoot, comparisonWritten.artifactRoot, baselineWritten.artifactRoot, changeWritten.artifactRoot, {
+    outputLocation: 'evaluations',
+    cwd: dir,
+  });
+  if (!evaluated.ok) throw new Error('expected evaluation to succeed');
+
+  return {
+    beforeRoot: beforeWritten.artifactRoot,
+    afterRoot: afterWritten.artifactRoot,
+    comparisonRoot: comparisonWritten.artifactRoot,
+    baselineRoot: baselineWritten.artifactRoot,
+    changeRoot: changeWritten.artifactRoot,
+    evaluationRoot: evaluated.artifactRoot,
+  };
+}
+
+/**
+ * Batch 4: a fixture whose baseline contract genuinely has two clauses, one
+ * of which the per-change contract explicitly supersedes - so the resulting
+ * evaluation artifact's `activeBaselineClauseIds`/`supersededBaselineClauseIds`
+ * are real, canonical evaluator output (never hand-set) with both a
+ * non-empty active and a non-empty superseded id.
+ */
+export async function writeBaselineSupersessionFixture(dir: string): Promise<FullPipelineFixture> {
+  const before = buildObservation('obs-before', [target('navigation'), target('workspace')], {
+    navigation: matchedTarget(rect(0, 0, 190, 600)),
+    workspace: matchedTarget(rect(200, 0, 600, 600)),
+  });
+  const after = buildObservation('obs-after', [target('navigation'), target('workspace')], {
+    navigation: matchedTarget(rect(0, 0, 140, 600)),
+    workspace: matchedTarget(rect(200, 0, 650, 600)),
+  });
+
+  const beforeWritten = await writeObservationArtifact(before, new Uint8Array([1, 2, 3]), { cwd: dir });
+  const afterWritten = await writeObservationArtifact(after, new Uint8Array([4, 5, 6]), { cwd: dir });
+  if (!beforeWritten.ok || !afterWritten.ok) throw new Error('expected observation writes to succeed');
+
+  const compared = compareObservations(before, after);
+  if (!compared.ok) throw new Error(`expected ok comparison: ${compared.reason}`);
+  const comparisonWritten = await writeComparisonArtifact(compared.artifact, 'comparisons', { cwd: dir });
+  if (!comparisonWritten.ok) throw new Error('expected comparison write to succeed');
+
+  const baseline = buildBaselineContract({
+    clauses: [
+      { clauseId: 'baseline-nav-visible', primitive: { kind: 'target-visible', target: 'navigation' }, supportingEvidence: [] },
+      { clauseId: 'baseline-workspace-visible', primitive: { kind: 'target-visible', target: 'workspace' }, supportingEvidence: [] },
+    ],
+  });
+  const change = buildChangeContract({
+    clauses: [
+      {
+        clauseId: 'requested-nav',
+        primitive: { kind: 'property-decreases', target: 'navigation', property: 'width' },
+        category: 'requested',
+        supersedesBaselineClauseIds: ['baseline-nav-visible'],
+        supportingEvidence: [],
+      },
+    ],
+  });
+  const baselineWritten = await writePersistentBaselineContract(baseline, 'baselines', { cwd: dir });
+  const changeWritten = await writePerChangeContract(change, 'contracts', { cwd: dir });
+  if (!baselineWritten.ok || !changeWritten.ok) throw new Error('expected contract writes to succeed');
+
+  const evaluated = await evaluateAndPersistFromArtifactRoots(beforeWritten.artifactRoot, afterWritten.artifactRoot, comparisonWritten.artifactRoot, baselineWritten.artifactRoot, changeWritten.artifactRoot, {
+    outputLocation: 'evaluations',
+    cwd: dir,
+  });
+  if (!evaluated.ok) throw new Error('expected evaluation to succeed');
+
+  return {
+    beforeRoot: beforeWritten.artifactRoot,
+    afterRoot: afterWritten.artifactRoot,
+    comparisonRoot: comparisonWritten.artifactRoot,
+    baselineRoot: baselineWritten.artifactRoot,
+    changeRoot: changeWritten.artifactRoot,
+    evaluationRoot: evaluated.artifactRoot,
+  };
+}
+
+export interface ComparisonOnlyFixture {
+  beforeRoot: string;
+  afterRoot: string;
+  comparisonRoot: string;
+}
+
+/**
+ * Batch 4: a real comparison (no contract layer) whose `banner` target
+ * genuinely appears (not-found -> matched) and whose `promo` target
+ * genuinely disappears (matched -> not-found) - the same stable configured
+ * target name on both sides, per `compareObservations`'s own eligibility
+ * rule (never a target added/removed from configuration, which is its own
+ * `configurationChanges` entry).
+ */
+export async function writeAppearedDisappearedComparisonFixture(dir: string): Promise<ComparisonOnlyFixture> {
+  const before = buildObservation('ad-obs-before', [target('banner'), target('promo')], {
+    banner: unresolvedTarget('not-found'),
+    promo: matchedTarget(rect(0, 0, 300, 60)),
+  });
+  const after = buildObservation('ad-obs-after', [target('banner'), target('promo')], {
+    banner: matchedTarget(rect(0, 0, 300, 60)),
+    promo: unresolvedTarget('not-found'),
+  });
+
+  const beforeWritten = await writeObservationArtifact(before, new Uint8Array([1, 2, 3]), { cwd: dir });
+  const afterWritten = await writeObservationArtifact(after, new Uint8Array([4, 5, 6]), { cwd: dir });
+  if (!beforeWritten.ok || !afterWritten.ok) throw new Error('expected observation writes to succeed');
+
+  const compared = compareObservations(before, after);
+  if (!compared.ok) throw new Error(`expected ok comparison: ${compared.reason}`);
+  const comparisonWritten = await writeComparisonArtifact(compared.artifact, 'comparisons', { cwd: dir });
+  if (!comparisonWritten.ok) throw new Error('expected comparison write to succeed');
+
+  return { beforeRoot: beforeWritten.artifactRoot, afterRoot: afterWritten.artifactRoot, comparisonRoot: comparisonWritten.artifactRoot };
+}
+
+/**
+ * Batch 4: a real comparison between two observations whose viewports
+ * genuinely differ (a `viewport-mismatch` blocking reason) - `compareObservations`
+ * itself decides `incomparable`, never re-derived or asserted by the viewer.
+ */
+export async function writeIncomparableComparisonFixture(dir: string): Promise<ComparisonOnlyFixture> {
+  const before = buildObservation('ic-obs-before', [target('nav')], { nav: matchedTarget(rect(0, 0, 190, 600)) }, '0.7.0', {}, { width: 1200, height: 800 });
+  const after = buildObservation('ic-obs-after', [target('nav')], { nav: matchedTarget(rect(0, 0, 190, 600)) }, '0.7.0', {}, { width: 800, height: 600 });
+
+  const beforeWritten = await writeObservationArtifact(before, new Uint8Array([1, 2, 3]), { cwd: dir });
+  const afterWritten = await writeObservationArtifact(after, new Uint8Array([4, 5, 6]), { cwd: dir });
+  if (!beforeWritten.ok || !afterWritten.ok) throw new Error('expected observation writes to succeed');
+
+  const compared = compareObservations(before, after);
+  if (!compared.ok) throw new Error(`expected ok comparison: ${compared.reason}`);
+  if (compared.artifact.comparability.state !== 'incomparable') {
+    throw new Error(`expected an incomparable fixture, got comparability state "${compared.artifact.comparability.state}"`);
+  }
+  const comparisonWritten = await writeComparisonArtifact(compared.artifact, 'comparisons', { cwd: dir });
+  if (!comparisonWritten.ok) throw new Error('expected comparison write to succeed');
+
+  return { beforeRoot: beforeWritten.artifactRoot, afterRoot: afterWritten.artifactRoot, comparisonRoot: comparisonWritten.artifactRoot };
+}
+
 export interface ExternalReferencePairFixture {
   importedRoot: string;
   approvedRoot: string;

@@ -408,3 +408,249 @@ body {
 .inspector__error {
   color: #fecaca;
 }
+
+/* --- Batch 4: comparison and evaluation workspaces --- */
+
+.target-overlay-svg__rect--highlighted {
+  stroke: #facc15;
+  fill: rgba(250, 204, 21, 0.15);
+}
+
+.comparison-workspace,
+.evaluation-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  font-size: 0.75rem;
+  height: 100%;
+  overflow: auto;
+}
+
+.comparability-banner {
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.comparability-banner--comparable {
+  border-color: #4ade80;
+}
+
+.comparability-banner--comparable-with-warnings {
+  border-color: #facc15;
+}
+
+.comparability-banner--incomparable {
+  border-color: #f87171;
+  background: var(--error-bg);
+}
+
+.comparability-banner ul {
+  margin: 0.3rem 0 0;
+  padding-left: 1rem;
+}
+
+.comparability-reason--blocking {
+  color: #fecaca;
+}
+
+.comparability-reason--warning {
+  color: #fde68a;
+}
+
+.comparability-reason--unassessed {
+  color: var(--text-dim);
+}
+
+.comparison-workspace__truncated {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #facc15;
+  border-radius: 6px;
+  color: #fde68a;
+}
+
+.comparison-workspace__panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  min-height: 260px;
+}
+
+.comparison-pane {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem;
+  overflow: auto;
+  background: #000;
+}
+
+.comparison-pane__label {
+  margin: 0 0 0.3rem;
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+
+.comparison-workspace__details,
+.evaluation-workspace__details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.comparison-workspace__details section,
+.evaluation-workspace__details section {
+  border-top: 1px solid var(--border);
+  padding-top: 0.4rem;
+}
+
+.comparison-workspace__details h4,
+.evaluation-workspace__details h4 {
+  margin: 0 0 0.3rem;
+  font-size: 0.75rem;
+}
+
+.comparison-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.comparison-list__item {
+  width: 100%;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.3rem 0.45rem;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.7rem;
+}
+
+.comparison-list__item:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.comparison-list__meta {
+  color: var(--text-dim);
+  display: block;
+  font-size: 0.65rem;
+}
+
+.overall-verdict {
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  text-align: center;
+  border: 2px solid var(--border);
+}
+
+.overall-verdict--PASS {
+  border-color: #4ade80;
+  color: #4ade80;
+}
+
+.overall-verdict--FAIL {
+  border-color: #f87171;
+  color: #f87171;
+  background: var(--error-bg);
+}
+
+.clause-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.clause-row {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.3rem 0.45rem;
+}
+
+.clause-row--fail {
+  border-color: #f87171;
+}
+
+.clause-row--pass {
+  border-color: #4ade80;
+}
+
+.clause-row--conflict {
+  border-color: #fb923c;
+}
+
+.clause-row--unavailable {
+  border-color: var(--text-dim);
+}
+
+.clause-row__button {
+  background: none;
+  border: none;
+  color: var(--text);
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  font-size: 0.7rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.clause-row__button:disabled {
+  cursor: default;
+}
+
+.clause-row__id {
+  font-family: monospace;
+  font-weight: 600;
+}
+
+.clause-row__badge {
+  font-size: 0.6rem;
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+.clause-row__badge--active {
+  border-color: #4ade80;
+  color: #4ade80;
+}
+
+.clause-row__badge--superseded {
+  color: var(--text-dim);
+}
+
+.clause-row__category {
+  color: var(--text-dim);
+  text-transform: uppercase;
+  font-size: 0.6rem;
+}
+
+.clause-row__status {
+  margin-left: auto;
+}
+
+.clause-row__unresolved {
+  color: #fde68a;
+  font-size: 0.65rem;
+  margin: 0.2rem 0 0;
+}
+
+.clause-row__primitive {
+  color: var(--text-dim);
+  font-size: 0.62rem;
+  margin: 0.2rem 0 0;
+  word-break: break-word;
+  font-family: monospace;
+}
