@@ -1,11 +1,14 @@
 import type { ArtifactDetailState } from '../hooks/useArtifactDetail.js';
 import type { EvidenceMetadataRecord } from '../hooks/useEvidenceIndex.js';
+import type { ObservationArtifact } from '../types/observation.js';
+import { ObservationWorkspace } from './ObservationWorkspace.js';
 
 /**
- * v0.8 Batch 2: proves the on-demand full-artifact loading boundary is
- * genuinely consumable. Deliberately not a real evidence visualization -
- * no screenshot rendering, no SVG overlays, no comparison/contract/
- * reference presentation. Those belong to Batch 3+.
+ * v0.8 Batch 2 established the on-demand full-artifact loading boundary
+ * (raw-JSON preview for every family). Batch 3 adds a real visual workspace
+ * for the `observation` family only (screenshot + SVG target overlay +
+ * inspector); every other family still shows the bounded raw-JSON preview -
+ * comparison/contract/reference visualization remains out of scope.
  */
 export function ArtifactPreview({ selected, detail }: { selected: EvidenceMetadataRecord | undefined; detail: ArtifactDetailState }) {
   if (selected === undefined) {
@@ -36,6 +39,10 @@ export function ArtifactPreview({ selected, detail }: { selected: EvidenceMetada
         Failed to load {selected.family}: {detail.message}
       </div>
     );
+  }
+
+  if (detail.family === 'observation') {
+    return <ObservationWorkspace handle={detail.handle} artifact={detail.artifact as ObservationArtifact} />;
   }
 
   return (

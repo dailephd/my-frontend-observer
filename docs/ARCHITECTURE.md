@@ -564,6 +564,92 @@ GET /api/media/<handle>/<role>     one resolved, contained media file, streamed 
   shown honestly. No screenshot rendering, SVG overlay, or comparison/
   contract/reference visualization exists yet — that begins in Batch 3.
 
+## v0.8 Batch 3 (Runtime observation inspection and SVG overlays) — implemented
+
+Batch 3 makes one already-supported `ObservationArtifact` (Batch 2's data
+boundary, unchanged) genuinely understandable: a real screenshot, SVG target
+overlays in the observation's own canonical coordinate domain, target
+selection/inspection, and canonical layout-relationship display. No second
+relationship engine, no client-side evidence derivation, no new persisted
+artifact.
+
+**Coordinate audit (the load-bearing decision for this batch)**: target
+geometry (`TargetGeometry.x/y/width/height`) is captured via
+`el.getBoundingClientRect()` (`src/browser/evidenceCapture.ts`) - CSS pixels,
+relative to the current viewport's top-left, at the same live page state the
+screenshot is taken from. The screenshot itself is `page.screenshot({type:
+'png'})` (`src/browser/chromiumAdapter.ts`), Playwright's default
+(non-fullPage) mode, against a browser context created with no
+`deviceScaleFactor` override (`browser.newContext({viewport})`) - so it
+defaults to `1`, meaning every observation this repository can currently
+produce has a screenshot whose raw PNG pixel dimensions equal
+`requestConfig.viewport.width × requestConfig.viewport.height` exactly (1
+CSS pixel = 1 PNG pixel). `requestConfig.viewport` (a required, strongly-typed
+field on every valid `ObservationArtifact`, distinct from the loosely-typed
+`pageEvidence` bag) is therefore the canonical, always-present source for the
+SVG display frame.
+
+**SVG coordinate model** (`viewer/src/components/TargetOverlaySvg.tsx`): the
+`<svg>` root's `viewBox` is `0 0 {requestConfig.viewport.width}
+{requestConfig.viewport.height}` - the exact frame `getBoundingClientRect()`
+already used. The screenshot loads into a `<image>` element filling that same
+viewBox (`preserveAspectRatio="none"`, since the two frames are already
+pixel-identical). Target `<rect>` elements use `geometry.x/y/width/height`
+completely unchanged - no rounding, no `devicePixelRatio` multiplication, no
+clamping; geometry lying partly outside the viewBox is drawn at its real
+coordinates and clipped only by the SVG root's default `overflow: hidden`
+(a display-only effect, verified never to touch the underlying evidence
+value - `tests/unit/observationCoordinateMapping.test.ts`). This is robust
+even if a future capture path used a different `deviceScaleFactor`: the
+`<image>`/viewBox scaling is presentation-only browser behavior, never a
+manual pixel calculation in this codebase. `devicePixelRatio` (captured as
+`pageEvidence.devicePixelRatio`) is shown as informational observation-level
+evidence only and is never consulted for any geometry calculation.
+
+**Server additions** (`src/viewerServer/evidence/observationView.ts`, one new
+route `GET /api/observations/<handle>/relationships`): the only new
+server-side computation this batch adds is one thin, defense-in-depth-wrapped
+call to the existing canonical, pure `deriveLayoutRelationships` (`src/domain/
+relationships.ts`) - never a second relationship predicate implementation.
+Mirrors the exact handle-decode → contained-dir-resolve → re-classify
+discipline `loadArtifactByHandle`/`resolveMedia` already established in
+Batch 2; a handle for a non-`observation` family or a non-`supported`
+candidate is rejected (`409`) before derivation is even attempted. The
+existing `GET /api/artifacts/<handle>` (full `ObservationArtifact`) and
+`GET /api/media/<handle>/screenshot` (Batch 2, unchanged) remain the only
+other data sources the observation workspace uses - no new artifact
+projection endpoint was needed, since the full validated domain object
+already contains everything the target/observation inspector displays.
+
+**Client-side presentation only** (`viewer/src/observation/targetOrder.ts`,
+`viewer/src/components/{ObservationWorkspace,TargetList,TargetOverlaySvg,
+ObservationInspector,EvidenceFieldView}.tsx`): React selects, orders
+(by the observation's own authored `requestConfig.targets` order, not
+incidental object-key order), and formats already-fetched canonical fields.
+It never resolves targets, computes relationships, or derives
+visibility/overflow/scroll-owner semantics - `deriveLayoutRelationships`
+runs exclusively on the server (above). An unresolved target (`not-found`/
+`ambiguous`/`unavailable`) is selectable from the target list and shown
+honestly in the inspector, but never receives a fabricated `<rect>` -
+`orderedTargets()`'s `hasGeometry` flag is `true` only when
+`geometry.state` is `'available'` or `'partial'`.
+
+**Selection**: viewer presentation state only (React `useState`, reset on
+observation change), never persisted, synchronized in both directions
+between the target list, the SVG `<rect>` (`role="button"`, keyboard-
+operable), and the inspector via the target's existing stable `name`.
+
+**Overlay toggles**: geometry, labels (disabled when geometry is off), and
+relationships - each independently toggleable and purely presentational
+(hiding/showing already-rendered elements), never altering the underlying
+evidence or the fetched artifact/graph.
+
+**PWA cache boundary preserved**: the new `/api/observations/*` route lives
+under the same `/api/` prefix Batch 1's `navigateFallbackDenylist` already
+denylists - no service-worker configuration change was needed
+(`tests/unit/viewerPwaBuild.test.ts` asserts this against the real built
+`sw.js`).
+
 ## Retained v0.1 architecture constraints
 
 v0.1 planning preserved these approved boundaries without treating module

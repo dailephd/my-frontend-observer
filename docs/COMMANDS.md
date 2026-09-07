@@ -713,23 +713,31 @@ and exits nonzero.
 
 ## `view`
 
-**Current status: v0.8 Batch 2 (Evidence indexing, canonical readers, and
-lazy data boundary).** Starts one loopback-only Node viewer server and
-serves the same React + TypeScript + Vite application to a normal browser or
-an installed Progressive Web App. `--root` is now also used as a bounded,
-read-only evidence-discovery root: the server exposes a metadata-first
-`GET /api/index` of recognized Observer evidence beneath it, an on-demand
-`GET /api/artifacts/<handle>` for one selected supported artifact, and an
-on-demand `GET /api/media/<handle>/<role>` for its owned/referenced media
-(observation screenshots; imported/approved external-reference images) —
-see `docs/ARCHITECTURE.md` "v0.8 Batch 2" for the exact discovery bounds,
-classification model, and handle/media-resolution contract. The viewer UI
-shows this real, honestly-stated evidence (supported/unsupported-version/
-malformed/unrecognized) with on-demand loading on selection; it still does
-not render screenshots, SVG overlays, or comparison/contract/reference
-visualizations — that begins in Batch 3. Every route remains strictly
-read-only: no artifact is ever created, modified, or interpreted beyond its
-existing canonical reader/validator.
+**Current status: v0.8 Batch 3 (Runtime observation inspection and SVG
+overlays).** Starts one loopback-only Node viewer server and serves the same
+React + TypeScript + Vite application to a normal browser or an installed
+Progressive Web App. `--root` is used as a bounded, read-only
+evidence-discovery root: the server exposes a metadata-first `GET
+/api/index` of recognized Observer evidence beneath it, an on-demand `GET
+/api/artifacts/<handle>` for one selected supported artifact, an on-demand
+`GET /api/media/<handle>/<role>` for its owned/referenced media (observation
+screenshots; imported/approved external-reference images), and — new this
+batch — an on-demand `GET /api/observations/<handle>/relationships` that
+returns the existing canonical `deriveLayoutRelationships(...)` result for
+one selected observation (never a second relationship engine) — see
+`docs/ARCHITECTURE.md` "v0.8 Batch 2"/"v0.8 Batch 3" for the exact discovery
+bounds, classification model, coordinate mapping, and handle/media-resolution
+contract. Selecting a supported `observation` record now shows a real visual
+workspace: its screenshot (loaded through the existing media endpoint),
+SVG-overlaid target rectangles in the observation's own canonical coordinate
+domain, target selection synchronized between the list/SVG/inspector, and
+canonical relationship display. Every other evidence family still shows the
+bounded metadata/raw-payload view established in Batch 2; comparison/
+contract/reference visualization remains out of scope until later batches.
+Every route remains strictly read-only: no artifact is ever created,
+modified, or interpreted beyond its existing canonical reader/validator, and
+`deriveLayoutRelationships` is a pure function that never re-launches a
+browser or re-resolves a target.
 
 ```text
 my-frontend-observer view --root <evidence-root> [options]

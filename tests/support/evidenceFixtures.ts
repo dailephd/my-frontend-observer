@@ -7,6 +7,7 @@
  * `fullPipelineFixture`.
  */
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
+import { deflateSync } from 'node:zlib';
 import path from 'node:path';
 import { ARTIFACT_KIND, SCHEMA_VERSION as OBSERVATION_SCHEMA_VERSION, PRODUCER_NAME } from '../../src/domain/schema.js';
 import type { ObservationArtifact, TargetGeometry, TargetEvidenceRecord, TargetComputedStyle, TargetLayoutMetrics } from '../../src/domain/schema.js';
@@ -20,6 +21,58 @@ import { writePersistentBaselineContract, writePerChangeContract } from '../../s
 import { evaluateAndPersistFromArtifactRoots } from '../../src/application/frontendContractEvaluationService.js';
 import { importExternalReference, approveExternalReference } from '../../src/application/externalReferencePersistenceService.js';
 import { buildMinimalPng } from '../unit/externalReferenceImageFixtures.js';
+
+function crc32(buf: Uint8Array): number {
+  const table = (crc32 as { table?: Uint32Array }).table ?? (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      t[n] = c >>> 0;
+    }
+    (crc32 as { table?: Uint32Array }).table = t;
+    return t;
+  })();
+  let crc = 0xffffffff;
+  for (let i = 0; i < buf.length; i++) crc = (table as Uint32Array)[(crc ^ buf[i]!) & 0xff]! ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function pngChunk(type: string, data: Uint8Array): Buffer {
+  const typeBuf = Buffer.from(type, 'ascii');
+  const lenBuf = Buffer.alloc(4);
+  lenBuf.writeUInt32BE(data.length, 0);
+  const body = Buffer.concat([typeBuf, data]);
+  const crcBuf = Buffer.alloc(4);
+  crcBuf.writeUInt32BE(crc32(body), 0);
+  return Buffer.concat([lenBuf, body, crcBuf]);
+}
+
+/** A real, fully decodable solid-color PNG at exactly `width`x`height` pixels - unlike `buildMinimalPng` (header-only, IHDR-only), this renders in a real browser, so real-Chromium tests can prove actual screenshot/SVG pixel alignment. */
+export function buildRealPng(width: number, height: number, rgb: [number, number, number] = [30, 64, 175]): Uint8Array {
+  const raw = Buffer.alloc(height * (1 + width * 3));
+  for (let y = 0; y < height; y++) {
+    const rowStart = y * (1 + width * 3);
+    raw[rowStart] = 0;
+    for (let x = 0; x < width; x++) {
+      const off = rowStart + 1 + x * 3;
+      raw[off] = rgb[0];
+      raw[off + 1] = rgb[1];
+      raw[off + 2] = rgb[2];
+    }
+  }
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8; // bit depth
+  ihdr[9] = 2; // color type RGB
+  ihdr[10] = 0;
+  ihdr[11] = 0;
+  ihdr[12] = 0;
+  const idat = deflateSync(raw);
+  const sig = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  return new Uint8Array(Buffer.concat([sig, pngChunk('IHDR', ihdr), pngChunk('IDAT', idat), pngChunk('IEND', Buffer.alloc(0))]));
+}
 
 export function rect(x: number, y: number, width: number, height: number): TargetGeometry {
   return { x, y, width, height, right: x + width, bottom: y + height };
@@ -61,7 +114,56 @@ export function target(name: string): NamedTarget {
   return { name, locators: [{ kind: 'css', selector: `#${name}` }] };
 }
 
-export function buildObservation(observationId: string, names: NamedTarget[], evidence: Record<string, TargetEvidenceRecord>, producerVersion = '0.7.0'): ObservationArtifact {
+/** Mirrors relationshipDerivation.test.ts's `unresolvedTarget`: a configured target whose selection genuinely failed - every field honestly `unavailable`, never a fabricated zero-geometry fallback. */
+export function unresolvedTarget(status: 'not-found' | 'ambiguous' | 'unavailable'): TargetEvidenceRecord {
+  const reason = `target ${status}`;
+  return {
+    resolution: {
+      state: 'available',
+      source: 'derived',
+      value: { selectionMethod: 'ordered-locators', selectionStatus: status, usedFallback: false, confidence: 'none', attempts: [] },
+      derivedFrom: ['locator-attempts'],
+    },
+    tag: { state: 'unavailable', reason },
+    geometry: { state: 'unavailable', reason },
+    style: { state: 'unavailable', reason },
+    layout: { state: 'unavailable', reason },
+    visibility: { state: 'unavailable', reason },
+    semantics: { state: 'unavailable', reason },
+    semanticState: { state: 'unavailable', reason },
+    landmark: { state: 'unavailable', reason },
+    containment: { state: 'unavailable', reason },
+  };
+}
+
+/** Mirrors the real shape `src/browser/evidenceCapture.ts#capturePageEvidence` produces for a real Chromium capture (see the Batch 3 coordinate audit in docs/reports/v0.8-observation-svg-inspection-batch3.md). */
+export function realisticPageEvidence(viewport: { width: number; height: number }) {
+  return {
+    requestedUrl: { state: 'available' as const, source: 'browser' as const, value: 'http://localhost/' },
+    finalUrl: { state: 'available' as const, source: 'browser' as const, value: 'http://localhost/' },
+    title: { state: 'available' as const, source: 'browser' as const, value: 'fixture' },
+    viewportWidth: { state: 'available' as const, source: 'browser' as const, value: viewport.width },
+    viewportHeight: { state: 'available' as const, source: 'browser' as const, value: viewport.height },
+    devicePixelRatio: { state: 'available' as const, source: 'browser' as const, value: 1 },
+    documentScrollWidth: { state: 'available' as const, source: 'browser' as const, value: viewport.width },
+    documentScrollHeight: { state: 'available' as const, source: 'browser' as const, value: viewport.height },
+    documentClientWidth: { state: 'available' as const, source: 'browser' as const, value: viewport.width },
+    documentClientHeight: { state: 'available' as const, source: 'browser' as const, value: viewport.height },
+    documentWidth: { state: 'available' as const, source: 'derived' as const, value: viewport.width, derivedFrom: ['documentScrollWidth', 'documentClientWidth'] },
+    documentHeight: { state: 'available' as const, source: 'derived' as const, value: viewport.height, derivedFrom: ['documentScrollHeight', 'documentClientHeight'] },
+    windowScrollX: { state: 'available' as const, source: 'browser' as const, value: 0 },
+    windowScrollY: { state: 'available' as const, source: 'browser' as const, value: 0 },
+  };
+}
+
+export function buildObservation(
+  observationId: string,
+  names: NamedTarget[],
+  evidence: Record<string, TargetEvidenceRecord>,
+  producerVersion = '0.7.0',
+  pageEvidence: Record<string, unknown> = {},
+  viewport: { width: number; height: number } = { width: 1200, height: 800 },
+): ObservationArtifact {
   return {
     artifactKind: ARTIFACT_KIND,
     schemaVersion: OBSERVATION_SCHEMA_VERSION,
@@ -69,9 +171,9 @@ export function buildObservation(observationId: string, names: NamedTarget[], ev
     requestId: `req-${observationId}`,
     producer: { name: PRODUCER_NAME, version: producerVersion },
     browser: { state: 'available', source: 'browser', value: { engine: 'chromium', version: '139.0.0' } },
-    requestConfig: { targetUrl: 'http://localhost/', viewport: { width: 1200, height: 800 }, targets: names, outputLocation: 'observations', timeoutMs: 30000, readiness: { condition: 'load', timeoutMs: 10000 } },
+    requestConfig: { targetUrl: 'http://localhost/', viewport, targets: names, outputLocation: 'observations', timeoutMs: 30000, readiness: { condition: 'load', timeoutMs: 10000 } },
     provenance: { capturedAt: new Date(0).toISOString(), observationMethod: 'test-fixture' },
-    pageEvidence: {},
+    pageEvidence,
     targetEvidence: evidence,
     screenshot: { state: 'available', source: 'browser', value: { path: 'screenshot.png' } },
     completion: { state: 'complete' },
@@ -79,6 +181,40 @@ export function buildObservation(observationId: string, names: NamedTarget[], ev
     limits: { truncated: false, omittedFields: [], omittedTargets: [] },
     artifactReferences: [{ path: 'screenshot.png', kind: 'screenshot' }],
   };
+}
+
+export interface RichObservationFixture {
+  artifactRoot: string;
+  observationId: string;
+  viewport: { width: number; height: number };
+}
+
+/**
+ * Batch 3: one observation with a real, decodable, viewport-sized PNG
+ * screenshot; two geometrically resolved targets positioned to produce a
+ * real canonical relationship (`header` left-of `sidebar`, both above
+ * `footer`); and one genuinely unresolved (`not-found`) target - so a
+ * single fixture exercises SVG rendering, relationship derivation, and the
+ * honest non-geometric case together.
+ */
+export async function writeRichObservationFixture(dir: string, observationId = 'rich-obs'): Promise<RichObservationFixture> {
+  const viewport = { width: 800, height: 600 };
+  const artifact = buildObservation(
+    observationId,
+    [target('header'), target('sidebar'), target('footer'), target('missingWidget')],
+    {
+      header: matchedTarget(rect(0, 0, 800, 80)),
+      sidebar: matchedTarget(rect(0, 100, 200, 400)),
+      footer: matchedTarget(rect(0, 520, 800, 80)),
+      missingWidget: unresolvedTarget('not-found'),
+    },
+    '0.7.0',
+    realisticPageEvidence(viewport),
+    viewport,
+  );
+  const written = await writeObservationArtifact(artifact, buildRealPng(viewport.width, viewport.height), { cwd: dir });
+  if (!written.ok) throw new Error('expected rich observation write to succeed');
+  return { artifactRoot: written.artifactRoot, observationId, viewport };
 }
 
 export function buildBaselineContract(overrides: Partial<PersistentBaselineContract> = {}): PersistentBaselineContract {

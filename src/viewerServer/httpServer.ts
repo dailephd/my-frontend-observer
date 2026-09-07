@@ -5,6 +5,7 @@ import { extname, join, normalize, resolve, sep } from 'node:path';
 import { getProducerInfo } from '../domain/schema.js';
 import { buildEvidenceIndexMetadata, loadArtifactByHandle } from './evidence/index.js';
 import { resolveMedia } from './evidence/mediaResolver.js';
+import { getObservationRelationships } from './evidence/observationView.js';
 
 /** Batch 1 viewer protocol identity: the shape of GET /api/status. Bumped independently of package/schema versions if the status contract itself changes. */
 export const VIEWER_PROTOCOL_VERSION = '1.0.0';
@@ -146,6 +147,31 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
       return;
     }
     await streamFile(resolution.absolutePath, resolution.mimeType, res, method);
+    return;
+  }
+
+  const relationshipsMatch = /^\/api\/observations\/([^/]+)\/relationships$/.exec(pathname);
+  if (relationshipsMatch) {
+    const handle = decodeURIComponentSafe(relationshipsMatch[1] as string);
+    if (handle === undefined) {
+      writeJsonError(res, method, 400, 'malformed observation handle');
+      return;
+    }
+    const result = await getObservationRelationships(state.root, handle);
+    if (!result.ok) {
+      const status = result.reason === 'unknown-handle' ? 404 : 409;
+      const error =
+        result.reason === 'unknown-handle'
+          ? 'unknown viewer artifact handle'
+          : result.reason === 'not-an-observation'
+            ? 'relationships are only defined for observation evidence'
+            : result.reason === 'not-currently-loadable'
+              ? 'observation is not currently loadable'
+              : `relationship derivation failed: ${result.detail}`;
+      writeJsonBody(res, method, status, { ok: false, error });
+      return;
+    }
+    writeJsonBody(res, method, 200, { ok: true, graph: result.graph });
     return;
   }
 

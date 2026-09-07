@@ -74,16 +74,18 @@ describe('viewer evidence data boundary (real Chromium, real persisted evidence)
     }
   });
 
-  it('selecting a supported record triggers real on-demand loading and shows its full payload', async () => {
+  it('selecting a supported non-observation record triggers real on-demand loading and shows its full raw payload', async () => {
+    // Since v0.8 Batch 3, "observation" selection renders the real SVG workspace instead (see tests/browser/observationSvgWorkspace.test.ts)
+    // - "comparison" still exercises the plain Batch 2 on-demand-load/raw-JSON path this test protects.
     const page = await browser.newPage();
     try {
       await page.goto(server.url);
-      const item = page.locator('.evidence-list__item', { hasText: 'obs-before' });
+      const item = page.locator('.evidence-list__item', { hasText: 'comparison' }).first();
       await item.waitFor({ timeout: 10_000 });
       await item.click();
-      await page.getByText('Loaded observation', { exact: false }).waitFor({ timeout: 10_000 });
+      await page.getByText('Loaded comparison', { exact: false }).waitFor({ timeout: 10_000 });
       const bodyText = await page.textContent('body');
-      expect(bodyText).toContain('targetEvidence');
+      expect(bodyText).toContain('comparability');
     } finally {
       await page.close();
     }
@@ -102,14 +104,14 @@ describe('viewer evidence data boundary (real Chromium, real persisted evidence)
     }
   });
 
-  it('shows no screenshot image, SVG overlay, or comparison/contract/reference visualization anywhere in the shell', async () => {
+  it('shows no comparison/contract/reference visualization for non-observation families (observation SVG/screenshot display is Batch 3 scope, covered separately)', async () => {
     const page = await browser.newPage();
     try {
       await page.goto(server.url);
-      const item = page.locator('.evidence-list__item', { hasText: 'obs-before' });
+      const item = page.locator('.evidence-list__item', { hasText: 'comparison' }).first();
       await item.waitFor({ timeout: 10_000 });
       await item.click();
-      await page.getByText('Loaded observation', { exact: false }).waitFor({ timeout: 10_000 });
+      await page.getByText('Loaded comparison', { exact: false }).waitFor({ timeout: 10_000 });
       expect(await page.locator('img').count()).toBe(0);
       expect(await page.locator('svg').count()).toBe(0);
     } finally {
