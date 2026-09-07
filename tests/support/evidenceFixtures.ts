@@ -666,3 +666,236 @@ export async function writeReferenceCandidateFixture(dir: string): Promise<Refer
     incompatibleCandidateId: 'rc-incompatible',
   };
 }
+
+export interface ReferenceBindingFidelityFixture {
+  approvedRoot: string;
+  approvedReferenceId: string;
+  referenceImage: { width: number; height: number };
+  applicableViewport: { width: number; height: number };
+  /** header/sidebar candidate geometry exactly matches the reference (scaled) - every requirement genuinely PASSes. */
+  passCandidateRoot: string;
+  passCandidateId: string;
+  /** Same as pass candidate except sidebar.width is deliberately far outside the protected requirement's tolerance - a genuine FAIL. */
+  failCandidateRoot: string;
+  failCandidateId: string;
+  /** Compatible viewport/theme, but only the "sidebar" runtime target is configured at all - "header" bindings resolve `unavailable` (runtime-target-not-configured), never fabricated as bound. */
+  bindingUnavailableCandidateRoot: string;
+  bindingUnavailableCandidateId: string;
+  /** Compatible viewport/theme, "header" target genuinely resolves `ambiguous` (more than one DOM match). */
+  bindingAmbiguousCandidateRoot: string;
+  bindingAmbiguousCandidateId: string;
+}
+
+/**
+ * Batch 6: a reference whose applicable viewport (1600x1200) and reference
+ * image (400x300) share a genuinely coherent full-frame aspect ratio
+ * (scaleX = scaleY = 0.25 exactly) - unlike `writeReferenceCandidateFixture`
+ * (Batch 5, deliberately incoherent: 1200x800 vs 400x300), so
+ * `deriveCoordinateScale` genuinely succeeds here, enabling real view-lock
+ * eligibility and real numeric fidelity comparison. Same two regions
+ * ("header"/"sidebar") and the same four requirement categories as the
+ * Batch 5 fixture, reused verbatim. Four real candidates, all built through
+ * the real `writeObservationArtifact` writer: one whose scaled geometry
+ * exactly matches every reference requirement (real PASS), one identical
+ * except a deliberately out-of-tolerance sidebar width (real FAIL), one
+ * missing the "header" runtime target entirely (real binding
+ * `unavailable`), and one whose "header" target genuinely resolves
+ * ambiguously (real binding `ambiguous`).
+ */
+export async function writeReferenceBindingFidelityFixture(dir: string): Promise<ReferenceBindingFidelityFixture> {
+  const referenceImage = { width: 400, height: 300 };
+  const applicableViewport = { width: 1600, height: 1200 };
+  const imageBytes = buildRealPng(referenceImage.width, referenceImage.height, [90, 60, 160]);
+
+  const regions = [
+    { id: 'header', rectangle: { x: 0, y: 0, width: 400, height: 60 } },
+    { id: 'sidebar', rectangle: { x: 0, y: 60, width: 120, height: 240 } },
+  ];
+
+  const requirements: import('../../src/domain/externalReferenceRequirements.js').RawReferenceRequirement[] = [
+    { category: 'requested', subject: { kind: 'region-property', region: 'header', property: 'height' }, tolerance: { kind: 'exact' } },
+    {
+      category: 'expected-dependent',
+      expectedDependentMode: 'required',
+      subject: { kind: 'region-relationship', subjectRegion: 'sidebar', relatedRegion: 'header', relationship: 'follows-vertically' },
+    },
+    { category: 'protected', subject: { kind: 'region-property', region: 'sidebar', property: 'width' }, tolerance: { kind: 'absolute-reference-px', amount: 4 } },
+    {
+      category: 'preserved',
+      subject: { kind: 'region-measurement', subjectRegion: 'header', relatedRegion: 'sidebar', measurement: 'vertical-gap' },
+      tolerance: { kind: 'exact' },
+    },
+  ];
+
+  const imported = await importExternalReference(imageBytes, {
+    outputLocation: 'references',
+    cwd: dir,
+    label: 'binding-fidelity-fixture',
+    regions,
+    requirements,
+    applicability: { viewport: applicableViewport, theme: 'light' },
+  });
+  if (!imported.ok) throw new Error(`expected reference import to succeed: ${JSON.stringify(imported.diagnostics)}`);
+  const approved = await approveExternalReference(imported.artifactRoot, { outputLocation: 'references', cwd: dir });
+  if (!approved.ok) throw new Error(`expected reference approval to succeed: ${JSON.stringify(approved.diagnostics)}`);
+
+  // scaleX = scaleY = 400/1600 = 300/1200 = 0.25 - candidate CSS px * 0.25 = reference-image px.
+  // header candidate rect (0,0,1600,240) -> scaled (0,0,400,60): matches reference header exactly (height requirement: 60).
+  // sidebar candidate rect (0,240,480,960) -> scaled (0,60,120,240): matches reference sidebar exactly (width requirement: 120; vertical-gap(header,sidebar): 60-60=0).
+  const passArtifact: ObservationArtifact = {
+    ...buildObservation(
+      'rc-fidelity-pass',
+      [target('header'), target('sidebar')],
+      { header: matchedTarget(rect(0, 0, 1600, 240)), sidebar: matchedTarget(rect(0, 240, 480, 960)) },
+      '0.7.0',
+      realisticPageEvidence(applicableViewport),
+      applicableViewport,
+    ),
+  };
+  const passWithState: ObservationArtifact = { ...passArtifact, requestConfig: { ...passArtifact.requestConfig, explicitState: { theme: 'light' } } };
+  const passWritten = await writeObservationArtifact(passWithState, buildRealPng(applicableViewport.width, applicableViewport.height, [10, 200, 10]), { cwd: dir });
+  if (!passWritten.ok) throw new Error('expected pass candidate write to succeed');
+
+  // Identical except sidebar.width = 600 CSS px -> scaled 150 reference px, vs reference 120 +/-4 tolerance: delta=30, far outside tolerance -> genuine FAIL.
+  const failArtifact: ObservationArtifact = {
+    ...buildObservation(
+      'rc-fidelity-fail',
+      [target('header'), target('sidebar')],
+      { header: matchedTarget(rect(0, 0, 1600, 240)), sidebar: matchedTarget(rect(0, 240, 600, 960)) },
+      '0.7.0',
+      realisticPageEvidence(applicableViewport),
+      applicableViewport,
+    ),
+  };
+  const failWithState: ObservationArtifact = { ...failArtifact, requestConfig: { ...failArtifact.requestConfig, explicitState: { theme: 'light' } } };
+  const failWritten = await writeObservationArtifact(failWithState, buildRealPng(applicableViewport.width, applicableViewport.height, [200, 10, 10]), { cwd: dir });
+  if (!failWritten.ok) throw new Error('expected fail candidate write to succeed');
+
+  // Only "sidebar" is configured at all - a declared "header" binding resolves runtime-target-not-configured, never fabricated as bound.
+  const bindingUnavailableArtifact: ObservationArtifact = {
+    ...buildObservation('rc-binding-unavailable', [target('sidebar')], { sidebar: matchedTarget(rect(0, 240, 480, 960)) }, '0.7.0', realisticPageEvidence(applicableViewport), applicableViewport),
+  };
+  const bindingUnavailableWithState: ObservationArtifact = { ...bindingUnavailableArtifact, requestConfig: { ...bindingUnavailableArtifact.requestConfig, explicitState: { theme: 'light' } } };
+  const bindingUnavailableWritten = await writeObservationArtifact(bindingUnavailableWithState, buildRealPng(applicableViewport.width, applicableViewport.height, [120, 120, 10]), { cwd: dir });
+  if (!bindingUnavailableWritten.ok) throw new Error('expected binding-unavailable candidate write to succeed');
+
+  // "header" configured but resolves genuinely ambiguous.
+  const bindingAmbiguousArtifact: ObservationArtifact = {
+    ...buildObservation(
+      'rc-binding-ambiguous',
+      [target('header'), target('sidebar')],
+      { header: unresolvedTarget('ambiguous'), sidebar: matchedTarget(rect(0, 240, 480, 960)) },
+      '0.7.0',
+      realisticPageEvidence(applicableViewport),
+      applicableViewport,
+    ),
+  };
+  const bindingAmbiguousWithState: ObservationArtifact = { ...bindingAmbiguousArtifact, requestConfig: { ...bindingAmbiguousArtifact.requestConfig, explicitState: { theme: 'light' } } };
+  const bindingAmbiguousWritten = await writeObservationArtifact(bindingAmbiguousWithState, buildRealPng(applicableViewport.width, applicableViewport.height, [10, 120, 120]), { cwd: dir });
+  if (!bindingAmbiguousWritten.ok) throw new Error('expected binding-ambiguous candidate write to succeed');
+
+  return {
+    approvedRoot: approved.artifactRoot,
+    approvedReferenceId: approved.referenceId,
+    referenceImage,
+    applicableViewport,
+    passCandidateRoot: passWritten.artifactRoot,
+    passCandidateId: 'rc-fidelity-pass',
+    failCandidateRoot: failWritten.artifactRoot,
+    failCandidateId: 'rc-fidelity-fail',
+    bindingUnavailableCandidateRoot: bindingUnavailableWritten.artifactRoot,
+    bindingUnavailableCandidateId: 'rc-binding-unavailable',
+    bindingAmbiguousCandidateRoot: bindingAmbiguousWritten.artifactRoot,
+    bindingAmbiguousCandidateId: 'rc-binding-ambiguous',
+  };
+}
+
+export interface ReferenceFidelityContractFixture {
+  approvedRoot: string;
+  candidateRoot: string;
+  candidateId: string;
+  evaluationRoot: string;
+}
+
+/**
+ * Batch 6 Case J proof fixture: a reference/candidate pair whose fidelity
+ * genuinely PASSes (identical geometry/scale reasoning to
+ * `writeReferenceBindingFidelityFixture`'s pass candidate) AND a real,
+ * separately-built contract-evaluation pipeline (comparison + baseline +
+ * per-change contract + evaluation, all through the real canonical
+ * `compareObservations`/`evaluateAndPersistFromArtifactRoots`) whose own
+ * `after` observation reference is this EXACT candidate - producing a
+ * genuine `overallVerdict: "FAIL"` (a protected clause is deliberately
+ * violated) alongside the genuine fidelity PASS, so the viewer's
+ * independence claim (task §48) is proven against two real, independently
+ * arrived-at evidence dimensions - never two hand-authored "PASS" and
+ * "FAIL" labels asserted directly.
+ */
+export async function writeReferenceFidelityContractFixture(dir: string): Promise<ReferenceFidelityContractFixture> {
+  const referenceImage = { width: 400, height: 300 };
+  const applicableViewport = { width: 1600, height: 1200 };
+  const imageBytes = buildRealPng(referenceImage.width, referenceImage.height, [200, 150, 20]);
+
+  const regions = [
+    { id: 'header', rectangle: { x: 0, y: 0, width: 400, height: 60 } },
+    { id: 'sidebar', rectangle: { x: 0, y: 60, width: 120, height: 240 } },
+  ];
+  const requirements: import('../../src/domain/externalReferenceRequirements.js').RawReferenceRequirement[] = [
+    { category: 'requested', subject: { kind: 'region-property', region: 'header', property: 'height' }, tolerance: { kind: 'exact' } },
+    { category: 'protected', subject: { kind: 'region-property', region: 'sidebar', property: 'width' }, tolerance: { kind: 'absolute-reference-px', amount: 4 } },
+  ];
+
+  const imported = await importExternalReference(imageBytes, { outputLocation: 'references', cwd: dir, label: 'fidelity-contract-fixture', regions, requirements, applicability: { viewport: applicableViewport, theme: 'light' } });
+  if (!imported.ok) throw new Error(`expected reference import to succeed: ${JSON.stringify(imported.diagnostics)}`);
+  const approved = await approveExternalReference(imported.artifactRoot, { outputLocation: 'references', cwd: dir });
+  if (!approved.ok) throw new Error(`expected reference approval to succeed: ${JSON.stringify(approved.diagnostics)}`);
+
+  // before: header height 300, sidebar y 300 (width 480, matching after's width so the protected clause's own subject genuinely differs only in y - not used by the reference requirement).
+  const before = buildObservation(
+    'rfc-before',
+    [target('header'), target('sidebar')],
+    { header: matchedTarget(rect(0, 0, 1600, 300)), sidebar: matchedTarget(rect(0, 300, 480, 960)) },
+    '0.7.0',
+    realisticPageEvidence(applicableViewport),
+    applicableViewport,
+  );
+  // after: identical geometry to writeReferenceBindingFidelityFixture's real PASS candidate - scaled (x0.25) exactly matches every reference requirement.
+  const afterBase = buildObservation(
+    'rfc-after',
+    [target('header'), target('sidebar')],
+    { header: matchedTarget(rect(0, 0, 1600, 240)), sidebar: matchedTarget(rect(0, 240, 480, 960)) },
+    '0.7.0',
+    realisticPageEvidence(applicableViewport),
+    applicableViewport,
+  );
+  const after: ObservationArtifact = { ...afterBase, requestConfig: { ...afterBase.requestConfig, explicitState: { theme: 'light' } } };
+
+  const beforeWritten = await writeObservationArtifact(before, buildRealPng(applicableViewport.width, applicableViewport.height, [80, 80, 200]), { cwd: dir });
+  const afterWritten = await writeObservationArtifact(after, buildRealPng(applicableViewport.width, applicableViewport.height, [10, 200, 10]), { cwd: dir });
+  if (!beforeWritten.ok || !afterWritten.ok) throw new Error('expected before/after observation writes to succeed');
+
+  const compared = compareObservations(before, after);
+  if (!compared.ok) throw new Error(`expected ok comparison: ${compared.reason}`);
+  const comparisonWritten = await writeComparisonArtifact(compared.artifact, 'comparisons', { cwd: dir });
+  if (!comparisonWritten.ok) throw new Error('expected comparison write to succeed');
+
+  const baseline = buildBaselineContract({ sourceObservation: { observationId: 'rfc-before', requestId: 'req-rfc-before', producer: { name: PRODUCER_NAME, version: '0.7.0' }, observationSchemaVersion: OBSERVATION_SCHEMA_VERSION } });
+  const change = buildChangeContract({
+    clauses: [
+      { clauseId: 'requested-header-height', primitive: { kind: 'property-decreases', target: 'header', property: 'height' }, category: 'requested', supportingEvidence: [] },
+      { clauseId: 'protected-sidebar-y', primitive: { kind: 'property-unchanged-within-tolerance', target: 'sidebar', property: 'y', tolerance: { kind: 'exact' } }, category: 'protected', supportingEvidence: [] },
+    ],
+  });
+  const baselineWritten = await writePersistentBaselineContract(baseline, 'baselines', { cwd: dir });
+  const changeWritten = await writePerChangeContract(change, 'contracts', { cwd: dir });
+  if (!baselineWritten.ok || !changeWritten.ok) throw new Error('expected contract writes to succeed');
+
+  const evaluated = await evaluateAndPersistFromArtifactRoots(beforeWritten.artifactRoot, afterWritten.artifactRoot, comparisonWritten.artifactRoot, baselineWritten.artifactRoot, changeWritten.artifactRoot, {
+    outputLocation: 'evaluations',
+    cwd: dir,
+  });
+  if (!evaluated.ok) throw new Error('expected evaluation to succeed');
+  if (evaluated.overallVerdict !== 'FAIL') throw new Error(`expected a genuine contract FAIL, got ${evaluated.overallVerdict}`);
+
+  return { approvedRoot: approved.artifactRoot, candidateRoot: afterWritten.artifactRoot, candidateId: 'rfc-after', evaluationRoot: evaluated.artifactRoot };
+}

@@ -77,7 +77,7 @@ Run "my-frontend-observer <command> --help" for command-specific options.
 `;
 
 const VIEW_HELP = `Usage:
-  my-frontend-observer view --root <evidence-root> [options]
+  my-frontend-observer view --root <evidence-root> [--bindings-file <json-file>] [options]
 
 Required:
   --root <path>   Local evidence-root directory the viewer session
@@ -92,6 +92,22 @@ Options:
                   origins. If the requested port is already in use, this
                   command fails with an actionable error; it never silently
                   falls back to a different port.
+  --bindings-file <json-file>  Local JSON file of the form
+                  { "bindings": [ { "referenceRegion": "...", "runtimeTarget": "..." } ] }
+                  (the exact same operational wrapper format as
+                  \`evaluate-reference-fidelity --bindings-file\`, sharing its
+                  parser). Explicit, session-only viewer input: read once at
+                  startup, never persisted, never written into any Observer
+                  artifact, and never exposed as a path to the browser. Its
+                  declarations become available for on-demand binding/
+                  fidelity evaluation once a reference and candidate are
+                  explicitly selected in the viewer. Reference-specific
+                  validity (region existence, etc.) is checked when a
+                  reference is actually selected, not at startup - only the
+                  file's own readability/JSON/wrapper shape is validated at
+                  startup. Omit to run with no binding declarations (the
+                  viewer remains fully usable; cross-selection stays
+                  disabled).
   --no-open       Do not attempt to open the system default browser after
                   the server starts. Browser auto-open is a best-effort
                   convenience only: its failure is never fatal and never
@@ -1949,7 +1965,7 @@ async function runEvaluateReferenceFidelityCommand(argv: readonly string[], io: 
   return 0;
 }
 
-type ParsedViewArgs = { ok: true; root: string; port?: number; noOpen: boolean } | { ok: false; errors: string[] };
+type ParsedViewArgs = { ok: true; root: string; port?: number; noOpen: boolean; bindingsFilePath?: string } | { ok: false; errors: string[] };
 
 /** CLI-syntax-only parsing, mirroring `parseApproveBaselineArgs`. `--port` shape/range checking happens here; root existence/directory-ness is the application layer's job (see `startViewer`). */
 function parseViewArgs(argv: readonly string[]): ParsedViewArgs {
@@ -1959,6 +1975,8 @@ function parseViewArgs(argv: readonly string[]): ParsedViewArgs {
   let port: number | undefined;
   let portFlagCount = 0;
   let noOpen = false;
+  let bindingsFilePath: string | undefined;
+  let bindingsFileFlagCount = 0;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -1991,6 +2009,14 @@ function parseViewArgs(argv: readonly string[]): ParsedViewArgs {
       case '--no-open':
         noOpen = true;
         break;
+      case '--bindings-file': {
+        const value = argv[(i += 1)];
+        bindingsFileFlagCount += 1;
+        if (value === undefined) errors.push('--bindings-file requires a file path argument');
+        else if (bindingsFileFlagCount > 1) errors.push('--bindings-file may only be specified once');
+        else bindingsFilePath = value;
+        break;
+      }
       default:
         errors.push(`unrecognized argument: ${arg}`);
     }
@@ -1998,7 +2024,7 @@ function parseViewArgs(argv: readonly string[]): ParsedViewArgs {
 
   if (root === undefined) errors.push('--root is required');
   if (errors.length > 0) return { ok: false, errors };
-  return { ok: true, root: root as string, ...(port === undefined ? {} : { port }), noOpen };
+  return { ok: true, root: root as string, ...(port === undefined ? {} : { port }), noOpen, ...(bindingsFilePath === undefined ? {} : { bindingsFilePath }) };
 }
 
 /**
@@ -2024,9 +2050,30 @@ async function runViewCommand(argv: readonly string[], io: CliIO): Promise<numbe
     return 1;
   }
 
+  // Reuses the exact same operational binding-file wrapper parser as `evaluate-reference-fidelity --bindings-file`
+  // (see loadBindingsFile above) - one shared parser, never a second divergent one. Reference-specific declaration
+  // validity (region existence, shape) is deferred to the moment a reference is actually selected in the viewer,
+  // via the existing canonical isValidReferenceRuntimeBindingDeclarations - never checked here without a reference.
+  let bindingDeclarations: unknown[] = [];
+  if (parsedArgs.bindingsFilePath !== undefined) {
+    const loaded = loadBindingsFile(parsedArgs.bindingsFilePath);
+    if (!loaded.ok) {
+      io.stderr(`error: ${loaded.error}\n`);
+      io.stderr(VIEW_HELP);
+      return 1;
+    }
+    if (!Array.isArray(loaded.bindings)) {
+      io.stderr('error: --bindings-file "bindings" property must be an array\n');
+      io.stderr(VIEW_HELP);
+      return 1;
+    }
+    bindingDeclarations = loaded.bindings;
+  }
+
   const result = await startViewer({
     root: parsedArgs.root,
     ...(parsedArgs.port === undefined ? {} : { port: parsedArgs.port }),
+    bindingDeclarations,
   });
   if (!result.ok) {
     for (const diagnostic of result.diagnostics) io.stderr(`${formatDiagnostic(diagnostic)}\n`);

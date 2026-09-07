@@ -30,11 +30,11 @@ describe('runCli view - CLI dispatch (syntax/fast-fail paths only; full server l
     expect(out.stdout()).toContain('view');
   });
 
-  it('view --help documents --root/--port/--no-open and states it never runs browser observation', async () => {
+  it('view --help documents --root/--port/--no-open/--bindings-file and states it never runs browser observation', async () => {
     const out = capture();
     const code = await runCli(['view', '--help'], out.io);
     expect(code).toBe(0);
-    for (const flag of ['--root', '--port', '--no-open']) {
+    for (const flag of ['--root', '--port', '--no-open', '--bindings-file']) {
       expect(out.stdout()).toContain(flag);
     }
     expect(out.stdout()).toContain('never launches a browser observation');
@@ -92,6 +92,48 @@ describe('runCli view - CLI dispatch (syntax/fast-fail paths only; full server l
     const code = await runCli(['view', '--root', filePath, '--no-open'], out.io);
     expect(code).toBe(1);
     expect(out.stderr()).toContain('[viewer-root-invalid]');
+  });
+
+  it('v0.8 Batch 6: rejects an unreadable --bindings-file at startup without starting a server', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'my-frontend-observer-view-bindings-'));
+    createdDirs.push(dir);
+    const out = capture();
+    const code = await runCli(['view', '--root', dir, '--bindings-file', path.join(dir, 'does-not-exist.json'), '--no-open'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--bindings-file could not be read');
+  });
+
+  it('v0.8 Batch 6: rejects invalid JSON in --bindings-file at startup', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'my-frontend-observer-view-bindings-'));
+    createdDirs.push(dir);
+    const bindingsPath = path.join(dir, 'bindings.json');
+    await writeFile(bindingsPath, '{ not valid json', 'utf8');
+    const out = capture();
+    const code = await runCli(['view', '--root', dir, '--bindings-file', bindingsPath, '--no-open'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--bindings-file is not valid JSON');
+  });
+
+  it('v0.8 Batch 6: rejects a --bindings-file whose root is not the exact { "bindings": [...] } wrapper shape', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'my-frontend-observer-view-bindings-'));
+    createdDirs.push(dir);
+    const bindingsPath = path.join(dir, 'bindings.json');
+    await writeFile(bindingsPath, JSON.stringify({}), 'utf8');
+    const out = capture();
+    const code = await runCli(['view', '--root', dir, '--bindings-file', bindingsPath, '--no-open'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--bindings-file must have a "bindings" property');
+  });
+
+  it('v0.8 Batch 6: rejects a --bindings-file with unsupported top-level fields (same wrapper rule as evaluate-reference-fidelity)', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'my-frontend-observer-view-bindings-'));
+    createdDirs.push(dir);
+    const bindingsPath = path.join(dir, 'bindings.json');
+    await writeFile(bindingsPath, JSON.stringify({ bindings: [], extra: true }), 'utf8');
+    const out = capture();
+    const code = await runCli(['view', '--root', dir, '--bindings-file', bindingsPath, '--no-open'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('unsupported top-level field(s)');
   });
 
   it('existing commands remain unchanged: observe/compare help still documents their own flags after adding view', async () => {

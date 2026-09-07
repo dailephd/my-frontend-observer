@@ -1,5 +1,6 @@
 import type { ObservationArtifact, LayoutRelationshipGraph, TargetGeometry } from '../types/observation.js';
 import type { OrderedTarget } from '../observation/targetOrder.js';
+import type { ZoomPanBinding } from '../hooks/useZoomPan.js';
 
 export interface OverlayToggles {
   geometry: boolean;
@@ -35,6 +36,7 @@ export function TargetOverlaySvg({
   onSelect,
   toggles,
   highlightNames,
+  zoomPan,
 }: {
   artifact: ObservationArtifact;
   screenshotUrl: string;
@@ -45,6 +47,8 @@ export function TargetOverlaySvg({
   toggles: OverlayToggles;
   /** Batch 4 additive, optional: extra target names to visually emphasize (e.g. both endpoints of a selected relationship-subject difference) without changing the single interactive `selected`/`aria-pressed` target. */
   highlightNames?: ReadonlySet<string> | undefined;
+  /** Batch 6 additive, optional: hands rendering-only zoom/pan state to this leaf component (viewBox override, svg ref for `getScreenCTM`, pointer handlers). Omitted entirely preserves Batch 3's exact default (fitted, non-interactive-pan) rendering. */
+  zoomPan?: ZoomPanBinding | undefined;
 }) {
   const { width, height } = artifact.requestConfig.viewport;
 
@@ -56,11 +60,13 @@ export function TargetOverlaySvg({
 
   return (
     <svg
-      className="target-overlay-svg"
-      viewBox={`0 0 ${width} ${height}`}
+      className={`target-overlay-svg${zoomPan?.isPannable ? ' target-overlay-svg--pannable' : ''}`}
+      viewBox={zoomPan?.viewBox ?? `0 0 ${width} ${height}`}
       role="img"
       aria-label={`Observation viewport, ${width} by ${height} CSS pixels`}
       preserveAspectRatio="xMidYMid meet"
+      ref={zoomPan?.svgRef}
+      {...(zoomPan?.pointerHandlers ?? {})}
     >
       <image href={screenshotUrl} x={0} y={0} width={width} height={height} preserveAspectRatio="none" />
 

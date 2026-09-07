@@ -15,6 +15,10 @@ import type { ReferenceCandidateCompatibilityResult } from '../../domain/externa
 import type { ExternalReferenceArtifact } from '../../domain/externalReference.js';
 import type { ObservationArtifact } from '../../domain/schema.js';
 import type { FrontendContractObservationReference } from '../../domain/frontendContracts.js';
+import { isValidReferenceRuntimeBindingDeclarations, evaluateReferenceRuntimeBindings } from '../../domain/externalReferenceRuntimeBinding.js';
+import type { ReferenceRuntimeBindingDeclaration, ReferenceRuntimeBindingEvaluation } from '../../domain/externalReferenceRuntimeBinding.js';
+import { deriveCoordinateScale, evaluateReferenceCandidateFidelity } from '../../domain/externalReferenceFidelity.js';
+import type { DeriveCoordinateScaleResult, ReferenceCandidateFidelityEvaluation } from '../../domain/externalReferenceFidelity.js';
 
 export type ReferenceViewResult =
   | { ok: true; regionRelationships: ReferenceRegionRelationshipGraph | undefined; requirementAdequacy: ReferenceRequirementAdequacy | undefined }
@@ -75,30 +79,24 @@ export async function getReferenceView(root: string, handle: string): Promise<Re
   return { ok: true, regionRelationships, requirementAdequacy };
 }
 
-export type ReferenceCandidateViewResult =
-  | { ok: true; compatibility: ReferenceCandidateCompatibilityResult; evaluationHandles: string[] }
+function candidateReferencesMatch(ref: FrontendContractObservationReference, candidate: ObservationArtifact): boolean {
+  return ref.observationId === candidate.observationId && ref.requestId === candidate.requestId && ref.producer.version === candidate.producer.version && ref.observationSchemaVersion === candidate.schemaVersion;
+}
+
+type ResolveReferenceAndCandidateResult =
+  | { ok: true; reference: ExternalReferenceArtifact; candidate: ObservationArtifact }
   | { ok: false; reason: 'unknown-reference-handle' }
   | { ok: false; reason: 'unknown-candidate-handle' }
   | { ok: false; reason: 'not-a-reference' }
   | { ok: false; reason: 'not-an-observation' }
   | { ok: false; reason: 'not-currently-loadable' };
 
-function candidateReferencesMatch(ref: FrontendContractObservationReference, candidate: ObservationArtifact): boolean {
-  return ref.observationId === candidate.observationId && ref.requestId === candidate.requestId && ref.producer.version === candidate.producer.version && ref.observationSchemaVersion === candidate.schemaVersion;
-}
-
 /**
- * Batch 5's reference/candidate computation: evaluates page/state-level
- * compatibility through the existing canonical
- * `evaluateReferenceCandidateCompatibility` (never a second, viewer-owned
- * compatibility model), and separately lists every existing
- * `FrontendContractEvaluationArtifact` whose own persisted `after` reference
- * exactly identifies this candidate (frozen plan/task §29) - for the caller
- * to offer as an explicit, never-auto-selected optional context. Neither
- * `evaluateReferenceRuntimeBindings` nor `evaluateReferenceCandidateFidelity`
- * is called anywhere in this module.
+ * Shared handle-decode -> contained-dir-resolve -> re-classify resolution
+ * for a (reference, candidate) pair, reused by every Batch 5/6 route that
+ * needs both - never duplicated per route.
  */
-export async function getReferenceCandidateView(root: string, referenceHandle: string, candidateHandle: string): Promise<ReferenceCandidateViewResult> {
+async function resolveReferenceAndCandidate(root: string, referenceHandle: string, candidateHandle: string): Promise<ResolveReferenceAndCandidateResult> {
   const referenceLoaded = await loadDirAndClassify(root, referenceHandle);
   if (!referenceLoaded.ok) return { ok: false, reason: 'unknown-reference-handle' };
   if (referenceLoaded.classified.supportState !== 'supported') return { ok: false, reason: 'not-currently-loadable' };
@@ -113,7 +111,40 @@ export async function getReferenceCandidateView(root: string, referenceHandle: s
   if (candidateLoaded.classified.family !== 'observation') return { ok: false, reason: 'not-an-observation' };
   const candidate = candidateLoaded.classified.artifact;
 
+  return { ok: true, reference, candidate };
+}
+
+export type ReferenceCandidateViewResult =
+  | { ok: true; compatibility: ReferenceCandidateCompatibilityResult; evaluationHandles: string[]; coordinateMapping: DeriveCoordinateScaleResult }
+  | { ok: false; reason: 'unknown-reference-handle' }
+  | { ok: false; reason: 'unknown-candidate-handle' }
+  | { ok: false; reason: 'not-a-reference' }
+  | { ok: false; reason: 'not-an-observation' }
+  | { ok: false; reason: 'not-currently-loadable' };
+
+/**
+ * Batch 5's reference/candidate computation: evaluates page/state-level
+ * compatibility through the existing canonical
+ * `evaluateReferenceCandidateCompatibility` (never a second, viewer-owned
+ * compatibility model), and separately lists every existing
+ * `FrontendContractEvaluationArtifact` whose own persisted `after` reference
+ * exactly identifies this candidate (frozen plan/task §29) - for the caller
+ * to offer as an explicit, never-auto-selected optional context. Batch 6
+ * additionally exposes `coordinateMapping` - the exact result of the
+ * existing canonical `deriveCoordinateScale(reference)` (exported from
+ * `externalReferenceFidelity.ts`, never a second scale/aspect-ratio
+ * implementation) - purely a function of the reference (independent of the
+ * candidate), used only to gate view-lock eligibility client-side. Neither
+ * `evaluateReferenceRuntimeBindings` nor `evaluateReferenceCandidateFidelity`
+ * is called anywhere in this function.
+ */
+export async function getReferenceCandidateView(root: string, referenceHandle: string, candidateHandle: string): Promise<ReferenceCandidateViewResult> {
+  const resolved = await resolveReferenceAndCandidate(root, referenceHandle, candidateHandle);
+  if (!resolved.ok) return resolved;
+  const { reference, candidate } = resolved;
+
   const compatibility = evaluateReferenceCandidateCompatibility(reference, candidate);
+  const coordinateMapping = deriveCoordinateScale(reference);
 
   const discovery = await discoverManifests(root);
   const evaluationHandles: string[] = [];
@@ -125,5 +156,68 @@ export async function getReferenceCandidateView(root: string, referenceHandle: s
     }
   }
 
-  return { ok: true, compatibility, evaluationHandles };
+  return { ok: true, compatibility, evaluationHandles, coordinateMapping };
+}
+
+export type ReferenceBindingsViewResult =
+  | { ok: true; evaluation: ReferenceRuntimeBindingEvaluation }
+  | { ok: false; reason: 'unknown-reference-handle' }
+  | { ok: false; reason: 'unknown-candidate-handle' }
+  | { ok: false; reason: 'not-a-reference' }
+  | { ok: false; reason: 'not-an-observation' }
+  | { ok: false; reason: 'not-currently-loadable' }
+  | { ok: false; reason: 'invalid-bindings'; detail: string };
+
+/**
+ * Batch 6: validates the session's explicit binding declarations against
+ * THIS specific reference (`isValidReferenceRuntimeBindingDeclarations` -
+ * region existence depends on the selected reference, so this can only
+ * happen here, never at CLI startup) and, if valid, calls the existing
+ * canonical `evaluateReferenceRuntimeBindings` exactly once - never a second
+ * binding engine, never a client-side re-verification via geometry/name.
+ */
+export async function getReferenceBindings(root: string, referenceHandle: string, candidateHandle: string, declarations: readonly unknown[]): Promise<ReferenceBindingsViewResult> {
+  const resolved = await resolveReferenceAndCandidate(root, referenceHandle, candidateHandle);
+  if (!resolved.ok) return resolved;
+  const { reference, candidate } = resolved;
+
+  const declarationsValidation = isValidReferenceRuntimeBindingDeclarations(declarations, reference);
+  if (!declarationsValidation.valid) return { ok: false, reason: 'invalid-bindings', detail: declarationsValidation.reason };
+
+  const result = evaluateReferenceRuntimeBindings(reference, candidate, declarations as readonly ReferenceRuntimeBindingDeclaration[]);
+  if (!result.ok) return { ok: false, reason: 'invalid-bindings', detail: result.reason };
+
+  return { ok: true, evaluation: result.evaluation };
+}
+
+export type ReferenceFidelityViewResult =
+  | { ok: true; evaluation: ReferenceCandidateFidelityEvaluation }
+  | { ok: false; reason: 'unknown-reference-handle' }
+  | { ok: false; reason: 'unknown-candidate-handle' }
+  | { ok: false; reason: 'not-a-reference' }
+  | { ok: false; reason: 'not-an-observation' }
+  | { ok: false; reason: 'not-currently-loadable' }
+  | { ok: false; reason: 'invalid-bindings'; detail: string };
+
+/**
+ * Batch 6's one on-demand server-side computation for the explicit
+ * "Evaluate Fidelity" action: calls the existing canonical
+ * `evaluateReferenceCandidateFidelity` exactly once, using the exact same
+ * session binding declarations `getReferenceBindings` uses (so the two
+ * always structurally agree for the same inputs, being the same pure
+ * function applied to the same arguments - never two divergent binding
+ * results). Never persists the result; ephemeral per request.
+ */
+export async function getReferenceFidelity(root: string, referenceHandle: string, candidateHandle: string, declarations: readonly unknown[]): Promise<ReferenceFidelityViewResult> {
+  const resolved = await resolveReferenceAndCandidate(root, referenceHandle, candidateHandle);
+  if (!resolved.ok) return resolved;
+  const { reference, candidate } = resolved;
+
+  const declarationsValidation = isValidReferenceRuntimeBindingDeclarations(declarations, reference);
+  if (!declarationsValidation.valid) return { ok: false, reason: 'invalid-bindings', detail: declarationsValidation.reason };
+
+  const result = evaluateReferenceCandidateFidelity(reference, candidate, declarations as readonly ReferenceRuntimeBindingDeclaration[]);
+  if (!result.ok) return { ok: false, reason: 'invalid-bindings', detail: result.reason };
+
+  return { ok: true, evaluation: result.evaluation };
 }

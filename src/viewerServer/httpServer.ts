@@ -8,7 +8,7 @@ import { resolveMedia } from './evidence/mediaResolver.js';
 import { getObservationRelationships } from './evidence/observationView.js';
 import { getComparisonView } from './evidence/comparisonView.js';
 import { getEvaluationView } from './evidence/evaluationView.js';
-import { getReferenceView, getReferenceCandidateView } from './evidence/referenceView.js';
+import { getReferenceView, getReferenceCandidateView, getReferenceBindings, getReferenceFidelity } from './evidence/referenceView.js';
 
 /** Batch 1 viewer protocol identity: the shape of GET /api/status. Bumped independently of package/schema versions if the status contract itself changes. */
 export const VIEWER_PROTOCOL_VERSION = '1.0.0';
@@ -57,6 +57,8 @@ function resolveAssetPath(assetsRoot: string, pathname: string): string | undefi
 export interface ViewerServerState {
   /** The explicit, caller-supplied local evidence root this viewer session represents. Never interpreted as Observer evidence in Batch 1. */
   root: string;
+  /** v0.8 Batch 6: explicit, session-only binding declarations loaded once at CLI startup from an optional `--bindings-file`. Not yet validated against any specific reference - see `referenceView.ts`. */
+  bindingDeclarations: readonly unknown[];
 }
 
 export interface CreateViewerServerOptions {
@@ -258,7 +260,67 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
       writeJsonBody(res, method, status, { ok: false, error });
       return;
     }
-    writeJsonBody(res, method, 200, { ok: true, compatibility: result.compatibility, evaluationHandles: result.evaluationHandles });
+    writeJsonBody(res, method, 200, { ok: true, compatibility: result.compatibility, evaluationHandles: result.evaluationHandles, coordinateMapping: result.coordinateMapping });
+    return;
+  }
+
+  const referenceBindingsMatch = /^\/api\/references\/([^/]+)\/candidate\/([^/]+)\/bindings$/.exec(pathname);
+  if (referenceBindingsMatch) {
+    const referenceHandle = decodeURIComponentSafe(referenceBindingsMatch[1] as string);
+    const candidateHandle = decodeURIComponentSafe(referenceBindingsMatch[2] as string);
+    if (referenceHandle === undefined || candidateHandle === undefined) {
+      writeJsonError(res, method, 400, 'malformed reference/candidate binding request');
+      return;
+    }
+    const result = await getReferenceBindings(state.root, referenceHandle, candidateHandle, state.bindingDeclarations);
+    if (!result.ok) {
+      const status = result.reason === 'unknown-reference-handle' || result.reason === 'unknown-candidate-handle' ? 404 : result.reason === 'invalid-bindings' ? 422 : 409;
+      const error =
+        result.reason === 'unknown-reference-handle'
+          ? 'unknown viewer reference handle'
+          : result.reason === 'unknown-candidate-handle'
+            ? 'unknown viewer candidate handle'
+            : result.reason === 'not-a-reference'
+              ? 'the first handle is not external-reference evidence'
+              : result.reason === 'not-an-observation'
+                ? 'the second handle is not observation evidence'
+                : result.reason === 'invalid-bindings'
+                  ? `the session's binding declarations are invalid for this reference: ${result.detail}`
+                  : 'reference or candidate is not currently loadable';
+      writeJsonBody(res, method, status, { ok: false, error });
+      return;
+    }
+    writeJsonBody(res, method, 200, { ok: true, evaluation: result.evaluation });
+    return;
+  }
+
+  const referenceFidelityMatch = /^\/api\/references\/([^/]+)\/candidate\/([^/]+)\/fidelity$/.exec(pathname);
+  if (referenceFidelityMatch) {
+    const referenceHandle = decodeURIComponentSafe(referenceFidelityMatch[1] as string);
+    const candidateHandle = decodeURIComponentSafe(referenceFidelityMatch[2] as string);
+    if (referenceHandle === undefined || candidateHandle === undefined) {
+      writeJsonError(res, method, 400, 'malformed reference/candidate fidelity request');
+      return;
+    }
+    const result = await getReferenceFidelity(state.root, referenceHandle, candidateHandle, state.bindingDeclarations);
+    if (!result.ok) {
+      const status = result.reason === 'unknown-reference-handle' || result.reason === 'unknown-candidate-handle' ? 404 : result.reason === 'invalid-bindings' ? 422 : 409;
+      const error =
+        result.reason === 'unknown-reference-handle'
+          ? 'unknown viewer reference handle'
+          : result.reason === 'unknown-candidate-handle'
+            ? 'unknown viewer candidate handle'
+            : result.reason === 'not-a-reference'
+              ? 'the first handle is not external-reference evidence'
+              : result.reason === 'not-an-observation'
+                ? 'the second handle is not observation evidence'
+                : result.reason === 'invalid-bindings'
+                  ? `the session's binding declarations are invalid for this reference: ${result.detail}`
+                  : 'reference or candidate is not currently loadable';
+      writeJsonBody(res, method, status, { ok: false, error });
+      return;
+    }
+    writeJsonBody(res, method, 200, { ok: true, evaluation: result.evaluation });
     return;
   }
 

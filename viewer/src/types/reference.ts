@@ -33,3 +33,22 @@ export type { ExternalReferenceApplicability, ApplicableViewport } from '../../.
 export type { ReferenceCandidateCompatibilityResult } from '../../../src/domain/externalReferenceCompatibility.js';
 
 export type { ComparabilityResult, ComparabilityReason } from '../../../src/domain/comparison.js';
+
+export type {
+  ReferenceRuntimeBindingDeclaration,
+  ReferenceRuntimeBindingResult,
+  ReferenceRuntimeBindingEvaluation,
+  ReferenceRuntimeBindingStatus,
+  ReferenceRuntimeBindingReasonCode,
+} from '../../../src/domain/externalReferenceRuntimeBinding.js';
+
+export type {
+  ReferenceCandidateFidelityEvaluation,
+  ReferenceRequirementFidelityResult,
+  ReferenceRequirementFidelityStatus,
+  ReferenceRequirementFidelityReasonCode,
+  ReferenceFidelityState,
+  ReferenceFidelityBlockReason,
+  CoordinateScale,
+  DeriveCoordinateScaleResult,
+} from '../../../src/domain/externalReferenceFidelity.js';

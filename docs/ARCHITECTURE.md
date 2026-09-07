@@ -808,6 +808,96 @@ artifact via the existing Batch 2 `GET /api/artifacts/<handle>`.
   the real built `sw.js` (no new `registerRoute`, no `/api/references`
   precache entry).
 
+## v0.8 Batch 6 (Explicit-binding interaction, zoom/pan, conditional lock, and on-demand reference fidelity) — implemented
+
+- **`view --bindings-file <json-file>`**: reuses the exact same operational
+  binding-file wrapper parser (`loadBindingsFile` in `src/cli.ts`) that
+  `evaluate-reference-fidelity --bindings-file` already used - one shared
+  parser, never a second divergent one. The file is read once at startup;
+  its declarations become `ViewerServerState.bindingDeclarations` (an opaque
+  `unknown[]` until validated against a specific reference); the file path
+  itself is never persisted, returned, or exposed to the browser. Reference-
+  specific declaration validity (region existence, shape) is deferred to the
+  moment a reference is actually selected server-side, via the existing
+  canonical `isValidReferenceRuntimeBindingDeclarations` - never checked at
+  startup without a reference.
+- **Two new additive, read-only routes**
+  (`src/viewerServer/evidence/referenceView.ts`):
+  `GET /api/references/<handle>/candidate/<handle>/bindings` validates the
+  session's declarations against the selected reference and calls the
+  existing canonical `evaluateReferenceRuntimeBindings` exactly once.
+  `GET /api/references/<handle>/candidate/<handle>/fidelity` is the explicit
+  on-demand fidelity trigger - calls the existing canonical
+  `evaluateReferenceCandidateFidelity` exactly once, using the exact same
+  session declarations, so its embedded `bindings` field and the `/bindings`
+  route's own result always structurally agree for identical inputs (same
+  pure function, same arguments). Neither route persists anything; both are
+  `GET` (idempotent, deterministic, ephemeral over already-selected explicit
+  input) - no mutation route was added.
+- **`deriveCoordinateScale` exported additively** from
+  `externalReferenceFidelity.ts` (previously module-private) - Batch 6's
+  view-lock eligibility reuses this exact function unchanged (same formula,
+  same `ASPECT_RATIO_MAPPING_TOLERANCE`, same no-applicable-viewport
+  failure) rather than a second aspect-ratio/scale implementation. The
+  existing `GET /api/references/<handle>/candidate/<handle>/view` route now
+  additionally returns `coordinateMapping: DeriveCoordinateScaleResult` -
+  purely a function of the reference, independent of the candidate.
+- **Explicit-binding cross-selection uses only canonical
+  `ReferenceRuntimeBindingResult.referenceRegion`/`.runtimeTarget` fields**
+  (`ReferenceWorkspace.tsx`): selecting a `bound` reference region
+  highlights (via `TargetOverlaySvg`'s existing Batch 4 `highlightNames`
+  prop - never the primary `selected`/`aria-pressed` target) its exact
+  declared runtime target; selecting a runtime target highlights every
+  region whose `bound` result names it (many-to-one, via a new additive
+  `highlightRegionIds` prop on `ReferenceRegionOverlaySvg`, matching
+  `TargetOverlaySvg`'s established highlight pattern). `ambiguous`/
+  `unavailable` results never cross-select. Proven with a real equal-name
+  ("header" region + "header" target) Chromium fixture: no cross-selection
+  without an explicit declaration, real cross-selection with one.
+- **Zoom/pan is a repository-owned, presentation-only hook**
+  (`viewer/src/hooks/useZoomPan.ts`): bounded `[1x, 8x]` scale, `×1.25`/
+  `÷1.25` step, expressed as one `{scale, focalX, focalY}` triple in the
+  pane's own source-coordinate frame (reference-image pixels or candidate
+  CSS pixels - never rewritten). Renders via an SVG `viewBox` override
+  (additive `viewBoxOverride`/`svgRef`/pointer-handler props on
+  `TargetOverlaySvg`/`ReferenceRegionOverlaySvg`, defaulting to Batch 3/5's
+  exact prior behavior when omitted) - image and overlay stay one
+  transformed unit automatically since both live inside the same `<svg>`
+  root, and native SVG hit-testing means selection keeps working correctly
+  under zoom/pan with no extra coordinate math. Panning uses the SVG
+  element's own `getScreenCTM()` to convert screen-space pointer deltas into
+  source-space deltas - reuses the browser's native transform rather than a
+  custom aspect-ratio-aware pixel calculation - and only engages (calling
+  `setPointerCapture`) once the pointer has moved past a small threshold, so
+  an ordinary click on a region/target rect is never hijacked into a
+  phantom drag. Fit and Reset are the same fitted-1x/centered default (task
+  §26 - no second presentation-only default was introduced).
+- **View lock reuses one single shared state, never two independently
+  synchronized states**: `ReferenceWorkspace.tsx` owns `refZoom`/`candZoom`
+  directly (always-controlled `useZoomPan` calls) and each pane's zoom/pan
+  action handler updates both states in one synchronous call when locked -
+  no reactive effect watches one pane's state to update the other, so no
+  feedback-loop risk exists. Lock is available only when a candidate is
+  selected, compatibility is not `incomparable`, and `coordinateMapping.ok`
+  is `true`; any change to that eligibility (including selecting a
+  different reference/candidate) immediately disables lock and shows an
+  actionable reason. Synchronization converts a candidate CSS-pixel focal
+  point/scale into reference-image-pixel space (and back) using only
+  `coordinateMapping.scale.scaleX`/`scaleY` - the exact same canonical
+  factor `deriveCoordinateScale` already produces, applied as a straight
+  multiply/divide (its own algebraic inverse), never a second mapping rule.
+- **Contract/fidelity independence is never collapsed into one status**:
+  the existing Batch 5 "Optional contract/evaluation context" section
+  (unchanged) and the new on-demand `ReferenceFidelityPanel` are two
+  separate sections rendering two separate canonical results
+  (`FrontendContractEvaluationArtifact.overallVerdict` and
+  `ReferenceCandidateFidelityEvaluation.state`) side by side; when both are
+  present, an explicit note states that fidelity does not override an
+  active contract failure. No new coordinator/aggregate verdict is computed
+  anywhere in this batch.
+- **PWA cache boundary preserved**: both new routes live under `/api/`,
+  already covered by Batch 1's `navigateFallbackDenylist`.
+
 ## Retained v0.1 architecture constraints
 
 v0.1 planning preserved these approved boundaries without treating module

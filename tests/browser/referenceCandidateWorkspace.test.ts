@@ -165,8 +165,13 @@ describe('Case C - compatible reference/candidate', () => {
       await page.getByText('Reference/candidate compatibility').waitFor({ timeout: 10_000 });
       await page.locator('.comparability-banner--comparable').waitFor({ timeout: 10_000 });
 
+      // v0.8 Batch 6 superseded the Batch 5 static "fidelity not evaluated in this batch" placeholder
+      // with the real on-demand fidelity trigger - fidelity is still never computed automatically merely
+      // because compatibility passed (the button is present but unclicked, and no PASS/FAIL text exists yet).
       const bodyText = await page.textContent('body');
-      expect(bodyText).toContain('not evaluated in this batch');
+      expect(bodyText).toContain('Evaluate Fidelity');
+      expect(bodyText).toContain('Fidelity has not been evaluated yet');
+      expect(bodyText).not.toMatch(/Reference fidelity:\s*(pass|fail)/i);
     } finally {
       await page.close();
     }

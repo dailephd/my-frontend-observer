@@ -4,6 +4,7 @@ import { TargetOverlaySvg } from './TargetOverlaySvg.js';
 import type { OverlayToggles } from './TargetOverlaySvg.js';
 import type { ObservationArtifact, LayoutRelationshipGraph } from '../types/observation.js';
 import type { LinkStatus } from '../types/contracts.js';
+import type { ZoomPanBinding } from '../hooks/useZoomPan.js';
 
 /**
  * Batch 4: the before/after visual pane, built entirely from Batch 3's
@@ -21,6 +22,7 @@ export function ComparisonObservationPane({
   relationships,
   toggles,
   highlightNames,
+  zoomPan,
 }: {
   label: string;
   link: LinkStatus;
@@ -29,6 +31,8 @@ export function ComparisonObservationPane({
   relationships: LayoutRelationshipGraph | undefined;
   toggles: OverlayToggles;
   highlightNames?: ReadonlySet<string> | undefined;
+  /** Batch 6 additive, optional - see TargetOverlaySvg.tsx's identical prop. */
+  zoomPan?: ZoomPanBinding | undefined;
 }) {
   const handle = link.status === 'resolved' ? link.handle : undefined;
   const detail = useArtifactDetail(handle);
@@ -58,6 +62,7 @@ export function ComparisonObservationPane({
           onSelect={onSelectTarget}
           toggles={toggles}
           highlightNames={highlightNames}
+          zoomPan={zoomPan}
         />
       )}
     </div>

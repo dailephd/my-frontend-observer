@@ -221,12 +221,12 @@ export interface EvaluateReferenceCandidateFidelityOptions {
  */
 const ASPECT_RATIO_MAPPING_TOLERANCE = 0.01;
 
-interface CoordinateScale {
+export interface CoordinateScale {
   scaleX: number;
   scaleY: number;
 }
 
-type DeriveCoordinateScaleResult = { ok: true; scale: CoordinateScale } | { ok: false; reason: string };
+export type DeriveCoordinateScaleResult = { ok: true; scale: CoordinateScale } | { ok: false; reason: string };
 
 function referenceImageDimensions(reference: ExternalReferenceArtifact): { width: number; height: number } {
   if (isImportedExternalReferenceArtifact(reference)) return { width: reference.image.width, height: reference.image.height };
@@ -245,7 +245,13 @@ function referenceImageDimensions(reference: ExternalReferenceArtifact): { width
  * this module performs no cropping, offset, rotation, perspective, or other
  * arbitrary affine registration.
  */
-function deriveCoordinateScale(reference: ExternalReferenceArtifact): DeriveCoordinateScaleResult {
+/**
+ * Exported additively in v0.8 Batch 6 (previously module-private) so the
+ * viewer's lock-eligibility/view-lock-source-space-mapping feature can reuse
+ * this exact function - never a second aspect-ratio/scale implementation.
+ * The function body, formula, and tolerance are unchanged from Prompt 6.
+ */
+export function deriveCoordinateScale(reference: ExternalReferenceArtifact): DeriveCoordinateScaleResult {
   const viewport = reference.applicability?.viewport;
   if (!viewport) {
     return { ok: false, reason: 'reference declares no applicable viewport; reference-image-pixel <-> CSS-pixel coordinate mapping cannot be established' };

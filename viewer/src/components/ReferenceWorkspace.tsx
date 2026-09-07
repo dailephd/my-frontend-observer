@@ -1,14 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useEvidenceIndex } from '../hooks/useEvidenceIndex.js';
-import { useReferenceView, useReferenceCandidateView } from '../hooks/useReferenceView.js';
+import { useReferenceView, useReferenceCandidateView, useReferenceBindings } from '../hooks/useReferenceView.js';
 import { useArtifactDetail } from '../hooks/useArtifactDetail.js';
+import { useZoomPan } from '../hooks/useZoomPan.js';
+import type { ZoomPanState } from '../hooks/useZoomPan.js';
 import { ReferenceRegionOverlaySvg } from './ReferenceRegionOverlaySvg.js';
 import type { ReferenceOverlayToggles } from './ReferenceRegionOverlaySvg.js';
 import { ReferenceInspector } from './ReferenceInspector.js';
 import { ComparisonObservationPane } from './ComparisonObservationPane.js';
+import { ZoomControls } from './ZoomControls.js';
+import { ReferenceFidelityPanel } from './ReferenceFidelityPanel.js';
 import type { OverlayToggles } from './TargetOverlaySvg.js';
 import type { ExternalReferenceArtifact, ExternalReferenceRequirement, ApprovedExternalReferenceArtifact, ImportedExternalReferenceArtifact } from '../types/reference.js';
 import type { FrontendContractEvaluationArtifact } from '../types/contracts.js';
+import type { ObservationArtifact } from '../types/observation.js';
 
 function requirementSubjectRegionIds(subject: ExternalReferenceRequirement['subject']): string[] {
   return subject.kind === 'region-property' ? [subject.region] : [subject.subjectRegion, subject.relatedRegion];
@@ -22,21 +27,22 @@ function isImported(artifact: ExternalReferenceArtifact): artifact is ImportedEx
   return artifact.lifecycle.state === 'imported';
 }
 
+const FITTED_ZOOM: ZoomPanState['scale'] = 1;
+
 /**
- * Batch 5: read-only side-by-side reference/candidate inspection. Left pane
- * renders the reference image in its own pixel coordinate domain with
- * region overlays (`ReferenceRegionOverlaySvg`); right pane, once a
- * candidate observation is EXPLICITLY selected (never auto-selected - task
- * §22), reuses Batch 3/4's exact `ComparisonObservationPane`/
- * `TargetOverlaySvg` runtime-coordinate machinery unchanged. Reference-
- * region selection and runtime-target selection are two independent pieces
- * of state that are never synchronized or cross-highlighted (task §30) -
- * this is the explicit-binding boundary Batch 6 owns. Compatibility comes
- * from the existing canonical `evaluateReferenceCandidateCompatibility` via
- * `/api/references/<handle>/candidate/<handle>/view`; fidelity is never
- * computed here (task §32/§33) - only an honest "not evaluated" state, or,
- * if the developer explicitly picks one of the exactly-matching existing
- * evaluation artifacts, that artifact's own already-persisted verdict.
+ * Batch 6: extends Batch 5's read-only side-by-side reference/candidate
+ * inspection with explicit-binding cross-selection, independent bounded
+ * zoom/pan, conditional view lock, and on-demand fidelity evaluation - none
+ * of which change the read-only, no-inference invariants Batch 5 already
+ * established (task §21/§30): cross-selection uses ONLY canonical
+ * `ReferenceRuntimeBindingResult.referenceRegion`/`.runtimeTarget` fields
+ * from the existing `evaluateReferenceRuntimeBindings`, never name/geometry/
+ * order/image similarity. Zoom/pan is presentation-only (never rewrites
+ * evidence coordinates - task §24). View lock reuses the exact canonical
+ * `deriveCoordinateScale` (exposed from `externalReferenceFidelity.ts`) as
+ * its sole source-space mapping - never a second aspect-ratio/scale
+ * implementation. Fidelity is evaluated only on explicit user action
+ * (`ReferenceFidelityPanel`), never automatically.
  */
 export function ReferenceWorkspace({ handle, artifact }: { handle: string; artifact: ExternalReferenceArtifact }) {
   const referenceView = useReferenceView(handle);
@@ -50,20 +56,29 @@ export function ReferenceWorkspace({ handle, artifact }: { handle: string; artif
   const [candidateToggles, setCandidateToggles] = useState<OverlayToggles>({ geometry: true, labels: true, relationships: true });
   const [selectedEvaluationHandle, setSelectedEvaluationHandle] = useState<string | undefined>(undefined);
 
+  const [locked, setLocked] = useState(false);
+  const [fidelityHighlight, setFidelityHighlight] = useState<{ regions: string[]; targets: string[] }>({ regions: [], targets: [] });
+
   useEffect(() => {
     setSelectedRegionId(undefined);
     setCandidateHandle(undefined);
     setSelectedTarget(undefined);
     setSelectedEvaluationHandle(undefined);
+    setLocked(false);
+    setFidelityHighlight({ regions: [], targets: [] });
   }, [handle]);
 
   useEffect(() => {
     setSelectedTarget(undefined);
     setSelectedEvaluationHandle(undefined);
+    setLocked(false);
+    setFidelityHighlight({ regions: [], targets: [] });
   }, [candidateHandle]);
 
   const candidateView = useReferenceCandidateView(handle, candidateHandle);
   const evaluationDetail = useArtifactDetail(selectedEvaluationHandle);
+  const bindingsView = useReferenceBindings(handle, candidateHandle);
+  const candidateDetail = useArtifactDetail(candidateHandle);
 
   const approved = isApproved(artifact);
   const imported = isImported(artifact);
@@ -81,6 +96,70 @@ export function ReferenceWorkspace({ handle, artifact }: { handle: string; artif
   const requirementAdequacy = referenceView.state === 'available' ? referenceView.requirementAdequacy : undefined;
 
   const evaluationArtifact = evaluationDetail.state === 'available' ? (evaluationDetail.artifact as FrontendContractEvaluationArtifact) : undefined;
+  const candidateArtifact = candidateDetail.state === 'available' ? (candidateDetail.artifact as ObservationArtifact) : undefined;
+  const candidateViewport = candidateArtifact?.requestConfig.viewport ?? { width: 1, height: 1 };
+
+  const coordinateMapping = candidateView.state === 'available' ? candidateView.coordinateMapping : undefined;
+  const lockEligible =
+    candidateHandle !== undefined && candidateView.state === 'available' && candidateView.compatibility.compatibility.state !== 'incomparable' && coordinateMapping?.ok === true;
+
+  useEffect(() => {
+    if (locked && !lockEligible) setLocked(false);
+  }, [locked, lockEligible]);
+
+  // --- Batch 6 zoom/pan: always-controlled, single-owner state per pane (task §29/§34/§35) ---
+  const [refZoom, setRefZoom] = useState<ZoomPanState>({ scale: FITTED_ZOOM, focalX: imageWidth / 2, focalY: imageHeight / 2 });
+  const [candZoom, setCandZoom] = useState<ZoomPanState>({ scale: FITTED_ZOOM, focalX: candidateViewport.width / 2, focalY: candidateViewport.height / 2 });
+
+  useEffect(() => {
+    setRefZoom({ scale: FITTED_ZOOM, focalX: imageWidth / 2, focalY: imageHeight / 2 });
+  }, [imageWidth, imageHeight]);
+
+  useEffect(() => {
+    setCandZoom({ scale: FITTED_ZOOM, focalX: candidateViewport.width / 2, focalY: candidateViewport.height / 2 });
+  }, [candidateViewport.width, candidateViewport.height]);
+
+  function handleRefZoomChange(next: ZoomPanState): void {
+    setRefZoom(next);
+    if (locked && coordinateMapping?.ok) {
+      setCandZoom({ scale: next.scale, focalX: next.focalX / coordinateMapping.scale.scaleX, focalY: next.focalY / coordinateMapping.scale.scaleY });
+    }
+  }
+  function handleCandZoomChange(next: ZoomPanState): void {
+    setCandZoom(next);
+    if (locked && coordinateMapping?.ok) {
+      setRefZoom({ scale: next.scale, focalX: next.focalX * coordinateMapping.scale.scaleX, focalY: next.focalY * coordinateMapping.scale.scaleY });
+    }
+  }
+
+  const refZoomPan = useZoomPan(imageWidth, imageHeight, { state: refZoom, onChange: handleRefZoomChange });
+  const candZoomPan = useZoomPan(candidateViewport.width, candidateViewport.height, { state: candZoom, onChange: handleCandZoomChange });
+
+  function toggleLock(): void {
+    if (locked) {
+      setLocked(false);
+      return;
+    }
+    if (!lockEligible || !coordinateMapping?.ok) return;
+    setCandZoom({ scale: refZoom.scale, focalX: refZoom.focalX / coordinateMapping.scale.scaleX, focalY: refZoom.focalY / coordinateMapping.scale.scaleY });
+    setLocked(true);
+  }
+
+  // --- Batch 6 explicit-binding cross-selection (task §19/§20/§21) - canonical fields only ---
+  const bindingResults = bindingsView.state === 'available' ? bindingsView.evaluation.bindings : [];
+
+  const candidateHighlightNames = new Set<string>(fidelityHighlight.targets);
+  if (selectedRegionId !== undefined) {
+    const bound = bindingResults.find((b) => b.status === 'bound' && b.referenceRegion.toLowerCase() === selectedRegionId.toLowerCase());
+    if (bound !== undefined) candidateHighlightNames.add(bound.runtimeTarget);
+  }
+
+  const regionHighlightIds = new Set<string>(fidelityHighlight.regions);
+  if (selectedTarget !== undefined) {
+    for (const b of bindingResults) {
+      if (b.status === 'bound' && b.runtimeTarget.toLowerCase() === selectedTarget.toLowerCase()) regionHighlightIds.add(b.referenceRegion);
+    }
+  }
 
   return (
     <div className="reference-workspace">
@@ -101,6 +180,7 @@ export function ReferenceWorkspace({ handle, artifact }: { handle: string; artif
               Relationships
             </label>
           </div>
+          <ZoomControls scale={refZoomPan.scale} onZoomIn={refZoomPan.zoomIn} onZoomOut={refZoomPan.zoomOut} onFit={refZoomPan.fit} onReset={refZoomPan.reset} label="reference" />
           <div className="comparison-pane">
             <ReferenceRegionOverlaySvg
               imageUrl={imageUrl}
@@ -112,6 +192,8 @@ export function ReferenceWorkspace({ handle, artifact }: { handle: string; artif
               onSelect={setSelectedRegionId}
               toggles={referenceToggles}
               requirementRegionIds={requirementRegionIds}
+              highlightRegionIds={regionHighlightIds}
+              zoomPan={refZoomPan}
             />
           </div>
         </div>
@@ -147,13 +229,36 @@ export function ReferenceWorkspace({ handle, artifact }: { handle: string; artif
                   Relationships
                 </label>
               </div>
+              <ZoomControls scale={candZoomPan.scale} onZoomIn={candZoomPan.zoomIn} onZoomOut={candZoomPan.zoomOut} onFit={candZoomPan.fit} onReset={candZoomPan.reset} label="candidate" />
+              <div className="reference-workspace__lock">
+                <button type="button" onClick={toggleLock} disabled={!lockEligible && !locked} aria-pressed={locked}>
+                  {locked ? 'Unlock view' : 'Lock view'}
+                </button>
+                {!lockEligible && !locked ? (
+                  <span className="placeholder-note">
+                    Lock unavailable:{' '}
+                    {candidateView.state !== 'available'
+                      ? 'evaluating compatibility…'
+                      : candidateView.compatibility.compatibility.state === 'incomparable'
+                        ? 'reference and candidate are incompatible.'
+                        : coordinateMapping?.ok === false
+                          ? coordinateMapping.reason
+                          : 'canonical coordinate mapping unavailable.'}
+                  </span>
+                ) : null}
+              </div>
               <ComparisonObservationPane
                 label="Candidate"
                 link={{ status: 'resolved', handle: candidateHandle }}
                 selectedTarget={selectedTarget}
-                onSelectTarget={setSelectedTarget}
+                onSelectTarget={(name) => {
+                  setSelectedTarget(name);
+                  setFidelityHighlight({ regions: [], targets: [] });
+                }}
                 relationships={undefined}
                 toggles={candidateToggles}
+                highlightNames={candidateHighlightNames}
+                zoomPan={candZoomPan}
               />
             </>
           )}
@@ -185,6 +290,38 @@ export function ReferenceWorkspace({ handle, artifact }: { handle: string; artif
                   ) : null}
                 </div>
 
+                <h4>Explicit reference-region ↔ runtime-target bindings</h4>
+                {bindingsView.state === 'idle' || bindingsView.state === 'loading' ? (
+                  <p className="placeholder-note">Evaluating bindings…</p>
+                ) : bindingsView.state === 'error' ? (
+                  <p className="inspector__error" role="alert">
+                    Could not evaluate bindings: {bindingsView.message}
+                  </p>
+                ) : bindingResults.length === 0 ? (
+                  <p className="placeholder-note">
+                    {candidateView.compatibility.compatibility.state === 'incomparable'
+                      ? 'No binding declarations are evaluated for an incompatible candidate.'
+                      : 'No binding declarations were supplied to this viewer session (start it with --bindings-file to declare explicit reference-region ↔ runtime-target correspondences).'}
+                  </p>
+                ) : (
+                  <ul className="clause-list">
+                    {bindingResults.map((b) => (
+                      <li key={`${b.referenceRegion}:${b.runtimeTarget}`} className={`clause-row clause-row--${b.status === 'bound' ? 'pass' : b.status === 'ambiguous' ? 'conflict' : 'unavailable'}`}>
+                        <span className="clause-row__id">
+                          {b.referenceRegion} → {b.runtimeTarget}
+                        </span>
+                        <span className="clause-row__status">{b.status}</span>
+                        <p className="clause-row__primitive">
+                          {b.reasonCode !== undefined ? `${b.reasonCode}: ` : ''}
+                          {b.detail}
+                          {b.targetResolutionStatus !== undefined ? ` (targetResolutionStatus: ${b.targetResolutionStatus})` : ''}
+                          {b.targetVisible !== undefined ? `, targetVisible: ${b.targetVisible}` : ''}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
                 <h4>Optional contract/evaluation context</h4>
                 {candidateView.evaluationHandles.length === 0 ? (
                   <p className="placeholder-note">No existing evaluation artifact's "after" observation exactly identifies this candidate.</p>
@@ -210,14 +347,23 @@ export function ReferenceWorkspace({ handle, artifact }: { handle: string; artif
                   <p className="placeholder-note">Loading evaluation…</p>
                 ) : (
                   <div className={`overall-verdict overall-verdict--${evaluationArtifact.overallVerdict}`} role={evaluationArtifact.overallVerdict === 'FAIL' ? 'alert' : undefined}>
-                    Overall verdict (from selected existing evaluation): <strong>{evaluationArtifact.overallVerdict}</strong>
+                    Frontend contract (from selected existing evaluation): <strong>{evaluationArtifact.overallVerdict}</strong>
                   </div>
                 )}
 
-                <p className="placeholder-note">
-                  Fidelity: not evaluated in this batch — on-demand reference/candidate fidelity evaluation is Batch 6. Compatibility {candidateView.compatibility.compatibility.state === 'incomparable' ? 'blocked' : 'passing'} above is not
-                  a fidelity result.
-                </p>
+                <h4>Reference fidelity (on demand)</h4>
+                <ReferenceFidelityPanel
+                  referenceHandle={handle}
+                  candidateHandle={candidateHandle}
+                  onHighlight={(regionIds, targetNames) => setFidelityHighlight({ regions: regionIds, targets: targetNames })}
+                />
+
+                {evaluationArtifact !== undefined ? (
+                  <p className="reference-workspace__independence-note">
+                    Reference fidelity does not override the active frontend-contract {evaluationArtifact.overallVerdict === 'FAIL' ? 'failure' : 'result'}. These are two separate, independent evidence dimensions - neither is
+                    recomputed from the other.
+                  </p>
+                ) : null}
               </>
             )}
           </section>

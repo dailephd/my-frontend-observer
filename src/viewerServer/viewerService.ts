@@ -30,6 +30,16 @@ export interface StartViewerOptions {
   port?: number;
   /** Overrides the built viewer assets location. Defaults to {@link defaultViewerAssetsRoot}. Exposed only for tests exercising the static-serving boundary against fixture assets. */
   assetsRoot?: string;
+  /**
+   * v0.8 Batch 6: explicit, session-only reference-region/runtime-target
+   * binding declarations, read once by the CLI at startup from an optional
+   * `--bindings-file` (never re-read, never persisted, never exposed as a
+   * path to the browser). Not yet validated against any specific reference
+   * here - that happens per-request, once a reference is actually selected,
+   * via the existing canonical `isValidReferenceRuntimeBindingDeclarations`.
+   * Defaults to an empty collection.
+   */
+  bindingDeclarations?: readonly unknown[];
 }
 
 export type StartViewerResult =
@@ -74,7 +84,7 @@ export async function startViewer(options: StartViewerOptions): Promise<StartVie
   }
 
   const assetsRoot = options.assetsRoot ?? defaultViewerAssetsRoot();
-  const server: Server = createViewerServer({ assetsRoot, state: { root: options.root } });
+  const server: Server = createViewerServer({ assetsRoot, state: { root: options.root, bindingDeclarations: options.bindingDeclarations ?? [] } });
 
   const listenResult = await new Promise<{ ok: true } | { ok: false; message: string }>((resolvePromise) => {
     const onError = (err: NodeJS.ErrnoException): void => {

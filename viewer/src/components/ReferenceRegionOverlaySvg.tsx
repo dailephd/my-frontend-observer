@@ -1,4 +1,5 @@
 import type { ReferenceRegion, ReferenceRegionRelationshipGraph } from '../types/reference.js';
+import type { ZoomPanBinding } from '../hooks/useZoomPan.js';
 
 export interface ReferenceOverlayToggles {
   regions: boolean;
@@ -26,6 +27,8 @@ export function ReferenceRegionOverlaySvg({
   onSelect,
   toggles,
   requirementRegionIds,
+  highlightRegionIds,
+  zoomPan,
 }: {
   imageUrl: string;
   imageWidth: number;
@@ -37,16 +40,22 @@ export function ReferenceRegionOverlaySvg({
   toggles: ReferenceOverlayToggles;
   /** Region ids referenced by at least one selected requirement - presentation-only emphasis, never a fidelity pass/fail signal (task §27). */
   requirementRegionIds?: ReadonlySet<string> | undefined;
+  /** Batch 6 additive, optional: every region id an explicit `bound` binding result maps to the currently-selected runtime target (many-to-one reverse cross-selection, task §20) - never the single interactive `selected` region. */
+  highlightRegionIds?: ReadonlySet<string> | undefined;
+  /** Batch 6 additive, optional - see TargetOverlaySvg.tsx's identical prop. */
+  zoomPan?: ZoomPanBinding | undefined;
 }) {
   const byId = new Map(regions.map((r) => [r.id, r] as const));
 
   return (
     <svg
-      className="target-overlay-svg reference-region-overlay-svg"
-      viewBox={`0 0 ${imageWidth} ${imageHeight}`}
+      className={`target-overlay-svg reference-region-overlay-svg${zoomPan?.isPannable ? ' target-overlay-svg--pannable' : ''}`}
+      viewBox={zoomPan?.viewBox ?? `0 0 ${imageWidth} ${imageHeight}`}
       role="img"
       aria-label={`Reference image, ${imageWidth} by ${imageHeight} pixels`}
       preserveAspectRatio="xMidYMid meet"
+      ref={zoomPan?.svgRef}
+      {...(zoomPan?.pointerHandlers ?? {})}
     >
       <image href={imageUrl} x={0} y={0} width={imageWidth} height={imageHeight} preserveAspectRatio="none" />
 
@@ -77,10 +86,11 @@ export function ReferenceRegionOverlaySvg({
         ? regions.map((region) => {
             const isSelected = region.id === selected;
             const hasRequirement = requirementRegionIds?.has(region.id) ?? false;
+            const isHighlighted = !isSelected && (highlightRegionIds?.has(region.id) ?? false);
             return (
               <g key={region.id} data-region-id={region.id}>
                 <rect
-                  className={`target-overlay-svg__rect reference-region-overlay-svg__rect${isSelected ? ' target-overlay-svg__rect--selected' : ''}${hasRequirement ? ' reference-region-overlay-svg__rect--has-requirement' : ''}`}
+                  className={`target-overlay-svg__rect reference-region-overlay-svg__rect${isSelected ? ' target-overlay-svg__rect--selected' : ''}${isHighlighted ? ' target-overlay-svg__rect--highlighted' : ''}${hasRequirement ? ' reference-region-overlay-svg__rect--has-requirement' : ''}`}
                   data-region-id={region.id}
                   x={region.rectangle.x}
                   y={region.rectangle.y}

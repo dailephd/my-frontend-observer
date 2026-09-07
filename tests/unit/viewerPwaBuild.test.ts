@@ -103,4 +103,23 @@ describe('viewer PWA build output', () => {
     expect(precacheEntries).not.toContain('/api/comparisons');
     expect(precacheEntries).not.toContain('/api/evaluations');
   });
+
+  it('v0.8 Batch 5: the new reference-view/candidate-view routes are likewise covered by the /api/ denylist, not separately cached', async () => {
+    const swSource = await readFile(path.join(viewerDist, 'sw.js'), 'utf8');
+    const registerRouteCalls = swSource.match(/registerRoute\(/g) ?? [];
+    expect(registerRouteCalls.length).toBe(1);
+    const precacheMatch = /precacheAndRoute\(\[(.*?)],\{}\)/.exec(swSource);
+    const precacheEntries = precacheMatch?.[1] ?? '';
+    expect(precacheEntries).not.toContain('/api/references');
+  });
+
+  it('v0.8 Batch 6: the new bindings/fidelity routes are likewise covered by the /api/ denylist, not separately cached', async () => {
+    const swSource = await readFile(path.join(viewerDist, 'sw.js'), 'utf8');
+    const registerRouteCalls = swSource.match(/registerRoute\(/g) ?? [];
+    expect(registerRouteCalls.length).toBe(1);
+    const precacheMatch = /precacheAndRoute\(\[(.*?)],\{}\)/.exec(swSource);
+    const precacheEntries = precacheMatch?.[1] ?? '';
+    expect(precacheEntries).not.toContain('/bindings');
+    expect(precacheEntries).not.toContain('/fidelity');
+  });
 });

@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 /**
  * Isolated from tests/unit/cliView.test.ts (which exercises the real
@@ -43,7 +46,8 @@ describe('runCli view - thin delegation to startViewer', () => {
     const code = await runCli(['view', '--root', '/some/root', '--port', '4319', '--no-open'], out.io);
     expect(code).toBe(0);
     expect(startViewerMock).toHaveBeenCalledTimes(1);
-    expect(startViewerMock).toHaveBeenCalledWith({ root: '/some/root', port: 4319 });
+    // v0.8 Batch 6: startViewer now always additionally receives bindingDeclarations (empty when --bindings-file is omitted).
+    expect(startViewerMock).toHaveBeenCalledWith({ root: '/some/root', port: 4319, bindingDeclarations: [] });
     expect(out.stdout()).toContain('http://127.0.0.1:4319');
   });
 
@@ -51,7 +55,7 @@ describe('runCli view - thin delegation to startViewer', () => {
     startViewerMock.mockClear();
     const out = capture();
     await runCli(['view', '--root', '/some/root', '--no-open'], out.io);
-    expect(startViewerMock).toHaveBeenCalledWith({ root: '/some/root' });
+    expect(startViewerMock).toHaveBeenCalledWith({ root: '/some/root', bindingDeclarations: [] });
   });
 
   it('attempts to open the default browser unless --no-open is given', async () => {
@@ -79,5 +83,20 @@ describe('runCli view - thin delegation to startViewer', () => {
     const code = await runCli(['view', '--root', '/some/root'], out.io);
     expect(code).toBe(0);
     expect(out.stderr()).toContain('could not open the default browser automatically');
+  });
+
+  it('v0.8 Batch 6: a valid --bindings-file, even with reference-specific-invalid content, does not block viewer startup (that validation is deferred to reference selection) - parsed declarations are passed through to startViewer verbatim', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'my-frontend-observer-view-bindings-dispatch-'));
+    try {
+      const bindingsPath = path.join(dir, 'bindings.json');
+      await writeFile(bindingsPath, JSON.stringify({ bindings: [{ referenceRegion: 'nonexistent-region', runtimeTarget: 'header' }] }), 'utf8');
+      startViewerMock.mockClear();
+      const out = capture();
+      const code = await runCli(['view', '--root', dir, '--bindings-file', bindingsPath, '--no-open'], out.io);
+      expect(code).toBe(0);
+      expect(startViewerMock).toHaveBeenCalledWith(expect.objectContaining({ bindingDeclarations: [{ referenceRegion: 'nonexistent-region', runtimeTarget: 'header' }] }));
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });

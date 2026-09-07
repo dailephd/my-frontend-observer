@@ -726,3 +726,118 @@ body {
 .reference-adequacy--inadequate {
   border-color: #f87171;
 }
+
+/* --- Batch 6: zoom/pan, lock, binding cross-selection, fidelity --- */
+
+.target-overlay-svg--pannable {
+  cursor: grab;
+}
+
+.target-overlay-svg--pannable:active {
+  cursor: grabbing;
+}
+
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.3rem;
+  font-size: 0.68rem;
+}
+
+.zoom-controls button {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  cursor: pointer;
+}
+
+.zoom-controls__scale {
+  color: var(--text-dim);
+  min-width: 3rem;
+  text-align: center;
+}
+
+.reference-workspace__lock {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.68rem;
+}
+
+.reference-workspace__lock button {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  cursor: pointer;
+}
+
+.reference-workspace__lock button[aria-pressed='true'] {
+  border-color: #4ade80;
+  color: #4ade80;
+}
+
+.reference-workspace__lock button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.reference-fidelity-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.reference-fidelity-panel__toolbar button {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
+}
+
+.reference-fidelity-panel__toolbar button:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.reference-fidelity-panel__units {
+  color: var(--text-dim);
+  font-size: 0.62rem;
+}
+
+.reference-fidelity-state {
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 2px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.reference-fidelity-state--pass {
+  border-color: #4ade80;
+  color: #4ade80;
+}
+
+.reference-fidelity-state--fail {
+  border-color: #f87171;
+  color: #f87171;
+  background: var(--error-bg);
+}
+
+.reference-fidelity-state--not-evaluated {
+  border-color: var(--text-dim);
+  color: var(--text-dim);
+}
+
+.reference-workspace__independence-note {
+  font-size: 0.7rem;
+  color: #fde68a;
+  border-top: 1px solid var(--border);
+  padding-top: 0.3rem;
+}

@@ -713,81 +713,103 @@ and exits nonzero.
 
 ## `view`
 
-**Current status: v0.8 Batch 5 (External reference and reference/candidate
-inspection).** Starts one loopback-only Node viewer server and serves the
-same React + TypeScript + Vite application to a normal browser or an
-installed Progressive Web App. `--root` is used as a bounded, read-only
-evidence-discovery root: the server exposes a metadata-first `GET
-/api/index` of recognized Observer evidence beneath it, an on-demand `GET
-/api/artifacts/<handle>` for one selected supported artifact, an on-demand
-`GET /api/media/<handle>/<role>` for its owned/referenced media (observation
-screenshots; imported/approved external-reference images), an on-demand `GET
-/api/observations/<handle>/relationships` that returns the existing
-canonical `deriveLayoutRelationships(...)` result for one selected
-observation, `GET /api/comparisons/<handle>/view` and
-`GET /api/evaluations/<handle>/view`, which resolve a comparison's/
-evaluation's linked source observations/contracts/comparison by **exact
-canonical identity** within the current evidence root (never by folder name
-or similarity) and report `resolved`/`missing`/`ambiguous`, and — new this
-batch — `GET /api/references/<handle>/view` (the selected external
-reference's own region-relationship graph, via the existing canonical
-`deriveReferenceRegionRelationships`, and requirement adequacy, via the
-existing canonical `deriveReferenceRequirementAdequacy`) and
+**Current status: v0.8 Batch 6 (Explicit-binding interaction, zoom/pan,
+conditional lock, and on-demand reference fidelity).** Starts one
+loopback-only Node viewer server and serves the same React + TypeScript +
+Vite application to a normal browser or an installed Progressive Web App.
+`--root` is used as a bounded, read-only evidence-discovery root: the server
+exposes a metadata-first `GET /api/index` of recognized Observer evidence
+beneath it, an on-demand `GET /api/artifacts/<handle>` for one selected
+supported artifact, an on-demand `GET /api/media/<handle>/<role>` for its
+owned/referenced media, an on-demand `GET /api/observations/<handle>/relationships`
+(existing canonical `deriveLayoutRelationships(...)`), `GET /api/comparisons/<handle>/view`
+and `GET /api/evaluations/<handle>/view` (exact-identity linked-evidence
+resolution), `GET /api/references/<handle>/view` (region-relationship graph
+and requirement adequacy, plus — new this batch — `coordinateMapping`, the
+exact result of the existing canonical `deriveCoordinateScale(reference)`,
+used only to gate view-lock eligibility), and
 `GET /api/references/<handle>/candidate/<handle>/view` (page/state-level
-compatibility between an explicitly selected reference and an explicitly
-selected candidate observation, via the existing canonical
-`evaluateReferenceCandidateCompatibility`, plus the handles of any existing
-evaluation artifacts whose own `after` reference exactly identifies that
-candidate, for optional explicit selection) — never a second copy of a
-linked artifact's own payload, and never a recomputed
+compatibility plus optional matching-evaluation handles). New this batch:
+`GET /api/references/<handle>/candidate/<handle>/bindings` validates the
+session's explicit binding declarations against the selected reference and
+calls the existing canonical `evaluateReferenceRuntimeBindings` exactly
+once, and `GET /api/references/<handle>/candidate/<handle>/fidelity` is the
+explicit on-demand trigger that calls the existing canonical
+`evaluateReferenceCandidateFidelity` exactly once — never a second copy of a
+linked artifact's own payload, never a recomputed
 `compareObservations`/`evaluateFrontendContract`/
-`evaluateReferenceRuntimeBindings`/`evaluateReferenceCandidateFidelity`
-result — see `docs/ARCHITECTURE.md` "v0.8 Batch 2" through "v0.8 Batch 5"
-for the exact discovery bounds, classification model, coordinate mapping,
-and handle/media/linked-evidence-resolution contracts. Selecting a supported
-`observation` record shows the Batch 3 screenshot/SVG workspace. Selecting a
-supported `comparison` record shows a real before/after side-by-side visual
-workspace (reusing that same screenshot/SVG machinery) plus the persisted
-differences/relationship-changes/comparability/dependency evidence.
-Selecting a supported `contract-evaluation` record shows the persisted
-`overallVerdict` (PASS/FAIL) prominently, every clause result grouped by its
-authored category (requested/expected-dependent/protected/preserved) or
-shown as an active/superseded baseline invariant, and unexpected changes —
-with target-scoped results able to highlight the exact stable runtime target
-in the before/after panes. Selecting a supported
-`external-reference-imported`/`external-reference-approved` record shows the
-reference image with region overlays in the reference image's own pixel
-coordinate domain, selected requirements/tolerances/adequacy/applicability/
-lifecycle/provenance/supersession, and, once a candidate observation is
-**explicitly** selected (never auto-selected), that candidate side by side
-using the reused Batch 3/4 runtime screenshot/SVG machinery plus the real
-canonical compatibility result and, if the developer explicitly picks one,
-an existing matching evaluation's already-persisted verdict — reference
-region selection and runtime target selection remain two independent,
-never-synchronized selection domains, and no fidelity result is ever
-displayed (Batch 6 scope). Every other evidence family still shows the
-bounded metadata/raw-payload view established in Batch 2. Every route
-remains strictly read-only: no artifact is ever created, modified, or
-interpreted beyond its existing canonical reader/validator, and
-`deriveLayoutRelationships`/`compareObservations`/`evaluateFrontendContract`/
 `deriveReferenceRegionRelationships`/`deriveReferenceRequirementAdequacy`/
-`evaluateReferenceCandidateCompatibility` are pure functions this batch never
-invokes to fabricate a result beyond what the referenced evidence already
-supports, and `evaluateReferenceRuntimeBindings`/
-`evaluateReferenceCandidateFidelity` are never invoked at all.
+`evaluateReferenceCandidateCompatibility` result, and both new routes are
+plain `GET` (deterministic, ephemeral, never persisted) — see
+`docs/ARCHITECTURE.md` "v0.8 Batch 2" through "v0.8 Batch 6" for the exact
+discovery bounds, classification model, coordinate mapping, and
+handle/media/linked-evidence-resolution contracts.
+
+Selecting a supported `observation` record shows the Batch 3 screenshot/SVG
+workspace. Selecting a supported `comparison` record shows the Batch 4
+before/after side-by-side workspace. Selecting a supported
+`contract-evaluation` record shows the Batch 4 clause-result/overall-verdict
+workspace. Selecting a supported `external-reference-imported`/
+`external-reference-approved` record shows the reference image with region
+overlays in the reference image's own pixel coordinate domain, selected
+requirements/tolerances/adequacy/applicability/lifecycle/provenance/
+supersession, and, once a candidate observation is **explicitly** selected
+(never auto-selected), that candidate side by side using the reused Batch
+3/4 runtime screenshot/SVG machinery plus the real canonical compatibility
+result. New this batch: both panes support independent, bounded (`1x`–`8x`)
+zoom and pointer-drag pan (Fit/Reset controls included) that never rewrites
+any evidence coordinate — only when explicit binding declarations were
+supplied (`--bindings-file`, below) and the selected reference/candidate
+resolve a real canonical `bound` result does selecting a reference region
+cross-highlight its exact declared runtime target (and selecting a runtime
+target cross-highlight every region that names it) — `ambiguous`/
+`unavailable` results and undeclared regions/targets never cross-select,
+even when their names happen to match. A "Lock view" control synchronizes
+both panes' zoom/pan in source-space (via the exact `coordinateMapping`
+scale factor) but is enabled only when a candidate is selected,
+compatibility is not `incomparable`, and `coordinateMapping.ok` is `true` —
+otherwise it stays disabled with an actionable reason, and any change to
+that eligibility (including switching reference/candidate) turns it off
+immediately. An explicit "Evaluate Fidelity" action calls the fidelity
+endpoint on demand (never automatically) and displays the canonical
+`not-evaluated`/`pass`/`fail` state, `blockedBy`, and every requirement
+result's status/numeric-or-relationship fields with correct unit labels
+(reference-image pixels vs. raw candidate CSS pixels) exactly as returned —
+alongside, never merged into, any selected existing contract-evaluation's
+own `overallVerdict`. Every other evidence family still shows the bounded
+metadata/raw-payload view established in Batch 2. Every route remains
+strictly read-only: no artifact is ever created, modified, or interpreted
+beyond its existing canonical reader/validator; no binding or fidelity
+artifact is ever persisted; and no batch in this lineage recomputes an
+"overall" verdict spanning contract and fidelity — they remain two
+independent, separately-displayed evidence dimensions.
 
 ```text
-my-frontend-observer view --root <evidence-root> [options]
+my-frontend-observer view --root <evidence-root> [--bindings-file <json-file>] [options]
 ```
 
 Required:
 
 - `--root <path>` — local evidence-root directory the viewer session
   represents. Validated operationally (must exist and be a directory); this
-  batch never reads or interprets any Observer artifacts under it.
+  command never reads or interprets any Observer artifacts under it beyond
+  the bounded discovery/classification the routes above describe.
 
 Options:
 
+- `--bindings-file <json-file>` — local JSON file of the form
+  `{ "bindings": [ { "referenceRegion": "...", "runtimeTarget": "..." } ] }`
+  — the exact same operational wrapper format, and the exact same shared
+  parser, as `evaluate-reference-fidelity --bindings-file`. Read once at
+  startup; unreadable/invalid-JSON/wrong-wrapper-shape fails startup
+  clearly (no server is started). Reference-specific validity (region
+  existence) is checked only once a reference is actually selected in the
+  viewer, never at startup. The declarations become session-only viewer
+  input: never persisted, never written into any Observer artifact, and the
+  file's own path is never exposed to the browser. Omit to run with no
+  binding declarations — the viewer remains fully usable; reference/runtime
+  cross-selection simply stays disabled and fidelity may still be
+  explicitly evaluated with an empty declaration collection.
 - `--port <n>` — TCP port to bind, in `[0, 65535]`. Defaults to `4319`
   (chosen after checking that no fixture or test in this repository binds a
   fixed port — see `tests/fixtures/server.ts`, which always uses `0`/
@@ -801,15 +823,15 @@ Options:
 - `--help` — show `view` usage.
 
 The server binds only to `127.0.0.1` (never `0.0.0.0`), serves only the
-built viewer application assets plus the bounded, read-only `/api/status`,
-`/api/index`, `/api/artifacts/<handle>`, and `/api/media/<handle>/<role>`
+built viewer application assets plus the bounded, read-only `/api/*`
 endpoints described above, and never exposes the supplied evidence root as a
 generic static directory or arbitrary filesystem path. It accepts no write
 methods and mutates nothing. On success,
 prints the viewer URL and keeps running (serving the viewer) until
 interrupted. On invalid syntax, a missing/non-directory `--root`, an
-invalid `--port`, or a port already in use, prints structured diagnostics to
-stderr and exits nonzero without starting a server.
+invalid `--port`, an invalid `--bindings-file`, or a port already in use,
+prints structured diagnostics to stderr and exits nonzero without starting
+a server.
 
 ## Foundation commands
 
