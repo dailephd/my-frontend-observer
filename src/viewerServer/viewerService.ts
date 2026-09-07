@@ -6,6 +6,7 @@ import { createViewerServer } from './httpServer.js';
 import { DEFAULT_VIEWER_PORT, VIEWER_HOST, isValidViewerPort } from './port.js';
 import type { Diagnostic } from '../domain/diagnostics.js';
 import { DIAGNOSTIC_SEVERITY } from '../domain/diagnostics.js';
+import type { ContextSessionState } from './context.js';
 
 function diagnostic(code: 'viewer-root-invalid' | 'viewer-port-unavailable', message: string): Diagnostic {
   return { code, severity: DIAGNOSTIC_SEVERITY[code], message };
@@ -40,6 +41,14 @@ export interface StartViewerOptions {
    * Defaults to an empty collection.
    */
   bindingDeclarations?: readonly unknown[];
+  /**
+   * v0.8 Batch 7: the already-classified bounded-agent-context session
+   * state, read once by the CLI at startup from an optional
+   * `--context-file` (never re-read, never persisted, never exposed as a
+   * path to the browser, never derived by the viewer itself). Defaults to
+   * `{status:'none'}`.
+   */
+  context?: ContextSessionState;
 }
 
 export type StartViewerResult =
@@ -84,7 +93,10 @@ export async function startViewer(options: StartViewerOptions): Promise<StartVie
   }
 
   const assetsRoot = options.assetsRoot ?? defaultViewerAssetsRoot();
-  const server: Server = createViewerServer({ assetsRoot, state: { root: options.root, bindingDeclarations: options.bindingDeclarations ?? [] } });
+  const server: Server = createViewerServer({
+    assetsRoot,
+    state: { root: options.root, bindingDeclarations: options.bindingDeclarations ?? [], context: options.context ?? { status: 'none' } },
+  });
 
   const listenResult = await new Promise<{ ok: true } | { ok: false; message: string }>((resolvePromise) => {
     const onError = (err: NodeJS.ErrnoException): void => {

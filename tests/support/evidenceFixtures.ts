@@ -21,6 +21,17 @@ import { writePersistentBaselineContract, writePerChangeContract } from '../../s
 import { evaluateAndPersistFromArtifactRoots } from '../../src/application/frontendContractEvaluationService.js';
 import { importExternalReference, approveExternalReference } from '../../src/application/externalReferencePersistenceService.js';
 import { buildMinimalPng } from '../unit/externalReferenceImageFixtures.js';
+import { readExternalReferenceArtifact } from '../../src/artifacts/externalReferenceArtifactReader.js';
+import { EXTERNAL_REFERENCE_MANIFEST_FILENAME } from '../../src/artifacts/externalReferenceArtifactWriter.js';
+import type { ApprovedExternalReferenceArtifact } from '../../src/domain/externalReference.js';
+import { readFrontendContractEvaluationArtifact } from '../../src/artifacts/frontendContractEvaluationArtifactReader.js';
+import { EVALUATION_MANIFEST_FILENAME } from '../../src/artifacts/frontendContractEvaluationArtifactWriter.js';
+import { evaluateReferenceCandidateFidelity } from '../../src/domain/externalReferenceFidelity.js';
+import type { ReferenceCandidateFidelityEvaluation } from '../../src/domain/externalReferenceFidelity.js';
+import { projectBoundedAgentContext } from '../../src/domain/boundedAgentContextProjection.js';
+import { deriveRuntimeStaticCorrelations, attachRuntimeStaticCorrelations } from '../../src/domain/boundedAgentContextCorrelation.js';
+import type { StaticCandidateEvidenceInput } from '../../src/domain/boundedAgentContextCorrelation.js';
+import type { BoundedAgentContextArtifact, StaticEvidenceProducerIdentity } from '../../src/domain/boundedAgentContext.js';
 
 function crc32(buf: Uint8Array): number {
   const table = (crc32 as { table?: Uint32Array }).table ?? (() => {
@@ -898,4 +909,290 @@ export async function writeReferenceFidelityContractFixture(dir: string): Promis
   if (evaluated.overallVerdict !== 'FAIL') throw new Error(`expected a genuine contract FAIL, got ${evaluated.overallVerdict}`);
 
   return { approvedRoot: approved.artifactRoot, candidateRoot: afterWritten.artifactRoot, candidateId: 'rfc-after', evaluationRoot: evaluated.artifactRoot };
+}
+
+// ---------------------------------------------------------------------------
+// Batch 7: bounded-agent-context fixtures. Because BoundedAgentContextArtifact
+// remains programmatic-only (task §11/§64), positive contexts are always
+// built by calling the real canonical `projectBoundedAgentContext`/
+// `deriveRuntimeStaticCorrelations`/`attachRuntimeStaticCorrelations` over
+// real, persisted Observer evidence built through the existing writers -
+// never hand-authored. Only deliberately negative/malformed fixtures
+// (wrong kind, unsupported version, structurally invalid) are hand-authored.
+// ---------------------------------------------------------------------------
+
+export interface BoundedContextEvidenceFixture {
+  root: string;
+  beforeRoot: string;
+  afterRoot: string;
+  comparisonRoot: string;
+  baselineRoot: string;
+  changeRoot: string;
+  evaluationRoot: string;
+  approvedReferenceRoot: string;
+  fidelityFailCandidateRoot: string;
+  fidelityBlockedCandidateRoot: string;
+  before: ObservationArtifact;
+  after: ObservationArtifact;
+  fidelityFailCandidate: ObservationArtifact;
+  fidelityBlockedCandidate: ObservationArtifact;
+  staticProducer: StaticEvidenceProducerIdentity;
+  /** Base context (no correlations, fidelity = real PASS for `after`) - the shared starting point every other named context variant below is derived from via `attachRuntimeStaticCorrelations`, never by hand-editing fields. */
+  baseContext: BoundedAgentContextArtifact;
+  correlatedContext: BoundedAgentContextArtifact;
+  ambiguousContext: BoundedAgentContextArtifact;
+  unavailableContext: BoundedAgentContextArtifact;
+  requiredOmissionContext: BoundedAgentContextArtifact;
+  requiredTruncationContext: BoundedAgentContextArtifact;
+  fidelityMismatchContext: BoundedAgentContextArtifact;
+  blockedFidelityContext: BoundedAgentContextArtifact;
+}
+
+/**
+ * The one comprehensive Batch 7 evidence+context fixture: real before/after
+ * observations, a real comparison, a real baseline+per-change contract pair
+ * producing a genuine `overallVerdict: "FAIL"` evaluation (a protected
+ * clause is deliberately violated - mirrors `writeReferenceFidelityContractFixture`'s
+ * exact geometry, task §54's historical-vs-live independence test needs a
+ * real non-trivial evaluation), a real approved external reference whose
+ * requirements the `after` observation genuinely satisfies (real fidelity
+ * PASS), a real fidelity-FAIL candidate and a real blocked (incompatible)
+ * candidate, and several named `BoundedAgentContextArtifact` variants - all
+ * derived from one shared `baseContext` (itself built by the real
+ * `projectBoundedAgentContext`) via the real `deriveRuntimeStaticCorrelations`/
+ * `attachRuntimeStaticCorrelations` or distinct `projectBoundedAgentContext`
+ * calls, never hand-edited.
+ */
+export async function writeBoundedContextEvidenceFixture(dir: string): Promise<BoundedContextEvidenceFixture> {
+  const applicableViewport = { width: 1600, height: 1200 };
+
+  const before = buildObservation(
+    'ctx-before',
+    [target('header'), target('sidebar')],
+    { header: matchedTarget(rect(0, 0, 1600, 300)), sidebar: matchedTarget(rect(0, 300, 480, 960)) },
+    '0.7.0',
+    realisticPageEvidence(applicableViewport),
+    applicableViewport,
+  );
+  const afterBase = buildObservation(
+    'ctx-after',
+    [target('header'), target('sidebar')],
+    { header: matchedTarget(rect(0, 0, 1600, 240)), sidebar: matchedTarget(rect(0, 240, 480, 960)) },
+    '0.7.0',
+    realisticPageEvidence(applicableViewport),
+    applicableViewport,
+  );
+  const after: ObservationArtifact = { ...afterBase, requestConfig: { ...afterBase.requestConfig, explicitState: { theme: 'light' } } };
+
+  const beforeWritten = await writeObservationArtifact(before, buildRealPng(applicableViewport.width, applicableViewport.height, [80, 80, 200]), { cwd: dir });
+  const afterWritten = await writeObservationArtifact(after, buildRealPng(applicableViewport.width, applicableViewport.height, [10, 200, 10]), { cwd: dir });
+  if (!beforeWritten.ok || !afterWritten.ok) throw new Error('expected before/after observation writes to succeed');
+
+  const compared = compareObservations(before, after);
+  if (!compared.ok) throw new Error(`expected ok comparison: ${compared.reason}`);
+  const comparisonWritten = await writeComparisonArtifact(compared.artifact, 'comparisons', { cwd: dir });
+  if (!comparisonWritten.ok) throw new Error('expected comparison write to succeed');
+
+  // The main pipeline's baseline is deliberately minimal (no clauses) so the resulting projected context is
+  // genuinely 'adequate' - a real required-evidence-loss/truncation demonstration uses a SEPARATE baseline
+  // (below, never attached to the persisted contract-evaluation pipeline) so it does not silently make every
+  // other context variant derived from `baseContext` non-adequate too.
+  const baseline = buildBaselineContract({
+    sourceObservation: { observationId: 'ctx-before', requestId: 'req-ctx-before', producer: { name: PRODUCER_NAME, version: '0.7.0' }, observationSchemaVersion: OBSERVATION_SCHEMA_VERSION },
+    clauses: [],
+  });
+  const change = buildChangeContract({
+    clauses: [
+      { clauseId: 'requested-header-height', primitive: { kind: 'property-decreases', target: 'header', property: 'height' }, category: 'requested', supportingEvidence: [] },
+      { clauseId: 'protected-sidebar-y', primitive: { kind: 'property-unchanged-within-tolerance', target: 'sidebar', property: 'y', tolerance: { kind: 'exact' } }, category: 'protected', supportingEvidence: [] },
+    ],
+  });
+  const baselineWritten = await writePersistentBaselineContract(baseline, 'baselines', { cwd: dir });
+  const changeWritten = await writePerChangeContract(change, 'contracts', { cwd: dir });
+  if (!baselineWritten.ok || !changeWritten.ok) throw new Error('expected contract writes to succeed');
+
+  const evaluated = await evaluateAndPersistFromArtifactRoots(beforeWritten.artifactRoot, afterWritten.artifactRoot, comparisonWritten.artifactRoot, baselineWritten.artifactRoot, changeWritten.artifactRoot, {
+    outputLocation: 'evaluations',
+    cwd: dir,
+  });
+  if (!evaluated.ok) throw new Error(`expected evaluation to succeed: ${JSON.stringify(evaluated.diagnostics)}`);
+  if (evaluated.overallVerdict !== 'FAIL') throw new Error(`expected a genuine contract FAIL, got ${evaluated.overallVerdict}`);
+  const evaluationRead = await readFrontendContractEvaluationArtifact(path.join(evaluated.artifactRoot, EVALUATION_MANIFEST_FILENAME));
+  if (!evaluationRead.ok) throw new Error(`expected to read back the evaluation artifact: ${evaluationRead.reason}`);
+  const evaluationArtifact = evaluationRead.artifact;
+
+  // Real reference whose requirements the "after" observation genuinely satisfies (real fidelity PASS) -
+  // same coherent-aspect-ratio (400x300 image, 1600x1200 applicability viewport, scale 0.25) and requirement
+  // shape already proven in writeReferenceBindingFidelityFixture/writeReferenceFidelityContractFixture.
+  const referenceImage = { width: 400, height: 300 };
+  const imageBytes = buildRealPng(referenceImage.width, referenceImage.height, [90, 60, 160]);
+  const regions = [
+    { id: 'header', rectangle: { x: 0, y: 0, width: 400, height: 60 } },
+    { id: 'sidebar', rectangle: { x: 0, y: 60, width: 120, height: 240 } },
+  ];
+  const requirements: import('../../src/domain/externalReferenceRequirements.js').RawReferenceRequirement[] = [
+    { category: 'requested', subject: { kind: 'region-property', region: 'header', property: 'height' }, tolerance: { kind: 'exact' } },
+    { category: 'protected', subject: { kind: 'region-property', region: 'sidebar', property: 'width' }, tolerance: { kind: 'absolute-reference-px', amount: 4 } },
+  ];
+  const imported = await importExternalReference(imageBytes, { outputLocation: 'references', cwd: dir, label: 'context-fixture', regions, requirements, applicability: { viewport: applicableViewport, theme: 'light' } });
+  if (!imported.ok) throw new Error(`expected reference import to succeed: ${JSON.stringify(imported.diagnostics)}`);
+  const approved = await approveExternalReference(imported.artifactRoot, { outputLocation: 'references', cwd: dir });
+  if (!approved.ok) throw new Error(`expected reference approval to succeed: ${JSON.stringify(approved.diagnostics)}`);
+
+  // Read the real persisted approved reference back through the existing canonical reader (never re-derived
+  // or hand-reconstructed) - the fidelity evaluator needs the actual ExternalReferenceArtifact value.
+  const approvedRead = await readExternalReferenceArtifact(path.join(approved.artifactRoot, EXTERNAL_REFERENCE_MANIFEST_FILENAME));
+  if (!approvedRead.ok) throw new Error(`expected to read back the approved reference: ${approvedRead.reason}`);
+  const approvedArtifact = approvedRead.artifact as ApprovedExternalReferenceArtifact;
+
+  const bindingDeclarations = [
+    { referenceRegion: 'header', runtimeTarget: 'header' },
+    { referenceRegion: 'sidebar', runtimeTarget: 'sidebar' },
+  ];
+
+  const passFidelityResult = evaluateReferenceCandidateFidelity(approvedArtifact, after, bindingDeclarations);
+  if (!passFidelityResult.ok) throw new Error(`expected fidelity evaluation to succeed: ${passFidelityResult.reason}`);
+  if (passFidelityResult.evaluation.state !== 'pass') throw new Error(`expected a genuine fidelity PASS for "after", got ${passFidelityResult.evaluation.state}`);
+  const passFidelity: ReferenceCandidateFidelityEvaluation = passFidelityResult.evaluation;
+
+  // A second candidate whose sidebar.width is deliberately far outside the protected requirement's tolerance - a genuine fidelity FAIL.
+  const fidelityFailCandidateBase = buildObservation(
+    'ctx-fidelity-fail',
+    [target('header'), target('sidebar')],
+    { header: matchedTarget(rect(0, 0, 1600, 240)), sidebar: matchedTarget(rect(0, 240, 600, 960)) },
+    '0.7.0',
+    realisticPageEvidence(applicableViewport),
+    applicableViewport,
+  );
+  const fidelityFailCandidate: ObservationArtifact = { ...fidelityFailCandidateBase, requestConfig: { ...fidelityFailCandidateBase.requestConfig, explicitState: { theme: 'light' } } };
+  const fidelityFailWritten = await writeObservationArtifact(fidelityFailCandidate, buildRealPng(applicableViewport.width, applicableViewport.height, [200, 10, 10]), { cwd: dir });
+  if (!fidelityFailWritten.ok) throw new Error('expected fidelity-fail candidate write to succeed');
+  const failFidelityResult = evaluateReferenceCandidateFidelity(approvedArtifact, fidelityFailCandidate, bindingDeclarations);
+  if (!failFidelityResult.ok) throw new Error(`expected fidelity evaluation to succeed: ${failFidelityResult.reason}`);
+  if (failFidelityResult.evaluation.state !== 'fail') throw new Error(`expected a genuine fidelity FAIL, got ${failFidelityResult.evaluation.state}`);
+
+  // A third candidate whose viewport/theme are deliberately incompatible - a genuine blocked (not-evaluated) fidelity result.
+  const fidelityBlockedCandidateBase = buildObservation(
+    'ctx-fidelity-blocked',
+    [target('header')],
+    { header: matchedTarget(rect(0, 0, 320, 60)) },
+    '0.7.0',
+    realisticPageEvidence({ width: 800, height: 600 }),
+    { width: 800, height: 600 },
+  );
+  const fidelityBlockedCandidate: ObservationArtifact = { ...fidelityBlockedCandidateBase, requestConfig: { ...fidelityBlockedCandidateBase.requestConfig, explicitState: { theme: 'dark' } } };
+  const fidelityBlockedWritten = await writeObservationArtifact(fidelityBlockedCandidate, buildRealPng(800, 600, [40, 40, 90]), { cwd: dir });
+  if (!fidelityBlockedWritten.ok) throw new Error('expected fidelity-blocked candidate write to succeed');
+  const blockedFidelityResult = evaluateReferenceCandidateFidelity(approvedArtifact, fidelityBlockedCandidate, bindingDeclarations);
+  if (!blockedFidelityResult.ok) throw new Error(`expected fidelity evaluation to succeed: ${blockedFidelityResult.reason}`);
+  if (blockedFidelityResult.evaluation.state !== 'not-evaluated' || blockedFidelityResult.evaluation.blockedBy !== 'incompatible') {
+    throw new Error(`expected a genuine blocked (incompatible) fidelity result, got ${JSON.stringify(blockedFidelityResult.evaluation)}`);
+  }
+  const blockedFidelity: ReferenceCandidateFidelityEvaluation = blockedFidelityResult.evaluation;
+  const failFidelity: ReferenceCandidateFidelityEvaluation = failFidelityResult.evaluation;
+
+  const staticProducer: StaticEvidenceProducerIdentity = { name: '@dailephd/my-dev-kit', version: '0.0.0-fixture', indexId: 'fixture-index-1' };
+  const correlatedAt = '2026-08-13T00:00:00.000Z';
+
+  function candidate(id: string): StaticCandidateEvidenceInput {
+    return { candidateId: id, kind: 'symbol', evidenceRefs: [{ path: `symbol-evidence:${id}` }] };
+  }
+
+  async function buildContext(
+    fidelity: ReferenceCandidateFidelityEvaluation | undefined,
+    focusTargetIds: readonly string[],
+    observation: ObservationArtifact,
+    includeContractPipeline: boolean,
+  ): Promise<BoundedAgentContextArtifact> {
+    const result = projectBoundedAgentContext({
+      generatedAt: correlatedAt,
+      producerVersion: '0.7.0',
+      projectionProfile: 'frontend-change-review',
+      focusTargetIds,
+      observation,
+      ...(includeContractPipeline ? { baselineObservation: before, comparison: compared.artifact, baseline, change, evaluationArtifact } : {}),
+      ...(fidelity !== undefined ? { fidelity } : {}),
+    });
+    if (!result.ok) throw new Error(`expected projectBoundedAgentContext to succeed: ${result.reason}`);
+    return result.artifact;
+  }
+
+  const baseContext = await buildContext(passFidelity, ['header', 'sidebar'], after, true);
+
+  async function withCorrelation(base: BoundedAgentContextArtifact, candidates: StaticCandidateEvidenceInput[]): Promise<BoundedAgentContextArtifact> {
+    const derived = deriveRuntimeStaticCorrelations({
+      staticProducer,
+      correlatedAt,
+      targets: [{ runtimeTargetId: 'header', required: true, runtimeEvidenceRefs: [{ path: 'targetEvidence.header.geometry' }], candidates, evidenceBasis: 'geometry + name proximity evidence supplied by static retrieval' }],
+    });
+    if (!derived.ok) throw new Error(`expected deriveRuntimeStaticCorrelations to succeed: ${derived.reason}`);
+    const attached = attachRuntimeStaticCorrelations(base, derived);
+    if (!attached.ok) throw new Error(`expected attachRuntimeStaticCorrelations to succeed: ${attached.reason}`);
+    return attached.artifact;
+  }
+
+  const correlatedContext = await withCorrelation(baseContext, [candidate('symbol:src/components/Header.tsx#Header')]);
+  const ambiguousContext = await withCorrelation(baseContext, [candidate('symbol:src/components/Header.tsx#Header'), candidate('symbol:src/legacy/OldHeader.tsx#OldHeader')]);
+  const unavailableContext = await withCorrelation(baseContext, []);
+
+  // Required omission: focus an explicit target id that the observation never configured at all -
+  // projectBoundedAgentContext honestly reports it as an unavailable required target, never a fabricated geometry.
+  const requiredOmissionContext = await buildContext(passFidelity, ['header', 'sidebar', 'nonexistent-target'], after, true);
+
+  // Required truncation: a dedicated baseline with 11 clauses on "header", each contributing one distinct
+  // supportingEvidence path, forces a genuine relationshipEvidence truncation (MAX_RELATIONSHIP_EVIDENCE_PER_TARGET
+  // = 10) - built as its own, separate projectBoundedAgentContext call (no comparison/change/evaluation/fidelity)
+  // so it never affects `baseContext`'s own genuine adequacy.
+  const truncationBaselineClauses = Array.from({ length: 11 }, (_, i) => ({
+    clauseId: `evidence-clause-${i}`,
+    primitive: { kind: 'target-visible' as const, target: 'header' },
+    supportingEvidence: [{ path: `evidence-ref-${i}` }],
+  }));
+  const truncationBaseline = buildBaselineContract({
+    sourceObservation: { observationId: 'ctx-before', requestId: 'req-ctx-before', producer: { name: PRODUCER_NAME, version: '0.7.0' }, observationSchemaVersion: OBSERVATION_SCHEMA_VERSION },
+    clauses: truncationBaselineClauses,
+  });
+  const requiredTruncationResult = projectBoundedAgentContext({
+    generatedAt: correlatedAt,
+    producerVersion: '0.7.0',
+    projectionProfile: 'frontend-change-review',
+    focusTargetIds: ['header', 'sidebar'],
+    observation: after,
+    baselineObservation: before,
+    baseline: truncationBaseline,
+  });
+  if (!requiredTruncationResult.ok) throw new Error(`expected projectBoundedAgentContext to succeed: ${requiredTruncationResult.reason}`);
+  const requiredTruncationContext = requiredTruncationResult.artifact;
+
+  // Fidelity-focused contexts intentionally omit the contract pipeline (comparison/baseline/change/evaluation are
+  // all built against "after" specifically, not these separate fidelity-only candidates - see task §54's
+  // historical/live independence: a context need not always carry every optional source).
+  const fidelityMismatchContext = await buildContext(failFidelity, ['header', 'sidebar'], fidelityFailCandidate, false);
+  const blockedFidelityContext = await buildContext(blockedFidelity, ['header'], fidelityBlockedCandidate, false);
+
+  return {
+    root: dir,
+    beforeRoot: beforeWritten.artifactRoot,
+    afterRoot: afterWritten.artifactRoot,
+    comparisonRoot: comparisonWritten.artifactRoot,
+    baselineRoot: baselineWritten.artifactRoot,
+    changeRoot: changeWritten.artifactRoot,
+    evaluationRoot: evaluated.artifactRoot,
+    approvedReferenceRoot: approved.artifactRoot,
+    fidelityFailCandidateRoot: fidelityFailWritten.artifactRoot,
+    fidelityBlockedCandidateRoot: fidelityBlockedWritten.artifactRoot,
+    before,
+    after,
+    fidelityFailCandidate,
+    fidelityBlockedCandidate,
+    staticProducer,
+    baseContext,
+    correlatedContext,
+    ambiguousContext,
+    unavailableContext,
+    requiredOmissionContext,
+    requiredTruncationContext,
+    fidelityMismatchContext,
+    blockedFidelityContext,
+  };
 }

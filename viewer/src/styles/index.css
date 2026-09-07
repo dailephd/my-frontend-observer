@@ -841,3 +841,159 @@ body {
   border-top: 1px solid var(--border);
   padding-top: 0.3rem;
 }
+
+/* --- Batch 7: bounded agent context / correlation / provenance --- */
+
+.app-shell__mode-toggle {
+  display: flex;
+  gap: 0.3rem;
+  margin-left: auto;
+  margin-right: 0.5rem;
+}
+
+.app-shell__mode-toggle button {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.2rem 0.6rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.app-shell__mode-toggle button[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.app-shell__body--context {
+  display: block;
+}
+
+.app-shell__workspace--context {
+  padding: 0.75rem;
+  overflow: auto;
+  height: 100%;
+}
+
+.context-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  font-size: 0.78rem;
+}
+
+.context-workspace section {
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}
+
+.context-summary-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.2rem 0.8rem;
+  font-size: 0.8rem;
+}
+
+.context-summary-grid dt {
+  color: var(--text-dim);
+}
+
+.context-adequacy-badge {
+  font-weight: 600;
+  padding: 0.05rem 0.4rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  display: inline-block;
+}
+
+.context-adequacy-badge--adequate {
+  border-color: #4ade80;
+  color: #4ade80;
+}
+
+.context-adequacy-badge--partial {
+  border-color: #facc15;
+  color: #facc15;
+}
+
+.context-adequacy-badge--inadequate {
+  border-color: #f87171;
+  color: #f87171;
+}
+
+.context-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.context-source-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+}
+
+.context-source-row__label {
+  font-family: monospace;
+}
+
+.context-source-row__status {
+  font-size: 0.7rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+.context-source-row__status--resolved {
+  border-color: #4ade80;
+  color: #4ade80;
+}
+
+.context-source-row__status--ambiguous {
+  border-color: #fb923c;
+  color: #fb923c;
+}
+
+.context-source-row__status--missing {
+  border-color: var(--text-dim);
+  color: var(--text-dim);
+}
+
+.context-target-source-list {
+  margin: 0.3rem 0 0;
+  padding-left: 1rem;
+  font-size: 0.7rem;
+}
+
+.context-correlation-heading {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  margin: 0.2rem 0;
+}
+
+.context-correlation-row--selected {
+  outline: 1px solid var(--accent);
+}
+
+.context-required-loss {
+  border: 1px solid #f87171;
+  background: var(--error-bg);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  color: #fecaca;
+}
+
+.raw-evidence-viewer button {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  cursor: pointer;
+  font-size: 0.68rem;
+}

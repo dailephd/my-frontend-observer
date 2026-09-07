@@ -9,6 +9,8 @@ import { getObservationRelationships } from './evidence/observationView.js';
 import { getComparisonView } from './evidence/comparisonView.js';
 import { getEvaluationView } from './evidence/evaluationView.js';
 import { getReferenceView, getReferenceCandidateView, getReferenceBindings, getReferenceFidelity } from './evidence/referenceView.js';
+import { resolveContextSources } from './evidence/contextSourceView.js';
+import type { ContextSessionState } from './context.js';
 
 /** Batch 1 viewer protocol identity: the shape of GET /api/status. Bumped independently of package/schema versions if the status contract itself changes. */
 export const VIEWER_PROTOCOL_VERSION = '1.0.0';
@@ -59,6 +61,8 @@ export interface ViewerServerState {
   root: string;
   /** v0.8 Batch 6: explicit, session-only binding declarations loaded once at CLI startup from an optional `--bindings-file`. Not yet validated against any specific reference - see `referenceView.ts`. */
   bindingDeclarations: readonly unknown[];
+  /** v0.8 Batch 7: explicit, session-only bounded-agent-context state loaded once at CLI startup from an optional `--context-file`. Defaults to `{status:'none'}` - see `context.ts`. */
+  context: ContextSessionState;
 }
 
 export interface CreateViewerServerOptions {
@@ -321,6 +325,20 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
       return;
     }
     writeJsonBody(res, method, 200, { ok: true, evaluation: result.evaluation });
+    return;
+  }
+
+  if (pathname === '/api/context') {
+    if (state.context.status === 'none') {
+      writeJsonBody(res, method, 200, { ok: true, status: 'none' });
+      return;
+    }
+    if (state.context.status === 'unsupported-version') {
+      writeJsonBody(res, method, 200, { ok: true, status: 'unsupported-version', foundSchemaVersion: state.context.foundSchemaVersion });
+      return;
+    }
+    const sourceResolution = await resolveContextSources(state.root, state.context.artifact.sources);
+    writeJsonBody(res, method, 200, { ok: true, status: 'valid', artifact: state.context.artifact, sourceResolution });
     return;
   }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { realpathSync, readFileSync } from 'node:fs';
+import { realpathSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { normalizeRequest } from './request/request.js';
 import type { RawObservationRequest } from './request/request.js';
@@ -19,6 +19,7 @@ import type { ReferenceRuntimeBindingDeclaration } from './domain/externalRefere
 import { startViewer } from './viewerServer/viewerService.js';
 import { openInDefaultBrowser } from './viewerServer/openBrowser.js';
 import { DEFAULT_VIEWER_PORT } from './viewerServer/port.js';
+import { classifyContextFileContent, MAX_CONTEXT_FILE_BYTES } from './viewerServer/context.js';
 
 export interface CliIO {
   stdout: (text: string) => void;
@@ -77,7 +78,7 @@ Run "my-frontend-observer <command> --help" for command-specific options.
 `;
 
 const VIEW_HELP = `Usage:
-  my-frontend-observer view --root <evidence-root> [--bindings-file <json-file>] [options]
+  my-frontend-observer view --root <evidence-root> [--bindings-file <json-file>] [--context-file <json-file>] [options]
 
 Required:
   --root <path>   Local evidence-root directory the viewer session
@@ -108,6 +109,31 @@ Options:
                   startup. Omit to run with no binding declarations (the
                   viewer remains fully usable; cross-selection stays
                   disabled).
+  --context-file <json-file>  Local JSON file containing exactly one
+                  BoundedAgentContextArtifact value directly (no wrapper
+                  object) - e.g. { "artifactKind":
+                  "my-frontend-observer/bounded-agent-context",
+                  "schemaVersion": "1.0.0", ... }. Explicit, session-only
+                  viewer input: read once at startup, validated through the
+                  existing canonical isValidBoundedAgentContextArtifact,
+                  held only in server memory, never persisted, never written
+                  into any Observer artifact, and never exposed as a path to
+                  the browser. Bounded agent context remains programmatic-
+                  only as an Observer-produced contract - this command does
+                  not add a way to generate, save, or write one; the viewer
+                  never rebuilds it (no projectBoundedAgentContext call) and
+                  never derives runtime/static correlation (no
+                  deriveRuntimeStaticCorrelations/attachRuntimeStaticCorrelations
+                  call) - it only displays the exact context it was given.
+                  A recognized artifactKind with a schemaVersion other than
+                  the currently supported one starts the viewer showing an
+                  honest "unsupported version" context state rather than
+                  failing. An unreadable file, invalid JSON, wrong
+                  artifactKind, or a structurally invalid current-schema
+                  artifact fails startup clearly. Omit to run with no
+                  bounded context supplied (the viewer remains fully usable;
+                  the context panel says none was supplied). May be combined
+                  with --bindings-file.
   --no-open       Do not attempt to open the system default browser after
                   the server starts. Browser auto-open is a best-effort
                   convenience only: its failure is never fatal and never
@@ -812,6 +838,53 @@ function loadBindingsFile(filePath: string): LoadBindingsFileResult {
   }
 
   return { ok: true, bindings: record.bindings };
+}
+
+type LoadContextFileResult = { ok: true; state: import('./viewerServer/context.js').ContextSessionState } | { ok: false; error: string };
+
+/**
+ * v0.8 Batch 7 CLI/input-boundary-only responsibility, mirroring
+ * `loadBindingsFile`'s exact shape: read one local JSON file (size-bounded
+ * via `MAX_CONTEXT_FILE_BYTES`, checked via `statSync` before ever reading
+ * the file's bytes), parse it, and hand the parsed value to
+ * `classifyContextFileContent` - every artifactKind/schemaVersion/structural
+ * rule stays owned there (which itself defers all current-schema structural
+ * validation to the existing canonical `isValidBoundedAgentContextArtifact`,
+ * never a second validator). Unlike `--bindings-file`, the context file's
+ * root IS the artifact value directly (task §12) - no wrapper object. The
+ * file path itself is never returned beyond this function.
+ */
+function loadContextFile(filePath: string): LoadContextFileResult {
+  let size: number;
+  try {
+    size = statSync(filePath).size;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `--context-file could not be read: ${message}` };
+  }
+  if (size > MAX_CONTEXT_FILE_BYTES) {
+    return { ok: false, error: `--context-file exceeds the bounded size limit (${MAX_CONTEXT_FILE_BYTES} bytes)` };
+  }
+
+  let rawText: string;
+  try {
+    rawText = readFileSync(filePath, 'utf8');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `--context-file could not be read: ${message}` };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `--context-file is not valid JSON: ${message}` };
+  }
+
+  const classified = classifyContextFileContent(parsed);
+  if (!classified.ok) return { ok: false, error: classified.error };
+  return { ok: true, state: classified.state };
 }
 
 type LoadTargetsFileResult = { ok: true; targets: unknown } | { ok: false; error: string };
@@ -1965,7 +2038,7 @@ async function runEvaluateReferenceFidelityCommand(argv: readonly string[], io: 
   return 0;
 }
 
-type ParsedViewArgs = { ok: true; root: string; port?: number; noOpen: boolean; bindingsFilePath?: string } | { ok: false; errors: string[] };
+type ParsedViewArgs = { ok: true; root: string; port?: number; noOpen: boolean; bindingsFilePath?: string; contextFilePath?: string } | { ok: false; errors: string[] };
 
 /** CLI-syntax-only parsing, mirroring `parseApproveBaselineArgs`. `--port` shape/range checking happens here; root existence/directory-ness is the application layer's job (see `startViewer`). */
 function parseViewArgs(argv: readonly string[]): ParsedViewArgs {
@@ -1977,6 +2050,8 @@ function parseViewArgs(argv: readonly string[]): ParsedViewArgs {
   let noOpen = false;
   let bindingsFilePath: string | undefined;
   let bindingsFileFlagCount = 0;
+  let contextFilePath: string | undefined;
+  let contextFileFlagCount = 0;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -2017,6 +2092,14 @@ function parseViewArgs(argv: readonly string[]): ParsedViewArgs {
         else bindingsFilePath = value;
         break;
       }
+      case '--context-file': {
+        const value = argv[(i += 1)];
+        contextFileFlagCount += 1;
+        if (value === undefined) errors.push('--context-file requires a file path argument');
+        else if (contextFileFlagCount > 1) errors.push('--context-file may only be specified once');
+        else contextFilePath = value;
+        break;
+      }
       default:
         errors.push(`unrecognized argument: ${arg}`);
     }
@@ -2024,7 +2107,14 @@ function parseViewArgs(argv: readonly string[]): ParsedViewArgs {
 
   if (root === undefined) errors.push('--root is required');
   if (errors.length > 0) return { ok: false, errors };
-  return { ok: true, root: root as string, ...(port === undefined ? {} : { port }), noOpen, ...(bindingsFilePath === undefined ? {} : { bindingsFilePath }) };
+  return {
+    ok: true,
+    root: root as string,
+    ...(port === undefined ? {} : { port }),
+    noOpen,
+    ...(bindingsFilePath === undefined ? {} : { bindingsFilePath }),
+    ...(contextFilePath === undefined ? {} : { contextFilePath }),
+  };
 }
 
 /**
@@ -2070,10 +2160,25 @@ async function runViewCommand(argv: readonly string[], io: CliIO): Promise<numbe
     bindingDeclarations = loaded.bindings;
   }
 
+  // Reuses the exact same canonical validator (isValidBoundedAgentContextArtifact, via
+  // classifyContextFileContent) that owns current-schema structural validity - never a second validator.
+  // A recognized-kind, non-current-schema file is not a startup failure (task §16); every other problem is.
+  let contextState: import('./viewerServer/context.js').ContextSessionState = { status: 'none' };
+  if (parsedArgs.contextFilePath !== undefined) {
+    const loaded = loadContextFile(parsedArgs.contextFilePath);
+    if (!loaded.ok) {
+      io.stderr(`error: ${loaded.error}\n`);
+      io.stderr(VIEW_HELP);
+      return 1;
+    }
+    contextState = loaded.state;
+  }
+
   const result = await startViewer({
     root: parsedArgs.root,
     ...(parsedArgs.port === undefined ? {} : { port: parsedArgs.port }),
     bindingDeclarations,
+    context: contextState,
   });
   if (!result.ok) {
     for (const diagnostic of result.diagnostics) io.stderr(`${formatDiagnostic(diagnostic)}\n`);

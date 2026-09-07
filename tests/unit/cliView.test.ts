@@ -136,6 +136,67 @@ describe('runCli view - CLI dispatch (syntax/fast-fail paths only; full server l
     expect(out.stderr()).toContain('unsupported top-level field(s)');
   });
 
+  it('v0.8 Batch 7: view --help documents --context-file and states bounded context is session-only', async () => {
+    const out = capture();
+    const code = await runCli(['view', '--help'], out.io);
+    expect(code).toBe(0);
+    expect(out.stdout()).toContain('--context-file');
+    expect(out.stdout()).toContain('never persisted');
+  });
+
+  it('v0.8 Batch 7: rejects an unreadable --context-file at startup without starting a server', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'my-frontend-observer-view-context-'));
+    createdDirs.push(dir);
+    const out = capture();
+    const code = await runCli(['view', '--root', dir, '--context-file', path.join(dir, 'does-not-exist.json'), '--no-open'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--context-file could not be read');
+  });
+
+  it('v0.8 Batch 7: rejects invalid JSON in --context-file at startup', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'my-frontend-observer-view-context-'));
+    createdDirs.push(dir);
+    const contextPath = path.join(dir, 'context.json');
+    await writeFile(contextPath, '{ not valid json', 'utf8');
+    const out = capture();
+    const code = await runCli(['view', '--root', dir, '--context-file', contextPath, '--no-open'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--context-file is not valid JSON');
+  });
+
+  it('v0.8 Batch 7: rejects a --context-file with the wrong artifactKind', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'my-frontend-observer-view-context-'));
+    createdDirs.push(dir);
+    const contextPath = path.join(dir, 'context.json');
+    await writeFile(contextPath, JSON.stringify({ artifactKind: 'my-frontend-observer/observation', schemaVersion: '1.2.0' }), 'utf8');
+    const out = capture();
+    const code = await runCli(['view', '--root', dir, '--context-file', contextPath, '--no-open'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('artifactKind must be');
+  });
+
+  it('v0.8 Batch 7: rejects a structurally invalid current-schema --context-file', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'my-frontend-observer-view-context-'));
+    createdDirs.push(dir);
+    const contextPath = path.join(dir, 'context.json');
+    await writeFile(contextPath, JSON.stringify({ artifactKind: 'my-frontend-observer/bounded-agent-context', schemaVersion: '1.0.0' }), 'utf8');
+    const out = capture();
+    const code = await runCli(['view', '--root', dir, '--context-file', contextPath, '--no-open'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('not a structurally valid current');
+  });
+
+  it('v0.8 Batch 7: rejects a --context-file whose root is a JSON array (task §12: direct artifact root, never a wrapper)', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'my-frontend-observer-view-context-'));
+    createdDirs.push(dir);
+    const contextPath = path.join(dir, 'context.json');
+    await writeFile(contextPath, JSON.stringify([1, 2, 3]), 'utf8');
+    const out = capture();
+    const code = await runCli(['view', '--root', dir, '--context-file', contextPath, '--no-open'], out.io);
+    expect(code).toBe(1);
+    expect(out.stderr()).toContain('--context-file root must be a JSON object');
+  });
+
   it('existing commands remain unchanged: observe/compare help still documents their own flags after adding view', async () => {
     const out = capture();
     const observeCode = await runCli(['observe', '--help'], out.io);

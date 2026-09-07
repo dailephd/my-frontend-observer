@@ -898,6 +898,106 @@ artifact via the existing Batch 2 `GET /api/artifacts/<handle>`.
 - **PWA cache boundary preserved**: both new routes live under `/api/`,
   already covered by Batch 1's `navigateFallbackDenylist`.
 
+## v0.8 Batch 7 (Bounded agent context, correlation, provenance, and raw evidence navigation) — implemented
+
+- **Bounded agent context remains programmatic-only**: no filesystem writer
+  was added for `BoundedAgentContextArtifact` (it is still not an
+  Observer-evidence-root artifact family - `src/viewerServer/evidence/classify.ts`'s
+  "known but unreadered kind" comment is unchanged). `view --context-file
+  <json-file>` reads exactly one already-serialized
+  `BoundedAgentContextArtifact` value directly (no wrapper object) as
+  explicit, session-only viewer input - read once at startup
+  (`src/cli.ts#loadContextFile`, mirroring `loadBindingsFile`'s exact
+  read/size-bound/parse shape), classified by
+  `src/viewerServer/context.ts#classifyContextFileContent` (reuses the
+  existing canonical `isValidBoundedAgentContextArtifact` - never a second
+  validator), and held only in `ViewerServerState.context` for the life of
+  the process. The file's size is bounded by the existing Batch 2
+  `MAX_MANIFEST_CANDIDATE_BYTES` (2,000,000 bytes) rather than a second
+  bound, since a context artifact's own frozen numeric caps already make it
+  far smaller in any realistic case.
+- **Three honest session states, never coerced into one another**: `'none'`
+  (no `--context-file`; every Batch 1-6 feature stays fully available),
+  `'unsupported-version'` (recognized `artifactKind`, a `schemaVersion`
+  other than the current one - the viewer still starts, showing this
+  state explicitly rather than either failing or misinterpreting the
+  fields), and `'valid'` (structurally validated current-schema context).
+  Every other problem (unreadable file, wrong `artifactKind`, a
+  structurally invalid *current*-schema artifact) fails viewer startup
+  clearly - an explicitly supplied file is never silently ignored.
+- **`GET /api/context`** (`httpServer.ts`) returns the session's exact
+  classified state; for `'valid'`, it additionally returns
+  `sourceResolution` - the result of resolving
+  `artifact.sources` against the current evidence root by **exact
+  canonical identity only**
+  (`src/viewerServer/evidence/contextSourceView.ts`, reusing/extending
+  Batch 4's `linkedEvidence.ts` resolver pattern with three additive
+  functions: `resolveObservationById` (bare `observationId`, the only
+  identity a context source reference actually carries),
+  `resolveEvaluationByIdentity`, and `resolveReferenceByIdentity`). Zero
+  matches → `missing`; two or more → `ambiguous` (never silently picks
+  one) - the same discipline every other Batch 4/5 resolver already
+  established.
+- **Raw structured evidence reuses the existing Batch 2 artifact-detail
+  route unchanged**: `RawEvidenceViewer.tsx` calls the existing
+  `useArtifactDetail`/`GET /api/artifacts/<handle>` for any exactly-resolved
+  source - no second full-artifact retrieval mechanism, no local filesystem
+  read, no arbitrary path accepted from the browser.
+  `EvidenceReference.path` values are always displayed as plain provenance
+  text, never passed to `fs.readFile`/`path.resolve`/a static file server.
+- **Bounded runtime targets, adequacy, omissions, truncations, and
+  correlation are rendered exactly as the validated artifact states them** -
+  never recomputed, never boolean-collapsed
+  (`ContextWorkspace.tsx`): `Adequacy.state`
+  (`adequate`/`partial`/`inadequate`) and reasons are shown verbatim;
+  absent bounded-target fields render "not included in this bounded
+  context", never a fabricated falsy/zero value; `required: true`
+  omissions/truncations render in a visually distinct
+  `.context-required-loss` block, separate from optional ones;
+  `correlations` absent renders "Static correlation not included in this
+  context" - never "unavailable" (that status is reserved for a real
+  per-target `RuntimeStaticCorrelationRecord` with zero candidates).
+  `correlated`/`ambiguous`/`unavailable` are preserved exactly; a
+  `correlated` record's one candidate is labeled "Correlated candidate", an
+  `ambiguous` record shows **every** supplied candidate with none visually
+  promoted, and `unavailable` fabricates zero candidates - matching the
+  frozen `CORRELATION_STATUSES` invariants
+  (`domain/boundedAgentContext.ts`) the validator itself already enforces.
+  All new UI text was audited against ownership/edit-authorization language
+  (no "owner"/"source owner"/"owned by") - correlation is presented as
+  evidence, never as edit authorization.
+- **Context-target ↔ runtime-target interaction never infers source
+  ownership**: selecting a bounded target or a correlation record uses only
+  exact `targetId`/`runtimeTargetId` string matching; for each *exactly
+  resolved* source observation, `SourceObservationTargetCheck` checks
+  membership in that observation's own already-fetched `targetEvidence`
+  (a plain lookup over already-loaded JSON, never a new derivation) and, if
+  more than one resolved source observation contains the same target id,
+  lists all of them rather than picking one.
+- **Bounded reference-fidelity projection is never recomputed, and is kept
+  visibly distinct from a live on-demand evaluation**: absent `fidelity`
+  renders "Reference fidelity not included in this bounded context" - never
+  implied as passing. When present, `mismatches` and `protectedContext` are
+  rendered in separate sections from the artifact's own fields exactly as
+  supplied; a `state: 'not-evaluated'` blocked projection always shows
+  `blockedBy` prominently and never renders an empty mismatch list as "no
+  problems". When the context's `referenceId`/`candidateObservationId`
+  exactly resolve within the current evidence root, `ContextWorkspace.tsx`
+  embeds the existing, unchanged Batch 6 `ReferenceFidelityPanel` (the same
+  on-demand `evaluateReferenceCandidateFidelity` trigger) directly beneath
+  the bounded projection, labeled "Bounded context fidelity projection"
+  above and "Current on-demand fidelity evaluation" below - two separate,
+  clearly labeled evidence instances, never silently merged or replaced.
+- **No runtime rebuild of context or correlation, and no my-dev-kit
+  execution from the shipped viewer**: grep-verified - `projectBoundedAgentContext(`,
+  `deriveRuntimeStaticCorrelations(`, and `attachRuntimeStaticCorrelations(`
+  appear nowhere under `src/viewerServer/` or `viewer/src/` (only in test/
+  fixture-generation code, per the frozen plan's explicit test-fixture
+  exception); no `child_process`/`npx @dailephd/my-dev-kit` invocation
+  exists in the viewer server or browser bundle.
+- **PWA cache boundary preserved**: `GET /api/context` lives under `/api/`,
+  already covered by Batch 1's `navigateFallbackDenylist`.
+
 ## Retained v0.1 architecture constraints
 
 v0.1 planning preserved these approved boundaries without treating module

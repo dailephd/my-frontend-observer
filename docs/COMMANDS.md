@@ -713,8 +713,8 @@ and exits nonzero.
 
 ## `view`
 
-**Current status: v0.8 Batch 6 (Explicit-binding interaction, zoom/pan,
-conditional lock, and on-demand reference fidelity).** Starts one
+**Current status: v0.8 Batch 7 (Bounded agent context, correlation,
+provenance, and raw evidence navigation).** Starts one
 loopback-only Node viewer server and serves the same React + TypeScript +
 Vite application to a normal browser or an installed Progressive Web App.
 `--root` is used as a bounded, read-only evidence-discovery root: the server
@@ -740,9 +740,16 @@ linked artifact's own payload, never a recomputed
 `compareObservations`/`evaluateFrontendContract`/
 `deriveReferenceRegionRelationships`/`deriveReferenceRequirementAdequacy`/
 `evaluateReferenceCandidateCompatibility` result, and both new routes are
-plain `GET` (deterministic, ephemeral, never persisted) — see
-`docs/ARCHITECTURE.md` "v0.8 Batch 2" through "v0.8 Batch 6" for the exact
-discovery bounds, classification model, coordinate mapping, and
+plain `GET` (deterministic, ephemeral, never persisted). New this batch:
+`GET /api/context` returns the viewer session's bounded-agent-context state
+established at startup by an optional `--context-file` (below) — `none` (no
+file supplied), `unsupported-version` (a recognized `artifactKind` with a
+`schemaVersion` this viewer does not currently support — shown honestly,
+never coerced), or the validated current context plus `sourceResolution`,
+the exact-identity resolution of its `sources` against the current evidence
+root (reusing/extending the Batch 4 `linkedEvidence.ts` resolver pattern) —
+see `docs/ARCHITECTURE.md` "v0.8 Batch 2" through "v0.8 Batch 7" for the
+exact discovery bounds, classification model, coordinate mapping, and
 handle/media/linked-evidence-resolution contracts.
 
 Selecting a supported `observation` record shows the Batch 3 screenshot/SVG
@@ -776,16 +783,39 @@ endpoint on demand (never automatically) and displays the canonical
 result's status/numeric-or-relationship fields with correct unit labels
 (reference-image pixels vs. raw candidate CSS pixels) exactly as returned —
 alongside, never merged into, any selected existing contract-evaluation's
-own `overallVerdict`. Every other evidence family still shows the bounded
-metadata/raw-payload view established in Batch 2. Every route remains
-strictly read-only: no artifact is ever created, modified, or interpreted
-beyond its existing canonical reader/validator; no binding or fidelity
-artifact is ever persisted; and no batch in this lineage recomputes an
-"overall" verdict spanning contract and fidelity — they remain two
-independent, separately-displayed evidence dimensions.
+own `overallVerdict`. A dedicated "Bounded context" mode (toggled from the
+viewer header, alongside the normal "Evidence" mode) shows: context
+identity/profile/adequacy/reason codes; every bounded runtime target's
+included fields (absent fields read "not included in this bounded context",
+never a fabricated falsy value); source references with their exact
+resolution status and, for each exactly-resolved source, one-click
+navigation back to its existing Batch 3/4/5 viewer surface plus a "View raw
+structured evidence" panel reusing the existing `GET /api/artifacts/<handle>`
+route unchanged; omissions/truncations with required loss visually
+distinguished from optional loss; runtime/static correlation — `correlated`
+(its one candidate, labeled "Correlated candidate", never "owner"),
+`ambiguous` (every supplied candidate, none visually promoted), or
+`unavailable` (zero fabricated candidates) — exactly as the artifact states,
+or "Static correlation not included in this context" when the `correlations`
+field itself is absent (never reported as `unavailable`); and the bounded
+reference-fidelity projection (`mismatches`/`protectedContext`/`blockedBy`)
+alongside — never merged into — a live, separately-triggered Batch 6
+on-demand fidelity evaluation for the same reference/candidate, when both
+are available. This mode never calls `projectBoundedAgentContext`,
+`deriveRuntimeStaticCorrelations`, or `attachRuntimeStaticCorrelations` —
+only the exact context the session was started with is ever displayed.
+Every other evidence family still shows the bounded metadata/raw-payload
+view established in Batch 2. Every route remains strictly read-only: no
+artifact is ever created, modified, or interpreted beyond its existing
+canonical reader/validator; no binding, fidelity, or bounded-context
+artifact is ever persisted; bounded agent context remains a programmatic-
+only Observer contract — this command adds no way to generate, save, or
+write one; and no batch in this lineage recomputes an "overall" verdict
+spanning contract and fidelity — they remain two independent,
+separately-displayed evidence dimensions.
 
 ```text
-my-frontend-observer view --root <evidence-root> [--bindings-file <json-file>] [options]
+my-frontend-observer view --root <evidence-root> [--bindings-file <json-file>] [--context-file <json-file>] [options]
 ```
 
 Required:
@@ -810,6 +840,27 @@ Options:
   binding declarations — the viewer remains fully usable; reference/runtime
   cross-selection simply stays disabled and fidelity may still be
   explicitly evaluated with an empty declaration collection.
+- `--context-file <json-file>` — local JSON file containing exactly one
+  `BoundedAgentContextArtifact` value directly (no wrapper object). Read
+  once at startup and validated through the existing canonical
+  `isValidBoundedAgentContextArtifact` — never a second validator. Explicit,
+  session-only viewer input: held only in server memory, never persisted,
+  never written into any Observer artifact, and the file's own path is
+  never exposed to the browser. Bounded agent context remains
+  programmatic-only as an Observer-produced contract — this command does
+  not add a way to generate, save, or write one; the viewer never rebuilds
+  it (`projectBoundedAgentContext` is never called at runtime) and never
+  derives or re-derives runtime/static correlation
+  (`deriveRuntimeStaticCorrelations`/`attachRuntimeStaticCorrelations` are
+  never called at runtime) — it only displays the exact context it was
+  given. A recognized `artifactKind` with a `schemaVersion` other than the
+  currently supported one (`1.0.0`) starts the viewer showing an honest
+  "unsupported version" context state rather than failing. An unreadable
+  file, invalid JSON, a non-object root, the wrong `artifactKind`, or a
+  structurally invalid current-schema artifact fails startup clearly (no
+  server is started). Omit to run with no bounded context supplied — the
+  viewer remains fully usable; the "Bounded context" mode reports that none
+  was supplied. May be freely combined with `--bindings-file`.
 - `--port <n>` — TCP port to bind, in `[0, 65535]`. Defaults to `4319`
   (chosen after checking that no fixture or test in this repository binds a
   fixed port — see `tests/fixtures/server.ts`, which always uses `0`/
@@ -829,9 +880,10 @@ generic static directory or arbitrary filesystem path. It accepts no write
 methods and mutates nothing. On success,
 prints the viewer URL and keeps running (serving the viewer) until
 interrupted. On invalid syntax, a missing/non-directory `--root`, an
-invalid `--port`, an invalid `--bindings-file`, or a port already in use,
-prints structured diagnostics to stderr and exits nonzero without starting
-a server.
+invalid `--port`, an invalid `--bindings-file`, an invalid `--context-file`
+(other than a recognized-kind future `schemaVersion`, which starts
+normally), or a port already in use, prints structured diagnostics to
+stderr and exits nonzero without starting a server.
 
 ## Foundation commands
 

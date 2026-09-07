@@ -47,7 +47,7 @@ describe('runCli view - thin delegation to startViewer', () => {
     expect(code).toBe(0);
     expect(startViewerMock).toHaveBeenCalledTimes(1);
     // v0.8 Batch 6: startViewer now always additionally receives bindingDeclarations (empty when --bindings-file is omitted).
-    expect(startViewerMock).toHaveBeenCalledWith({ root: '/some/root', port: 4319, bindingDeclarations: [] });
+    expect(startViewerMock).toHaveBeenCalledWith({ root: '/some/root', port: 4319, bindingDeclarations: [], context: { status: 'none' } });
     expect(out.stdout()).toContain('http://127.0.0.1:4319');
   });
 
@@ -55,7 +55,7 @@ describe('runCli view - thin delegation to startViewer', () => {
     startViewerMock.mockClear();
     const out = capture();
     await runCli(['view', '--root', '/some/root', '--no-open'], out.io);
-    expect(startViewerMock).toHaveBeenCalledWith({ root: '/some/root', bindingDeclarations: [] });
+    expect(startViewerMock).toHaveBeenCalledWith({ root: '/some/root', bindingDeclarations: [], context: { status: 'none' } });
   });
 
   it('attempts to open the default browser unless --no-open is given', async () => {
@@ -95,6 +95,50 @@ describe('runCli view - thin delegation to startViewer', () => {
       const code = await runCli(['view', '--root', dir, '--bindings-file', bindingsPath, '--no-open'], out.io);
       expect(code).toBe(0);
       expect(startViewerMock).toHaveBeenCalledWith(expect.objectContaining({ bindingDeclarations: [{ referenceRegion: 'nonexistent-region', runtimeTarget: 'header' }] }));
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('v0.8 Batch 7: omits a supplied context as { status: "none" } when --context-file is not given', async () => {
+    startViewerMock.mockClear();
+    const out = capture();
+    await runCli(['view', '--root', '/some/root', '--no-open'], out.io);
+    expect(startViewerMock).toHaveBeenCalledWith(expect.objectContaining({ context: { status: 'none' } }));
+  });
+
+  it('v0.8 Batch 7: a recognized-kind --context-file with a future schemaVersion starts the viewer with an honest unsupported-version state, never a failure', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'my-frontend-observer-view-context-dispatch-'));
+    try {
+      const contextPath = path.join(dir, 'context.json');
+      await writeFile(contextPath, JSON.stringify({ artifactKind: 'my-frontend-observer/bounded-agent-context', schemaVersion: '9.9.9' }), 'utf8');
+      startViewerMock.mockClear();
+      const out = capture();
+      const code = await runCli(['view', '--root', dir, '--context-file', contextPath, '--no-open'], out.io);
+      expect(code).toBe(0);
+      expect(startViewerMock).toHaveBeenCalledWith(expect.objectContaining({ context: { status: 'unsupported-version', foundSchemaVersion: '9.9.9' } }));
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('v0.8 Batch 7: --bindings-file and --context-file coexist - both are passed through to startViewer from the same invocation', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'my-frontend-observer-view-coexist-dispatch-'));
+    try {
+      const bindingsPath = path.join(dir, 'bindings.json');
+      const contextPath = path.join(dir, 'context.json');
+      await writeFile(bindingsPath, JSON.stringify({ bindings: [{ referenceRegion: 'header', runtimeTarget: 'header' }] }), 'utf8');
+      await writeFile(contextPath, JSON.stringify({ artifactKind: 'my-frontend-observer/bounded-agent-context', schemaVersion: '9.9.9' }), 'utf8');
+      startViewerMock.mockClear();
+      const out = capture();
+      const code = await runCli(['view', '--root', dir, '--bindings-file', bindingsPath, '--context-file', contextPath, '--no-open'], out.io);
+      expect(code).toBe(0);
+      expect(startViewerMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bindingDeclarations: [{ referenceRegion: 'header', runtimeTarget: 'header' }],
+          context: { status: 'unsupported-version', foundSchemaVersion: '9.9.9' },
+        }),
+      );
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
