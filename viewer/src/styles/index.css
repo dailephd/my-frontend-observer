@@ -654,3 +654,75 @@ body {
   word-break: break-word;
   font-family: monospace;
 }
+
+/* --- Batch 5: reference/candidate workspace --- */
+
+.reference-region-overlay-svg__rect--has-requirement {
+  stroke-dasharray: 4 2;
+}
+
+.reference-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  font-size: 0.75rem;
+  height: 100%;
+  overflow: auto;
+}
+
+.reference-workspace__panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  min-height: 260px;
+}
+
+.reference-pane {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem;
+  overflow: auto;
+}
+
+.reference-workspace__candidate-select,
+.reference-workspace__evaluation-select {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.7rem;
+}
+
+.reference-workspace__candidate-select select,
+.reference-workspace__evaluation-select select {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.2rem;
+}
+
+.reference-workspace__details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.reference-adequacy {
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-size: 0.7rem;
+}
+
+.reference-adequacy--adequate {
+  border-color: #4ade80;
+}
+
+.reference-adequacy--partial {
+  border-color: #facc15;
+}
+
+.reference-adequacy--inadequate {
+  border-color: #f87171;
+}

@@ -8,6 +8,7 @@ import { resolveMedia } from './evidence/mediaResolver.js';
 import { getObservationRelationships } from './evidence/observationView.js';
 import { getComparisonView } from './evidence/comparisonView.js';
 import { getEvaluationView } from './evidence/evaluationView.js';
+import { getReferenceView, getReferenceCandidateView } from './evidence/referenceView.js';
 
 /** Batch 1 viewer protocol identity: the shape of GET /api/status. Bumped independently of package/schema versions if the status contract itself changes. */
 export const VIEWER_PROTOCOL_VERSION = '1.0.0';
@@ -212,6 +213,52 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
       return;
     }
     writeJsonBody(res, method, 200, { ok: true, comparison: result.comparison, baseline: result.baseline, change: result.change, before: result.before, after: result.after });
+    return;
+  }
+
+  const referenceViewMatch = /^\/api\/references\/([^/]+)\/view$/.exec(pathname);
+  if (referenceViewMatch) {
+    const handle = decodeURIComponentSafe(referenceViewMatch[1] as string);
+    if (handle === undefined) {
+      writeJsonError(res, method, 400, 'malformed reference handle');
+      return;
+    }
+    const result = await getReferenceView(state.root, handle);
+    if (!result.ok) {
+      const status = result.reason === 'unknown-handle' ? 404 : 409;
+      const error = result.reason === 'unknown-handle' ? 'unknown viewer artifact handle' : result.reason === 'not-a-reference' ? 'view is only defined for external-reference evidence' : 'reference is not currently loadable';
+      writeJsonBody(res, method, status, { ok: false, error });
+      return;
+    }
+    writeJsonBody(res, method, 200, { ok: true, regionRelationships: result.regionRelationships ?? null, requirementAdequacy: result.requirementAdequacy ?? null });
+    return;
+  }
+
+  const referenceCandidateViewMatch = /^\/api\/references\/([^/]+)\/candidate\/([^/]+)\/view$/.exec(pathname);
+  if (referenceCandidateViewMatch) {
+    const referenceHandle = decodeURIComponentSafe(referenceCandidateViewMatch[1] as string);
+    const candidateHandle = decodeURIComponentSafe(referenceCandidateViewMatch[2] as string);
+    if (referenceHandle === undefined || candidateHandle === undefined) {
+      writeJsonError(res, method, 400, 'malformed reference/candidate request');
+      return;
+    }
+    const result = await getReferenceCandidateView(state.root, referenceHandle, candidateHandle);
+    if (!result.ok) {
+      const status = result.reason === 'unknown-reference-handle' || result.reason === 'unknown-candidate-handle' ? 404 : 409;
+      const error =
+        result.reason === 'unknown-reference-handle'
+          ? 'unknown viewer reference handle'
+          : result.reason === 'unknown-candidate-handle'
+            ? 'unknown viewer candidate handle'
+            : result.reason === 'not-a-reference'
+              ? 'the first handle is not external-reference evidence'
+              : result.reason === 'not-an-observation'
+                ? 'the second handle is not observation evidence'
+                : 'reference or candidate is not currently loadable';
+      writeJsonBody(res, method, status, { ok: false, error });
+      return;
+    }
+    writeJsonBody(res, method, 200, { ok: true, compatibility: result.compatibility, evaluationHandles: result.evaluationHandles });
     return;
   }
 

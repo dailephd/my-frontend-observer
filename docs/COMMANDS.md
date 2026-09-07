@@ -713,10 +713,10 @@ and exits nonzero.
 
 ## `view`
 
-**Current status: v0.8 Batch 4 (Before/after comparison and contract/
-change-scope inspection).** Starts one loopback-only Node viewer server and
-serves the same React + TypeScript + Vite application to a normal browser or
-an installed Progressive Web App. `--root` is used as a bounded, read-only
+**Current status: v0.8 Batch 5 (External reference and reference/candidate
+inspection).** Starts one loopback-only Node viewer server and serves the
+same React + TypeScript + Vite application to a normal browser or an
+installed Progressive Web App. `--root` is used as a bounded, read-only
 evidence-discovery root: the server exposes a metadata-first `GET
 /api/index` of recognized Observer evidence beneath it, an on-demand `GET
 /api/artifacts/<handle>` for one selected supported artifact, an on-demand
@@ -724,16 +724,27 @@ evidence-discovery root: the server exposes a metadata-first `GET
 screenshots; imported/approved external-reference images), an on-demand `GET
 /api/observations/<handle>/relationships` that returns the existing
 canonical `deriveLayoutRelationships(...)` result for one selected
-observation, and — new this batch — `GET /api/comparisons/<handle>/view` and
+observation, `GET /api/comparisons/<handle>/view` and
 `GET /api/evaluations/<handle>/view`, which resolve a comparison's/
 evaluation's linked source observations/contracts/comparison by **exact
 canonical identity** within the current evidence root (never by folder name
-or similarity) and report `resolved`/`missing`/`ambiguous` — never a second
-copy of the linked artifact's own payload, and never a recomputed
-`compareObservations`/`evaluateFrontendContract` result — see
-`docs/ARCHITECTURE.md` "v0.8 Batch 2"/"v0.8 Batch 3"/"v0.8 Batch 4" for the
-exact discovery bounds, classification model, coordinate mapping, and
-handle/media/linked-evidence-resolution contracts. Selecting a supported
+or similarity) and report `resolved`/`missing`/`ambiguous`, and — new this
+batch — `GET /api/references/<handle>/view` (the selected external
+reference's own region-relationship graph, via the existing canonical
+`deriveReferenceRegionRelationships`, and requirement adequacy, via the
+existing canonical `deriveReferenceRequirementAdequacy`) and
+`GET /api/references/<handle>/candidate/<handle>/view` (page/state-level
+compatibility between an explicitly selected reference and an explicitly
+selected candidate observation, via the existing canonical
+`evaluateReferenceCandidateCompatibility`, plus the handles of any existing
+evaluation artifacts whose own `after` reference exactly identifies that
+candidate, for optional explicit selection) — never a second copy of a
+linked artifact's own payload, and never a recomputed
+`compareObservations`/`evaluateFrontendContract`/
+`evaluateReferenceRuntimeBindings`/`evaluateReferenceCandidateFidelity`
+result — see `docs/ARCHITECTURE.md` "v0.8 Batch 2" through "v0.8 Batch 5"
+for the exact discovery bounds, classification model, coordinate mapping,
+and handle/media/linked-evidence-resolution contracts. Selecting a supported
 `observation` record shows the Batch 3 screenshot/SVG workspace. Selecting a
 supported `comparison` record shows a real before/after side-by-side visual
 workspace (reusing that same screenshot/SVG machinery) plus the persisted
@@ -743,13 +754,27 @@ Selecting a supported `contract-evaluation` record shows the persisted
 authored category (requested/expected-dependent/protected/preserved) or
 shown as an active/superseded baseline invariant, and unexpected changes —
 with target-scoped results able to highlight the exact stable runtime target
-in the before/after panes. Every other evidence family still shows the
-bounded metadata/raw-payload view established in Batch 2; external-reference
-visualization remains out of scope until a later batch. Every route remains
-strictly read-only: no artifact is ever created, modified, or interpreted
-beyond its existing canonical reader/validator, and `deriveLayoutRelationships`/
-`compareObservations`/`evaluateFrontendContract` are pure functions this
-batch never invokes for viewer reconstruction.
+in the before/after panes. Selecting a supported
+`external-reference-imported`/`external-reference-approved` record shows the
+reference image with region overlays in the reference image's own pixel
+coordinate domain, selected requirements/tolerances/adequacy/applicability/
+lifecycle/provenance/supersession, and, once a candidate observation is
+**explicitly** selected (never auto-selected), that candidate side by side
+using the reused Batch 3/4 runtime screenshot/SVG machinery plus the real
+canonical compatibility result and, if the developer explicitly picks one,
+an existing matching evaluation's already-persisted verdict — reference
+region selection and runtime target selection remain two independent,
+never-synchronized selection domains, and no fidelity result is ever
+displayed (Batch 6 scope). Every other evidence family still shows the
+bounded metadata/raw-payload view established in Batch 2. Every route
+remains strictly read-only: no artifact is ever created, modified, or
+interpreted beyond its existing canonical reader/validator, and
+`deriveLayoutRelationships`/`compareObservations`/`evaluateFrontendContract`/
+`deriveReferenceRegionRelationships`/`deriveReferenceRequirementAdequacy`/
+`evaluateReferenceCandidateCompatibility` are pure functions this batch never
+invokes to fabricate a result beyond what the referenced evidence already
+supports, and `evaluateReferenceRuntimeBindings`/
+`evaluateReferenceCandidateFidelity` are never invoked at all.
 
 ```text
 my-frontend-observer view --root <evidence-root> [options]

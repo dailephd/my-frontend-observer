@@ -565,3 +565,104 @@ export async function writeUnrelatedFile(dir: string, relativePath: string, cont
   await writeFile(filePath, content, 'utf8');
   return filePath;
 }
+
+export interface ReferenceCandidateFixture {
+  importedRoot: string;
+  approvedRoot: string;
+  importedReferenceId: string;
+  approvedReferenceId: string;
+  referenceImage: { width: number; height: number };
+  compatibleCandidateRoot: string;
+  compatibleCandidateId: string;
+  incompatibleCandidateRoot: string;
+  incompatibleCandidateId: string;
+}
+
+/**
+ * Batch 5: one real, decodable reference image (imported + approved pair,
+ * built through the real canonical `importExternalReference`/
+ * `approveExternalReference` application services - never hand-forged JSON)
+ * carrying two real regions ("header", "sidebar"), one requirement per
+ * authored category (requested/expected-dependent/protected/preserved) with
+ * a real evaluable region-relationship/property/measurement subject, and an
+ * explicit applicability declaration (viewport + theme). Also writes two
+ * real candidate ObservationArtifacts: one whose viewport/theme exactly
+ * match applicability (compatible) and one that deliberately mismatches both
+ * (incompatible) - both built through the real `writeObservationArtifact`
+ * writer. The compatible candidate deliberately also configures a runtime
+ * target literally named "header" (same string as the reference region id)
+ * to prove Batch 5 never treats equal names as an implied binding.
+ */
+export async function writeReferenceCandidateFixture(dir: string): Promise<ReferenceCandidateFixture> {
+  const referenceImage = { width: 400, height: 300 };
+  const imageBytes = buildRealPng(referenceImage.width, referenceImage.height, [16, 120, 90]);
+
+  const regions = [
+    { id: 'header', rectangle: { x: 0, y: 0, width: 400, height: 60 } },
+    { id: 'sidebar', rectangle: { x: 0, y: 60, width: 120, height: 240 } },
+  ];
+
+  const requirements: import('../../src/domain/externalReferenceRequirements.js').RawReferenceRequirement[] = [
+    { category: 'requested', subject: { kind: 'region-property', region: 'header', property: 'height' }, tolerance: { kind: 'exact' } },
+    {
+      category: 'expected-dependent',
+      expectedDependentMode: 'required',
+      subject: { kind: 'region-relationship', subjectRegion: 'sidebar', relatedRegion: 'header', relationship: 'follows-vertically' },
+    },
+    { category: 'protected', subject: { kind: 'region-property', region: 'sidebar', property: 'width' }, tolerance: { kind: 'absolute-reference-px', amount: 4 } },
+    {
+      category: 'preserved',
+      subject: { kind: 'region-measurement', subjectRegion: 'header', relatedRegion: 'sidebar', measurement: 'vertical-gap' },
+      tolerance: { kind: 'exact' },
+    },
+  ];
+
+  const imported = await importExternalReference(imageBytes, {
+    outputLocation: 'references',
+    cwd: dir,
+    label: 'candidate-fixture',
+    regions,
+    requirements,
+    applicability: { viewport: { width: 1200, height: 800 }, theme: 'light' },
+  });
+  if (!imported.ok) throw new Error(`expected reference import to succeed: ${JSON.stringify(imported.diagnostics)}`);
+
+  const approved = await approveExternalReference(imported.artifactRoot, { outputLocation: 'references', cwd: dir });
+  if (!approved.ok) throw new Error(`expected reference approval to succeed: ${JSON.stringify(approved.diagnostics)}`);
+
+  const compatibleBase = buildObservation(
+    'rc-compatible',
+    [target('header'), target('sidebar')],
+    { header: matchedTarget(rect(0, 0, 400, 60)), sidebar: matchedTarget(rect(0, 60, 120, 240)) },
+    '0.7.0',
+    realisticPageEvidence({ width: 1200, height: 800 }),
+    { width: 1200, height: 800 },
+  );
+  const compatibleArtifact: ObservationArtifact = { ...compatibleBase, requestConfig: { ...compatibleBase.requestConfig, explicitState: { theme: 'light' } } };
+  const compatibleWritten = await writeObservationArtifact(compatibleArtifact, buildRealPng(1200, 800, [90, 40, 40]), { cwd: dir });
+  if (!compatibleWritten.ok) throw new Error('expected compatible candidate write to succeed');
+
+  const incompatibleBase = buildObservation(
+    'rc-incompatible',
+    [target('header')],
+    { header: matchedTarget(rect(0, 0, 320, 60)) },
+    '0.7.0',
+    realisticPageEvidence({ width: 800, height: 600 }),
+    { width: 800, height: 600 },
+  );
+  const incompatibleArtifact: ObservationArtifact = { ...incompatibleBase, requestConfig: { ...incompatibleBase.requestConfig, explicitState: { theme: 'dark' } } };
+  const incompatibleWritten = await writeObservationArtifact(incompatibleArtifact, buildRealPng(800, 600, [40, 40, 90]), { cwd: dir });
+  if (!incompatibleWritten.ok) throw new Error('expected incompatible candidate write to succeed');
+
+  return {
+    importedRoot: imported.artifactRoot,
+    approvedRoot: approved.artifactRoot,
+    importedReferenceId: imported.referenceId,
+    approvedReferenceId: approved.referenceId,
+    referenceImage,
+    compatibleCandidateRoot: compatibleWritten.artifactRoot,
+    compatibleCandidateId: 'rc-compatible',
+    incompatibleCandidateRoot: incompatibleWritten.artifactRoot,
+    incompatibleCandidateId: 'rc-incompatible',
+  };
+}

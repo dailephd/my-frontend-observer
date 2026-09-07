@@ -734,6 +734,80 @@ artifact via the existing Batch 2 `GET /api/artifacts/<handle>`.
   already covered by Batch 1's `navigateFallbackDenylist`; verified against
   the real built `sw.js`.
 
+## v0.8 Batch 5 (External reference and reference/candidate inspection) — implemented
+
+- **Reference indexing/media already existed (Batch 2), unchanged**: the
+  `external-reference-imported`/`external-reference-approved` families,
+  `GET /api/media/<handle>/image` (imported), and
+  `GET /api/media/<handle>/source-image` (approved, resolved through
+  `findImportedReferenceDir`'s exact `referenceId` walk) were already built
+  in Batch 2 and required no change here - Batch 5 only adds the visual
+  workspace consuming them.
+- **Two new additive, read-only routes**
+  (`src/viewerServer/evidence/referenceView.ts`):
+  `GET /api/references/<handle>/view` derives the selected reference's own
+  region-relationship graph (`deriveReferenceRegionRelationships`) and
+  requirement adequacy (`deriveReferenceRequirementAdequacy`) - both pure
+  functions over the artifact's own persisted `regions`/`requirements`,
+  never persisted, never a second derivation engine (mirrors Batch 3's
+  `getObservationRelationships` server-side-derivation pattern).
+  `GET /api/references/<handle>/candidate/<handle>/view` evaluates
+  reference/candidate compatibility through the existing canonical
+  `evaluateReferenceCandidateCompatibility` (never a second, viewer-owned
+  compatibility model) and separately lists every existing
+  `FrontendContractEvaluationArtifact` whose own persisted `after` reference
+  exactly identifies the candidate, for explicit, never-auto-selected
+  optional display.
+- **Reference-image SVG coordinate model is a genuinely distinct domain from
+  the candidate's runtime SVG** (`ReferenceRegionOverlaySvg.tsx`): `viewBox`
+  is the reference image's own pixel dimensions (never the candidate's CSS
+  viewport, never devicePixelRatio-multiplied); each region's canonical
+  `{x, y, width, height}` is rendered unchanged. Because this is a different
+  coordinate domain and data source from `TargetOverlaySvg` (runtime CSS
+  pixels, `TargetGeometry`), it is a separate, sibling component rather than
+  a parameterization of the existing one - reuse would have silently
+  conflated the two domains. The candidate side, in contrast, reuses Batch
+  3/4's exact `ComparisonObservationPane`/`TargetOverlaySvg` machinery
+  unchanged (a synthetic `{status:'resolved', handle}` `LinkStatus` is
+  constructed once a candidate is explicitly chosen).
+- **Reference region selection and runtime target selection are two
+  independent, never-synchronized selection domains**
+  (`ReferenceWorkspace.tsx`): selecting a reference region never selects or
+  highlights a runtime target, even when both happen to share the same
+  string name (proven with a real Chromium fixture deliberately naming both
+  `"header"` - `tests/browser/referenceCandidateWorkspace.test.ts`, Case E).
+  No binding connector/highlight-across-panes exists in this batch - that is
+  Batch 6's explicit-binding-interaction scope.
+- **Compatibility vs. reference adequacy vs. candidate fidelity are kept
+  strictly distinct, never conflated**: compatibility
+  (`comparable`/`comparable-with-warnings`/`incomparable` plus
+  blocking/warning/unassessed reasons) comes only from
+  `evaluateReferenceCandidateCompatibility`; reference-side requirement
+  adequacy (`adequate`/`partial`/`inadequate`) comes only from
+  `deriveReferenceRequirementAdequacy`; candidate fidelity is never computed
+  in this batch at all - the UI always shows an explicit "not evaluated in
+  this batch" note rather than ever implying a fidelity PASS from a
+  compatibility PASS or an adequate reference (task §32/§33 boundary,
+  `evaluateReferenceCandidateFidelity` is never imported/called anywhere in
+  Batch 5).
+- **Optional contract/evaluation context is opt-in, never inferred**
+  (`ReferenceWorkspace.tsx`): when the reference/candidate view lists more
+  than one exactly-matching evaluation artifact, the developer must
+  explicitly pick one from a `<select>` - the newest/first match is never
+  silently chosen, and with zero selected the candidate's contract status
+  reads "not selected/not available", never a fabricated PASS.
+- **Imported vs. approved image ownership preserved exactly as Batch 2 built
+  it**: an imported reference's image is fetched from its own directory; an
+  approved reference's image is fetched from its exact imported source via
+  `sourceReference.referenceId`, never assumed co-located, never
+  duplicated - proven with a real Chromium fixture asserting the two
+  `<image href>` values resolve to the `image`/`source-image` roles
+  respectively (Cases A/B).
+- **PWA cache boundary preserved**: both new routes live under `/api/`,
+  already covered by Batch 1's `navigateFallbackDenylist`; verified against
+  the real built `sw.js` (no new `registerRoute`, no `/api/references`
+  precache entry).
+
 ## Retained v0.1 architecture constraints
 
 v0.1 planning preserved these approved boundaries without treating module
