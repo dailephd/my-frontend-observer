@@ -170,6 +170,38 @@ this package) makes the actual source change between review attempts. See
 and [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md) for the full
 implementation record.
 
+### Interactive local viewer (implemented in the current repository; not yet released)
+
+`my-frontend-observer view --root <evidence-root> [--bindings-file <json-file>] [--context-file <json-file>] [--port <n>] [--no-open]`
+starts a loopback-only (`127.0.0.1`) Node server that serves a React +
+TypeScript + Vite viewer application - usable in a normal browser or as an
+installed Progressive Web App - over the same evidence root used by every
+other command above. It never edits target source, never mutates any
+evidence artifact, and never runs `@dailephd/my-dev-kit`:
+
+```powershell
+node dist/cli.js view --root observations --port 4319 --no-open
+```
+
+The viewer shows observation screenshots and SVG target overlays,
+before/after comparisons and contract/change-scope results, approved
+external references beside candidate observations with explicit binding
+cross-selection and on-demand fidelity evaluation, and - when
+`--context-file` supplies one - a read-only inspection of a bounded agent
+context's adequacy, omissions/truncations, and runtime/static correlation.
+Both `--bindings-file` and `--context-file` are explicit, session-only
+input: read once at startup, held only in server memory, never persisted,
+and never exposed as a filesystem path to the browser. See
+[docs/COMMANDS.md](docs/COMMANDS.md#view) for the full flag reference and
+[docs/WORKFLOWS.md](docs/WORKFLOWS.md) for the viewer workflow.
+
+This capability is implemented and tested in the current repository as of
+v0.8 (all eight implementation batches, plus this documentation/
+completeness audit, have passed), but package metadata still reports
+`0.7.0` - v0.8 has not yet been version-bumped, release-prepared, or
+published. See [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md) for the
+exact current implementation and release state.
+
 Validation:
 
 ```powershell
@@ -189,7 +221,9 @@ Planning authorities:
 - [Project Milestones](docs/PROJECT_MILESTONES.md): complete ordered capability
   design and cross-milestone rules.
 - [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.7 are
-  released; v0.8+ remain future.
+  released; v0.8 implementation is complete in the current repository
+  (package metadata remains `0.7.0`; v0.8.0 has not been released); v0.9+
+  remain future.
 - [Current State](docs/CURRENT_STATE.md): retained scaffold and release state.
 
 No sibling ecosystem repository is a runtime dependency of the retained

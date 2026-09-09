@@ -713,8 +713,10 @@ and exits nonzero.
 
 ## `view`
 
-**Current status: v0.8 Batch 7 (Bounded agent context, correlation,
-provenance, and raw evidence navigation).** Starts one
+**Current status: implemented and tested through v0.8 Batch 8 (Integrated
+viewer acceptance, PWA hardening, and packaged proof) - the final v0.8
+implementation batch; package metadata still reports `0.7.0` and this
+command has not yet been formally released.** Starts one
 loopback-only Node viewer server and serves the same React + TypeScript +
 Vite application to a normal browser or an installed Progressive Web App.
 `--root` is used as a bounded, read-only evidence-discovery root: the server

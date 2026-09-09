@@ -1,5 +1,46 @@
 # Changelog
 
+## [Unreleased]
+
+v0.8, Interactive Local Observation Viewer, is implemented and tested in the
+current repository (all eight implementation batches plus the hardened
+documentation/implementation-completeness audit have passed - see
+`docs/CURRENT_STATE.md`), but **not released**: package metadata remains
+`0.7.0`. This section will become a dated `0.8.0` entry only when the
+separate release-preparation stage explicitly bumps the version.
+
+- New `view` command: starts a loopback-only (`127.0.0.1`) Node server
+  serving a React + TypeScript + Vite viewer application, usable in a normal
+  browser or as an installed Progressive Web App, over an existing evidence
+  root (`--root`). Metadata-first evidence discovery and on-demand
+  artifact/media loading; never mutates target source or any Observer
+  evidence artifact.
+- Observation inspection: screenshot plus SVG target overlays, geometry,
+  semantics, visibility/overflow/scroll evidence, and on-demand layout
+  relationships.
+- Comparison/contract inspection: before/after side-by-side views and
+  contract/change-scope evaluation results, including the required
+  protected/preserved-failure safety case (a locally successful requested
+  change alongside a genuine protected/preserved regression, shown as
+  overall `FAIL`).
+- External reference/candidate inspection: reference image and region
+  overlays, explicit (never auto-selected) candidate selection,
+  reference/candidate compatibility and applicability.
+- Explicit reference-region/runtime-target binding cross-selection
+  (`--bindings-file`), independent bounded zoom/pan, conditional view lock,
+  and on-demand reference-fidelity evaluation shown independently alongside
+  any selected contract evaluation.
+- Bounded agent context inspection (`--context-file`): session-only display
+  of context identity, adequacy, omissions/truncations, and runtime/static
+  correlation, plus safe raw-evidence navigation. The viewer never rebuilds
+  a bounded context or its correlation and never runs `@dailephd/my-dev-kit`.
+- PWA hardening: real service-worker registration, an application-shell
+  precache that excludes `/api/` routes, and a proven server-down behavior
+  that never presents stale evidence as current.
+- No second evidence engine: every canonical result the viewer displays is
+  produced by the same single engine the CLI uses, called from at most one
+  designated server-side call site.
+
 ## 0.7.0 - 2026-09-06
 
 End-to-End Coding-Agent Frontend Change Review.

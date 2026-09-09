@@ -310,6 +310,17 @@ points.
 
 ## v0.8 — Interactive Local Observation Viewer
 
+Current status: implementation complete in the current repository (all eight
+implementation batches passed - see
+`docs/reports/v0.8-integrated-viewer-acceptance-batch8.md` - and the
+hardened documentation/implementation-completeness audit passed - see
+`docs/reports/v0.8-implementation-completeness-documentation-reconciliation.md`).
+Package metadata remains `0.7.0`; `v0.8.0` has not been version-bumped,
+release-prepared, cross-platform-validated, or published. The next stage is
+v0.8 pre-release readiness (see `docs/CURRENT_STATE.md`). The required
+capabilities, constraints, and acceptance criteria below are preserved as
+originally planned and describe what the implementation actually satisfies.
+
 Objective/problem: let developers inspect and understand the same canonical
 evidence already used by the operational coding-agent workflow without opening
 raw artifact files manually, including external design references and their

@@ -60,13 +60,26 @@ its integration into the existing v0.6 bounded-agent-context, and a
 controlled, programmatic end-to-end correction workflow
 (`prepareReferenceCorrection`/`reviewReferenceCorrectionAttempt`) proven
 against real Chromium (success, protected-regression, and multi-attempt
-correction-iteration cases). Interactive viewer support for references and
-reference annotation are not implemented in the published `0.7.0` package.
-See `docs/CURRENT_STATE.md` for the full implementation record and
+correction-iteration cases). See `docs/CURRENT_STATE.md` for the full
+implementation record and
 `docs/reports/v0.7-implementation-completeness-documentation-reconciliation.md`
-for the completeness audit that preceded release. v0.8–v0.10 (interactive
-viewer, structured visual annotation, and the full graphical human–LLM
-workflow) remain future and unimplemented.
+for the completeness audit that preceded release.
+
+v0.8 (Interactive Local Observation Viewer) is implemented and tested in the
+current repository - `my-frontend-observer view` starts a loopback-only
+Node server serving a React + TypeScript + Vite viewer (normal browser or
+installed PWA) that inspects observations, comparisons, contract results,
+external references/candidates with explicit binding cross-selection and
+on-demand fidelity evaluation, and, when supplied, a bounded agent context's
+adequacy/omissions/truncations/correlation - all through the same canonical
+engines used by the CLI, never a second implementation of them. Package
+metadata still reports `0.7.0`: v0.8 has not been version-bumped,
+release-prepared, or published. See `docs/CURRENT_STATE.md` for the exact
+implementation/release-state distinction and
+`docs/reports/v0.8-implementation-completeness-documentation-reconciliation.md`
+for this stage's completeness audit. v0.9–v0.10 (structured visual
+annotation and the full graphical human–LLM workflow) remain future and
+unimplemented.
 
 The revised dependency path reaches practical coding-agent use before graphical
 interaction and establishes the non-UI external-reference model before the
@@ -82,7 +95,9 @@ runtime observation and stable identity
   + reference-vs-candidate structured fidelity evaluation
   + controlled end-to-end correction workflow (released as `0.7.0` -
     see docs/CURRENT_STATE.md)
-→ interactive viewer with reference/candidate inspection
+→ interactive viewer with reference/candidate inspection (implemented in the
+  current repository as v0.8; package metadata remains `0.7.0`, not yet
+  released - see above)
 → structured visual annotation on runtime screenshots and external references
 → full visual human–LLM workflow with actual-frontend-driven and
   reference-driven entry modes

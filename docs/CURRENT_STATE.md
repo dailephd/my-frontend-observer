@@ -7,6 +7,16 @@ artifact schema `1.0.0`; bounded-agent-context schema `1.0.0`;
 external-reference schema `1.0.0`) - see "v0.7 Prompt 8 status" below for
 the final, complete v0.7 state.
 
+**v0.8 (Interactive Local Observation Viewer) is implemented and tested in
+the current repository - see "v0.8 status" below - but is not yet released.**
+All eight v0.8 implementation batches, plus the hardened documentation/
+implementation-completeness audit, have passed. Package metadata (this
+repository's `package.json`/`package-lock.json`) still reports `0.7.0`;
+`v0.8.0` has not been version-bumped, formally cross-platform/security
+validated, release-prepared, tagged, or published to npm. The next workflow
+stage is v0.8 pre-release readiness (cross-platform and security
+validation) - not release preparation or publication.
+
 ## Greenfield foundation established
 
 The retained repository contains:
@@ -868,24 +878,140 @@ Frontend Change Review) milestone's core workflow.
   approval (approval remains an explicit, separate action through the
   existing `approve-baseline`/`approve-reference` commands).
 
+## v0.8 status (Interactive Local Observation Viewer) - implemented in current repository, **not yet released**
+
+All eight v0.8 implementation batches have passed
+(`IMPLEMENTATION_BATCHES_STATUS: ALL_8_IMPLEMENTATION_BATCHES_PASS`), followed
+by a hardened documentation/implementation-completeness audit (this
+reconciliation). Package metadata remains `0.7.0` throughout - no schema
+version changed, and no CLI command from v0.1-v0.7 was altered. The next
+workflow stage is v0.8 pre-release readiness (cross-platform + security
+validation), not release preparation.
+
+- **Batch 1** (`docs/reports/v0.8-viewer-runtime-pwa-batch1.md`) froze the
+  version-start architecture decisions (React + TypeScript + Vite; normal
+  browser + Node-backed loopback server + installable PWA using the same
+  application; ephemeral viewer adapters over existing canonical readers,
+  never a new persisted viewer artifact) and implemented the `view` CLI
+  command (`--root`, `--port`, `--no-open`), the loopback-only (`127.0.0.1`)
+  Node viewer server, the built React/Vite/PWA shell (service worker,
+  manifest, app-shell precache with an `/api/` cache-boundary denylist), and
+  one minimal read-only status endpoint. `npm run build` gained the
+  `dist/viewer` build step.
+- **Batch 2** (`v0.8-evidence-index-readers-batch2.md`) added bounded,
+  metadata-first evidence discovery (`GET /api/index`) across every existing
+  artifact family, honest support-state classification
+  (supported/unsupported-version/invalid-structure/unrecognized-kind/
+  malformed-json/unreadable), and on-demand full-artifact/media loading
+  (`GET /api/artifacts/<handle>`, `GET /api/media/<handle>/<role>`) with
+  path-containment/traversal safety.
+- **Batch 3** (`v0.8-observation-svg-inspection-batch3.md`) added the
+  observation screenshot/SVG-overlay workspace: runtime target geometry,
+  semantics, visibility, overflow, scroll evidence, and on-demand layout
+  relationships (`GET /api/observations/<handle>/relationships`, reusing the
+  existing canonical `deriveLayoutRelationships` at its one sanctioned
+  viewer-server call site).
+- **Batch 4** (`v0.8-comparison-contract-inspection-batch4.md`) added
+  before/after comparison and contract/change-scope inspection
+  (`GET /api/comparisons/<handle>/view`, `GET /api/evaluations/<handle>/view`),
+  exact-identity linked-evidence resolution (never fuzzy matching), and the
+  required protected/preserved-failure safety case (a locally successful
+  requested change alongside a genuine protected/preserved regression,
+  shown as overall `FAIL`, never masked).
+- **Batch 5** (`v0.8-reference-candidate-inspection-batch5.md`) added
+  external-reference and reference/candidate inspection: reference image and
+  region overlays in the reference's own pixel coordinate domain, explicit
+  (never auto-selected) candidate selection, reference/candidate
+  compatibility, adequacy, and applicability display.
+- **Batch 6** (`v0.8-binding-fidelity-interaction-batch6.md`) added
+  explicit-binding cross-selection (reference region ↔ runtime target, only
+  through an explicit `--bindings-file` declaration, never inferred from
+  matching names), independent bounded (`1x`-`8x`) zoom/pan per pane,
+  conditional view lock (enabled only when compatibility/coordinate-mapping
+  genuinely permit it), and on-demand reference-fidelity evaluation
+  (`not-evaluated`/`pass`/`fail`) shown alongside, never merged into, any
+  selected contract evaluation's own verdict.
+- **Batch 7** (`v0.8-bounded-context-correlation-batch7.md`) added the
+  `--context-file` input and a dedicated "Bounded context" mode: session-only
+  bounded-agent-context display (identity, adequacy, omissions/truncations
+  with required loss visually distinguished from optional loss,
+  runtime/static correlation - `correlated`/`ambiguous`/`unavailable`,
+  never "owner" language), safe raw-evidence navigation, and explicit
+  non-ownership/non-rebuild language. The viewer never calls
+  `projectBoundedAgentContext`, `deriveRuntimeStaticCorrelations`, or
+  `attachRuntimeStaticCorrelations` - it only displays the exact context it
+  was started with.
+- **Batch 8** (`v0.8-integrated-viewer-acceptance-batch8.md`, the final
+  implementation batch) integrated and hardened the above rather than adding
+  new features: closed three named real-browser coverage gaps (many
+  reference regions bound to one runtime target must all cross-highlight;
+  reference-fidelity FAIL alongside a genuine frontend-contract PASS for the
+  same candidate must display independently with no hidden precedence; a
+  bounded context whose sources include two observations sharing a stable
+  target id must list every matching source observation, never one); fixed a
+  real accessibility gap (a cross-highlighted, non-selected region/target
+  rect now exposes `data-highlighted` plus an `aria-label` suffix to
+  assistive technology, without disturbing `aria-pressed`'s existing
+  single-selection semantics); added the first live-browser PWA proof suite
+  (real service-worker registration, zero `/api/` cache-storage entries, and
+  a hard server-down "stale evidence must never be presented as current"
+  gate, which held); and proved the actual packed-and-installed npm
+  candidate (not just the source checkout) works end-to-end through a real
+  browser, with read-only evidence-root integrity confirmed via before/after
+  content hashing. Standalone/installed-PWA proof did not exceed CDP
+  command-acceptance (the emulated display-mode feature was not observed to
+  take effect) - recorded honestly as a residual gap, not overstated as
+  actual OS-level installation verification.
+
+**Architectural invariants proven across all eight batches** (re-audited in
+this documentation/completeness stage): no second observer, relationship
+engine, comparison engine, contract engine, reference model,
+reference-evaluation engine, correlation implementation, or bounded-context
+builder exists anywhere in `src/viewerServer` or `viewer/src` - every
+canonical engine function the viewer displays results from is called from at
+most one designated server-side call site, and several (`compareObservations`,
+`evaluateFrontendContract`, `projectBoundedAgentContext`,
+`deriveRuntimeStaticCorrelations`, `attachRuntimeStaticCorrelations`) are
+never called by the viewer at all. The viewer never runs
+`@dailephd/my-dev-kit`, never mutates target source or any Observer
+artifact, never persists a new viewer-owned evidence family, and every route
+rejects non-`GET`/`HEAD` methods.
+
+**Validated on the canonical worktree** (this documentation/completeness
+audit stage): `npm run typecheck`, `npm run lint`, `npm test`, `npm run
+build`, `npm run check:docs`, and `npm run test:browser` all pass - see
+"Post-edit validation" in
+`docs/reports/v0.8-implementation-completeness-documentation-reconciliation.md`
+for exact counts.
+
+**Not yet performed** (belongs to the next workflow stage, not this one):
+formal Windows/Linux/macOS cross-platform pre-release validation of the
+viewer/PWA surface through `.github/workflows/pre-release-readiness.yml`
+(that workflow currently covers v0.1-v0.7 only - see `docs/CI_CD.md`);
+formal pre-release security review of the viewer surface (Batch 8's security
+audit was local/manual, not the formal stage); version bump to `0.8.0`;
+release preparation; npm publication; and git tagging.
+
 ## Not implemented
 
 - v0.5 baseline-selection/discovery policy (the caller must supply which
   baseline to approve/evaluate against; there is no "find the current
   baseline" command), source ownership, orchestrator/lab product
-  integration, viewer, and annotation all remain unimplemented in this
-  repository. (v0.6's bounded runtime projection and runtime/static
-  correlation, and the complete v0.7 external-reference correction workflow
-  described above, *are* now implemented.) A CLI surface for Prompt 8's
-  correction workflow specifically remains unimplemented by design
-  (programmatic-only, library-level use is the current supported entry
-  point) - see "v0.7 Prompt 8 status" above.
+  integration, and annotation all remain unimplemented in this repository.
+  (v0.6's bounded runtime projection and runtime/static correlation, the
+  complete v0.7 external-reference correction workflow described above, and
+  the v0.8 interactive viewer described in "v0.8 status" above, *are* now
+  implemented.) A CLI surface for Prompt 8's correction workflow specifically
+  remains unimplemented by design (programmatic-only, library-level use is
+  the current supported entry point) - see "v0.7 Prompt 8 status" above.
+  Structured visual annotation (v0.9) and the full graphical human-LLM
+  workflow (v0.10) remain future and unimplemented.
 
 ## Next target
 
 v0.1-v0.7 are implemented, validated, and released (`0.1.0`, `0.2.0`,
 `0.3.0`, `0.4.0`, `0.5.0`, `0.6.0`, `0.7.0`). v0.7 (End-to-End Coding-Agent
-Frontend Change Review) is now fully implemented and released: the
+Frontend Change Review) is fully implemented and released: the
 external-reference artifact foundation, explicit reference
 regions/relationships, selected design requirements/tolerance
 semantics/reference-evidence adequacy, reference applicability
@@ -900,5 +1026,15 @@ pre-release readiness, cross-platform, and security validation stage - see
 `docs/reports/v0.7-implementation-completeness-documentation-reconciliation.md`
 for the completeness audit, and
 `docs/reports/v0.7-pre-release-readiness.md` for the cross-platform
-readiness validation that preceded this release. v0.8+ remain future - see
-`docs/ROADMAP.md`.
+readiness validation that preceded this release.
+
+v0.8 (Interactive Local Observation Viewer) is fully implemented and tested
+in the current repository - see "v0.8 status" above - but **not released**:
+package metadata remains `0.7.0`. All eight implementation batches and this
+hardened documentation/implementation-completeness audit have passed. The
+next workflow stage is v0.8 pre-release readiness (formal cross-platform and
+security validation), followed by release preparation (version bump to
+`0.8.0`, package hygiene) and, only after explicit user approval,
+publication - none of which have occurred yet. v0.9 (structured visual
+annotation) and v0.10 (full graphical human-LLM workflow) remain future -
+see `docs/ROADMAP.md`.

@@ -346,7 +346,7 @@ lab code in this repository - those remain separate sibling-repository
 responsibilities per the Milestone 6 ownership split in
 `docs/PROJECT_MILESTONES.md`.
 
-## v0.7 (released as `0.7.0`) and planned v0.8–v0.10 reference-evidence architecture constraints
+## v0.7 (released as `0.7.0`), v0.8 (implemented in current repository, not yet released), and planned v0.9–v0.10 reference-evidence architecture constraints
 
 The external visual-reference capability (v0.7) is released as package
 version `0.7.0` - see "v0.7 Prompt 1" through "v0.7 Prompt 8" below for the
@@ -413,14 +413,17 @@ checked before reference fidelity is interpreted through the released v0.7
 compatibility path, which reuses v0.4 comparability conventions. If reference
 and candidate do not represent compatible intended states, the result is
 explicitly incompatible/incomparable rather than a fabricated visual difference
-set. v0.8 must display this result rather than redefine the state model.
+set. v0.8, implemented in the current repository (not yet released), displays
+this result exactly as required rather than redefining the state model - see
+"v0.8 Batch 5" below.
 
 The constraints above were carried out by the actual v0.7 implementation
 described in "v0.7 Prompt 1" through "v0.7 Prompt 8" below: explicit
 identity/provenance, applicability/compatibility, region-to-target bindings,
 requested/expected-dependent/protected/preserved reuse, and the non-mutating
-Chromium/correlation boundaries all remain as constrained here. They continue
-to apply unchanged to the still-future v0.8-v0.10 work.
+Chromium/correlation boundaries all remain as constrained here. v0.8 (see
+"v0.8 Batch 1" through "v0.8 Batch 8" below) applied them unchanged; they
+continue to apply unchanged to the still-future v0.9-v0.10 work.
 
 The exact public artifact names, schema versions, persistence layout, supported
 image formats, coordinate model, requirement/tolerance primitives, and fidelity
@@ -997,6 +1000,61 @@ artifact via the existing Batch 2 `GET /api/artifacts/<handle>`.
   exists in the viewer server or browser bundle.
 - **PWA cache boundary preserved**: `GET /api/context` lives under `/api/`,
   already covered by Batch 1's `navigateFallbackDenylist`.
+
+## v0.8 Batch 8 (Integrated viewer acceptance, PWA hardening, and packaged proof) — implemented
+
+Batch 8 is the final v0.8 implementation batch. It is integration/hardening,
+not a new architecture layer: no new API route, no new CLI flag, and no new
+canonical-engine call site were added. See
+`docs/reports/v0.8-integrated-viewer-acceptance-batch8.md` for the full
+record.
+
+- **Closed three named real-browser coverage gaps**, each proved against the
+  actual built viewer through the actual loopback server, never a hand-edited
+  fixture verdict: many reference regions bound to one runtime target all
+  cross-highlight together (the pre-existing target→regions loop in
+  `ReferenceWorkspace.tsx` already iterated every matching binding - the gap
+  was in real-browser proof, not in the derivation); reference-fidelity
+  `fail` alongside a genuine frontend-contract `PASS` for the same candidate
+  display independently (the pre-existing independence note in
+  `ReferenceWorkspace.tsx` was already verdict-agnostic); a bounded context
+  whose sources include two observations sharing a stable target id lists
+  every matching source observation (the pre-existing
+  `SourceObservationTargetCheck` in `ContextWorkspace.tsx` already checked
+  membership per source independently, never picking one).
+- **One real accessibility defect found and fixed**: a cross-highlighted,
+  non-selected region/target `<rect>` (`TargetOverlaySvg.tsx`,
+  `ReferenceRegionOverlaySvg.tsx`) exposed no accessible state distinguishing
+  it from a plain unselected rect - `aria-pressed` correctly stayed `false`
+  (it is not the primary single-selection), but nothing else communicated
+  the highlight to assistive technology. Fixed by adding
+  `data-highlighted="true"` and an `aria-label` suffix
+  (`" (highlighted: related to current selection)"`) when highlighted and
+  not selected, leaving `aria-pressed` semantics untouched.
+- **First live-browser PWA proof suite** (`tests/browser/pwaHardening.test.ts`):
+  real service-worker registration and activation against the built shell;
+  the manifest fetched and confirmed `display: "standalone"`; zero Cache
+  Storage entries under any `/api/` pathname after normal use, confirming
+  the `navigateFallbackDenylist` boundary holds live, not just in the built
+  `sw.js` regex; and the hard server-down gate - after the server is closed
+  and the same page reloaded, the app shell still renders from the precache,
+  but the evidence-dependent surface shows the explicit
+  `.evidence-list__error` "Evidence index unavailable" state, with the
+  previously-visible evidence asserted absent. Install-control is proven
+  only via synthetic `beforeinstallprompt` dispatch (a genuine browser
+  install prompt was not observed under automation). Standalone-mode CDP
+  display-mode emulation was attempted but not observed to take effect -
+  recorded honestly, never overstated as actual OS-level installation proof.
+- **Packaged-candidate proof**: `npm pack` → clean consumer install (outside
+  the repository) → the actually-installed CLI executable (not repo
+  `dist/cli.js`) → the installed `view` server → real Chromium against the
+  packaged/installed server, not a source-checkout dev server. Read-only
+  evidence-hash proof (SHA-256 of every file in the exercised evidence root,
+  taken before and after the packaged-browser session) confirmed no
+  mutation and no new viewer-created artifact anywhere in the evidence root.
+- **Re-confirmed the no-second-engine invariant** across all eight batches by
+  re-running the exact `grep -rn` audit from earlier batches - unchanged
+  findings, no duplicate evidence engine exists.
 
 ## Retained v0.1 architecture constraints
 

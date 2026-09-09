@@ -41,6 +41,14 @@ candidate observation against it (implemented in the current development
 state; see [COMMANDS.md](COMMANDS.md) and [CONTRACTS.md](CONTRACTS.md) for
 the exact flags and contract).
 
+To inspect any of the above visually instead of opening raw artifact files,
+`node dist/cli.js view --root observations --no-open` starts a local,
+loopback-only viewer server (usable in a normal browser or as an installed
+PWA) over the same evidence roots you already have - implemented and tested
+in the current repository (v0.8; package metadata remains `0.7.0`, not yet
+released). See [COMMANDS.md](COMMANDS.md#view) for the full flag reference,
+including `--bindings-file` and `--context-file`.
+
 To validate the repository itself instead:
 
 ```powershell
