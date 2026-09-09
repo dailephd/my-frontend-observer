@@ -110,8 +110,9 @@ export function TargetOverlaySvg({
                   height={g.height}
                   role="button"
                   tabIndex={0}
-                  aria-label={`Select target ${t.name}`}
+                  aria-label={`Select target ${t.name}${isHighlighted ? ' (highlighted: related to current selection)' : ''}`}
                   aria-pressed={isSelected}
+                  data-highlighted={isHighlighted ? 'true' : undefined}
                   onClick={() => onSelect(t.name)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {

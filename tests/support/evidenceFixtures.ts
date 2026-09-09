@@ -1196,3 +1196,152 @@ export async function writeBoundedContextEvidenceFixture(dir: string): Promise<B
     blockedFidelityContext,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Batch 8: gap-closing integration fixtures (many-regions-to-one-target
+// cross-selection; fidelity FAIL alongside a genuine contract PASS for the
+// exact same candidate). All evidence is built through the real canonical
+// writers/services, never hand-edited.
+// ---------------------------------------------------------------------------
+
+export interface ManyRegionsOneTargetFixture {
+  approvedRoot: string;
+  candidateRoot: string;
+  candidateId: string;
+}
+
+/**
+ * Batch 8 task §24/L: two distinct reference regions ("region-a"/"region-b")
+ * that, once explicitly bound, both resolve `bound` against the SAME
+ * runtime target ("workspace") - closing the Batch 6 many-regions-to-one-
+ * target real-browser coverage gap.
+ */
+export async function writeManyRegionsOneTargetFixture(dir: string): Promise<ManyRegionsOneTargetFixture> {
+  const applicableViewport = { width: 1200, height: 800 };
+  const imageBytes = buildRealPng(400, 300, [60, 120, 200]);
+  const regions = [
+    { id: 'region-a', rectangle: { x: 0, y: 0, width: 400, height: 150 } },
+    { id: 'region-b', rectangle: { x: 0, y: 150, width: 400, height: 150 } },
+  ];
+  const imported = await importExternalReference(imageBytes, { outputLocation: 'references', cwd: dir, label: 'many-regions-fixture', regions, applicability: { viewport: applicableViewport, theme: 'light' } });
+  if (!imported.ok) throw new Error(`expected reference import to succeed: ${JSON.stringify(imported.diagnostics)}`);
+  const approved = await approveExternalReference(imported.artifactRoot, { outputLocation: 'references', cwd: dir });
+  if (!approved.ok) throw new Error(`expected reference approval to succeed: ${JSON.stringify(approved.diagnostics)}`);
+
+  const candidateBase = buildObservation('many-regions-candidate', [target('workspace')], { workspace: matchedTarget(rect(0, 0, 1200, 800)) }, '0.7.0', realisticPageEvidence(applicableViewport), applicableViewport);
+  const candidate: ObservationArtifact = { ...candidateBase, requestConfig: { ...candidateBase.requestConfig, explicitState: { theme: 'light' } } };
+  const candidateWritten = await writeObservationArtifact(candidate, buildRealPng(applicableViewport.width, applicableViewport.height, [200, 200, 10]), { cwd: dir });
+  if (!candidateWritten.ok) throw new Error('expected many-regions candidate write to succeed');
+
+  return { approvedRoot: approved.artifactRoot, candidateRoot: candidateWritten.artifactRoot, candidateId: 'many-regions-candidate' };
+}
+
+export interface FidelityFailContractPassFixture {
+  beforeRoot: string;
+  afterRoot: string;
+  comparisonRoot: string;
+  baselineRoot: string;
+  changeRoot: string;
+  evaluationRoot: string;
+  approvedReferenceRoot: string;
+  candidateId: string;
+}
+
+/**
+ * Batch 8 task §25/M: a real contract-evaluation PASS (both clauses
+ * genuinely satisfied) alongside a real reference-fidelity FAIL (the
+ * protected sidebar.width requirement is violated in reference terms) for
+ * the exact same candidate observation - closing the Batch 6 asymmetric
+ * real-browser coverage gap (only fidelity-PASS+contract-FAIL was
+ * previously proven).
+ */
+export async function writeFidelityFailContractPassFixture(dir: string): Promise<FidelityFailContractPassFixture> {
+  const applicableViewport = { width: 1600, height: 1200 };
+
+  // sidebar.width stays 600 CSS px in both before/after (contract's "unchanged" protected clause genuinely
+  // passes), but 600 CSS px scales (x0.25) to 150 reference px - outside the reference's 120±4 tolerance
+  // (reference fidelity genuinely fails). header.height genuinely decreases (contract requested clause passes)
+  // and exactly matches the reference's 60 reference px requirement (that one fidelity requirement passes).
+  const before = buildObservation(
+    'ffcp-before',
+    [target('header'), target('sidebar')],
+    { header: matchedTarget(rect(0, 0, 1600, 300)), sidebar: matchedTarget(rect(0, 300, 600, 960)) },
+    '0.7.0',
+    realisticPageEvidence(applicableViewport),
+    applicableViewport,
+  );
+  const afterBase = buildObservation(
+    'ffcp-after',
+    [target('header'), target('sidebar')],
+    { header: matchedTarget(rect(0, 0, 1600, 240)), sidebar: matchedTarget(rect(0, 300, 600, 960)) },
+    '0.7.0',
+    realisticPageEvidence(applicableViewport),
+    applicableViewport,
+  );
+  const after: ObservationArtifact = { ...afterBase, requestConfig: { ...afterBase.requestConfig, explicitState: { theme: 'light' } } };
+
+  const beforeWritten = await writeObservationArtifact(before, buildRealPng(applicableViewport.width, applicableViewport.height, [80, 80, 200]), { cwd: dir });
+  const afterWritten = await writeObservationArtifact(after, buildRealPng(applicableViewport.width, applicableViewport.height, [10, 200, 10]), { cwd: dir });
+  if (!beforeWritten.ok || !afterWritten.ok) throw new Error('expected before/after observation writes to succeed');
+
+  const compared = compareObservations(before, after);
+  if (!compared.ok) throw new Error(`expected ok comparison: ${compared.reason}`);
+  const comparisonWritten = await writeComparisonArtifact(compared.artifact, 'comparisons', { cwd: dir });
+  if (!comparisonWritten.ok) throw new Error('expected comparison write to succeed');
+
+  const baseline = buildBaselineContract({
+    sourceObservation: { observationId: 'ffcp-before', requestId: 'req-ffcp-before', producer: { name: PRODUCER_NAME, version: '0.7.0' }, observationSchemaVersion: OBSERVATION_SCHEMA_VERSION },
+    clauses: [],
+  });
+  const change = buildChangeContract({
+    clauses: [
+      { clauseId: 'requested-header-height', primitive: { kind: 'property-decreases', target: 'header', property: 'height' }, category: 'requested', supportingEvidence: [] },
+      { clauseId: 'protected-sidebar-width', primitive: { kind: 'property-unchanged-within-tolerance', target: 'sidebar', property: 'width', tolerance: { kind: 'exact' } }, category: 'protected', supportingEvidence: [] },
+    ],
+  });
+  const baselineWritten = await writePersistentBaselineContract(baseline, 'baselines', { cwd: dir });
+  const changeWritten = await writePerChangeContract(change, 'contracts', { cwd: dir });
+  if (!baselineWritten.ok || !changeWritten.ok) throw new Error('expected contract writes to succeed');
+
+  const evaluated = await evaluateAndPersistFromArtifactRoots(beforeWritten.artifactRoot, afterWritten.artifactRoot, comparisonWritten.artifactRoot, baselineWritten.artifactRoot, changeWritten.artifactRoot, {
+    outputLocation: 'evaluations',
+    cwd: dir,
+  });
+  if (!evaluated.ok) throw new Error(`expected evaluation to succeed: ${JSON.stringify(evaluated.diagnostics)}`);
+  if (evaluated.overallVerdict !== 'PASS') throw new Error(`expected a genuine contract PASS, got ${evaluated.overallVerdict}`);
+
+  const referenceImage = { width: 400, height: 300 };
+  const imageBytes = buildRealPng(referenceImage.width, referenceImage.height, [200, 90, 60]);
+  const regions = [
+    { id: 'header', rectangle: { x: 0, y: 0, width: 400, height: 60 } },
+    { id: 'sidebar', rectangle: { x: 0, y: 60, width: 120, height: 240 } },
+  ];
+  const requirements: import('../../src/domain/externalReferenceRequirements.js').RawReferenceRequirement[] = [
+    { category: 'requested', subject: { kind: 'region-property', region: 'header', property: 'height' }, tolerance: { kind: 'exact' } },
+    { category: 'protected', subject: { kind: 'region-property', region: 'sidebar', property: 'width' }, tolerance: { kind: 'absolute-reference-px', amount: 4 } },
+  ];
+  const imported = await importExternalReference(imageBytes, { outputLocation: 'references', cwd: dir, label: 'fidelity-fail-contract-pass', regions, requirements, applicability: { viewport: applicableViewport, theme: 'light' } });
+  if (!imported.ok) throw new Error(`expected reference import to succeed: ${JSON.stringify(imported.diagnostics)}`);
+  const approved = await approveExternalReference(imported.artifactRoot, { outputLocation: 'references', cwd: dir });
+  if (!approved.ok) throw new Error(`expected reference approval to succeed: ${JSON.stringify(approved.diagnostics)}`);
+
+  const approvedRead = await readExternalReferenceArtifact(path.join(approved.artifactRoot, EXTERNAL_REFERENCE_MANIFEST_FILENAME));
+  if (!approvedRead.ok) throw new Error(`expected to read back the approved reference: ${approvedRead.reason}`);
+  const fidelityResult = evaluateReferenceCandidateFidelity(approvedRead.artifact as ApprovedExternalReferenceArtifact, after, [
+    { referenceRegion: 'header', runtimeTarget: 'header' },
+    { referenceRegion: 'sidebar', runtimeTarget: 'sidebar' },
+  ]);
+  if (!fidelityResult.ok) throw new Error(`expected fidelity evaluation to succeed: ${fidelityResult.reason}`);
+  if (fidelityResult.evaluation.state !== 'fail') throw new Error(`expected a genuine fidelity FAIL, got ${fidelityResult.evaluation.state}`);
+
+  return {
+    beforeRoot: beforeWritten.artifactRoot,
+    afterRoot: afterWritten.artifactRoot,
+    comparisonRoot: comparisonWritten.artifactRoot,
+    baselineRoot: baselineWritten.artifactRoot,
+    changeRoot: changeWritten.artifactRoot,
+    evaluationRoot: evaluated.artifactRoot,
+    approvedReferenceRoot: approved.artifactRoot,
+    candidateId: 'ffcp-after',
+  };
+}

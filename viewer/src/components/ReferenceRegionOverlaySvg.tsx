@@ -98,8 +98,9 @@ export function ReferenceRegionOverlaySvg({
                   height={region.rectangle.height}
                   role="button"
                   tabIndex={0}
-                  aria-label={`Select reference region ${region.id}`}
+                  aria-label={`Select reference region ${region.id}${isHighlighted ? ' (highlighted: related to current selection)' : ''}`}
                   aria-pressed={isSelected}
+                  data-highlighted={isHighlighted ? 'true' : undefined}
                   onClick={() => onSelect(region.id)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
