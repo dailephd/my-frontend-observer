@@ -1,21 +1,21 @@
 # Current State
 
-The project is published at package version `0.7.0` (roadmap v0.7,
-End-to-End Coding-Agent Frontend Change Review; observation schema `1.2.0`;
-comparison schema `1.0.0`; frontend contract schema `1.0.0`; evaluation
-artifact schema `1.0.0`; bounded-agent-context schema `1.0.0`;
-external-reference schema `1.0.0`) - see "v0.7 Prompt 8 status" below for
-the final, complete v0.7 state.
+The project is published at package version `0.8.0` (roadmap v0.8,
+Interactive Local Observation Viewer; observation schema `1.2.0`; comparison
+schema `1.0.0`; frontend contract schema `1.0.0`; evaluation artifact schema
+`1.0.0`; bounded-agent-context schema `1.0.0`; external-reference schema
+`1.0.0` - no schema version changed for v0.8) - see "v0.8 status" below for
+the final, complete v0.8 state.
 
-**v0.8 (Interactive Local Observation Viewer) is implemented and tested in
-the current repository - see "v0.8 status" below - but is not yet released.**
-All eight v0.8 implementation batches, plus the hardened documentation/
-implementation-completeness audit, have passed. Package metadata (this
-repository's `package.json`/`package-lock.json`) still reports `0.7.0`;
-`v0.8.0` has not been version-bumped, formally cross-platform/security
-validated, release-prepared, tagged, or published to npm. The next workflow
-stage is v0.8 pre-release readiness (cross-platform and security
-validation) - not release preparation or publication.
+v0.8 (Interactive Local Observation Viewer) is fully implemented, tested,
+formally cross-platform/security validated, and released. All eight v0.8
+implementation batches, the hardened documentation/implementation-
+completeness audit, and formal pre-release readiness (Windows/Linux/macOS
+cross-platform packed-candidate validation, security audit, code-rot audit)
+all passed - see
+`docs/reports/v0.8-implementation-completeness-documentation-reconciliation.md`
+and
+`docs/reports/v0.8-prerelease-readiness-cross-platform-security-code-rot.md`.
 
 ## Greenfield foundation established
 
@@ -878,15 +878,16 @@ Frontend Change Review) milestone's core workflow.
   approval (approval remains an explicit, separate action through the
   existing `approve-baseline`/`approve-reference` commands).
 
-## v0.8 status (Interactive Local Observation Viewer) - implemented in current repository, **not yet released**
+## v0.8 status (Interactive Local Observation Viewer) - released as `0.8.0`
 
 All eight v0.8 implementation batches have passed
 (`IMPLEMENTATION_BATCHES_STATUS: ALL_8_IMPLEMENTATION_BATCHES_PASS`), followed
-by a hardened documentation/implementation-completeness audit (this
-reconciliation). Package metadata remains `0.7.0` throughout - no schema
-version changed, and no CLI command from v0.1-v0.7 was altered. The next
-workflow stage is v0.8 pre-release readiness (cross-platform + security
-validation), not release preparation.
+by a hardened documentation/implementation-completeness audit and formal
+pre-release readiness (cross-platform Windows/Linux/macOS packed-candidate
+validation, security audit, code-rot audit - see
+`docs/reports/v0.8-prerelease-readiness-cross-platform-security-code-rot.md`).
+No schema version changed for v0.8, and no CLI command from v0.1-v0.7 was
+altered.
 
 - **Batch 1** (`docs/reports/v0.8-viewer-runtime-pwa-batch1.md`) froze the
   version-start architecture decisions (React + TypeScript + Vite; normal
@@ -977,20 +978,21 @@ never called by the viewer at all. The viewer never runs
 artifact, never persists a new viewer-owned evidence family, and every route
 rejects non-`GET`/`HEAD` methods.
 
-**Validated on the canonical worktree** (this documentation/completeness
-audit stage): `npm run typecheck`, `npm run lint`, `npm test`, `npm run
-build`, `npm run check:docs`, and `npm run test:browser` all pass - see
-"Post-edit validation" in
+**Validated on the canonical worktree**: `npm run typecheck`, `npm run
+lint`, `npm test`, `npm run build`, `npm run check:docs`, `npm run
+test:browser`, and `npm run test:security` all pass - see "Post-edit
+validation" in
 `docs/reports/v0.8-implementation-completeness-documentation-reconciliation.md`
-for exact counts.
+for the completeness-stage counts, and
+`docs/reports/v0.8-prerelease-readiness-cross-platform-security-code-rot.md`
+for the formal cross-platform/security readiness stage that followed.
 
-**Not yet performed** (belongs to the next workflow stage, not this one):
-formal Windows/Linux/macOS cross-platform pre-release validation of the
-viewer/PWA surface through `.github/workflows/pre-release-readiness.yml`
-(that workflow currently covers v0.1-v0.7 only - see `docs/CI_CD.md`);
-formal pre-release security review of the viewer surface (Batch 8's security
-audit was local/manual, not the formal stage); version bump to `0.8.0`;
-release preparation; npm publication; and git tagging.
+Formal Windows/Linux/macOS cross-platform pre-release validation of the
+viewer/PWA surface (through `.github/workflows/pre-release-readiness.yml`,
+now covering v0.1-v0.8) and formal pre-release security review of the
+viewer surface both passed - see the readiness report above, including the
+one security finding it found and fixed (a symlinked-media evidence-root
+escape in the viewer's media route).
 
 ## Not implemented
 
@@ -1009,9 +1011,9 @@ release preparation; npm publication; and git tagging.
 
 ## Next target
 
-v0.1-v0.7 are implemented, validated, and released (`0.1.0`, `0.2.0`,
-`0.3.0`, `0.4.0`, `0.5.0`, `0.6.0`, `0.7.0`). v0.7 (End-to-End Coding-Agent
-Frontend Change Review) is fully implemented and released: the
+v0.1-v0.8 are implemented, validated, and released (`0.1.0`, `0.2.0`,
+`0.3.0`, `0.4.0`, `0.5.0`, `0.6.0`, `0.7.0`, `0.8.0`). v0.7 (End-to-End
+Coding-Agent Frontend Change Review) is fully implemented and released: the
 external-reference artifact foundation, explicit reference
 regions/relationships, selected design requirements/tolerance
 semantics/reference-evidence adequacy, reference applicability
@@ -1028,13 +1030,15 @@ for the completeness audit, and
 `docs/reports/v0.7-pre-release-readiness.md` for the cross-platform
 readiness validation that preceded this release.
 
-v0.8 (Interactive Local Observation Viewer) is fully implemented and tested
-in the current repository - see "v0.8 status" above - but **not released**:
-package metadata remains `0.7.0`. All eight implementation batches and this
-hardened documentation/implementation-completeness audit have passed. The
-next workflow stage is v0.8 pre-release readiness (formal cross-platform and
-security validation), followed by release preparation (version bump to
-`0.8.0`, package hygiene) and, only after explicit user approval,
-publication - none of which have occurred yet. v0.9 (structured visual
-annotation) and v0.10 (full graphical human-LLM workflow) remain future -
-see `docs/ROADMAP.md`.
+v0.8 (Interactive Local Observation Viewer) is fully implemented, tested,
+and released - see "v0.8 status" above: package metadata is `0.8.0`. All
+eight implementation batches, the hardened documentation/implementation-
+completeness audit, and formal pre-release readiness (cross-platform and
+security validation) have passed - see `docs/ROADMAP.md` for v0.8's full
+scope,
+`docs/reports/v0.8-implementation-completeness-documentation-reconciliation.md`
+for the completeness audit, and
+`docs/reports/v0.8-prerelease-readiness-cross-platform-security-code-rot.md`
+for the cross-platform readiness validation that preceded this release. v0.9
+(structured visual annotation) and v0.10 (full graphical human-LLM workflow)
+remain future - see `docs/ROADMAP.md`.

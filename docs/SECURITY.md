@@ -136,14 +136,18 @@ external implementation actor (a human or a coding agent), never this
 package's own product code. No remote AI/model-provider dependency was
 introduced anywhere in v0.7.
 
-## Interactive local viewer (v0.8, implemented in current repository; not yet released)
+## Interactive local viewer (v0.8, released as `0.8.0`)
 
-`my-frontend-observer view` (`src/viewerServer/`, `viewer/`) is implemented
-and tested in the current repository. Package metadata still reports
-`0.7.0`; the formal pre-release security review of this surface (analogous
-to `docs/reports/v0.7-pre-release-readiness.md`) has not yet run - the
-properties below were verified locally/manually during implementation
-(Batches 1-8), not through that formal stage.
+`my-frontend-observer view` (`src/viewerServer/`, `viewer/`) is implemented,
+tested, and formally security-reviewed. The properties below were verified
+locally/manually during implementation (Batches 1-8) and then re-verified
+through the formal pre-release security audit - see
+`docs/reports/v0.8-prerelease-readiness-cross-platform-security-code-rot.md`,
+which also found and fixed one real finding: a media filename that is
+itself a symlink/junction pointing outside the evidence root could
+previously have had its linked-to file's content served. `checkExists()`
+(`src/viewerServer/evidence/mediaResolver.ts`) now uses `lstat()` and
+rejects any non-regular-file entry, closing that escape.
 
 - **Loopback-only, fixed local origin**: the Node viewer server binds only
   to `127.0.0.1` (never `0.0.0.0`), never a configurable remote host.
@@ -191,20 +195,21 @@ properties below were verified locally/manually during implementation
 Certificate-failure-specific handling, permission-prompt-specific handling
 (Chromium's default deny-all applies; no permission is ever explicitly
 granted), and any non-loopback/remote browsing mode remain unimplemented and
-out of scope. `my-frontend-observer@0.7.0` is published to npm, and a
+out of scope. `my-frontend-observer@0.8.0` is published to npm, and a
 pre-release readiness CI workflow (Windows/Linux/macOS packed-candidate
-validation) already exists (see `docs/CI_CD.md`); these are no longer future
-decisions. The v0.7 external-reference/correction-workflow security
-properties above are released as part of `0.7.0`, following a completed
-cross-platform pre-release security validation stage (see
-`docs/reports/v0.7-pre-release-readiness.md`). The v0.8 interactive viewer's
-security boundary described above is implemented and locally verified, but
-has not yet been through the formal pre-release cross-platform security
-validation stage that preceded the v0.7 release - that remains the next
-workflow stage, not release-readiness already achieved. Symlink/junction
-filesystem-escape handling for the viewer's raw-evidence routes has not been
-exercised by a dedicated test and remains a recorded residual risk (see the
-Batch 8 report). Annotation (v0.9) remains a future, unimplemented concern
+validation, now covering the v0.8 viewer alongside every earlier version's
+packed behavior) exists (see `docs/CI_CD.md`). The v0.7 external-reference/
+correction-workflow security properties above are released as part of
+`0.7.0`, following a completed cross-platform pre-release security
+validation stage (see `docs/reports/v0.7-pre-release-readiness.md`). The
+v0.8 interactive viewer's security boundary described above is released as
+part of `0.8.0`, following a completed formal pre-release cross-platform
+security validation stage (see
+`docs/reports/v0.8-prerelease-readiness-cross-platform-security-code-rot.md`).
+Symlink/junction filesystem-escape handling for the viewer's raw-evidence
+routes is now exercised by a dedicated regression test
+(`tests/unit/viewerEvidenceServer.test.ts`), which caught and led to the fix
+described above. Annotation (v0.9) remains a future, unimplemented concern
 with its own security review still to come. None of this expands the
 security scope above: remote browsing, certificate handling,
 permission-prompt handling, and future annotation-specific file handling

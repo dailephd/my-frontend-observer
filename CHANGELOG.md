@@ -2,12 +2,9 @@
 
 ## [Unreleased]
 
-v0.8, Interactive Local Observation Viewer, is implemented and tested in the
-current repository (all eight implementation batches plus the hardened
-documentation/implementation-completeness audit have passed - see
-`docs/CURRENT_STATE.md`), but **not released**: package metadata remains
-`0.7.0`. This section will become a dated `0.8.0` entry only when the
-separate release-preparation stage explicitly bumps the version.
+## 0.8.0 - 2026-09-10
+
+Interactive Local Observation Viewer.
 
 - New `view` command: starts a loopback-only (`127.0.0.1`) Node server
   serving a React + TypeScript + Vite viewer application, usable in a normal
@@ -40,6 +37,19 @@ separate release-preparation stage explicitly bumps the version.
 - No second evidence engine: every canonical result the viewer displays is
   produced by the same single engine the CLI uses, called from at most one
   designated server-side call site.
+- Security hardening found during pre-release readiness: the viewer's media
+  route now rejects any evidence filename that is itself a symlink/junction
+  pointing outside the evidence root, instead of following it.
+- Cross-platform packed-candidate validation: the pre-version-bump
+  implementation candidate tarball `my-frontend-observer-0.7.0.tgz`
+  (SHA-256 `b80729bc64b3b01378effd2b8aa3b7743ccedc46b3148ba0b1ff1ae5a4b68c55`)
+  was hash-verified and proven on Windows, Linux, and macOS, including an
+  installed-package smoke of the new `view` command (loopback binding,
+  read-only API, path containment, SVG overlay/media, service-worker
+  registration, the PWA no-authoritative-cache boundary, and the
+  server-down stale-evidence hard gate) alongside every pre-existing
+  v0.1-v0.7 packed behavior, before this release's version bump - see
+  `docs/reports/v0.8-prerelease-readiness-cross-platform-security-code-rot.md`.
 
 ## 0.7.0 - 2026-09-06
 

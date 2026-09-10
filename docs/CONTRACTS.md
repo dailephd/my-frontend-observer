@@ -490,17 +490,16 @@ blockers; on the canonical worktree, `npm run typecheck`, `npm run lint`,
 `npm test` (627 tests), `npm run test:browser` (120 tests), `npm run
 test:security`, `npm run build`, and `npm run check:docs` all pass.
 
-## v0.7 external visual-reference contract direction (released as `0.7.0`; v0.8 viewer implemented in current repository, not yet released; v0.9-v0.10 still future)
+## v0.7 external visual-reference contract direction (released as `0.7.0`; v0.8 viewer released as `0.8.0`; v0.9-v0.10 still future)
 
 External visual-reference support is released as package version `0.7.0`
 (see "v0.7 Prompt 1" through "v0.7 Prompt 8" below for the exact contract).
 The exact public type names, artifact kinds, schema versions, persistence
 layout, and command/programmatic entry points were designed during v0.7
 implementation from current repository precedent, following the constraints
-below. v0.8 (implemented and tested in the current repository; package
-metadata remains `0.7.0`, not yet released - see `docs/CURRENT_STATE.md`)
-has preserved them; v0.9-v0.10 remain future and must continue to preserve
-them.
+below. v0.8 (released as package version `0.8.0` - see
+`docs/CURRENT_STATE.md`) has preserved them; v0.9-v0.10 remain future and
+must continue to preserve them.
 
 **Distinct evidence domain**: an external reference is desired-design evidence,
 not an `ObservationArtifact` and not the "before" side of a v0.4
@@ -566,8 +565,7 @@ A reference-fidelity `PASS`, a frontend-contract `PASS`, or a successful
 before/after comparison must not silently approve or replace any reference or
 baseline.
 
-The v0.8 viewer, implemented and tested in the current repository (package
-metadata remains `0.7.0`, not yet released), consumes this v0.7
+The v0.8 viewer, released as package version `0.8.0`, consumes this v0.7
 reference/evaluation contract exactly as required - it creates no UI-only
 reference model (see `docs/ARCHITECTURE.md` "v0.8 Batch 5"/"v0.8 Batch 6"
 and `docs/reports/v0.8-reference-candidate-inspection-batch5.md`). v0.9
@@ -604,10 +602,10 @@ bounded agent context and correlation contract" above for the full released
 model. The text/config-driven coding-agent review plus non-graphical external
 visual-reference foundation is v0.7 - see "v0.7 Prompt 1 external-reference
 artifact contract" below for the foundation layer implemented so far. Viewer
-consumption of that reference model is implemented in v0.8 (current
-repository, not yet released - see "v0.7 external visual-reference contract
-direction" above); dual-context annotation follows in v0.9; both visual
-entry modes converge with the existing workflow in v0.10.
+consumption of that reference model is released in v0.8 (see "v0.7 external
+visual-reference contract direction" above); dual-context annotation follows
+in v0.9; both visual entry modes converge with the existing workflow in
+v0.10.
 
 ## v0.7 Prompt 1 external-reference artifact contract
 

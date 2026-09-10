@@ -476,7 +476,7 @@ the proof - only its disposable, repository-local copy is ever edited. See
 `docs/CONTRACTS.md` "v0.7 Prompt 8 controlled end-to-end external-reference
 coding-agent correction workflow" for the full contract.
 
-## Current interactive viewer workflow (v0.8, implemented in the current repository; not yet released)
+## Current interactive viewer workflow (v0.8, released as `0.8.0`)
 
 v0.7 (text/config-driven coding-agent change review, the external
 visual-reference evidence foundation, structured reference-vs-candidate
@@ -484,9 +484,7 @@ fidelity evaluation, and the end-to-end correction workflow) is released as
 package version `0.7.0` - see "Current external-reference foundation
 workflow" and "Current reference correction workflow" above, and
 `docs/CURRENT_STATE.md` for release state. v0.8 adds an interactive local
-viewer over that same evidence, implemented and tested in the current
-repository - package metadata still reports `0.7.0`; `v0.8.0` has not been
-released:
+viewer over that same evidence, released as package version `0.8.0`:
 
 ```text
 my-frontend-observer view --root <evidence-root>
@@ -562,9 +560,8 @@ stable targets and bounded runtime behavior
   + external visual-reference evidence foundation
   + structured reference-vs-candidate fidelity evaluation
   + end-to-end correction workflow (released as `0.7.0` - see above)
-→ v0.8 interactive viewer with reference/candidate inspection (implemented
-  in the current repository, not yet released - see "Current interactive
-  viewer workflow" above)
+→ v0.8 interactive viewer with reference/candidate inspection (released as
+  package version `0.8.0` - see "Current interactive viewer workflow" above)
 → v0.9 structured visual annotation on runtime screenshots and references
 → v0.10 full visual human–LLM workflow with both actual-frontend-driven and
   reference-driven entry modes

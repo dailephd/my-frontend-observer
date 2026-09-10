@@ -215,42 +215,34 @@ unchanged on all three platforms - see
 `docs/reports/v0.7-pre-release-readiness.md` for the complete readiness
 report.
 
-## v0.8 packaging implications (implemented in current repository; formal cross-platform readiness not yet performed)
+## v0.8 packaging implications (released as `0.8.0`; formal cross-platform readiness passed)
 
-v0.8 (Interactive Local Observation Viewer) is implemented and tested in the
-current repository - see `docs/CURRENT_STATE.md` - but package metadata
-remains `0.7.0` and `.github/workflows/pre-release-readiness.yml` has
-**not** been extended to cover it: the candidate/matrix-smoke workflow
-described above still only exercises the v0.1-v0.7 CLI/programmatic
-surface. This is an accurate statement of current CI scope, not a defect to
-fix in this repository-documentation stage.
+v0.8 (Interactive Local Observation Viewer) is released as package version
+`0.8.0` - see `docs/CURRENT_STATE.md`. `.github/workflows/pre-release-readiness.yml`'s
+matrix now covers it: alongside the pre-existing packed-observation smoke,
+each platform runner also installs the exact candidate tarball and runs
+`scripts/ci/runPackedViewerSmoke.mjs`, proving in real Chromium that the
+installed `view` command binds to loopback only, indexes real evidence,
+renders the SVG target overlay and a reference view, enforces its read-only
+API, rejects path traversal, registers its service worker, never caches
+`/api/` responses as authoritative, and never presents stale evidence once
+the server is stopped.
 
-What is true today: `npm run build` builds both the Node/CLI output
-(`tsc -p tsconfig.json`) and the browser-side viewer application plus its
-PWA assets (`vite build --config viewer/vite.config.ts` into `dist/viewer`
-- service worker, manifest, precached app shell); the existing `files`
-package allowlist (`dist`, `README.md`, `CHANGELOG.md`, `docs`) already
-includes `dist/viewer`, so no separate publish boundary was created for the
-viewer; the existing CLI/library commands (`observe` through
+`npm run build` builds both the Node/CLI output (`tsc -p tsconfig.json`) and
+the browser-side viewer application plus its PWA assets (`vite build
+--config viewer/vite.config.ts` into `dist/viewer` - service worker,
+manifest, precached app shell); the existing `files` package allowlist
+(`dist`, `README.md`, `CHANGELOG.md`, `docs`) already includes
+`dist/viewer`, so no separate publish boundary was created for the viewer;
+the existing CLI/library commands (`observe` through
 `evaluate-reference-fidelity`) remain packaged and unchanged; and package
 version stays independent of every schema version, as for every prior
 release.
 
-What was proven, and how: v0.8 Batch 8
-(`docs/reports/v0.8-integrated-viewer-acceptance-batch8.md`) performed a
-**local, manual** packed-candidate proof - `npm pack` into a workflow-local
-directory, a clean consumer install outside the repository, the installed
-CLI's `view` command, and real-Chromium proof against the installed server,
-including PWA live-registration and server-down-behavior proof - on the
-single platform the implementation session ran on. This is genuine evidence
-that the packaged candidate works, but it is **not** the same thing as the
-formal Windows/Linux/macOS `pre-release-readiness.yml` matrix validation
-that gated the v0.1-v0.7 releases above, and it must not be read as
-substituting for it.
-
-Extending `.github/workflows/pre-release-readiness.yml` (or an equivalent
-formal cross-platform/security validation) to cover the v0.8 viewer/PWA
-surface is explicit next-stage work (v0.8 pre-release readiness), not
-performed as part of implementation or this documentation/completeness
-audit. Release preparation (version bump to `0.8.0`, package hygiene) and
-publication remain later, separate, explicit stages after that.
+Formal Windows/Linux/macOS cross-platform validation - the same exact
+hash-verified candidate tarball on every platform - and a formal security
+audit (which found and fixed one real finding: a symlinked-media
+evidence-root escape in the viewer's media route) both passed before this
+release - see
+`docs/reports/v0.8-prerelease-readiness-cross-platform-security-code-rot.md`
+for the complete readiness report.

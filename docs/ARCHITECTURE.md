@@ -346,16 +346,16 @@ lab code in this repository - those remain separate sibling-repository
 responsibilities per the Milestone 6 ownership split in
 `docs/PROJECT_MILESTONES.md`.
 
-## v0.7 (released as `0.7.0`), v0.8 (implemented in current repository, not yet released), and planned v0.9–v0.10 reference-evidence architecture constraints
+## v0.7 (released as `0.7.0`), v0.8 (released as `0.8.0`), and planned v0.9–v0.10 reference-evidence architecture constraints
 
 The external visual-reference capability (v0.7) is released as package
 version `0.7.0` - see "v0.7 Prompt 1" through "v0.7 Prompt 8" below for the
 actual architecture, and `docs/CURRENT_STATE.md` for release state. It
 extends the existing v0.1-v0.6 evidence architecture rather than becoming a
 UI-only feature or a parallel visual-comparison stack. v0.8 (interactive
-viewer), v0.9 (structured visual annotation), and v0.10 (full graphical
-human-LLM workflow) remain future and unimplemented; the constraints below
-apply to that still-future work.
+viewer) is released as package version `0.8.0`. v0.9 (structured visual
+annotation) and v0.10 (full graphical human-LLM workflow) remain future and
+unimplemented; the constraints below apply to that still-future work.
 
 The evidence domains remain distinct:
 
@@ -413,9 +413,9 @@ checked before reference fidelity is interpreted through the released v0.7
 compatibility path, which reuses v0.4 comparability conventions. If reference
 and candidate do not represent compatible intended states, the result is
 explicitly incompatible/incomparable rather than a fabricated visual difference
-set. v0.8, implemented in the current repository (not yet released), displays
-this result exactly as required rather than redefining the state model - see
-"v0.8 Batch 5" below.
+set. v0.8, released as package version `0.8.0`, displays this result exactly
+as required rather than redefining the state model - see "v0.8 Batch 5"
+below.
 
 The constraints above were carried out by the actual v0.7 implementation
 described in "v0.7 Prompt 1" through "v0.7 Prompt 8" below: explicit
