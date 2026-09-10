@@ -1,6 +1,6 @@
 {
   "name": "my-frontend-observer",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Local-first browser runtime evidence producer",
   "type": "module",
   "repository": {
@@ -24,21 +24,28 @@
   },
   "scripts": {
     "prebuild": "node scripts/clean.mjs",
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.json && vite build --config viewer/vite.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p viewer/tsconfig.json --noEmit",
     "lint": "eslint .",
     "test": "vitest run --passWithNoTests",
     "test:browser": "vitest run --config vitest.browser.config.ts --passWithNoTests",
-    "test:security": "vitest run tests/unit/policy.test.ts && vitest run --config vitest.browser.config.ts tests/browser/chromiumAdapter.test.ts",
+    "test:security": "vitest run tests/unit/policy.test.ts tests/unit/viewerServer.test.ts tests/unit/viewerEvidenceServer.test.ts tests/unit/referenceViewerServer.test.ts tests/unit/contextViewerServer.test.ts tests/unit/paths.test.ts tests/unit/evidenceDiscovery.test.ts && vitest run --config vitest.browser.config.ts tests/browser/chromiumAdapter.test.ts tests/browser/pwaHardening.test.ts",
     "check:docs": "node scripts/check-docs.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@types/node": "24.13.3",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "@vitejs/plugin-react": "6.1.1",
     "eslint": "10.8.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "typescript": "6.0.3",
     "typescript-eslint": "8.66.0",
-    "vitest": "4.1.10"
+    "vite": "8.2.2",
+    "vite-plugin-pwa": "1.3.0",
+    "vitest": "4.1.11"
   },
   "dependencies": {
     "playwright": "^1.62.1"

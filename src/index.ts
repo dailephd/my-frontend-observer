@@ -525,6 +525,11 @@ export { evaluateReferenceCandidateFidelityFromArtifactRoots } from './applicati
 
 export { buildReferenceCorrectionReviewIdentity, buildReferenceCorrectionAttemptIdentity } from './domain/referenceCorrectionIdentity.js';
 
+export { DEFAULT_VIEWER_PORT, VIEWER_HOST, isValidViewerPort } from './viewerServer/port.js';
+export type { StartViewerOptions, StartViewerResult } from './viewerServer/viewerService.js';
+export { startViewer, defaultViewerAssetsRoot } from './viewerServer/viewerService.js';
+export { VIEWER_PROTOCOL_VERSION } from './viewerServer/httpServer.js';
+
 export type {
   PrepareReferenceCorrectionInput,
   PrepareReferenceCorrectionStatus,

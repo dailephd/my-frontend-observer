@@ -214,3 +214,35 @@ alongside every pre-existing v0.1-v0.6 packed assertion, still passing
 unchanged on all three platforms - see
 `docs/reports/v0.7-pre-release-readiness.md` for the complete readiness
 report.
+
+## v0.8 packaging implications (released as `0.8.0`; formal cross-platform readiness passed)
+
+v0.8 (Interactive Local Observation Viewer) is released as package version
+`0.8.0` - see `docs/CURRENT_STATE.md`. `.github/workflows/pre-release-readiness.yml`'s
+matrix now covers it: alongside the pre-existing packed-observation smoke,
+each platform runner also installs the exact candidate tarball and runs
+`scripts/ci/runPackedViewerSmoke.mjs`, proving in real Chromium that the
+installed `view` command binds to loopback only, indexes real evidence,
+renders the SVG target overlay and a reference view, enforces its read-only
+API, rejects path traversal, registers its service worker, never caches
+`/api/` responses as authoritative, and never presents stale evidence once
+the server is stopped.
+
+`npm run build` builds both the Node/CLI output (`tsc -p tsconfig.json`) and
+the browser-side viewer application plus its PWA assets (`vite build
+--config viewer/vite.config.ts` into `dist/viewer` - service worker,
+manifest, precached app shell); the existing `files` package allowlist
+(`dist`, `README.md`, `CHANGELOG.md`, `docs`) already includes
+`dist/viewer`, so no separate publish boundary was created for the viewer;
+the existing CLI/library commands (`observe` through
+`evaluate-reference-fidelity`) remain packaged and unchanged; and package
+version stays independent of every schema version, as for every prior
+release.
+
+Formal Windows/Linux/macOS cross-platform validation - the same exact
+hash-verified candidate tarball on every platform - and a formal security
+audit (which found and fixed one real finding: a symlinked-media
+evidence-root escape in the viewer's media route) both passed before this
+release - see
+`docs/reports/v0.8-prerelease-readiness-cross-platform-security-code-rot.md`
+for the complete readiness report.

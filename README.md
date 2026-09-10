@@ -6,10 +6,11 @@ in [docs/PROJECT_DESCRIPTION.md](docs/PROJECT_DESCRIPTION.md).
 
 ## Current status
 
-`v0.7.0`, End-to-End Coding-Agent Frontend Change Review, is the current
-published release. It builds on `v0.6.0`, Bounded Agent Context and Native
-my-dev-kit Ecosystem Integration, and `v0.5.0`, Executable Frontend
-Contracts and Explicit Change Scope: `my-frontend-observer observe` launches a real,
+`v0.8.0`, Interactive Local Observation Viewer, is the current published
+release. It builds on `v0.7.0`, End-to-End Coding-Agent Frontend Change
+Review, `v0.6.0`, Bounded Agent Context and Native my-dev-kit Ecosystem
+Integration, and `v0.5.0`, Executable Frontend Contracts and Explicit Change
+Scope: `my-frontend-observer observe` launches a real,
 sandboxed Chromium browser, enforces a loopback-only safety policy, captures
 a viewport screenshot plus bounded page/target evidence, and persists it as
 one portable `manifest.json` + `screenshot.png` artifact (observation schema
@@ -170,6 +171,36 @@ this package) makes the actual source change between review attempts. See
 and [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md) for the full
 implementation record.
 
+### Interactive local viewer (v0.8.0)
+
+`my-frontend-observer view --root <evidence-root> [--bindings-file <json-file>] [--context-file <json-file>] [--port <n>] [--no-open]`
+starts a loopback-only (`127.0.0.1`) Node server that serves a React +
+TypeScript + Vite viewer application - usable in a normal browser or as an
+installed Progressive Web App - over the same evidence root used by every
+other command above. It never edits target source, never mutates any
+evidence artifact, and never runs `@dailephd/my-dev-kit`:
+
+```powershell
+my-frontend-observer view --root observations --port 4319 --no-open
+```
+
+(From a source checkout, use `node dist/cli.js view ...` instead.)
+
+The viewer shows observation screenshots and SVG target overlays,
+before/after comparisons and contract/change-scope results, approved
+external references beside candidate observations with explicit binding
+cross-selection and on-demand fidelity evaluation, and - when
+`--context-file` supplies one - a read-only inspection of a bounded agent
+context's adequacy, omissions/truncations, and runtime/static correlation.
+Both `--bindings-file` and `--context-file` are explicit, session-only
+input: read once at startup, held only in server memory, never persisted,
+and never exposed as a filesystem path to the browser. See
+[docs/COMMANDS.md](docs/COMMANDS.md#view) for the full flag reference and
+[docs/WORKFLOWS.md](docs/WORKFLOWS.md) for the viewer workflow.
+
+See [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md) for the exact current
+implementation and release state.
+
 Validation:
 
 ```powershell
@@ -188,8 +219,8 @@ Planning authorities:
   intent and responsibility boundaries.
 - [Project Milestones](docs/PROJECT_MILESTONES.md): complete ordered capability
   design and cross-milestone rules.
-- [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.7 are
-  released; v0.8+ remain future.
+- [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.8 are
+  released; v0.9+ remain future.
 - [Current State](docs/CURRENT_STATE.md): retained scaffold and release state.
 
 No sibling ecosystem repository is a runtime dependency of the retained

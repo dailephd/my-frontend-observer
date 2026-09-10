@@ -711,6 +711,180 @@ target that is not in the `imported` state, an unresolvable `--supersedes`
 target, or a persistence failure, prints structured diagnostics to stderr
 and exits nonzero.
 
+## `view`
+
+**Current status: released as package version `0.8.0`, following formal
+cross-platform and security readiness validation.** Starts one
+loopback-only Node viewer server and serves the same React + TypeScript +
+Vite application to a normal browser or an installed Progressive Web App.
+`--root` is used as a bounded, read-only evidence-discovery root: the server
+exposes a metadata-first `GET /api/index` of recognized Observer evidence
+beneath it, an on-demand `GET /api/artifacts/<handle>` for one selected
+supported artifact, an on-demand `GET /api/media/<handle>/<role>` for its
+owned/referenced media, an on-demand `GET /api/observations/<handle>/relationships`
+(existing canonical `deriveLayoutRelationships(...)`), `GET /api/comparisons/<handle>/view`
+and `GET /api/evaluations/<handle>/view` (exact-identity linked-evidence
+resolution), `GET /api/references/<handle>/view` (region-relationship graph
+and requirement adequacy, plus — new this batch — `coordinateMapping`, the
+exact result of the existing canonical `deriveCoordinateScale(reference)`,
+used only to gate view-lock eligibility), and
+`GET /api/references/<handle>/candidate/<handle>/view` (page/state-level
+compatibility plus optional matching-evaluation handles). New this batch:
+`GET /api/references/<handle>/candidate/<handle>/bindings` validates the
+session's explicit binding declarations against the selected reference and
+calls the existing canonical `evaluateReferenceRuntimeBindings` exactly
+once, and `GET /api/references/<handle>/candidate/<handle>/fidelity` is the
+explicit on-demand trigger that calls the existing canonical
+`evaluateReferenceCandidateFidelity` exactly once — never a second copy of a
+linked artifact's own payload, never a recomputed
+`compareObservations`/`evaluateFrontendContract`/
+`deriveReferenceRegionRelationships`/`deriveReferenceRequirementAdequacy`/
+`evaluateReferenceCandidateCompatibility` result, and both new routes are
+plain `GET` (deterministic, ephemeral, never persisted). New this batch:
+`GET /api/context` returns the viewer session's bounded-agent-context state
+established at startup by an optional `--context-file` (below) — `none` (no
+file supplied), `unsupported-version` (a recognized `artifactKind` with a
+`schemaVersion` this viewer does not currently support — shown honestly,
+never coerced), or the validated current context plus `sourceResolution`,
+the exact-identity resolution of its `sources` against the current evidence
+root (reusing/extending the Batch 4 `linkedEvidence.ts` resolver pattern) —
+see `docs/ARCHITECTURE.md` "v0.8 Batch 2" through "v0.8 Batch 7" for the
+exact discovery bounds, classification model, coordinate mapping, and
+handle/media/linked-evidence-resolution contracts.
+
+Selecting a supported `observation` record shows the Batch 3 screenshot/SVG
+workspace. Selecting a supported `comparison` record shows the Batch 4
+before/after side-by-side workspace. Selecting a supported
+`contract-evaluation` record shows the Batch 4 clause-result/overall-verdict
+workspace. Selecting a supported `external-reference-imported`/
+`external-reference-approved` record shows the reference image with region
+overlays in the reference image's own pixel coordinate domain, selected
+requirements/tolerances/adequacy/applicability/lifecycle/provenance/
+supersession, and, once a candidate observation is **explicitly** selected
+(never auto-selected), that candidate side by side using the reused Batch
+3/4 runtime screenshot/SVG machinery plus the real canonical compatibility
+result. New this batch: both panes support independent, bounded (`1x`–`8x`)
+zoom and pointer-drag pan (Fit/Reset controls included) that never rewrites
+any evidence coordinate — only when explicit binding declarations were
+supplied (`--bindings-file`, below) and the selected reference/candidate
+resolve a real canonical `bound` result does selecting a reference region
+cross-highlight its exact declared runtime target (and selecting a runtime
+target cross-highlight every region that names it) — `ambiguous`/
+`unavailable` results and undeclared regions/targets never cross-select,
+even when their names happen to match. A "Lock view" control synchronizes
+both panes' zoom/pan in source-space (via the exact `coordinateMapping`
+scale factor) but is enabled only when a candidate is selected,
+compatibility is not `incomparable`, and `coordinateMapping.ok` is `true` —
+otherwise it stays disabled with an actionable reason, and any change to
+that eligibility (including switching reference/candidate) turns it off
+immediately. An explicit "Evaluate Fidelity" action calls the fidelity
+endpoint on demand (never automatically) and displays the canonical
+`not-evaluated`/`pass`/`fail` state, `blockedBy`, and every requirement
+result's status/numeric-or-relationship fields with correct unit labels
+(reference-image pixels vs. raw candidate CSS pixels) exactly as returned —
+alongside, never merged into, any selected existing contract-evaluation's
+own `overallVerdict`. A dedicated "Bounded context" mode (toggled from the
+viewer header, alongside the normal "Evidence" mode) shows: context
+identity/profile/adequacy/reason codes; every bounded runtime target's
+included fields (absent fields read "not included in this bounded context",
+never a fabricated falsy value); source references with their exact
+resolution status and, for each exactly-resolved source, one-click
+navigation back to its existing Batch 3/4/5 viewer surface plus a "View raw
+structured evidence" panel reusing the existing `GET /api/artifacts/<handle>`
+route unchanged; omissions/truncations with required loss visually
+distinguished from optional loss; runtime/static correlation — `correlated`
+(its one candidate, labeled "Correlated candidate", never "owner"),
+`ambiguous` (every supplied candidate, none visually promoted), or
+`unavailable` (zero fabricated candidates) — exactly as the artifact states,
+or "Static correlation not included in this context" when the `correlations`
+field itself is absent (never reported as `unavailable`); and the bounded
+reference-fidelity projection (`mismatches`/`protectedContext`/`blockedBy`)
+alongside — never merged into — a live, separately-triggered Batch 6
+on-demand fidelity evaluation for the same reference/candidate, when both
+are available. This mode never calls `projectBoundedAgentContext`,
+`deriveRuntimeStaticCorrelations`, or `attachRuntimeStaticCorrelations` —
+only the exact context the session was started with is ever displayed.
+Every other evidence family still shows the bounded metadata/raw-payload
+view established in Batch 2. Every route remains strictly read-only: no
+artifact is ever created, modified, or interpreted beyond its existing
+canonical reader/validator; no binding, fidelity, or bounded-context
+artifact is ever persisted; bounded agent context remains a programmatic-
+only Observer contract — this command adds no way to generate, save, or
+write one; and no batch in this lineage recomputes an "overall" verdict
+spanning contract and fidelity — they remain two independent,
+separately-displayed evidence dimensions.
+
+```text
+my-frontend-observer view --root <evidence-root> [--bindings-file <json-file>] [--context-file <json-file>] [options]
+```
+
+Required:
+
+- `--root <path>` — local evidence-root directory the viewer session
+  represents. Validated operationally (must exist and be a directory); this
+  command never reads or interprets any Observer artifacts under it beyond
+  the bounded discovery/classification the routes above describe.
+
+Options:
+
+- `--bindings-file <json-file>` — local JSON file of the form
+  `{ "bindings": [ { "referenceRegion": "...", "runtimeTarget": "..." } ] }`
+  — the exact same operational wrapper format, and the exact same shared
+  parser, as `evaluate-reference-fidelity --bindings-file`. Read once at
+  startup; unreadable/invalid-JSON/wrong-wrapper-shape fails startup
+  clearly (no server is started). Reference-specific validity (region
+  existence) is checked only once a reference is actually selected in the
+  viewer, never at startup. The declarations become session-only viewer
+  input: never persisted, never written into any Observer artifact, and the
+  file's own path is never exposed to the browser. Omit to run with no
+  binding declarations — the viewer remains fully usable; reference/runtime
+  cross-selection simply stays disabled and fidelity may still be
+  explicitly evaluated with an empty declaration collection.
+- `--context-file <json-file>` — local JSON file containing exactly one
+  `BoundedAgentContextArtifact` value directly (no wrapper object). Read
+  once at startup and validated through the existing canonical
+  `isValidBoundedAgentContextArtifact` — never a second validator. Explicit,
+  session-only viewer input: held only in server memory, never persisted,
+  never written into any Observer artifact, and the file's own path is
+  never exposed to the browser. Bounded agent context remains
+  programmatic-only as an Observer-produced contract — this command does
+  not add a way to generate, save, or write one; the viewer never rebuilds
+  it (`projectBoundedAgentContext` is never called at runtime) and never
+  derives or re-derives runtime/static correlation
+  (`deriveRuntimeStaticCorrelations`/`attachRuntimeStaticCorrelations` are
+  never called at runtime) — it only displays the exact context it was
+  given. A recognized `artifactKind` with a `schemaVersion` other than the
+  currently supported one (`1.0.0`) starts the viewer showing an honest
+  "unsupported version" context state rather than failing. An unreadable
+  file, invalid JSON, a non-object root, the wrong `artifactKind`, or a
+  structurally invalid current-schema artifact fails startup clearly (no
+  server is started). Omit to run with no bounded context supplied — the
+  viewer remains fully usable; the "Bounded context" mode reports that none
+  was supplied. May be freely combined with `--bindings-file`.
+- `--port <n>` — TCP port to bind, in `[0, 65535]`. Defaults to `4319`
+  (chosen after checking that no fixture or test in this repository binds a
+  fixed port — see `tests/fixtures/server.ts`, which always uses `0`/
+  OS-assigned). An explicit alternate port is a different web origin than
+  the default; an installed PWA is not portable across origins. If the
+  requested port is already in use, the command fails with an actionable
+  diagnostic — it never silently falls back to a different port.
+- `--no-open` — do not attempt to open the system default browser after the
+  server starts. Auto-open is a best-effort convenience only: its failure is
+  never fatal and never affects server startup success.
+- `--help` — show `view` usage.
+
+The server binds only to `127.0.0.1` (never `0.0.0.0`), serves only the
+built viewer application assets plus the bounded, read-only `/api/*`
+endpoints described above, and never exposes the supplied evidence root as a
+generic static directory or arbitrary filesystem path. It accepts no write
+methods and mutates nothing. On success,
+prints the viewer URL and keeps running (serving the viewer) until
+interrupted. On invalid syntax, a missing/non-directory `--root`, an
+invalid `--port`, an invalid `--bindings-file`, an invalid `--context-file`
+(other than a recognized-kind future `schemaVersion`, which starts
+normally), or a port already in use, prints structured diagnostics to
+stderr and exits nonzero without starting a server.
+
 ## Foundation commands
 
 - `npm install` — install dependencies (includes the `playwright` runtime
@@ -730,8 +904,14 @@ and exits nonzero.
   safety/navigation failure) — a discoverable entry point for security
   review tooling; it is a subset of, not a replacement for, `npm test` and
   `npm run test:browser`.
-- `npm run build` — clean and compile `src/` (including `src/cli.ts`) to
-  `dist/`.
+- `npm run build` — clean, then compile `src/` (including `src/cli.ts`) to
+  `dist/`, then build the viewer web app (`viewer/`) with Vite into
+  `dist/viewer/` (v0.8 Batch 1). Both outputs ship inside the existing
+  `dist` package allowlist — there is no second npm package.
+- `npm run typecheck` also type-checks the browser-side viewer project
+  (`viewer/tsconfig.json`) in addition to `tsconfig.json`, since the viewer's
+  DOM/JSX-targeting TypeScript config is intentionally separate from the
+  Node-only `src/` compilation.
 - `npm run check:docs` — validate canonical documents and roadmap structure.
 - `npm pack --dry-run` — inspect the public package's tarball inventory
   before publishing. The real tarball has been installed and exercised in a

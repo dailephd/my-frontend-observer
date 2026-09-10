@@ -21,14 +21,16 @@ npm run check:docs
 npm pack --dry-run
 ```
 
-`npm test` runs the fast unit suite only (`tests/unit/`, currently 627
-passing tests across 32 files, including the v0.6 bounded-agent-context
-projection/correlation coverage). `npm run test:browser` runs the
-real-Chromium integration suite (`tests/browser/`, currently 120 passing
-tests) against deterministic
-local fixtures under `tests/fixtures/` and requires the Chromium binary
-above to be installed first; it is kept out of `npm test` because it
-launches a real browser and is slower.
+`npm test` runs the fast unit suite only (`tests/unit/`; as of v0.8 Batch 8,
+1156 passing tests across 63 files, including the v0.6 bounded-agent-context
+projection/correlation and v0.8 viewer-server coverage). `npm run
+test:browser` runs the real-Chromium integration suite (`tests/browser/`; as
+of v0.8 Batch 8, 178 passing tests across 19 files, including the v0.8
+viewer/PWA real-browser proof) against deterministic local fixtures under
+`tests/fixtures/` and requires the Chromium binary above to be installed
+first; it is kept out of `npm test` because it launches a real browser and
+is slower. Exact counts drift as the suite grows - run the commands above
+for the current numbers rather than trusting this document.
 
 ROADMAP v0.1 and Project Milestone 1 require browser-level validation once the
 observation capability is planned and implemented. Static checks must not later
@@ -162,6 +164,25 @@ it locally after `npm run build` (Chromium must already be installed):
 ```powershell
 node scripts/dev/builtCliFrontendContractsBrowserSmoke.mjs
 ```
+
+Since v0.8 Batch 1, `npm run build` also builds the browser-side viewer app
+(`viewer/`) with Vite into `dist/viewer` (see `docs/ARCHITECTURE.md` "v0.8
+Batch 1"). `npm run typecheck` additionally type-checks `viewer/tsconfig.json`
+alongside the existing `tsconfig.json`. To smoke-test the built viewer
+locally after `npm run build`:
+
+```powershell
+node dist/cli.js view --root <evidence-root> --no-open
+```
+
+optionally adding `--bindings-file <json-file>` and/or `--context-file
+<json-file>` (see `docs/COMMANDS.md#view` for their exact shapes), then open
+the printed `http://127.0.0.1:4319` URL in a browser (or stop with Ctrl+C).
+This starts a real, loopback-only server serving the actual built PWA. As of
+v0.8 (all eight implementation batches), it reads `--root` only for bounded,
+read-only evidence discovery through the existing canonical
+readers/classifiers - it never writes to `--root` or modifies any artifact
+under it.
 
 Unlike `scripts/ci/runPackedObservationSmoke.mjs`, none of these five dev
 smokes is wired into any CI workflow or is a release gate - they are

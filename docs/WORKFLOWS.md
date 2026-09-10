@@ -476,16 +476,76 @@ the proof - only its disposable, repository-local copy is ever edited. See
 `docs/CONTRACTS.md` "v0.7 Prompt 8 controlled end-to-end external-reference
 coding-agent correction workflow" for the full contract.
 
-## Future workflows (v0.8–v0.10)
+## Current interactive viewer workflow (v0.8, released as `0.8.0`)
 
 v0.7 (text/config-driven coding-agent change review, the external
 visual-reference evidence foundation, structured reference-vs-candidate
 fidelity evaluation, and the end-to-end correction workflow) is released as
 package version `0.7.0` - see "Current external-reference foundation
 workflow" and "Current reference correction workflow" above, and
-`docs/CURRENT_STATE.md` for release state. The still-future sequence on top
-of it preserves the current engines and lets later graphical interfaces
-consume rather than invent the reference model:
+`docs/CURRENT_STATE.md` for release state. v0.8 adds an interactive local
+viewer over that same evidence, released as package version `0.8.0`:
+
+```text
+my-frontend-observer view --root <evidence-root>
+  [--bindings-file <json-file>] [--context-file <json-file>]
+→ one loopback-only (127.0.0.1) Node server, default port 4319
+→ metadata-first evidence discovery (GET /api/index)
+→ canonical artifact readers, on-demand (full artifact/media fetched only
+  once explicitly selected)
+→ viewer modes:
+  observation (screenshot + SVG target overlays, geometry/semantics/
+    visibility/overflow/scroll/relationships)
+  comparison/contracts (before/after side-by-side, clause results, overall
+    verdict)
+  reference/candidate (reference image + region overlays, explicit
+    candidate selection, compatibility/adequacy/applicability)
+  bounded context (only when --context-file was supplied)
+→ served to a normal browser or an installed Progressive Web App
+```
+
+Where `--bindings-file` is supplied:
+
+```text
+--bindings-file { "bindings": [{ "referenceRegion", "runtimeTarget" }] }
+→ explicit binding evaluation (evaluateReferenceRuntimeBindings, the same
+  canonical function evaluate-reference-fidelity uses)
+→ binding-driven cross-selection (selecting a bound reference region
+  highlights every runtime target it names; selecting a bound runtime
+  target highlights every reference region that names it)
+→ on-demand fidelity evaluation ("Evaluate Fidelity" action, never
+  automatic), shown independently alongside any selected contract
+  evaluation - neither overrides the other
+```
+
+Where `--context-file` is supplied:
+
+```text
+--context-file <one BoundedAgentContextArtifact value, no wrapper>
+→ canonical bounded-context inspection: identity, adequacy, omissions/
+  truncations (required loss visually distinct from optional loss),
+  runtime/static correlation (correlated/ambiguous/unavailable)
+→ provenance: exact-identity resolution of the context's source references
+  against the current evidence root
+→ safe navigation to the raw structured evidence behind a resolved source
+```
+
+The viewer is optional: every CLI/programmatic workflow above remains
+independently functional without it. The viewer never modifies target
+source or any Observer evidence artifact; never runs
+`@dailephd/my-dev-kit`; never rebuilds a bounded context
+(`projectBoundedAgentContext` is not called at runtime) or its correlation
+(`deriveRuntimeStaticCorrelations`/`attachRuntimeStaticCorrelations` are not
+called at runtime) - it only displays the exact context and bindings it was
+started with. See `docs/COMMANDS.md#view` for the full flag reference and
+`docs/ARCHITECTURE.md` "v0.8 Batch 1" through "v0.8 Batch 8" for the
+implementation record.
+
+## Future workflows (v0.9–v0.10)
+
+The still-future sequence on top of the v0.7/v0.8 foundation above preserves
+the current engines and lets later graphical interfaces consume rather than
+invent the reference model:
 
 ```text
 stable targets and bounded runtime behavior
@@ -500,7 +560,8 @@ stable targets and bounded runtime behavior
   + external visual-reference evidence foundation
   + structured reference-vs-candidate fidelity evaluation
   + end-to-end correction workflow (released as `0.7.0` - see above)
-→ v0.8 interactive viewer with reference/candidate inspection
+→ v0.8 interactive viewer with reference/candidate inspection (released as
+  package version `0.8.0` - see "Current interactive viewer workflow" above)
 → v0.9 structured visual annotation on runtime screenshots and references
 → v0.10 full visual human–LLM workflow with both actual-frontend-driven and
   reference-driven entry modes
@@ -549,5 +610,8 @@ than fabricated visual failures.
 
 The v0.7 coding-agent workflow and reference foundation are released as
 part of this repository and work without the v0.8 viewer or v0.9
-annotation system. v0.8 must consume the v0.7 reference/evaluation model
-rather than create a second UI-only one.
+annotation system. v0.8, implemented in the current repository (not yet
+released), consumes the v0.7 reference/evaluation model exactly as
+required - it does not create a second UI-only one (see "Current
+interactive viewer workflow" above). v0.9 remains future and must preserve
+the same constraint when implemented.

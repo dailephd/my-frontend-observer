@@ -23,6 +23,8 @@ export const DIAGNOSTIC_CODES = [
   'invalid-reference-region',
   'invalid-reference-requirement',
   'invalid-reference-applicability',
+  'viewer-root-invalid',
+  'viewer-port-unavailable',
 ] as const;
 
 export type DiagnosticCode = (typeof DIAGNOSTIC_CODES)[number];
@@ -55,6 +57,8 @@ export const DIAGNOSTIC_SEVERITY: Record<DiagnosticCode, DiagnosticSeverity> = {
   'invalid-reference-region': 'error',
   'invalid-reference-requirement': 'error',
   'invalid-reference-applicability': 'error',
+  'viewer-root-invalid': 'error',
+  'viewer-port-unavailable': 'error',
 };
 
 export interface Diagnostic {

@@ -120,8 +120,14 @@ jobs:
         shell: bash
         run: node scripts/ci/runPackedObservationSmoke.mjs "${{ needs.candidate.outputs.tarball }}" --out smoke-summary.json
 
+      - name: Packed-viewer smoke (installed tarball only, real Chromium)
+        shell: bash
+        run: node scripts/ci/runPackedViewerSmoke.mjs "${{ needs.candidate.outputs.tarball }}" --out viewer-smoke-summary.json
+
       - uses: actions/upload-artifact@v4
         with:
           name: smoke-summary-${{ matrix.os }}
-          path: smoke-summary.json
+          path: |
+            smoke-summary.json
+            viewer-smoke-summary.json
           if-no-files-found: error

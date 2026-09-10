@@ -136,20 +136,81 @@ external implementation actor (a human or a coding agent), never this
 package's own product code. No remote AI/model-provider dependency was
 introduced anywhere in v0.7.
 
+## Interactive local viewer (v0.8, released as `0.8.0`)
+
+`my-frontend-observer view` (`src/viewerServer/`, `viewer/`) is implemented,
+tested, and formally security-reviewed. The properties below were verified
+locally/manually during implementation (Batches 1-8) and then re-verified
+through the formal pre-release security audit - see
+`docs/reports/v0.8-prerelease-readiness-cross-platform-security-code-rot.md`,
+which also found and fixed one real finding: a media filename that is
+itself a symlink/junction pointing outside the evidence root could
+previously have had its linked-to file's content served. `checkExists()`
+(`src/viewerServer/evidence/mediaResolver.ts`) now uses `lstat()` and
+rejects any non-regular-file entry, closing that escape.
+
+- **Loopback-only, fixed local origin**: the Node viewer server binds only
+  to `127.0.0.1` (never `0.0.0.0`), never a configurable remote host.
+  `--port` selects the TCP port only (default `4319`); an explicit alternate
+  port fails startup if already in use rather than silently falling back.
+- **Explicit evidence root, path containment, traversal rejection**: `--root`
+  is the only filesystem root the server ever reads from. Every artifact/
+  media route resolves a caller-supplied handle against that root through
+  the existing canonical discovery/classification path and rejects any
+  handle that would resolve outside it - the server never exposes `--root`
+  as a generic static directory or arbitrary filesystem path, and never
+  interprets an `EvidenceReference` as a filesystem path to the browser.
+- **No arbitrary filesystem browsing, no static-candidate path
+  interpretation**: the viewer offers no directory-listing or free-path
+  endpoint; every route addresses one specific, already-discovered handle.
+- **Read-only API**: every `/api/*` route rejects non-`GET`/`HEAD` methods
+  with `405` at a single top-of-handler check
+  (`src/viewerServer/httpServer.ts`), covering every route uniformly,
+  including ones added in later batches.
+- **No target-source or evidence mutation**: the viewer server has no
+  filesystem-write call anywhere in its own code path; it never edits
+  target source and never modifies, supersedes, or persists a new instance
+  of any existing Observer evidence artifact.
+- **Binding/context files are explicit local session input, not persisted
+  evidence**: `--bindings-file`/`--context-file` are read once at startup,
+  validated through the existing canonical validators, held only in server
+  memory, and never written into any Observer artifact or exposed as a
+  filesystem path to the browser. The viewer never runs
+  `@dailephd/my-dev-kit` and never rebuilds a bounded context or its
+  correlation from these files - it only displays what it was given.
+- **PWA shell cache scope**: the service worker precaches only the built
+  application shell (HTML/JS/CSS/icons/manifest); `navigateFallbackDenylist`
+  excludes every `/api/` route from the precache, verified both statically
+  (built `sw.js`) and live (real Chromium: zero Cache Storage entries under
+  any `/api/` pathname after normal use - see
+  `docs/reports/v0.8-integrated-viewer-acceptance-batch8.md`).
+- **Server-down stale-evidence protection**: proven in real Chromium - after
+  the server is stopped and the page reloaded, the app shell may still
+  render from the precache, but the evidence-dependent surface shows an
+  explicit unavailable state, never previously-fetched evidence presented
+  as current.
+
 ## Not yet addressed
 
 Certificate-failure-specific handling, permission-prompt-specific handling
 (Chromium's default deny-all applies; no permission is ever explicitly
 granted), and any non-loopback/remote browsing mode remain unimplemented and
-out of scope. `my-frontend-observer@0.7.0` is published to npm, and a
+out of scope. `my-frontend-observer@0.8.0` is published to npm, and a
 pre-release readiness CI workflow (Windows/Linux/macOS packed-candidate
-validation) already exists (see `docs/CI_CD.md`); these are no longer future
-decisions. The v0.7 external-reference/correction-workflow security
-properties above are released as part of `0.7.0`, following a completed
-cross-platform pre-release security validation stage (see
-`docs/reports/v0.7-pre-release-readiness.md`). Viewer and
-annotation (v0.8/v0.9) remain future, unimplemented concerns with their own
-security review still to come. Those facts do not expand the security scope
-above: remote browsing, certificate handling, permission-prompt handling,
-and future viewer/annotation-specific file handling remain separate,
-unimplemented concerns.
+validation, now covering the v0.8 viewer alongside every earlier version's
+packed behavior) exists (see `docs/CI_CD.md`). The v0.7 external-reference/
+correction-workflow security properties above are released as part of
+`0.7.0`, following a completed cross-platform pre-release security
+validation stage (see `docs/reports/v0.7-pre-release-readiness.md`). The
+v0.8 interactive viewer's security boundary described above is released as
+part of `0.8.0`, following a completed formal pre-release cross-platform
+security validation stage (see
+`docs/reports/v0.8-prerelease-readiness-cross-platform-security-code-rot.md`).
+Symlink/junction filesystem-escape handling for the viewer's raw-evidence
+routes is now exercised by a dedicated regression test
+(`tests/unit/viewerEvidenceServer.test.ts`), which caught and led to the fix
+described above. Annotation (v0.9) remains a future, unimplemented concern
+with its own security review still to come. None of this expands the
+security scope above: remote browsing, certificate handling,
+permission-prompt handling, and future annotation-specific file handling
+remain separate, unimplemented concerns.

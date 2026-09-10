@@ -187,14 +187,13 @@ async function fullPipelineFixture(dir: string) {
 // --- TST-401..404: help surface -----------------------------------------------
 
 describe('help surface (TST-401..404)', () => {
-  it('TST-401: top-level help lists all five commands, no future ones', async () => {
+  it('TST-401: top-level help lists all commands through v0.8 Batch 1 (view), no v0.9+ ones', async () => {
     const out = capture();
     const code = await runCli(['--help'], out.io);
     expect(code).toBe(0);
-    for (const name of ['observe', 'compare', 'approve-baseline', 'save-change-contract', 'evaluate-contract']) {
+    for (const name of ['observe', 'compare', 'approve-baseline', 'save-change-contract', 'evaluate-contract', 'view']) {
       expect(out.stdout()).toContain(name);
     }
-    expect(out.stdout()).not.toContain('viewer');
     expect(out.stdout()).not.toContain('annotation');
   });
 

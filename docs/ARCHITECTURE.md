@@ -346,16 +346,16 @@ lab code in this repository - those remain separate sibling-repository
 responsibilities per the Milestone 6 ownership split in
 `docs/PROJECT_MILESTONES.md`.
 
-## v0.7 (released as `0.7.0`) and planned v0.8–v0.10 reference-evidence architecture constraints
+## v0.7 (released as `0.7.0`), v0.8 (released as `0.8.0`), and planned v0.9–v0.10 reference-evidence architecture constraints
 
 The external visual-reference capability (v0.7) is released as package
 version `0.7.0` - see "v0.7 Prompt 1" through "v0.7 Prompt 8" below for the
 actual architecture, and `docs/CURRENT_STATE.md` for release state. It
 extends the existing v0.1-v0.6 evidence architecture rather than becoming a
 UI-only feature or a parallel visual-comparison stack. v0.8 (interactive
-viewer), v0.9 (structured visual annotation), and v0.10 (full graphical
-human-LLM workflow) remain future and unimplemented; the constraints below
-apply to that still-future work.
+viewer) is released as package version `0.8.0`. v0.9 (structured visual
+annotation) and v0.10 (full graphical human-LLM workflow) remain future and
+unimplemented; the constraints below apply to that still-future work.
 
 The evidence domains remain distinct:
 
@@ -413,20 +413,648 @@ checked before reference fidelity is interpreted through the released v0.7
 compatibility path, which reuses v0.4 comparability conventions. If reference
 and candidate do not represent compatible intended states, the result is
 explicitly incompatible/incomparable rather than a fabricated visual difference
-set. v0.8 must display this result rather than redefine the state model.
+set. v0.8, released as package version `0.8.0`, displays this result exactly
+as required rather than redefining the state model - see "v0.8 Batch 5"
+below.
 
 The constraints above were carried out by the actual v0.7 implementation
 described in "v0.7 Prompt 1" through "v0.7 Prompt 8" below: explicit
 identity/provenance, applicability/compatibility, region-to-target bindings,
 requested/expected-dependent/protected/preserved reuse, and the non-mutating
-Chromium/correlation boundaries all remain as constrained here. They continue
-to apply unchanged to the still-future v0.8-v0.10 work.
+Chromium/correlation boundaries all remain as constrained here. v0.8 (see
+"v0.8 Batch 1" through "v0.8 Batch 8" below) applied them unchanged; they
+continue to apply unchanged to the still-future v0.9-v0.10 work.
 
 The exact public artifact names, schema versions, persistence layout, supported
 image formats, coordinate model, requirement/tolerance primitives, and fidelity
 behavior were frozen by the actual v0.7 implementation below, not by earlier
 planning language. Style/asset-similarity mechanisms remain future unless
 separately implemented.
+
+## v0.8 Batch 1 (Viewer runtime and PWA foundation) — implemented
+
+Batch 1 of the frozen `docs/plans/v0.8-implementation-plan.md` establishes
+only the viewer runtime/build shell — no evidence indexing, artifact reading,
+or evidence UI. It does not implement any of the v0.7-derived reference/
+fidelity/binding display constraints above; those remain future work for
+later v0.8 batches, which must consume this runtime boundary rather than
+redefine it.
+
+```text
+my-frontend-observer view --root <evidence-root>
+        |
+        v
+  thin CLI dispatch (src/cli.ts: parseViewArgs/runViewCommand)
+        |
+        v
+  viewer application seam (src/viewerServer/viewerService.ts: startViewer)
+        |
+        v
+  Node local server, loopback-only (src/viewerServer/httpServer.ts)
+        |
+        +---------------------+----------------------+
+        |                                             |
+        v                                             v
+  built viewer assets (dist/viewer)          GET /api/status
+  (React + TypeScript + Vite PWA)            (session/root identity only)
+```
+
+- **Node server boundary** (`src/viewerServer/`): binds only to `127.0.0.1`
+  on one fixed default port (`4319`, `src/viewerServer/port.ts`); serves only
+  the built viewer assets plus the one read-only status endpoint; resolves
+  every requested path against the built assets root and fails closed on any
+  path that would resolve outside it; accepts no write HTTP methods; performs
+  no artifact reading, browser observation, or mutation. `--root` is
+  validated operationally (exists, is a directory) and exposed only as an
+  opaque status string — it is never interpreted as Observer evidence in this
+  batch.
+- **Browser application** (`viewer/`): a React + TypeScript + Vite app, built
+  independently of `src/` via `viewer/tsconfig.json` and `viewer/vite.config.ts`,
+  output to `dist/viewer` inside the existing package `dist` allowlist (no
+  second npm package). Renders an honest foundation shell only — product
+  identity, live session status via `/api/status`, and placeholder
+  navigation/workspace/details regions — never fabricated evidence.
+- **PWA**: `vite-plugin-pwa` generates a web app manifest (`standalone`
+  display, stable `start_url`/`scope`, installability icons) and a service
+  worker that precaches only the built application shell. It declares no
+  `runtimeCaching` rules, so future evidence/media/API routes remain
+  network/server-backed rather than silently served as stale cached truth
+  when the local server is unavailable (enforced by
+  `tests/unit/viewerPwaBuild.test.ts`, which asserts on the actual built
+  `sw.js`, not a hand-written approximation). An install affordance appears
+  only when the browser actually fires `beforeinstallprompt`; its absence is
+  shown honestly, never as a disabled-looking fake control.
+- **CLI**: `view --root <evidence-root> [--port <n>] [--no-open]` remains a
+  thin dispatcher — it parses syntax, delegates once to `startViewer`, prints
+  the URL/root, and optionally best-effort opens the system browser (failure
+  there is never fatal to server startup). All v0.1-v0.7 commands are
+  unchanged.
+
+This batch introduces no second observer, relationship engine, comparison
+engine, contract engine, reference model, or bounded-context builder — there
+is nothing yet for the viewer to consume beyond its own runtime identity.
+
+## v0.8 Batch 2 (Evidence indexing, canonical readers, and lazy data boundary) — implemented
+
+Batch 2 adds the safe, read-only data boundary between existing on-disk
+Observer evidence and the Batch 1 viewer runtime, entirely under
+`src/viewerServer/evidence/`. It introduces no new persisted artifact family,
+no schema migration, and no second validator — every recognized candidate is
+decided exclusively by the existing canonical reader/validator for its
+family (`src/artifacts/*Reader.ts`).
+
+```text
+GET /api/index                     bounded discovery + classification -> metadata only
+GET /api/artifacts/<handle>        one canonical-reader read, on demand -> full projection
+GET /api/media/<handle>/<role>     one resolved, contained media file, streamed on demand
+```
+
+- **Discovery** (`evidence/discovery.ts`): a bounded, deterministic walk
+  beneath `--root` that opens only files literally named `manifest.json` (the
+  one filename every current persisted family uses) — no other file is ever
+  read or classified, so arbitrary files can never become evidence merely by
+  existing under the root. Directory entries that are symlinks/junctions are
+  never followed. Bounds (`evidence/limits.ts`): traversal depth 6,
+  directories visited 2000, candidate manifests 1000, index records 500,
+  manifest read size 2,000,000 bytes — chosen after inspecting that every
+  current writer produces a shallow `<outputLocation>/<id>/manifest.json`
+  shape (see `docs/CONTRACTS.md`), not a deep tree.
+- **Classification is not validation** (`evidence/classify.ts`): peeks only
+  `artifactKind`/`schemaVersion` (plus, where the shared kind is ambiguous,
+  tries each existing reader/validator in turn — e.g. baseline vs. per-change
+  contract) to decide *which* existing canonical reader to call; the reader's
+  own structural validator remains the sole authority. Six honest, mutually
+  exclusive states: `supported`, `unsupported-version`, `invalid-structure`,
+  `unrecognized-kind`, `malformed-json`, `unreadable` — never collapsed into
+  one boolean, and never conflated with an artifact's own `completion`
+  state (passed through separately, only for the families that carry one:
+  observation and external-reference). A manifest declaring the
+  `bounded-agent-context` kind is classified `unrecognized-kind`: v0.6/v0.7
+  never added a disk writer/reader for that family (confirmed via direct
+  source inspection and `@dailephd/my-dev-kit` search), so Batch 2 does not
+  invent persistence-shaped handling for it.
+- **Viewer handles** (`evidence/handles.ts`, `evidence/pathSafety.ts`): a
+  handle is a family-prefixed, percent-encoded, root-relative directory path
+  — never a raw filesystem path accepted from the browser. Every route that
+  accepts a handle re-decodes and re-resolves it against the evidence root,
+  re-checks containment, and re-classifies that one candidate before serving
+  anything; a handle whose backing directory or manifest no longer matches
+  what was indexed fails closed as unknown, never stale.
+- **Ephemeral projection** (`evidence/projection.ts`): `EvidenceMetadataRecord`
+  (bounded, `/api/index`-shaped: handle, family, support state, logical id,
+  schema version, completion where applicable, media availability summary,
+  a handful of related ids) and `EvidenceArtifactDetail` (the already-
+  validated domain object, wrapped with `handle`/`family` — no new evidence
+  schema, no recomputation, no persistence).
+- **Media resolution** (`evidence/mediaResolver.ts`): `screenshot` (observation),
+  `image` (imported external reference), and `source-image` (approved
+  external reference) are the only three recognized roles. An approved
+  reference's image is never assumed to live in the approved artifact's own
+  directory — its `sourceReference.referenceId` is looked up against the
+  current index to find the actual owning imported artifact
+  (`evidence/index.ts#findImportedReferenceDir`), exactly matching the v0.7
+  reference-ownership contract in `docs/CONTRACTS.md`. A genuinely missing
+  screenshot/image/source artifact is reported as 404, never fabricated.
+- **PWA cache boundary preserved, not re-verified from scratch**: every new
+  route lives under `/api/`, already covered by Batch 1's
+  `denylist:[/^\/api\//]` navigation-fallback rule — no new `runtimeCaching`
+  entry was needed or added (`tests/unit/viewerPwaBuild.test.ts` asserts this
+  against the real built `sw.js`).
+- **Minimal UI** (`viewer/src/hooks/useEvidenceIndex.ts`,
+  `useArtifactDetail.ts`, `components/EvidenceList.tsx`,
+  `ArtifactPreview.tsx`): a bounded evidence list (metadata-first) plus
+  on-demand full-artifact loading on selection, with every support state
+  shown honestly. No screenshot rendering, SVG overlay, or comparison/
+  contract/reference visualization exists yet — that begins in Batch 3.
+
+## v0.8 Batch 3 (Runtime observation inspection and SVG overlays) — implemented
+
+Batch 3 makes one already-supported `ObservationArtifact` (Batch 2's data
+boundary, unchanged) genuinely understandable: a real screenshot, SVG target
+overlays in the observation's own canonical coordinate domain, target
+selection/inspection, and canonical layout-relationship display. No second
+relationship engine, no client-side evidence derivation, no new persisted
+artifact.
+
+**Coordinate audit (the load-bearing decision for this batch)**: target
+geometry (`TargetGeometry.x/y/width/height`) is captured via
+`el.getBoundingClientRect()` (`src/browser/evidenceCapture.ts`) - CSS pixels,
+relative to the current viewport's top-left, at the same live page state the
+screenshot is taken from. The screenshot itself is `page.screenshot({type:
+'png'})` (`src/browser/chromiumAdapter.ts`), Playwright's default
+(non-fullPage) mode, against a browser context created with no
+`deviceScaleFactor` override (`browser.newContext({viewport})`) - so it
+defaults to `1`, meaning every observation this repository can currently
+produce has a screenshot whose raw PNG pixel dimensions equal
+`requestConfig.viewport.width × requestConfig.viewport.height` exactly (1
+CSS pixel = 1 PNG pixel). `requestConfig.viewport` (a required, strongly-typed
+field on every valid `ObservationArtifact`, distinct from the loosely-typed
+`pageEvidence` bag) is therefore the canonical, always-present source for the
+SVG display frame.
+
+**SVG coordinate model** (`viewer/src/components/TargetOverlaySvg.tsx`): the
+`<svg>` root's `viewBox` is `0 0 {requestConfig.viewport.width}
+{requestConfig.viewport.height}` - the exact frame `getBoundingClientRect()`
+already used. The screenshot loads into a `<image>` element filling that same
+viewBox (`preserveAspectRatio="none"`, since the two frames are already
+pixel-identical). Target `<rect>` elements use `geometry.x/y/width/height`
+completely unchanged - no rounding, no `devicePixelRatio` multiplication, no
+clamping; geometry lying partly outside the viewBox is drawn at its real
+coordinates and clipped only by the SVG root's default `overflow: hidden`
+(a display-only effect, verified never to touch the underlying evidence
+value - `tests/unit/observationCoordinateMapping.test.ts`). This is robust
+even if a future capture path used a different `deviceScaleFactor`: the
+`<image>`/viewBox scaling is presentation-only browser behavior, never a
+manual pixel calculation in this codebase. `devicePixelRatio` (captured as
+`pageEvidence.devicePixelRatio`) is shown as informational observation-level
+evidence only and is never consulted for any geometry calculation.
+
+**Server additions** (`src/viewerServer/evidence/observationView.ts`, one new
+route `GET /api/observations/<handle>/relationships`): the only new
+server-side computation this batch adds is one thin, defense-in-depth-wrapped
+call to the existing canonical, pure `deriveLayoutRelationships` (`src/domain/
+relationships.ts`) - never a second relationship predicate implementation.
+Mirrors the exact handle-decode → contained-dir-resolve → re-classify
+discipline `loadArtifactByHandle`/`resolveMedia` already established in
+Batch 2; a handle for a non-`observation` family or a non-`supported`
+candidate is rejected (`409`) before derivation is even attempted. The
+existing `GET /api/artifacts/<handle>` (full `ObservationArtifact`) and
+`GET /api/media/<handle>/screenshot` (Batch 2, unchanged) remain the only
+other data sources the observation workspace uses - no new artifact
+projection endpoint was needed, since the full validated domain object
+already contains everything the target/observation inspector displays.
+
+**Client-side presentation only** (`viewer/src/observation/targetOrder.ts`,
+`viewer/src/components/{ObservationWorkspace,TargetList,TargetOverlaySvg,
+ObservationInspector,EvidenceFieldView}.tsx`): React selects, orders
+(by the observation's own authored `requestConfig.targets` order, not
+incidental object-key order), and formats already-fetched canonical fields.
+It never resolves targets, computes relationships, or derives
+visibility/overflow/scroll-owner semantics - `deriveLayoutRelationships`
+runs exclusively on the server (above). An unresolved target (`not-found`/
+`ambiguous`/`unavailable`) is selectable from the target list and shown
+honestly in the inspector, but never receives a fabricated `<rect>` -
+`orderedTargets()`'s `hasGeometry` flag is `true` only when
+`geometry.state` is `'available'` or `'partial'`.
+
+**Selection**: viewer presentation state only (React `useState`, reset on
+observation change), never persisted, synchronized in both directions
+between the target list, the SVG `<rect>` (`role="button"`, keyboard-
+operable), and the inspector via the target's existing stable `name`.
+
+**Overlay toggles**: geometry, labels (disabled when geometry is off), and
+relationships - each independently toggleable and purely presentational
+(hiding/showing already-rendered elements), never altering the underlying
+evidence or the fetched artifact/graph.
+
+**PWA cache boundary preserved**: the new `/api/observations/*` route lives
+under the same `/api/` prefix Batch 1's `navigateFallbackDenylist` already
+denylists - no service-worker configuration change was needed
+(`tests/unit/viewerPwaBuild.test.ts` asserts this against the real built
+`sw.js`).
+
+## v0.8 Batch 4 (Before/after comparison and contract/change-scope inspection) — implemented
+
+Batch 4 exposes the existing v0.4 `ComparisonArtifact` and v0.5
+`FrontendContractEvaluationArtifact` through the viewer, entirely under
+`src/viewerServer/evidence/{linkedEvidence,comparisonView,evaluationView}.ts`
+and `viewer/src/components/{ComparisonWorkspace,EvaluationWorkspace,
+ComparisonObservationPane,ClauseResultRow}.tsx`. **`compareObservations` and
+`evaluateFrontendContract` are never called anywhere in this batch** - every
+displayed comparison/evaluation field is read unchanged from its persisted
+artifact via the existing Batch 2 `GET /api/artifacts/<handle>`.
+
+- **Exact linked-evidence resolution** (`evidence/linkedEvidence.ts`): given
+  a `ComparisonSourceObservationReference`/`FrontendContractObservationReference`,
+  a `comparisonId`+`comparisonRequestId` pair, or a `baselineId`/`contractId`,
+  resolves the matching indexed artifact by **exact identity only**
+  (`observationId`+`requestId`+`producer.version`+`observationSchemaVersion`
+  for observations; the id fields themselves for comparisons/contracts) -
+  never by folder name, screenshot filename, URL, target-set, or geometry
+  similarity. Zero matches → `missing`; two or more exact matches →
+  `ambiguous` (never silently picks one). Mirrors the exact bounded-walk
+  pattern Batch 2's `findImportedReferenceDir` already established.
+- **Two additive, read-only routes**: `GET /api/comparisons/<handle>/view`
+  (resolves the comparison's `before`/`after`) and
+  `GET /api/evaluations/<handle>/view` (resolves `comparison`, `baseline`,
+  `change`, `before`, `after`) - both under `/api/`, both GET/HEAD-only, both
+  returning only resolved-handle-or-missing-or-ambiguous status, never a
+  duplicated copy of the linked artifact's own payload (the browser fetches
+  that separately through the existing `GET /api/artifacts/<handle>`, reusing
+  Batch 2's on-demand-loading contract exactly).
+- **Before/after visual reuse, not reimplementation**: `ComparisonObservationPane.tsx`
+  is built entirely from Batch 3's existing lower-level primitives
+  (`useArtifactDetail`, `orderedTargets`, `TargetOverlaySvg`) - no second
+  screenshot-loading, coordinate-transform, or geometry-rendering code
+  exists. The comparison's own persisted `relationshipsBefore`/
+  `relationshipsAfter` are passed directly into `TargetOverlaySvg`'s existing
+  `relationships` prop - never recomputed via `deriveLayoutRelationships`.
+  `TargetOverlaySvg` gained one small additive, optional `highlightNames`
+  prop (alongside the existing single-select `selected`) so a
+  relationship-subject difference or a two-target contract primitive
+  (`targets-do-not-overlap`, `target-fits-inside`, etc.) can emphasize both
+  named targets at once without changing Batch 3's existing single-select
+  interaction contract.
+- **Difference/relationship-change/clause presentation is evidence display,
+  not re-derivation**: `ComparisonWorkspace.tsx` renders `differences`,
+  `relationshipChanges`, `configurationChanges` (kept visually distinct from
+  appeared/disappeared runtime differences), and `expectedDependencyEvidence`
+  exactly as persisted, labeling dependency outcomes as explicit non-causal
+  evidence. `comparability` (comparable/comparable-with-warnings/incomparable
+  plus blocking/warning/unassessed reasons) is shown honestly; an
+  `incomparable` result is visually unmistakable
+  (`.comparability-banner--incomparable`).
+- **Clause joining by exact `clauseId` only** (`EvaluationWorkspace.tsx`):
+  baseline clauses (from the linked `PersistentBaselineContract`) and
+  per-change clauses (from the linked `PerChangeContract`) are joined to the
+  evaluation's `clauseResults` by exact id - never by target/primitive-shape/
+  category/position. A `clauseId` absent from both loaded contracts is shown
+  as an honest "unresolved clause definition", never fabricated. Baseline
+  clause active/superseded status comes exclusively from the evaluation
+  artifact's own `activeBaselineClauseIds`/`supersededBaselineClauseIds` -
+  never recomputed from clause overlap. `pass`/`fail`/`unavailable`/
+  `conflict` are preserved exactly (never collapsed to a boolean);
+  `unavailable` shows its reason, `conflict` shows its reason and
+  `conflictingClauseIds`.
+- **Overall verdict is authoritative and unmistakable**: `overallVerdict`
+  (`PASS`/`FAIL`) is rendered directly from the artifact, in a large
+  `.overall-verdict--PASS`/`.overall-verdict--FAIL` banner - the UI never
+  computes it from visible rows. The required safety case (a `requested`
+  clause `pass` alongside a `protected`/`preserved` clause `fail` still
+  producing overall `FAIL`) and the all-pass case are both proven against
+  real, canonically-evaluated fixtures (`tests/support/evidenceFixtures.ts#writeFullPipelineFixture`/
+  `writeAllPassPipelineFixture`) in real Chromium
+  (`tests/browser/comparisonEvaluationWorkspace.test.ts`) - `overallVerdict`
+  is never hand-edited to construct either demonstration.
+- **Target/relationship cross-highlighting uses only explicit canonical
+  identity**: `primitiveTargetNames()` (`viewer/src/contract/clauseTargets.ts`)
+  extracts a contract primitive's named target field(s) (`target`, `targetA`/
+  `targetB`, `target`+`container`, `subjectTarget`/`relatedTarget`) by an
+  exhaustive switch over `ContractPrimitiveKind` - page-level primitives
+  (`document-width-fits-viewport`, `scroll-owner-is-document`) return no
+  names, so clicking them never fabricates a target highlight.
+- **PWA cache boundary preserved**: both new routes live under `/api/`,
+  already covered by Batch 1's `navigateFallbackDenylist`; verified against
+  the real built `sw.js`.
+
+## v0.8 Batch 5 (External reference and reference/candidate inspection) — implemented
+
+- **Reference indexing/media already existed (Batch 2), unchanged**: the
+  `external-reference-imported`/`external-reference-approved` families,
+  `GET /api/media/<handle>/image` (imported), and
+  `GET /api/media/<handle>/source-image` (approved, resolved through
+  `findImportedReferenceDir`'s exact `referenceId` walk) were already built
+  in Batch 2 and required no change here - Batch 5 only adds the visual
+  workspace consuming them.
+- **Two new additive, read-only routes**
+  (`src/viewerServer/evidence/referenceView.ts`):
+  `GET /api/references/<handle>/view` derives the selected reference's own
+  region-relationship graph (`deriveReferenceRegionRelationships`) and
+  requirement adequacy (`deriveReferenceRequirementAdequacy`) - both pure
+  functions over the artifact's own persisted `regions`/`requirements`,
+  never persisted, never a second derivation engine (mirrors Batch 3's
+  `getObservationRelationships` server-side-derivation pattern).
+  `GET /api/references/<handle>/candidate/<handle>/view` evaluates
+  reference/candidate compatibility through the existing canonical
+  `evaluateReferenceCandidateCompatibility` (never a second, viewer-owned
+  compatibility model) and separately lists every existing
+  `FrontendContractEvaluationArtifact` whose own persisted `after` reference
+  exactly identifies the candidate, for explicit, never-auto-selected
+  optional display.
+- **Reference-image SVG coordinate model is a genuinely distinct domain from
+  the candidate's runtime SVG** (`ReferenceRegionOverlaySvg.tsx`): `viewBox`
+  is the reference image's own pixel dimensions (never the candidate's CSS
+  viewport, never devicePixelRatio-multiplied); each region's canonical
+  `{x, y, width, height}` is rendered unchanged. Because this is a different
+  coordinate domain and data source from `TargetOverlaySvg` (runtime CSS
+  pixels, `TargetGeometry`), it is a separate, sibling component rather than
+  a parameterization of the existing one - reuse would have silently
+  conflated the two domains. The candidate side, in contrast, reuses Batch
+  3/4's exact `ComparisonObservationPane`/`TargetOverlaySvg` machinery
+  unchanged (a synthetic `{status:'resolved', handle}` `LinkStatus` is
+  constructed once a candidate is explicitly chosen).
+- **Reference region selection and runtime target selection are two
+  independent, never-synchronized selection domains**
+  (`ReferenceWorkspace.tsx`): selecting a reference region never selects or
+  highlights a runtime target, even when both happen to share the same
+  string name (proven with a real Chromium fixture deliberately naming both
+  `"header"` - `tests/browser/referenceCandidateWorkspace.test.ts`, Case E).
+  No binding connector/highlight-across-panes exists in this batch - that is
+  Batch 6's explicit-binding-interaction scope.
+- **Compatibility vs. reference adequacy vs. candidate fidelity are kept
+  strictly distinct, never conflated**: compatibility
+  (`comparable`/`comparable-with-warnings`/`incomparable` plus
+  blocking/warning/unassessed reasons) comes only from
+  `evaluateReferenceCandidateCompatibility`; reference-side requirement
+  adequacy (`adequate`/`partial`/`inadequate`) comes only from
+  `deriveReferenceRequirementAdequacy`; candidate fidelity is never computed
+  in this batch at all - the UI always shows an explicit "not evaluated in
+  this batch" note rather than ever implying a fidelity PASS from a
+  compatibility PASS or an adequate reference (task §32/§33 boundary,
+  `evaluateReferenceCandidateFidelity` is never imported/called anywhere in
+  Batch 5).
+- **Optional contract/evaluation context is opt-in, never inferred**
+  (`ReferenceWorkspace.tsx`): when the reference/candidate view lists more
+  than one exactly-matching evaluation artifact, the developer must
+  explicitly pick one from a `<select>` - the newest/first match is never
+  silently chosen, and with zero selected the candidate's contract status
+  reads "not selected/not available", never a fabricated PASS.
+- **Imported vs. approved image ownership preserved exactly as Batch 2 built
+  it**: an imported reference's image is fetched from its own directory; an
+  approved reference's image is fetched from its exact imported source via
+  `sourceReference.referenceId`, never assumed co-located, never
+  duplicated - proven with a real Chromium fixture asserting the two
+  `<image href>` values resolve to the `image`/`source-image` roles
+  respectively (Cases A/B).
+- **PWA cache boundary preserved**: both new routes live under `/api/`,
+  already covered by Batch 1's `navigateFallbackDenylist`; verified against
+  the real built `sw.js` (no new `registerRoute`, no `/api/references`
+  precache entry).
+
+## v0.8 Batch 6 (Explicit-binding interaction, zoom/pan, conditional lock, and on-demand reference fidelity) — implemented
+
+- **`view --bindings-file <json-file>`**: reuses the exact same operational
+  binding-file wrapper parser (`loadBindingsFile` in `src/cli.ts`) that
+  `evaluate-reference-fidelity --bindings-file` already used - one shared
+  parser, never a second divergent one. The file is read once at startup;
+  its declarations become `ViewerServerState.bindingDeclarations` (an opaque
+  `unknown[]` until validated against a specific reference); the file path
+  itself is never persisted, returned, or exposed to the browser. Reference-
+  specific declaration validity (region existence, shape) is deferred to the
+  moment a reference is actually selected server-side, via the existing
+  canonical `isValidReferenceRuntimeBindingDeclarations` - never checked at
+  startup without a reference.
+- **Two new additive, read-only routes**
+  (`src/viewerServer/evidence/referenceView.ts`):
+  `GET /api/references/<handle>/candidate/<handle>/bindings` validates the
+  session's declarations against the selected reference and calls the
+  existing canonical `evaluateReferenceRuntimeBindings` exactly once.
+  `GET /api/references/<handle>/candidate/<handle>/fidelity` is the explicit
+  on-demand fidelity trigger - calls the existing canonical
+  `evaluateReferenceCandidateFidelity` exactly once, using the exact same
+  session declarations, so its embedded `bindings` field and the `/bindings`
+  route's own result always structurally agree for identical inputs (same
+  pure function, same arguments). Neither route persists anything; both are
+  `GET` (idempotent, deterministic, ephemeral over already-selected explicit
+  input) - no mutation route was added.
+- **`deriveCoordinateScale` exported additively** from
+  `externalReferenceFidelity.ts` (previously module-private) - Batch 6's
+  view-lock eligibility reuses this exact function unchanged (same formula,
+  same `ASPECT_RATIO_MAPPING_TOLERANCE`, same no-applicable-viewport
+  failure) rather than a second aspect-ratio/scale implementation. The
+  existing `GET /api/references/<handle>/candidate/<handle>/view` route now
+  additionally returns `coordinateMapping: DeriveCoordinateScaleResult` -
+  purely a function of the reference, independent of the candidate.
+- **Explicit-binding cross-selection uses only canonical
+  `ReferenceRuntimeBindingResult.referenceRegion`/`.runtimeTarget` fields**
+  (`ReferenceWorkspace.tsx`): selecting a `bound` reference region
+  highlights (via `TargetOverlaySvg`'s existing Batch 4 `highlightNames`
+  prop - never the primary `selected`/`aria-pressed` target) its exact
+  declared runtime target; selecting a runtime target highlights every
+  region whose `bound` result names it (many-to-one, via a new additive
+  `highlightRegionIds` prop on `ReferenceRegionOverlaySvg`, matching
+  `TargetOverlaySvg`'s established highlight pattern). `ambiguous`/
+  `unavailable` results never cross-select. Proven with a real equal-name
+  ("header" region + "header" target) Chromium fixture: no cross-selection
+  without an explicit declaration, real cross-selection with one.
+- **Zoom/pan is a repository-owned, presentation-only hook**
+  (`viewer/src/hooks/useZoomPan.ts`): bounded `[1x, 8x]` scale, `×1.25`/
+  `÷1.25` step, expressed as one `{scale, focalX, focalY}` triple in the
+  pane's own source-coordinate frame (reference-image pixels or candidate
+  CSS pixels - never rewritten). Renders via an SVG `viewBox` override
+  (additive `viewBoxOverride`/`svgRef`/pointer-handler props on
+  `TargetOverlaySvg`/`ReferenceRegionOverlaySvg`, defaulting to Batch 3/5's
+  exact prior behavior when omitted) - image and overlay stay one
+  transformed unit automatically since both live inside the same `<svg>`
+  root, and native SVG hit-testing means selection keeps working correctly
+  under zoom/pan with no extra coordinate math. Panning uses the SVG
+  element's own `getScreenCTM()` to convert screen-space pointer deltas into
+  source-space deltas - reuses the browser's native transform rather than a
+  custom aspect-ratio-aware pixel calculation - and only engages (calling
+  `setPointerCapture`) once the pointer has moved past a small threshold, so
+  an ordinary click on a region/target rect is never hijacked into a
+  phantom drag. Fit and Reset are the same fitted-1x/centered default (task
+  §26 - no second presentation-only default was introduced).
+- **View lock reuses one single shared state, never two independently
+  synchronized states**: `ReferenceWorkspace.tsx` owns `refZoom`/`candZoom`
+  directly (always-controlled `useZoomPan` calls) and each pane's zoom/pan
+  action handler updates both states in one synchronous call when locked -
+  no reactive effect watches one pane's state to update the other, so no
+  feedback-loop risk exists. Lock is available only when a candidate is
+  selected, compatibility is not `incomparable`, and `coordinateMapping.ok`
+  is `true`; any change to that eligibility (including selecting a
+  different reference/candidate) immediately disables lock and shows an
+  actionable reason. Synchronization converts a candidate CSS-pixel focal
+  point/scale into reference-image-pixel space (and back) using only
+  `coordinateMapping.scale.scaleX`/`scaleY` - the exact same canonical
+  factor `deriveCoordinateScale` already produces, applied as a straight
+  multiply/divide (its own algebraic inverse), never a second mapping rule.
+- **Contract/fidelity independence is never collapsed into one status**:
+  the existing Batch 5 "Optional contract/evaluation context" section
+  (unchanged) and the new on-demand `ReferenceFidelityPanel` are two
+  separate sections rendering two separate canonical results
+  (`FrontendContractEvaluationArtifact.overallVerdict` and
+  `ReferenceCandidateFidelityEvaluation.state`) side by side; when both are
+  present, an explicit note states that fidelity does not override an
+  active contract failure. No new coordinator/aggregate verdict is computed
+  anywhere in this batch.
+- **PWA cache boundary preserved**: both new routes live under `/api/`,
+  already covered by Batch 1's `navigateFallbackDenylist`.
+
+## v0.8 Batch 7 (Bounded agent context, correlation, provenance, and raw evidence navigation) — implemented
+
+- **Bounded agent context remains programmatic-only**: no filesystem writer
+  was added for `BoundedAgentContextArtifact` (it is still not an
+  Observer-evidence-root artifact family - `src/viewerServer/evidence/classify.ts`'s
+  "known but unreadered kind" comment is unchanged). `view --context-file
+  <json-file>` reads exactly one already-serialized
+  `BoundedAgentContextArtifact` value directly (no wrapper object) as
+  explicit, session-only viewer input - read once at startup
+  (`src/cli.ts#loadContextFile`, mirroring `loadBindingsFile`'s exact
+  read/size-bound/parse shape), classified by
+  `src/viewerServer/context.ts#classifyContextFileContent` (reuses the
+  existing canonical `isValidBoundedAgentContextArtifact` - never a second
+  validator), and held only in `ViewerServerState.context` for the life of
+  the process. The file's size is bounded by the existing Batch 2
+  `MAX_MANIFEST_CANDIDATE_BYTES` (2,000,000 bytes) rather than a second
+  bound, since a context artifact's own frozen numeric caps already make it
+  far smaller in any realistic case.
+- **Three honest session states, never coerced into one another**: `'none'`
+  (no `--context-file`; every Batch 1-6 feature stays fully available),
+  `'unsupported-version'` (recognized `artifactKind`, a `schemaVersion`
+  other than the current one - the viewer still starts, showing this
+  state explicitly rather than either failing or misinterpreting the
+  fields), and `'valid'` (structurally validated current-schema context).
+  Every other problem (unreadable file, wrong `artifactKind`, a
+  structurally invalid *current*-schema artifact) fails viewer startup
+  clearly - an explicitly supplied file is never silently ignored.
+- **`GET /api/context`** (`httpServer.ts`) returns the session's exact
+  classified state; for `'valid'`, it additionally returns
+  `sourceResolution` - the result of resolving
+  `artifact.sources` against the current evidence root by **exact
+  canonical identity only**
+  (`src/viewerServer/evidence/contextSourceView.ts`, reusing/extending
+  Batch 4's `linkedEvidence.ts` resolver pattern with three additive
+  functions: `resolveObservationById` (bare `observationId`, the only
+  identity a context source reference actually carries),
+  `resolveEvaluationByIdentity`, and `resolveReferenceByIdentity`). Zero
+  matches → `missing`; two or more → `ambiguous` (never silently picks
+  one) - the same discipline every other Batch 4/5 resolver already
+  established.
+- **Raw structured evidence reuses the existing Batch 2 artifact-detail
+  route unchanged**: `RawEvidenceViewer.tsx` calls the existing
+  `useArtifactDetail`/`GET /api/artifacts/<handle>` for any exactly-resolved
+  source - no second full-artifact retrieval mechanism, no local filesystem
+  read, no arbitrary path accepted from the browser.
+  `EvidenceReference.path` values are always displayed as plain provenance
+  text, never passed to `fs.readFile`/`path.resolve`/a static file server.
+- **Bounded runtime targets, adequacy, omissions, truncations, and
+  correlation are rendered exactly as the validated artifact states them** -
+  never recomputed, never boolean-collapsed
+  (`ContextWorkspace.tsx`): `Adequacy.state`
+  (`adequate`/`partial`/`inadequate`) and reasons are shown verbatim;
+  absent bounded-target fields render "not included in this bounded
+  context", never a fabricated falsy/zero value; `required: true`
+  omissions/truncations render in a visually distinct
+  `.context-required-loss` block, separate from optional ones;
+  `correlations` absent renders "Static correlation not included in this
+  context" - never "unavailable" (that status is reserved for a real
+  per-target `RuntimeStaticCorrelationRecord` with zero candidates).
+  `correlated`/`ambiguous`/`unavailable` are preserved exactly; a
+  `correlated` record's one candidate is labeled "Correlated candidate", an
+  `ambiguous` record shows **every** supplied candidate with none visually
+  promoted, and `unavailable` fabricates zero candidates - matching the
+  frozen `CORRELATION_STATUSES` invariants
+  (`domain/boundedAgentContext.ts`) the validator itself already enforces.
+  All new UI text was audited against ownership/edit-authorization language
+  (no "owner"/"source owner"/"owned by") - correlation is presented as
+  evidence, never as edit authorization.
+- **Context-target ↔ runtime-target interaction never infers source
+  ownership**: selecting a bounded target or a correlation record uses only
+  exact `targetId`/`runtimeTargetId` string matching; for each *exactly
+  resolved* source observation, `SourceObservationTargetCheck` checks
+  membership in that observation's own already-fetched `targetEvidence`
+  (a plain lookup over already-loaded JSON, never a new derivation) and, if
+  more than one resolved source observation contains the same target id,
+  lists all of them rather than picking one.
+- **Bounded reference-fidelity projection is never recomputed, and is kept
+  visibly distinct from a live on-demand evaluation**: absent `fidelity`
+  renders "Reference fidelity not included in this bounded context" - never
+  implied as passing. When present, `mismatches` and `protectedContext` are
+  rendered in separate sections from the artifact's own fields exactly as
+  supplied; a `state: 'not-evaluated'` blocked projection always shows
+  `blockedBy` prominently and never renders an empty mismatch list as "no
+  problems". When the context's `referenceId`/`candidateObservationId`
+  exactly resolve within the current evidence root, `ContextWorkspace.tsx`
+  embeds the existing, unchanged Batch 6 `ReferenceFidelityPanel` (the same
+  on-demand `evaluateReferenceCandidateFidelity` trigger) directly beneath
+  the bounded projection, labeled "Bounded context fidelity projection"
+  above and "Current on-demand fidelity evaluation" below - two separate,
+  clearly labeled evidence instances, never silently merged or replaced.
+- **No runtime rebuild of context or correlation, and no my-dev-kit
+  execution from the shipped viewer**: grep-verified - `projectBoundedAgentContext(`,
+  `deriveRuntimeStaticCorrelations(`, and `attachRuntimeStaticCorrelations(`
+  appear nowhere under `src/viewerServer/` or `viewer/src/` (only in test/
+  fixture-generation code, per the frozen plan's explicit test-fixture
+  exception); no `child_process`/`npx @dailephd/my-dev-kit` invocation
+  exists in the viewer server or browser bundle.
+- **PWA cache boundary preserved**: `GET /api/context` lives under `/api/`,
+  already covered by Batch 1's `navigateFallbackDenylist`.
+
+## v0.8 Batch 8 (Integrated viewer acceptance, PWA hardening, and packaged proof) — implemented
+
+Batch 8 is the final v0.8 implementation batch. It is integration/hardening,
+not a new architecture layer: no new API route, no new CLI flag, and no new
+canonical-engine call site were added. See
+`docs/reports/v0.8-integrated-viewer-acceptance-batch8.md` for the full
+record.
+
+- **Closed three named real-browser coverage gaps**, each proved against the
+  actual built viewer through the actual loopback server, never a hand-edited
+  fixture verdict: many reference regions bound to one runtime target all
+  cross-highlight together (the pre-existing target→regions loop in
+  `ReferenceWorkspace.tsx` already iterated every matching binding - the gap
+  was in real-browser proof, not in the derivation); reference-fidelity
+  `fail` alongside a genuine frontend-contract `PASS` for the same candidate
+  display independently (the pre-existing independence note in
+  `ReferenceWorkspace.tsx` was already verdict-agnostic); a bounded context
+  whose sources include two observations sharing a stable target id lists
+  every matching source observation (the pre-existing
+  `SourceObservationTargetCheck` in `ContextWorkspace.tsx` already checked
+  membership per source independently, never picking one).
+- **One real accessibility defect found and fixed**: a cross-highlighted,
+  non-selected region/target `<rect>` (`TargetOverlaySvg.tsx`,
+  `ReferenceRegionOverlaySvg.tsx`) exposed no accessible state distinguishing
+  it from a plain unselected rect - `aria-pressed` correctly stayed `false`
+  (it is not the primary single-selection), but nothing else communicated
+  the highlight to assistive technology. Fixed by adding
+  `data-highlighted="true"` and an `aria-label` suffix
+  (`" (highlighted: related to current selection)"`) when highlighted and
+  not selected, leaving `aria-pressed` semantics untouched.
+- **First live-browser PWA proof suite** (`tests/browser/pwaHardening.test.ts`):
+  real service-worker registration and activation against the built shell;
+  the manifest fetched and confirmed `display: "standalone"`; zero Cache
+  Storage entries under any `/api/` pathname after normal use, confirming
+  the `navigateFallbackDenylist` boundary holds live, not just in the built
+  `sw.js` regex; and the hard server-down gate - after the server is closed
+  and the same page reloaded, the app shell still renders from the precache,
+  but the evidence-dependent surface shows the explicit
+  `.evidence-list__error` "Evidence index unavailable" state, with the
+  previously-visible evidence asserted absent. Install-control is proven
+  only via synthetic `beforeinstallprompt` dispatch (a genuine browser
+  install prompt was not observed under automation). Standalone-mode CDP
+  display-mode emulation was attempted but not observed to take effect -
+  recorded honestly, never overstated as actual OS-level installation proof.
+- **Packaged-candidate proof**: `npm pack` → clean consumer install (outside
+  the repository) → the actually-installed CLI executable (not repo
+  `dist/cli.js`) → the installed `view` server → real Chromium against the
+  packaged/installed server, not a source-checkout dev server. Read-only
+  evidence-hash proof (SHA-256 of every file in the exercised evidence root,
+  taken before and after the packaged-browser session) confirmed no
+  mutation and no new viewer-created artifact anywhere in the evidence root.
+- **Re-confirmed the no-second-engine invariant** across all eight batches by
+  re-running the exact `grep -rn` audit from earlier batches - unchanged
+  findings, no duplicate evidence engine exists.
 
 ## Retained v0.1 architecture constraints
 
