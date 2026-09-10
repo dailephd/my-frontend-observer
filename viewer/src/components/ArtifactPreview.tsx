@@ -22,7 +22,7 @@ import { ReferenceWorkspace } from './ReferenceWorkspace.js';
  */
 export function ArtifactPreview({ selected, detail }: { selected: EvidenceMetadataRecord | undefined; detail: ArtifactDetailState }) {
   if (selected === undefined) {
-    return <p className="placeholder-note">Select evidence from the list to load it on demand. No observation, comparison, contract, or reference viewing is implemented yet.</p>;
+    return <p className="placeholder-note">Select evidence from the list to load it on demand.</p>;
   }
 
   if (selected.supportState !== 'supported') {

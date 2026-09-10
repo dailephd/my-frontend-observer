@@ -62,7 +62,7 @@ describe('viewer shell (real Chromium against the built PWA)', () => {
       // must say so honestly, never silently reverting to the pre-indexing placeholder text.
       await page.getByText('No recognized Observer evidence found under this root yet.').waitFor({ timeout: 10_000 });
       const bodyText = await page.textContent('body');
-      expect(bodyText).toContain('No observation, comparison, contract, or reference viewing is implemented yet');
+      expect(bodyText).toContain('Select evidence from the list to load it on demand.');
       expect(bodyText).toContain('Details and diagnostics for the selected evidence will appear here');
     } finally {
       await page.close();

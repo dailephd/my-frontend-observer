@@ -303,8 +303,12 @@ describe('Case F - incompatible pair', () => {
       const lockButton = page.getByRole('button', { name: /lock view/i });
       await lockButton.waitFor({ timeout: 10_000 });
       await expect.poll(() => lockButton.isEnabled()).toBe(false);
-      const bodyText = await page.textContent('body');
-      expect(bodyText).toContain('coherent full-frame aspect ratio');
+      // Regression: the button is also disabled - false-positively satisfying the poll above -
+      // while compatibility is still evaluating ("Evaluating compatibility..."), before the
+      // reference/candidate compatibility check has actually settled to its final reason text.
+      // Poll the settled body text itself rather than reading it once right after the button
+      // state changes.
+      await expect.poll(() => page.textContent('body'), { timeout: 10_000 }).toContain('coherent full-frame aspect ratio');
     } finally {
       await page.close();
     }

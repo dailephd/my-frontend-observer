@@ -1,5 +1,5 @@
 import { describe, expect, it, afterEach } from 'vitest';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, writeFile, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { startViewer } from '../../src/viewerServer/viewerService.js';
@@ -299,6 +299,38 @@ describe('filesystem/path security', () => {
     const { url } = await startFor(root);
     for (const path_ of ['/api/artifacts/observation:..', '/api/media/observation:../..//package.json/screenshot']) {
       const response = await fetch(`${url}${path_}`);
+      expect(response.status).not.toBe(200);
+    }
+  });
+
+  it('a media filename that is itself a symlink/junction pointing outside the evidence root never serves the linked-to file\'s content', async () => {
+    const root = await makeRoot();
+    const fixture = await writeFullPipelineFixture(root);
+    const outsideDir = await mkdtemp(path.join(tmpdir(), 'my-frontend-observer-viewer-symlink-outside-'));
+    cleanupDirs.push(outsideDir);
+    const secretPath = path.join(outsideDir, 'secret.png');
+    await writeFile(secretPath, 'this must never be servable through the viewer');
+
+    const screenshotPath = path.join(fixture.beforeRoot, 'screenshot.png');
+    await rm(screenshotPath, { force: true });
+    try {
+      await symlink(secretPath, screenshotPath, 'file');
+    } catch (err) {
+      // Some CI/dev environments (notably Windows without symlink privilege) cannot create
+      // file symlinks at all - in that case the escape this test targets is categorically
+      // impossible on this platform, so there is nothing further to prove here.
+      expect((err as NodeJS.ErrnoException).code === 'EPERM' || (err as NodeJS.ErrnoException).code === 'ENOSYS').toBe(true);
+      return;
+    }
+
+    const { url } = await startFor(root);
+    const index = (await (await fetch(`${url}/api/index`)).json()) as { records: { handle: string; family: string; logicalId?: string }[] };
+    const record = index.records.find((r) => r.family === 'observation' && r.logicalId === 'obs-before');
+    const response = await fetch(`${url}/api/media/${record!.handle}/screenshot`);
+    if (response.status === 200) {
+      const body = await response.text();
+      expect(body).not.toContain('this must never be servable through the viewer');
+    } else {
       expect(response.status).not.toBe(200);
     }
   });
