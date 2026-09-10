@@ -20,7 +20,7 @@ beforeAll(() => {
     execFileSync('npx', ['vite', 'build', '--config', 'viewer/vite.config.ts'], {
       cwd: repoRoot,
       stdio: 'inherit',
-      env: { ...process.env, VITE_CACHE_DIR: process.env.VITE_CACHE_DIR ?? path.join(repoRoot, 'node_modules', '.vite-viewer') },
+      env: { ...process.env, NODE_ENV: 'production', VITE_CACHE_DIR: process.env.VITE_CACHE_DIR ?? path.join(repoRoot, 'node_modules', '.vite-viewer') },
     });
   }
 }, 120_000);
@@ -60,7 +60,10 @@ describe('viewer PWA build output', () => {
     const registerRouteCalls = swSource.match(/registerRoute\(/g) ?? [];
     expect(registerRouteCalls.length).toBe(1);
     expect(swSource).toContain('NavigationRoute');
-    expect(swSource).toMatch(/denylist:\[\/\^\\\/api\\\/\/]/);
+    // Tolerant of minifier whitespace variation (observed to differ across build
+    // environments) - the security property under test is the literal denylist
+    // regex source being present, never its exact minified formatting.
+    expect(swSource).toMatch(/denylist:\s*\[\s*\/\^\\\/api\\\/\/\s*]/);
 
     const precacheMatch = /precacheAndRoute\(\[(.*?)],\{}\)/.exec(swSource);
     expect(precacheMatch).not.toBeNull();

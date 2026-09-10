@@ -29,7 +29,7 @@ beforeAll(async () => {
     execFileSync('npx', ['vite', 'build', '--config', 'viewer/vite.config.ts'], {
       cwd: repoRoot,
       stdio: 'inherit',
-      env: { ...process.env, VITE_CACHE_DIR: process.env.VITE_CACHE_DIR ?? path.join(repoRoot, 'node_modules', '.vite-viewer') },
+      env: { ...process.env, NODE_ENV: 'production', VITE_CACHE_DIR: process.env.VITE_CACHE_DIR ?? path.join(repoRoot, 'node_modules', '.vite-viewer') },
     });
   }
   browser = await chromium.launch();

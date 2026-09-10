@@ -1,4 +1,4 @@
-import { stat } from 'node:fs/promises';
+import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { classifyManifest } from './classify.js';
 import { decodeArtifactHandle } from './handles.js';
@@ -76,7 +76,11 @@ export async function resolveMedia(root: string, artifactHandle: string, role: s
 
 async function checkExists(absolutePath: string, mimeType: string): Promise<MediaResolution> {
   try {
-    const info = await stat(absolutePath);
+    // lstat (never stat) - the artifact-directory containment check above only proves the
+    // *filename* is contained; it never proves the filename isn't itself a symlink/junction
+    // whose target escapes the evidence root. A regular stat() would follow such a link and
+    // could serve arbitrary filesystem content. Reject any non-regular-file entry outright.
+    const info = await lstat(absolutePath);
     if (!info.isFile()) return { ok: false, reason: 'media reference does not point at a regular file' };
   } catch {
     return { ok: false, reason: 'media file not found on disk' };
