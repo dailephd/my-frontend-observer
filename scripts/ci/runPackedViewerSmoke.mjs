@@ -59,6 +59,17 @@ function buildMinimalPng(width, height) {
   return Buffer.from(bytes);
 }
 
+// The CLI intentionally presents artifact locations relative to its working
+// directory when that is more useful to a human.  The installed-package smoke
+// accepts either that portable form or an absolute path before using a result
+// as a filesystem input.  macOS exposed that the previous harness accidentally
+// made the latter assumption when authoring project acceptance configuration.
+function artifactPathFromCliOutput(projectDir, artifactPath) {
+  return path.isAbsolute(artifactPath)
+    ? artifactPath
+    : path.resolve(projectDir, artifactPath);
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const tarballArg = args.find((a) => !a.startsWith('--'));
@@ -171,7 +182,7 @@ async function main() {
     if (captureRes.code !== 0) fail(`capture baseline failed (exit ${captureRes.code}):\n${captureRes.stdout}\n${captureRes.stderr}`);
     const captureArtifactLine = captureRes.stdout.split('\n').find((l) => l.startsWith('Artifact: '));
     if (!captureArtifactLine) fail(`capture stdout missing "Artifact: " line:\n${captureRes.stdout}`);
-    const observationOutDir = captureArtifactLine.slice('Artifact: '.length).trim();
+    const observationOutDir = artifactPathFromCliOutput(projectDir, captureArtifactLine.slice('Artifact: '.length).trim());
     const observationManifest = JSON.parse(await readFile(path.join(observationOutDir, 'manifest.json'), 'utf8'));
     summary.observationId = observationManifest.observationId;
     const evidenceRootRel = path.join('.frontend-observer', 'evidence');
@@ -197,11 +208,13 @@ async function main() {
       { clauseId: 'protected-sidebar-width', primitive: { kind: 'property-unchanged-within-tolerance', target: 'sidebar', property: 'width', tolerance: { kind: 'exact' } }, category: 'protected', supportingEvidence: [] },
     ] }));
     const approvedBaseline = await runBin(['approve-baseline', '--observation', observationOutDir, '--contract-file', baselineContractFile, '--output', '.frontend-observer/evidence/contracts/baseline']);
-    const baselineContractRoot = approvedBaseline.stdout.split('\n').find((line) => line.startsWith('Artifact: '))?.slice('Artifact: '.length).trim();
-    if (approvedBaseline.code !== 0 || !baselineContractRoot) fail(`approve-baseline failed: ${approvedBaseline.stdout} ${approvedBaseline.stderr}`);
+    const baselineContractOutput = approvedBaseline.stdout.split('\n').find((line) => line.startsWith('Artifact: '))?.slice('Artifact: '.length).trim();
+    if (approvedBaseline.code !== 0 || !baselineContractOutput) fail(`approve-baseline failed: ${approvedBaseline.stdout} ${approvedBaseline.stderr}`);
+    const baselineContractRoot = artifactPathFromCliOutput(projectDir, baselineContractOutput);
     const savedContract = await runBin(['save-change-contract', '--contract-file', changeContractFile, '--output', '.frontend-observer/evidence/contracts/change']);
-    const changeContractRoot = savedContract.stdout.split('\n').find((line) => line.startsWith('Artifact: '))?.slice('Artifact: '.length).trim();
-    if (savedContract.code !== 0 || !changeContractRoot) fail(`save-change-contract failed: ${savedContract.stdout} ${savedContract.stderr}`);
+    const changeContractOutput = savedContract.stdout.split('\n').find((line) => line.startsWith('Artifact: '))?.slice('Artifact: '.length).trim();
+    if (savedContract.code !== 0 || !changeContractOutput) fail(`save-change-contract failed: ${savedContract.stdout} ${savedContract.stderr}`);
+    const changeContractRoot = artifactPathFromCliOutput(projectDir, changeContractOutput);
     const projectConfigPath = path.join(projectDir, 'frontend-observer.json');
     const projectConfig = JSON.parse(await readFile(projectConfigPath, 'utf8'));
     projectConfig.schemaVersion = '1.1.0';
