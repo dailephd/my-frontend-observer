@@ -20,6 +20,8 @@ import { startViewer } from './viewerServer/viewerService.js';
 import { openInDefaultBrowser } from './viewerServer/openBrowser.js';
 import { DEFAULT_VIEWER_PORT } from './viewerServer/port.js';
 import { classifyContextFileContent, MAX_CONTEXT_FILE_BYTES } from './viewerServer/context.js';
+import { discoverFrontendObserverProject } from './projectWorkflow/projectDiscovery.js';
+import { captureNamedObservation, initializeFrontendObserverProject, loadProjectViewerState } from './application/projectWorkflowService.js';
 
 export interface CliIO {
   stdout: (text: string) => void;
@@ -40,7 +42,12 @@ const TOP_LEVEL_HELP = `my-frontend-observer - local-first browser runtime evide
 Usage:
   my-frontend-observer <command> [options]
 
-Commands:
+Common workflow:
+  init                  Initialize project-local Observer configuration and state.
+  capture <alias>       Capture one project-configured observation under a human alias.
+  view                  Start the viewer; discovers project evidence when --root is omitted.
+
+Advanced:
   observe               Capture one bounded browser observation and persist
                         it as a portable artifact.
   compare               Compare two persisted observations and write a
@@ -66,9 +73,6 @@ Commands:
                         reference/candidate compatibility, and explicit
                         region-to-target bindings. Prints a structured
                         result; persists nothing.
-  view                   Start the local, loopback-only viewer server and
-                        print its URL for a normal browser or an installed
-                        Progressive Web App.
 
 Options:
   --help     Show this help.
@@ -78,13 +82,14 @@ Run "my-frontend-observer <command> --help" for command-specific options.
 `;
 
 const VIEW_HELP = `Usage:
-  my-frontend-observer view --root <evidence-root> [--bindings-file <json-file>] [--context-file <json-file>] [options]
+  my-frontend-observer view [--root <evidence-root>] [--bindings-file <json-file>] [--context-file <json-file>] [options]
 
-Required:
+Project or standalone input:
   --root <path>   Local evidence-root directory the viewer session
-                  represents. Validated operationally (must exist and be a
-                  directory) - this batch does not read or interpret any
-                  Observer artifacts under it.
+                  represents. When supplied, existing standalone behavior is
+                  used and no initialized project or alias catalog is required.
+                  Without --root, view requires an initialized project and
+                  discovers its managed evidence root and alias metadata.
 
 Options:
   --port <n>      TCP port to bind, in [0, 65535]. Defaults to ${DEFAULT_VIEWER_PORT}.
@@ -150,6 +155,29 @@ viewer URL and exits only when the server stops. On invalid syntax, a
 missing/non-directory --root, an invalid --port, or a port already in use,
 prints structured diagnostics to stderr and exits nonzero without starting
 a server.
+`;
+
+const INIT_HELP = `Usage:
+  my-frontend-observer init --url <loopback-url> [options]
+
+Options:
+  --url <loopback-url>          Required loopback frontend URL.
+  --viewport <WIDTHxHEIGHT>     Viewport size, e.g. 1280x720.
+  --target <id=selector>        Repeatable CSS-shorthand target.
+  --targets-file <json-file>    Structured target file; mutually exclusive with --target.
+  --default-baseline <alias>    Default baseline alias. Defaults to baseline.
+  --replace                     Replace configuration only; preserve managed evidence/catalog.
+  --help                        Show this help.
+`;
+
+const CAPTURE_HELP = `Usage:
+  my-frontend-observer capture <alias> [--replace]
+
+Options:
+  --replace  Capture new canonical evidence, then update an existing alias.
+  --help     Show this help.
+
+URL, viewport, targets, and output are read from the discovered project configuration.
 `;
 
 const OBSERVE_HELP = `Usage:
@@ -929,6 +957,45 @@ function loadTargetsFile(filePath: string): LoadTargetsFileResult {
   }
 
   return { ok: true, targets: record.targets };
+}
+
+type ParsedInitArgs =
+  | { ok: true; url: string; viewport: { width: number; height: number }; targets: RawObservationRequest['targets']; targetsFilePath?: string; defaultBaseline?: string; replace: boolean }
+  | { ok: false; errors: string[] };
+
+function parseInitArgs(argv: readonly string[]): ParsedInitArgs {
+  const errors: string[] = [];
+  let url: string | undefined;
+  let viewport = { width: 1280, height: 720 };
+  const targets: { name: string; selector: string }[] = [];
+  let targetsFilePath: string | undefined;
+  let defaultBaseline: string | undefined;
+  let replace = false;
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === '--url') url = argv[(i += 1)];
+    else if (arg === '--viewport') {
+      const value = argv[(i += 1)];
+      const parsed = value === undefined ? undefined : parseViewport(value);
+      if (parsed === undefined) errors.push(`--viewport must be WIDTHxHEIGHT (e.g. 1280x720); got ${JSON.stringify(value)}`); else viewport = parsed;
+    } else if (arg === '--target') {
+      const value = argv[(i += 1)];
+      const parsed = value === undefined ? undefined : parseTarget(value);
+      if (parsed === undefined) errors.push(`--target must be id=css-selector; got ${JSON.stringify(value)}`); else targets.push(parsed);
+    } else if (arg === '--targets-file') {
+      const value = argv[(i += 1)];
+      if (value === undefined) errors.push('--targets-file requires a file path argument');
+      else if (targetsFilePath !== undefined) errors.push('--targets-file may only be specified once'); else targetsFilePath = value;
+    } else if (arg === '--default-baseline') {
+      const value = argv[(i += 1)];
+      if (value === undefined) errors.push('--default-baseline requires an alias argument'); else defaultBaseline = value;
+    } else if (arg === '--replace') replace = true;
+    else errors.push(`unrecognized argument: ${arg}`);
+  }
+  if (url === undefined) errors.push('--url is required');
+  if (targets.length > 0 && targetsFilePath !== undefined) errors.push('--target and --targets-file cannot be combined; use one or the other');
+  if (errors.length > 0) return { ok: false, errors };
+  return { ok: true, url: url as string, viewport, targets, ...(targetsFilePath === undefined ? {} : { targetsFilePath }), ...(defaultBaseline === undefined ? {} : { defaultBaseline }), replace };
 }
 
 type LoadScrollScenarioFileResult = { ok: true; scenario: unknown } | { ok: false; error: string };
@@ -2038,7 +2105,41 @@ async function runEvaluateReferenceFidelityCommand(argv: readonly string[], io: 
   return 0;
 }
 
-type ParsedViewArgs = { ok: true; root: string; port?: number; noOpen: boolean; bindingsFilePath?: string; contextFilePath?: string } | { ok: false; errors: string[] };
+async function runInitCommand(argv: readonly string[], io: CliIO): Promise<number> {
+  if (argv.includes('--help')) { io.stdout(INIT_HELP); return 0; }
+  const parsed = parseInitArgs(argv);
+  if (!parsed.ok) { for (const error of parsed.errors) io.stderr(`error: ${error}\n`); io.stderr(INIT_HELP); return 1; }
+  let targets = parsed.targets;
+  if (parsed.targetsFilePath !== undefined) {
+    const loaded = loadTargetsFile(parsed.targetsFilePath);
+    if (!loaded.ok) { io.stderr(`error: ${loaded.error}\n`); return 1; }
+    targets = loaded.targets;
+  }
+  const result = await initializeFrontendObserverProject({ projectRoot: process.cwd(), url: parsed.url, viewport: parsed.viewport, targets: targets as import('./request/request.js').RawNamedTarget[], ...(parsed.defaultBaseline === undefined ? {} : { defaultBaseline: parsed.defaultBaseline }), replace: parsed.replace });
+  if (!result.ok) { io.stderr(`error [${result.code}]: ${result.message}\n`); return 1; }
+  io.stdout(`Initialized frontend Observer project: ${result.configPath}\n`);
+  return 0;
+}
+
+async function runCaptureCommand(argv: readonly string[], io: CliIO): Promise<number> {
+  if (argv.includes('--help')) { io.stdout(CAPTURE_HELP); return 0; }
+  const positional = argv.filter((arg) => !arg.startsWith('--'));
+  const unknown = argv.filter((arg) => arg.startsWith('--') && arg !== '--replace');
+  if (positional.length !== 1 || unknown.length > 0) { io.stderr('error: capture requires exactly one alias and supports only --replace\n'); io.stderr(CAPTURE_HELP); return 1; }
+  const discovered = await discoverFrontendObserverProject(process.cwd());
+  if (!discovered.ok) { io.stderr('error [project-not-initialized]: no frontend-observer.json was found in this directory or its parents; run "my-frontend-observer init"\n'); return 1; }
+  const result = await captureNamedObservation({ projectRoot: discovered.projectRoot, alias: positional[0] as string, replace: argv.includes('--replace') });
+  if (!result.ok) {
+    if (result.diagnostics !== undefined) for (const diagnostic of result.diagnostics) io.stderr(`${formatDiagnostic(diagnostic)}\n`);
+    io.stderr(`error [${result.code}]: ${result.message}\n`);
+    return 1;
+  }
+  io.stdout(`Alias: ${result.alias}\nObservation: ${result.observationId}\nRequest: ${result.requestId}\nCompletion: ${result.completionState}\nArtifact: ${result.artifactRoot}\n`);
+  for (const diagnostic of result.diagnostics) io.stdout(`${formatDiagnostic(diagnostic)}\n`);
+  return NON_SUCCESS_COMPLETION_STATES.has(result.completionState) ? 1 : 0;
+}
+
+type ParsedViewArgs = { ok: true; root?: string; port?: number; noOpen: boolean; bindingsFilePath?: string; contextFilePath?: string } | { ok: false; errors: string[] };
 
 /** CLI-syntax-only parsing, mirroring `parseApproveBaselineArgs`. `--port` shape/range checking happens here; root existence/directory-ness is the application layer's job (see `startViewer`). */
 function parseViewArgs(argv: readonly string[]): ParsedViewArgs {
@@ -2105,11 +2206,10 @@ function parseViewArgs(argv: readonly string[]): ParsedViewArgs {
     }
   }
 
-  if (root === undefined) errors.push('--root is required');
   if (errors.length > 0) return { ok: false, errors };
   return {
     ok: true,
-    root: root as string,
+    ...(root === undefined ? {} : { root }),
     ...(port === undefined ? {} : { port }),
     noOpen,
     ...(bindingsFilePath === undefined ? {} : { bindingsFilePath }),
@@ -2174,11 +2274,25 @@ async function runViewCommand(argv: readonly string[], io: CliIO): Promise<numbe
     contextState = loaded.state;
   }
 
+  let root: string;
+  let aliasMetadata: import('./viewerServer/viewerService.js').ViewerAliasMetadata | undefined;
+  if (parsedArgs.root !== undefined) {
+    root = parsedArgs.root;
+  } else {
+    const discovered = await discoverFrontendObserverProject(process.cwd());
+    if (!discovered.ok) { io.stderr('error [project-not-initialized]: view without --root requires an initialized project\n'); return 1; }
+    const projectState = await loadProjectViewerState(discovered.projectRoot);
+    if (!projectState.ok) { io.stderr(`error [${projectState.code}]: ${projectState.message}\n`); return 1; }
+    root = projectState.root;
+    aliasMetadata = { observationAliasesByRelativeDir: projectState.aliases };
+  }
+
   const result = await startViewer({
-    root: parsedArgs.root,
+    root,
     ...(parsedArgs.port === undefined ? {} : { port: parsedArgs.port }),
     bindingDeclarations,
     context: contextState,
+    ...(aliasMetadata === undefined ? {} : { aliasMetadata }),
   });
   if (!result.ok) {
     for (const diagnostic of result.diagnostics) io.stderr(`${formatDiagnostic(diagnostic)}\n`);
@@ -2223,6 +2337,9 @@ export async function runCli(argv: readonly string[], io: CliIO = defaultIO): Pr
   if (command === 'observe') {
     return runObserveCommand(rest, io);
   }
+
+  if (command === 'init') return runInitCommand(rest, io);
+  if (command === 'capture') return runCaptureCommand(rest, io);
 
   if (command === 'compare') {
     return runCompareCommand(rest, io);

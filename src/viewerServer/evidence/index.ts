@@ -21,7 +21,7 @@ export interface EvidenceIndexResult {
  * than cached (frozen plan §30: no persistent viewer cache/database/watcher),
  * so it always reflects the evidence root's current on-disk state.
  */
-export async function buildEvidenceIndexMetadata(root: string): Promise<EvidenceIndexResult> {
+export async function buildEvidenceIndexMetadata(root: string, observationAliasesByRelativeDir: Readonly<Record<string, string>> = {}): Promise<EvidenceIndexResult> {
   const discovery = await discoverManifests(root);
   const limited = discovery.manifests.slice(0, MAX_INDEX_RECORDS);
   const truncated = discovery.truncated || discovery.manifests.length > MAX_INDEX_RECORDS;
@@ -29,7 +29,9 @@ export async function buildEvidenceIndexMetadata(root: string): Promise<Evidence
   const records: EvidenceMetadataRecord[] = [];
   for (const manifest of limited) {
     const classified = await classifyManifest(manifest.absolutePath);
-    records.push(await buildMetadataRecord(classified, manifest.relativeDir, manifest.absoluteDir));
+    const record = await buildMetadataRecord(classified, manifest.relativeDir, manifest.absoluteDir);
+    const alias = record.family === 'observation' ? observationAliasesByRelativeDir[manifest.relativeDir] : undefined;
+    records.push(alias === undefined ? record : { ...record, alias });
   }
 
   return { records, truncated };

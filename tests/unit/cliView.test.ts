@@ -40,11 +40,11 @@ describe('runCli view - CLI dispatch (syntax/fast-fail paths only; full server l
     expect(out.stdout()).toContain('never launches a browser observation');
   });
 
-  it('rejects a missing --root with a nonzero exit and a clear error', async () => {
+  it('requires an initialized project when --root is omitted', async () => {
     const out = capture();
     const code = await runCli(['view'], out.io);
     expect(code).toBe(1);
-    expect(out.stderr()).toContain('--root is required');
+    expect(out.stderr()).toContain('project-not-initialized');
   });
 
   it('rejects an unrecognized flag as a CLI syntax error', async () => {

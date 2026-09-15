@@ -11,6 +11,7 @@ import { getEvaluationView } from './evidence/evaluationView.js';
 import { getReferenceView, getReferenceCandidateView, getReferenceBindings, getReferenceFidelity } from './evidence/referenceView.js';
 import { resolveContextSources } from './evidence/contextSourceView.js';
 import type { ContextSessionState } from './context.js';
+import type { ViewerAliasMetadata } from './viewerService.js';
 
 /** Batch 1 viewer protocol identity: the shape of GET /api/status. Bumped independently of package/schema versions if the status contract itself changes. */
 export const VIEWER_PROTOCOL_VERSION = '1.0.0';
@@ -63,6 +64,7 @@ export interface ViewerServerState {
   bindingDeclarations: readonly unknown[];
   /** v0.8 Batch 7: explicit, session-only bounded-agent-context state loaded once at CLI startup from an optional `--context-file`. Defaults to `{status:'none'}` - see `context.ts`. */
   context: ContextSessionState;
+  aliasMetadata?: ViewerAliasMetadata;
 }
 
 export interface CreateViewerServerOptions {
@@ -116,7 +118,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
   }
 
   if (pathname === '/api/index') {
-    const result = await buildEvidenceIndexMetadata(state.root);
+    const result = await buildEvidenceIndexMetadata(state.root, state.aliasMetadata?.observationAliasesByRelativeDir ?? {});
     const body = JSON.stringify({ ok: true, records: result.records, truncated: result.truncated });
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
     res.end(method === 'HEAD' ? undefined : body);

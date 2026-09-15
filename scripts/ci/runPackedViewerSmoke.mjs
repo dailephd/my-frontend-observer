@@ -128,6 +128,11 @@ async function main() {
       if (!viewHelpRes.stdout.includes(flag)) fail(`view --help missing expected flag documentation: ${flag}`);
     }
     summary.viewHelpOk = true;
+    for (const command of ['init', 'capture']) {
+      const help = await runBin([command, '--help']);
+      if (help.code !== 0) fail(`${command} --help failed:\n${help.stderr}`);
+    }
+    summary.projectWorkflowHelpOk = true;
 
     // --- build one real ObservationArtifact via the installed CLI, against a disposable local fixture ---
     const html =
@@ -149,21 +154,20 @@ async function main() {
     const fixturePort = fixtureServer.address().port;
     const targetUrl = `http://127.0.0.1:${fixturePort}/smoke`;
 
-    // --output must be a relative, portable path (no drive letter/leading "/") -
-    // resolved from the CLI's cwd, which every runBin() call fixes to consumerDir.
-    const evidenceRootRel = 'evidence';
-    const evidenceRoot = path.join(consumerDir, evidenceRootRel);
-    await mkdir(evidenceRoot, { recursive: true });
-    const observationOutRel = path.join(evidenceRootRel, 'observation-1');
-    await mkdir(path.join(consumerDir, observationOutRel), { recursive: true });
-
-    const observeRes = await runBin(['observe', '--url', targetUrl, '--viewport', '1024x768', '--target', 'header=#header', '--target', 'sidebar=#sidebar', '--output', observationOutRel]);
-    if (observeRes.code !== 0) fail(`observe failed (exit ${observeRes.code}):\n${observeRes.stdout}\n${observeRes.stderr}`);
-    const observeArtifactLine = observeRes.stdout.split('\n').find((l) => l.startsWith('Artifact: '));
-    if (!observeArtifactLine) fail(`observe stdout missing "Artifact: " line:\n${observeRes.stdout}`);
-    const observationOutDir = observeArtifactLine.slice('Artifact: '.length).trim();
+    const initRes = await runBin(['init', '--url', targetUrl, '--viewport', '1024x768', '--target', 'header=#header', '--target', 'sidebar=#sidebar']);
+    if (initRes.code !== 0) fail(`init failed (exit ${initRes.code}):\n${initRes.stdout}\n${initRes.stderr}`);
+    const captureRes = await runBin(['capture', 'baseline']);
+    if (captureRes.code !== 0) fail(`capture baseline failed (exit ${captureRes.code}):\n${captureRes.stdout}\n${captureRes.stderr}`);
+    const captureArtifactLine = captureRes.stdout.split('\n').find((l) => l.startsWith('Artifact: '));
+    if (!captureArtifactLine) fail(`capture stdout missing "Artifact: " line:\n${captureRes.stdout}`);
+    const observationOutDir = captureArtifactLine.slice('Artifact: '.length).trim();
     const observationManifest = JSON.parse(await readFile(path.join(observationOutDir, 'manifest.json'), 'utf8'));
     summary.observationId = observationManifest.observationId;
+    const evidenceRootRel = path.join('.frontend-observer', 'evidence');
+    const evidenceRoot = path.join(consumerDir, evidenceRootRel);
+    const catalog = JSON.parse(await readFile(path.join(consumerDir, '.frontend-observer', 'catalog.json'), 'utf8'));
+    if (catalog.observations?.baseline?.observationId !== observationManifest.observationId) fail('project alias catalog does not resolve baseline to the captured observation');
+    summary.projectCaptureAliasOk = true;
 
     // --- build one real imported + one approved external-reference artifact via the installed CLI ---
     const referenceImagePath = path.join(consumerDir, 'reference.png');
@@ -213,7 +217,7 @@ async function main() {
     await writeFile(contextFilePath, JSON.stringify(contextProjection.artifact), 'utf8');
 
     // --- start the installed viewer as a real child process (port 0 = ephemeral) ---
-    viewerProcess = spawn(process.execPath, [binAbsolutePath, 'view', '--root', evidenceRoot, '--port', '0', '--no-open', '--bindings-file', bindingsFilePath, '--context-file', contextFilePath], {
+    viewerProcess = spawn(process.execPath, [binAbsolutePath, 'view', '--port', '0', '--no-open', '--bindings-file', bindingsFilePath, '--context-file', contextFilePath], {
       cwd: consumerDir,
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: false,
@@ -257,6 +261,9 @@ async function main() {
     const indexBody = await indexRes.json();
     if (!Array.isArray(indexBody.records) || indexBody.records.length < 3) fail(`/api/index did not index the expected evidence (observation + 2 references): ${JSON.stringify(indexBody.records)}`);
     summary.indexedRecordCount = indexBody.records.length;
+    const aliased = indexBody.records.find((record) => record.alias === 'baseline');
+    if (!aliased || aliased.logicalId !== observationManifest.observationId) fail('project-aware viewer index did not attach baseline to the exact observation');
+    summary.projectAwareViewerAliasOk = true;
 
     // --- path containment / traversal against a media-style route ---
     const traversalRes = await fetch(`${viewerUrl}/api/media/${encodeURIComponent('observation:' + observationManifest.observationId)}/..%2f..%2f..%2fetc%2fpasswd`);
@@ -279,8 +286,9 @@ async function main() {
 
     await page.goto(viewerUrl, { waitUntil: 'load' });
 
-    const observationItem = page.locator('.evidence-list__item', { hasText: observationManifest.observationId });
+    const observationItem = page.locator('.evidence-list__item', { hasText: 'baseline' });
     await observationItem.waitFor({ timeout: 15_000 });
+    if ((await observationItem.locator('.evidence-list__id').textContent()) !== 'baseline') fail('viewer did not render baseline as the primary evidence-list identity');
     await observationItem.click();
 
     const overlayImage = page.locator('.target-overlay-svg image').first();

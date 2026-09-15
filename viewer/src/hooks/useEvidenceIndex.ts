@@ -11,6 +11,7 @@ export interface EvidenceMetadataRecord {
   family: string;
   supportState: string;
   relativeDir: string;
+  alias?: string;
   logicalId?: string;
   schemaVersion?: string;
   foundSchemaVersion?: string;

@@ -166,7 +166,9 @@ async function main() {
     // v0.5 purity check: the resolved bin path must come from this temporary
     // consumer's own installed node_modules, never the repository checkout
     // this script itself lives in.
-    if (binAbsolutePath.includes(path.resolve('.')) || binAbsolutePath.includes('src' + path.sep)) {
+    const installedNodeModules = path.join(consumerDir, 'node_modules') + path.sep;
+    const repoSrcDir = path.join(path.resolve('.'), 'src') + path.sep;
+    if (!binAbsolutePath.startsWith(installedNodeModules) || binAbsolutePath.startsWith(repoSrcDir)) {
       fail('resolved installed bin unexpectedly points at the source checkout rather than the installed candidate');
     }
 
@@ -564,7 +566,7 @@ async function main() {
     // persisted manifest through it (never manual key inspection only).
     const installedIndexPath = path.join(consumerDir, 'node_modules', 'my-frontend-observer', 'dist', 'index.js');
     const installedPackageApi = await import(pathToFileURL(installedIndexPath).href);
-    if (installedIndexPath.includes(path.resolve('.')) || installedIndexPath.includes('src' + path.sep)) {
+    if (!installedIndexPath.startsWith(installedNodeModules) || installedIndexPath.startsWith(repoSrcDir)) {
       fail('resolved installed package index unexpectedly points at the source checkout');
     }
     if (typeof installedPackageApi.isValidComparisonArtifact !== 'function') fail('installed package does not export isValidComparisonArtifact');
