@@ -210,15 +210,22 @@ async function main() {
     const approvedBaseline = await runBin(['approve-baseline', '--observation', observationOutDir, '--contract-file', baselineContractFile, '--output', '.frontend-observer/evidence/contracts/baseline']);
     const baselineContractOutput = approvedBaseline.stdout.split('\n').find((line) => line.startsWith('Artifact: '))?.slice('Artifact: '.length).trim();
     if (approvedBaseline.code !== 0 || !baselineContractOutput) fail(`approve-baseline failed: ${approvedBaseline.stdout} ${approvedBaseline.stderr}`);
-    const baselineContractRoot = artifactPathFromCliOutput(projectDir, baselineContractOutput);
     const savedContract = await runBin(['save-change-contract', '--contract-file', changeContractFile, '--output', '.frontend-observer/evidence/contracts/change']);
     const changeContractOutput = savedContract.stdout.split('\n').find((line) => line.startsWith('Artifact: '))?.slice('Artifact: '.length).trim();
     if (savedContract.code !== 0 || !changeContractOutput) fail(`save-change-contract failed: ${savedContract.stdout} ${savedContract.stderr}`);
-    const changeContractRoot = artifactPathFromCliOutput(projectDir, changeContractOutput);
     const projectConfigPath = path.join(projectDir, 'frontend-observer.json');
     const projectConfig = JSON.parse(await readFile(projectConfigPath, 'utf8'));
     projectConfig.schemaVersion = '1.1.0';
-    projectConfig.acceptance = { contract: { baselineArtifact: path.relative(projectDir, baselineContractRoot).split(path.sep).join('/'), changeArtifact: path.relative(projectDir, changeContractRoot).split(path.sep).join('/') } };
+    // The smoke itself authored these canonical artifact roots through the
+    // installed CLI. Keep project acceptance configuration in the same
+    // portable, project-relative vocabulary users author; do not round-trip
+    // OS-specific absolute presentation paths through path.relative().
+    projectConfig.acceptance = {
+      contract: {
+        baselineArtifact: '.frontend-observer/evidence/contracts/baseline/packed-viewer-baseline',
+        changeArtifact: '.frontend-observer/evidence/contracts/change/packed-viewer-change',
+      },
+    };
     await writeFile(projectConfigPath, JSON.stringify(projectConfig, null, 2));
     const acceptanceBefore = await readFile(projectConfigPath);
     html = html.replace('width:200px;height:400px', 'width:150px;height:400px');
@@ -246,7 +253,7 @@ async function main() {
     if (importRes.code !== 0) fail(`import-reference failed (exit ${importRes.code}):\n${importRes.stdout}\n${importRes.stderr}`);
     const importArtifactLine = importRes.stdout.split('\n').find((l) => l.startsWith('Artifact: '));
     if (!importArtifactLine) fail(`import-reference stdout missing "Artifact: " line:\n${importRes.stdout}`);
-    const importedRefOutDir = importArtifactLine.slice('Artifact: '.length).trim();
+    const importedRefOutDir = artifactPathFromCliOutput(projectDir, importArtifactLine.slice('Artifact: '.length).trim());
     const importedRefManifest = JSON.parse(await readFile(path.join(importedRefOutDir, 'manifest.json'), 'utf8'));
     summary.importedReferenceId = importedRefManifest.referenceId;
 
@@ -256,7 +263,7 @@ async function main() {
     if (approveRes.code !== 0) fail(`approve-reference failed (exit ${approveRes.code}):\n${approveRes.stdout}\n${approveRes.stderr}`);
     const approveArtifactLine = approveRes.stdout.split('\n').find((l) => l.startsWith('Artifact: '));
     if (!approveArtifactLine) fail(`approve-reference stdout missing "Artifact: " line:\n${approveRes.stdout}`);
-    const approvedRefOutDir = approveArtifactLine.slice('Artifact: '.length).trim();
+    const approvedRefOutDir = artifactPathFromCliOutput(projectDir, approveArtifactLine.slice('Artifact: '.length).trim());
     const approvedRefManifest = JSON.parse(await readFile(path.join(approvedRefOutDir, 'manifest.json'), 'utf8'));
     summary.approvedReferenceId = approvedRefManifest.referenceId;
 
