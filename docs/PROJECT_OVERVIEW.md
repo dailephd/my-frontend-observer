@@ -1,5 +1,7 @@
 # Project Overview
 
+The repository now contains the complete v0.8.1 source workflow (`init`, `capture`, `check`, project-aware `view`) while package metadata remains `0.8.0`. v0.8.1 has not yet been published.
+
 `my-frontend-observer` is the rendered browser/runtime evidence producer in
 the my-dev-kit ecosystem. It addresses the gap between source-level evidence
 and what a browser actually renders and supports three durable jobs: human-to-LLM

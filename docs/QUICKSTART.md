@@ -1,5 +1,20 @@
 # Quickstart
 
+The common source workflow is:
+
+```powershell
+node dist/cli.js init --url http://127.0.0.1:3000 --target app=#app
+node dist/cli.js capture baseline
+# make a frontend change
+node dist/cli.js check baseline
+node dist/cli.js view
+```
+
+Use `check baseline --json` for a coding agent: on `FAIL`, use the returned
+bounded runtime evidence, correct source externally, and rerun until `PASS`.
+Observer never edits source. Canonical IDs remain available in details and
+provenance but are not required as ordinary command input.
+
 Prerequisites are Node.js 24 or later and npm.
 
 ```powershell

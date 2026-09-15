@@ -1,5 +1,7 @@
 # Roadmap
 
+v0.8.1 status: implemented in the repository and awaiting release validation/publication. v0.9 and v0.10 remain future work.
+
 This is a version-level specification, not an implementation checklist.
 Concrete steps and sequencing are designed only when a version begins, after
 the planner reads that version, inspects current repository state, and performs
@@ -388,7 +390,7 @@ copy those batches.
 
 ## v0.8.1 — Project Workflow CLI and Human-Readable Evidence Aliases
 
-Current status: planned usability patch after released `v0.8.0`. The frozen
+Current status: implemented in the repository and awaiting release validation/publication. The frozen
 concrete implementation plan is
 `docs/plans/v0.8.1-cli-usability-patch-plan.md`.
 
@@ -521,7 +523,11 @@ immutable evidence; annotation and approval/supersession state are separate.
 
 Dependencies/ecosystem/compatibility: depends on stable runtime identity,
 reference identity, contracts, v0.7 coding-agent review/reference evaluation,
-and v0.8 viewer/coordinate mapping. Structured annotation/context/reference
+v0.8 viewer/coordinate mapping, and v0.8.1 project discovery, human-readable
+aliases, project-aware viewer behavior, and canonical identity resolution
+beneath aliases. Aliases are selection conveniences only. Persisted annotation
+identity must reference the exact canonical observation/reference identity,
+never mutable aliases such as `baseline` or `current`. Structured annotation/context/reference
 versions must be explicit and remain traceable to supported observation,
 screenshot, and external-reference identities.
 
@@ -587,9 +593,10 @@ confirmed requested/dependent/protected/preserved scope
   supersede an approved reference according to project policy
 ```
 
-The ordinary machine-facing correction loop should consume the same canonical
-acceptance through `check <baseline> --json` rather than recreate comparison or
-contract/reference semantics in the orchestrator or coding-agent prompt.
+The ordinary machine-facing post-edit correction loop must reuse the canonical
+`check <baseline> --json` surface. v0.10 must not reconstruct before/after
+comparison, frontend-contract verdicts, reference fidelity, or workflow
+PASS/FAIL/BLOCKED precedence when v0.8.1 already provides them.
 
 Architectural/evidence constraints: a visual request or reference does not
 erase existing baseline contracts. Unless explicitly superseded, existing

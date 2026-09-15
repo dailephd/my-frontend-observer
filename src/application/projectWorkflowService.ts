@@ -43,8 +43,8 @@ export async function initializeFrontendObserverProject(input: InitializeProject
 
 export interface CaptureNamedObservationInput { projectRoot: string; alias: string; replace: boolean }
 export type CaptureNamedObservationResult = { ok: true; alias: string; observationId: string; requestId: string; artifactRoot: string; completionState: string; diagnostics: readonly Diagnostic[] } | WorkflowFailure;
-export async function captureNamedObservation(input: CaptureNamedObservationInput): Promise<CaptureNamedObservationResult> {
-  const aliasValidation = validateObservationAlias(input.alias);
+async function captureObservation(input: CaptureNamedObservationInput, allowReserved: boolean): Promise<CaptureNamedObservationResult> {
+  const aliasValidation = validateObservationAlias(input.alias, allowReserved);
   if (!aliasValidation.ok) return { ok: false, code: aliasValidation.reason === 'reserved' ? 'alias-reserved' : 'alias-invalid', message: aliasValidation.reason === 'reserved' ? 'alias "current" is reserved for a later workflow command' : 'alias must match ^[a-z0-9][a-z0-9._-]{0,63}$ and must not be a traversal expression' };
   const config = await readProjectConfig(projectConfigPath(input.projectRoot));
   if (!config.ok) return { ok: false, code: 'project-config-invalid', message: config.reason };
@@ -62,6 +62,8 @@ export async function captureNamedObservation(input: CaptureNamedObservationInpu
   catch (error) { return { ok: false, code: 'project-state-write-failure', message: `observation persisted, but alias catalog update failed: ${error instanceof Error ? error.message : String(error)}` }; }
   return { ok: true, alias: input.alias, observationId: result.observationId, requestId: result.requestId, artifactRoot: result.artifactRoot, completionState: result.completion.state, diagnostics: result.diagnostics };
 }
+export async function captureNamedObservation(input: CaptureNamedObservationInput): Promise<CaptureNamedObservationResult> { return captureObservation(input, false); }
+export async function captureCurrentObservation(projectRoot: string): Promise<CaptureNamedObservationResult> { return captureObservation({ projectRoot, alias: 'current', replace: true }, true); }
 
 export async function loadProjectViewerState(projectRoot: string): Promise<{ ok: true; root: string; aliases: Readonly<Record<string, string>> } | WorkflowFailure> {
   const config = await readProjectConfig(projectConfigPath(projectRoot));

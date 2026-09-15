@@ -1,5 +1,7 @@
 # Current State
 
+v0.8.1 implementation is complete in source: project aliases and `init`, `capture`, project-aware `view`, and `check` orchestration are implemented. Package metadata remains `0.8.0`; v0.8.1 is not yet published.
+
 The project is published at package version `0.8.0` (roadmap v0.8,
 Interactive Local Observation Viewer; observation schema `1.2.0`; comparison
 schema `1.0.0`; frontend contract schema `1.0.0`; evaluation artifact schema

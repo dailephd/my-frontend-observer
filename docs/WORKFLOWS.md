@@ -1,5 +1,24 @@
 # Workflows
 
+## Project and coding-agent workflow
+
+```text
+init
+capture baseline
+implement frontend change outside Observer
+check baseline --json
+if FAIL:
+  use returned canonical runtime failure evidence
+  correct frontend source outside Observer
+  run the identical check again
+finish only after PASS
+view
+```
+
+Observer reports evidence and acceptance. The external human, coding agent, or
+orchestrator edits source; Observer never does. With no executable contract or
+approved reference, successful comparison yields `REVIEW_REQUIRED`, not PASS.
+
 ## Current validation workflow
 
 ```text

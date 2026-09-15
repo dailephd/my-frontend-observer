@@ -1,5 +1,7 @@
 # Development
 
+The v0.8.1 workflow is exercised through unit and real-Chromium tests. Project fixtures use `init`, `capture baseline`, and `check`; coding-agent consumers use bounded `check --json`. `tests/browser/projectCheckWorkflow.test.ts` covers REVIEW_REQUIRED, contract FAIL→PASS, reference FAIL/PASS/BLOCKED, incomparable BLOCKED, current history, and contained acceptance paths. `scripts/ci/runPackedCheckSmoke.mjs` repeats REVIEW_REQUIRED and unchanged-contract FAIL→PASS through one installed tarball. Run the full unit, browser, security, build, documentation, and packed-consumer validations before release readiness.
+
 Install the current scaffold with `npm install`. Node.js 24+ is required.
 
 Since Batch 2, the package depends on `playwright` for the Chromium browser

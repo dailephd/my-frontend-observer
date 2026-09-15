@@ -1,5 +1,49 @@
 # Commands
 
+## v0.8.1 common workflow
+
+`init --url <loopback-url> [--viewport WIDTHxHEIGHT] [--target id=selector ... | --targets-file file] [--default-baseline alias] [--replace]` creates schema-`1.1.0` project configuration; schema `1.0.0` remains readable and forbids `acceptance`. Schema `1.1.0` may add exactly:
+
+```json
+{
+  "acceptance": {
+    "comparisonConfigFile": "config/comparison.json",
+    "contract": {
+      "baselineArtifact": ".frontend-observer/evidence/contracts/baseline/<id>",
+      "changeArtifact": ".frontend-observer/evidence/contracts/change/<id>"
+    },
+    "reference": {
+      "approvedArtifact": ".frontend-observer/evidence/references/approved/<id>",
+      "bindingsFile": "config/reference-bindings.json"
+    }
+  }
+}
+```
+
+Every acceptance path is portable and project-relative and is realpath-checked
+before use. Both contract paths are required together. The reference must be
+explicitly approved; bindings are explicit and default to an empty collection.
+`comparisonConfigFile` uses the existing `compare --config-file` format.
+
+`capture <alias> [--replace]` creates immutable canonical evidence. `current`
+is reserved for `check`. `check [<baseline>] [--json]` resolves the explicit
+alias or `defaultBaseline`, captures a new immutable `current`, compares it
+canonically, and evaluates configured contract/reference acceptance. Its exact
+exit codes are:
+
+```text
+PASS            0
+FAIL            1
+REVIEW_REQUIRED 2
+BLOCKED         3
+```
+
+Comparison alone is evidence and returns `REVIEW_REQUIRED`, even with zero
+differences. `--json` emits exactly one bounded schema-`1.0.0` document and
+never embeds screenshots or complete artifacts. `view [--root path]` uses
+project evidence and aliases when root is omitted and preserves standalone
+behavior when supplied. Advanced commands below remain supported.
+
 ## Product command surface
 
 `node dist/cli.js observe` (or `my-frontend-observer observe` once installed

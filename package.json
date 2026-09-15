@@ -29,7 +29,7 @@
     "lint": "eslint .",
     "test": "vitest run --passWithNoTests",
     "test:browser": "vitest run --config vitest.browser.config.ts --passWithNoTests",
-    "test:security": "vitest run tests/unit/policy.test.ts tests/unit/viewerServer.test.ts tests/unit/viewerEvidenceServer.test.ts tests/unit/referenceViewerServer.test.ts tests/unit/contextViewerServer.test.ts tests/unit/paths.test.ts tests/unit/evidenceDiscovery.test.ts && vitest run --config vitest.browser.config.ts tests/browser/chromiumAdapter.test.ts tests/browser/pwaHardening.test.ts",
+    "test:security": "vitest run tests/unit/policy.test.ts tests/unit/viewerServer.test.ts tests/unit/viewerEvidenceServer.test.ts tests/unit/referenceViewerServer.test.ts tests/unit/contextViewerServer.test.ts tests/unit/paths.test.ts tests/unit/evidenceDiscovery.test.ts tests/unit/projectWorkflow.test.ts tests/unit/projectCheckService.test.ts tests/unit/projectCheckResult.test.ts && vitest run --config vitest.browser.config.ts tests/browser/chromiumAdapter.test.ts tests/browser/pwaHardening.test.ts tests/browser/projectCheckWorkflow.test.ts",
     "check:docs": "node scripts/check-docs.mjs"
   },
   "devDependencies": {

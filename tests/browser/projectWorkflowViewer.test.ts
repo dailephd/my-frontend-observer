@@ -10,6 +10,7 @@ import { startFixtureServer, type FixtureServer } from '../fixtures/server.js';
 import { readAliasCatalog } from '../../src/projectWorkflow/aliasCatalog.js';
 import { aliasCatalogPath, projectEvidenceRoot } from '../../src/projectWorkflow/projectPaths.js';
 import { startViewer, type StartViewerResult } from '../../src/viewerServer/viewerService.js';
+import { checkProject } from '../../src/application/projectCheckService.js';
 
 const repoRoot = path.resolve(__dirname, '../..');
 const viewerDist = path.join(repoRoot, 'dist', 'viewer');
@@ -40,6 +41,10 @@ describe('project workflow alias viewer (real Chromium)', () => {
       const first = await readAliasCatalog(aliasCatalogPath(projectRoot)); if (!first.ok) throw new Error(first.reason);
       const firstRecord = first.catalog.observations.baseline!;
       expect(existsSync(path.join(projectEvidenceRoot(projectRoot), ...firstRecord.relativeArtifactDir.split('/'), 'manifest.json'))).toBe(true);
+      const checked = await checkProject(projectRoot, 'baseline');
+      expect(checked.status).toBe('REVIEW_REQUIRED');
+      expect(checked.comparison.state).toBe('comparable');
+      expect(checked.candidate?.alias).toBe('current');
       expect(await runCli(['capture', 'baseline', '--replace'], quiet)).toBe(0);
       const second = await readAliasCatalog(aliasCatalogPath(projectRoot)); if (!second.ok) throw new Error(second.reason);
       const secondRecord = second.catalog.observations.baseline!;

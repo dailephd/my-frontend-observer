@@ -1,5 +1,7 @@
 # Security
 
+Project acceptance paths are portable, project-relative, and realpath-contained before use, including symlink/junction escape rejection. `current` alias replacement changes only catalog metadata and never deletes or overwrites canonical evidence. `check` adds no generic file-serving route, inferred binding, source mutation, persisted check artifact, or image bytes to JSON; configured references must be explicitly approved. JSON artifact paths are project-relative.
+
 ## Current controls
 
 `my-frontend-observer` launches a real, sandboxed Chromium browser

@@ -1,5 +1,23 @@
 # Architecture
 
+## v0.8.1 project workflow
+
+Versioned project configuration (`1.0.0` compatibility plus current `1.1.0`
+acceptance input), upward discovery, centralized managed paths, and the atomic
+alias catalog live under `src/projectWorkflow`. Aliases select exact canonical
+artifact directories; they never replace artifact identities.
+
+`src/application/projectCheckService.ts` composes the existing observation,
+comparison, contract-evaluation, reference-reader, explicit-binding,
+compatibility, and fidelity owners. `src/projectWorkflow/checkAcceptance.ts`
+owns contained acceptance-input resolution and shared file-wrapper parsing.
+`checkResult.ts` owns the bounded ephemeral projection, not a persisted check
+artifact or evaluation engine. Status precedence is `BLOCKED`, then `FAIL`,
+then `PASS` when all configured executable dimensions pass, then
+`REVIEW_REQUIRED` when comparison is the only evidence. Canonical observations,
+comparisons, and contract evaluations remain persisted; reference fidelity and
+the workflow result remain in memory/presentation.
+
 ## Current package architecture
 
 The current repository is one published TypeScript ESM package

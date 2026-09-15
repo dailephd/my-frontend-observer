@@ -20,6 +20,23 @@ describe('project configuration and aliases', () => {
     expect(validateProjectConfig({ ...validConfig, extra: true }).ok).toBe(false);
     expect(validateProjectConfig({ ...validConfig, schemaVersion: '2.0.0' }).ok).toBe(false);
   });
+  it('keeps v1.0 compatible and validates the v1.1 acceptance path contract', () => {
+    expect(validateProjectConfig(validConfig).ok).toBe(true);
+    expect(validateProjectConfig({ ...validConfig, acceptance: {} }).ok).toBe(false);
+    expect(validateProjectConfig({ ...validConfig, schemaVersion: '1.1.0' }).ok).toBe(true);
+    expect(validateProjectConfig({ ...validConfig, schemaVersion: '1.1.0', acceptance: { contract: { baselineArtifact: 'contracts/base', changeArtifact: 'contracts/change' }, reference: { approvedArtifact: 'references/approved', bindingsFile: 'bindings.json' }, comparisonConfigFile: 'comparison.json' } }).ok).toBe(true);
+    expect(validateProjectConfig({ ...validConfig, schemaVersion: '1.1.0', acceptance: { contract: { baselineArtifact: 'base' } } }).ok).toBe(false);
+    expect(validateProjectConfig({ ...validConfig, schemaVersion: '1.1.0', acceptance: { contract: { changeArtifact: 'change' } } }).ok).toBe(false);
+    expect(validateProjectConfig({ ...validConfig, schemaVersion: '1.1.0', acceptance: { reference: { approvedArtifact: '../escape' } } }).ok).toBe(false);
+    expect(validateProjectConfig({ ...validConfig, schemaVersion: '1.1.0', acceptance: { comparisonConfigFile: 'C:/escape' } }).ok).toBe(false);
+    expect(validateProjectConfig({ ...validConfig, schemaVersion: '1.1.0', acceptance: { comparisonConfigFile: '/escape' } }).ok).toBe(false);
+    expect(validateProjectConfig({ ...validConfig, schemaVersion: '1.1.0', acceptance: { comparisonConfigFile: '\\escape' } }).ok).toBe(false);
+    expect(validateProjectConfig({ ...validConfig, schemaVersion: '1.1.0', acceptance: { comparisonConfigFile: '' } }).ok).toBe(false);
+    expect(validateProjectConfig({ ...validConfig, schemaVersion: '1.1.0', acceptance: { comparisonConfigFile: 'bad\0path' } }).ok).toBe(false);
+    expect(validateProjectConfig({ ...validConfig, schemaVersion: '1.1.0', acceptance: { comparisonConfigFile: 'bad:path' } }).ok).toBe(false);
+    expect(validateProjectConfig({ ...validConfig, schemaVersion: '1.1.0', acceptance: { comparisonConfigFile: './comparison.json' } }).ok).toBe(false);
+    expect(validateProjectConfig({ ...validConfig, schemaVersion: '1.1.0', acceptance: { unknown: 'value' } }).ok).toBe(false);
+  });
   it('accepts the exact portable alias vocabulary and rejects unsafe/reserved values', () => {
     for (const alias of ['baseline', 'homepage', 'homepage-before', 'desktop.dark', 'candidate_1']) expect(validateObservationAlias(alias)).toEqual({ ok: true });
     for (const alias of ['', 'Upper', 'with space', 'a/b', 'a\\b', 'a:b', 'a..b', 'a'.repeat(65)]) expect(validateObservationAlias(alias).ok).toBe(false);
@@ -55,6 +72,12 @@ describe('alias catalog', () => {
     expect(validateAliasCatalog(catalog).ok).toBe(true);
     expect(validateAliasCatalog({ ...catalog, schemaVersion: '9.0.0' }).ok).toBe(false);
     expect(validateAliasCatalog({ ...catalog, observations: { bad: { observationId, requestId, relativeArtifactDir: '../escape' } } }).ok).toBe(false);
+  });
+  it('accepts system-managed current in catalogs while user capture validation keeps it reserved', () => {
+    const current = { ...catalog, observations: { current: catalog.observations.alpha } };
+    expect(validateAliasCatalog(current).ok).toBe(true);
+    expect(validateObservationAlias('current')).toEqual({ ok: false, reason: 'reserved' });
+    expect(validateObservationAlias('current', true)).toEqual({ ok: true });
   });
   it('serializes deterministically with sorted keys and a newline', () => {
     const one = serializeAliasCatalog(catalog); const two = serializeAliasCatalog(catalog);

@@ -1,5 +1,25 @@
 # my-frontend-observer
 
+## Common project workflow (v0.8.1 source)
+
+```powershell
+my-frontend-observer init --url http://127.0.0.1:3000 --target app=#app
+my-frontend-observer capture baseline
+
+# make a frontend change
+my-frontend-observer check baseline
+
+# inspect canonical evidence and provenance
+my-frontend-observer view
+```
+
+`check baseline --json` returns bounded coding-agent evidence and exits `0`,
+`1`, `2`, or `3` for `PASS`, `FAIL`, `REVIEW_REQUIRED`, or `BLOCKED`.
+Canonical hashes remain available in viewer details and persisted provenance,
+but are not normal workflow command inputs. The existing low-level commands
+remain supported. This v0.8.1 implementation is complete in source but is not
+yet published; package metadata remains `0.8.0`.
+
 `my-frontend-observer` is the local-first rendered browser/runtime evidence
 producer in the my-dev-kit ecosystem. Its durable product purpose is defined
 in [docs/PROJECT_DESCRIPTION.md](docs/PROJECT_DESCRIPTION.md).

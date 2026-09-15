@@ -537,6 +537,9 @@ export { ALIAS_CATALOG_SCHEMA_VERSION, readAliasCatalog, serializeAliasCatalog, 
 export { projectConfigPath, projectStateRoot, aliasCatalogPath, projectEvidenceRoot, projectObservationsRoot, observationOutputLocation } from './projectWorkflow/projectPaths.js';
 export type { CaptureNamedObservationInput, CaptureNamedObservationResult, InitializeProjectInput, ProjectWorkflowErrorCode } from './application/projectWorkflowService.js';
 export { initializeFrontendObserverProject, captureNamedObservation, loadProjectViewerState } from './application/projectWorkflowService.js';
+export type { CheckWorkflowStatus, CheckWorkflowResult } from './projectWorkflow/checkResult.js';
+export { CHECK_RESULT_SCHEMA_VERSION, CHECK_WORKFLOW_STATUSES } from './projectWorkflow/checkResult.js';
+export { checkProject } from './application/projectCheckService.js';
 export { VIEWER_PROTOCOL_VERSION } from './viewerServer/httpServer.js';
 
 export type {

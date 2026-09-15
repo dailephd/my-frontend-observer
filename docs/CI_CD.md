@@ -1,5 +1,7 @@
 # CI/CD
 
+CI may interpret `check` as PASS `0`, FAIL `1`, REVIEW_REQUIRED `2`, or BLOCKED `3`. Packed readiness installs one exact tarball and runs `runPackedCheckSmoke.mjs` for `init`, `capture`, bounded `check --json` REVIEW_REQUIRED and unchanged-contract FAIL→PASS, and project-aware `view`, alongside the existing packed observation and viewer smoke workflows. Source completion does not mean v0.8.1 is published.
+
 A GitHub Actions pre-release readiness workflow exists at
 `.github/workflows/pre-release-readiness.yml` (triggered manually via
 `workflow_dispatch`, by pushing a `validation/**` or `release/**` branch, or

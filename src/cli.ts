@@ -22,6 +22,8 @@ import { DEFAULT_VIEWER_PORT } from './viewerServer/port.js';
 import { classifyContextFileContent, MAX_CONTEXT_FILE_BYTES } from './viewerServer/context.js';
 import { discoverFrontendObserverProject } from './projectWorkflow/projectDiscovery.js';
 import { captureNamedObservation, initializeFrontendObserverProject, loadProjectViewerState } from './application/projectWorkflowService.js';
+import { checkProject } from './application/projectCheckService.js';
+import { loadBindingsFile } from './projectWorkflow/checkAcceptance.js';
 
 export interface CliIO {
   stdout: (text: string) => void;
@@ -45,6 +47,7 @@ Usage:
 Common workflow:
   init                  Initialize project-local Observer configuration and state.
   capture <alias>       Capture one project-configured observation under a human alias.
+  check [baseline]      Capture current state and evaluate configured acceptance.
   view                  Start the viewer; discovers project evidence when --root is omitted.
 
 Advanced:
@@ -178,6 +181,19 @@ Options:
   --help     Show this help.
 
 URL, viewport, targets, and output are read from the discovered project configuration.
+`;
+const CHECK_HELP = `Usage:
+  my-frontend-observer check [<baseline>] [--json]
+
+Uses defaultBaseline when the alias is omitted. Captures the reserved current
+candidate, persists a canonical comparison, and evaluates configured contract
+and approved-reference acceptance. Comparison alone returns REVIEW_REQUIRED.
+
+Options:
+  --json  Print exactly one bounded CheckWorkflowResult JSON document.
+  --help  Show this help.
+
+Exit codes: PASS 0; FAIL 1; REVIEW_REQUIRED 2; BLOCKED 3.
 `;
 
 const OBSERVE_HELP = `Usage:
@@ -817,55 +833,6 @@ function loadApplicabilityFile(filePath: string): LoadApplicabilityFileResult {
   }
 
   return { ok: true, applicability: parsed };
-}
-
-const BINDINGS_FILE_ALLOWED_ROOT_FIELDS = new Set(['bindings']);
-
-type LoadBindingsFileResult = { ok: true; bindings: unknown } | { ok: false; error: string };
-
-/**
- * CLI/input-boundary-only responsibility, mirroring `loadRegionsFile`/
- * `loadRequirementsFile` exactly: read one local JSON file, validate only
- * the root wrapper (object root, exactly the "bindings" property, nothing
- * else), and hand the still-unvalidated `bindings` value to the existing
- * domain validator (`isValidReferenceRuntimeBindingDeclarations`, called
- * inside `evaluateReferenceCandidateFidelity`) - every binding-declaration
- * rule (shape, bounds, reference-region existence, duplicate/conflict)
- * stays owned there, never duplicated here. The file path itself is never
- * returned beyond this function, so it can never reach the evaluation
- * result or any identity.
- */
-function loadBindingsFile(filePath: string): LoadBindingsFileResult {
-  let rawText: string;
-  try {
-    rawText = readFileSync(filePath, 'utf8');
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { ok: false, error: `--bindings-file could not be read: ${message}` };
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(rawText);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { ok: false, error: `--bindings-file is not valid JSON: ${message}` };
-  }
-
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    return { ok: false, error: '--bindings-file root must be a JSON object' };
-  }
-
-  const record = parsed as Record<string, unknown>;
-  const unknownFields = Object.keys(record).filter((key) => !BINDINGS_FILE_ALLOWED_ROOT_FIELDS.has(key));
-  if (unknownFields.length > 0) {
-    return { ok: false, error: `--bindings-file has unsupported top-level field(s): ${unknownFields.join(', ')}` };
-  }
-  if (!('bindings' in record)) {
-    return { ok: false, error: '--bindings-file must have a "bindings" property' };
-  }
-
-  return { ok: true, bindings: record.bindings };
 }
 
 type LoadContextFileResult = { ok: true; state: import('./viewerServer/context.js').ContextSessionState } | { ok: false; error: string };
@@ -2138,6 +2105,43 @@ async function runCaptureCommand(argv: readonly string[], io: CliIO): Promise<nu
   for (const diagnostic of result.diagnostics) io.stdout(`${formatDiagnostic(diagnostic)}\n`);
   return NON_SUCCESS_COMPLETION_STATES.has(result.completionState) ? 1 : 0;
 }
+export function formatCheckHumanResult(result: import('./projectWorkflow/checkResult.js').CheckWorkflowResult): string {
+  const lines = [`Check: ${result.status}`];
+  if (result.baseline !== undefined) lines.push(`Baseline: ${result.baseline.alias}`);
+  if (result.candidate !== undefined) lines.push(`Candidate: ${result.candidate.alias}`);
+  if (result.comparison.differenceCount !== undefined) {
+    const suffix = result.comparison.differenceCount === 1 ? 'difference' : 'differences';
+    lines.push(`Comparison: ${result.comparison.state}, ${result.comparison.differenceCount} ${suffix}`);
+  } else if (result.comparison.state !== 'NOT_RUN') lines.push(`Comparison: ${result.comparison.state}`);
+  lines.push(`Contract: ${result.contract.configured ? result.contract.state : 'not configured'}`);
+  for (const clause of result.contract.failedClauses) lines.push(`  ${clause.category ?? clause.source} ${clause.clauseId}: ${clause.status.toUpperCase()}`);
+  lines.push(`Reference: ${result.reference.configured ? result.reference.state : 'not configured'}`);
+  for (const requirement of result.reference.failedRequirements) lines.push(`  ${requirement.category} ${requirement.requirementId}: FAIL`);
+  lines.push(`Unexpected changes: ${result.contract.unexpectedChanges.length}`);
+  for (const blocker of result.blockers) lines.push(`Blocker: ${blocker.code} - ${blocker.message}`);
+  if (result.status === 'REVIEW_REQUIRED') lines.push('Acceptance: no executable contract or approved reference is configured.');
+  lines.push('Inspect: my-frontend-observer view');
+  return `${lines.join('\n')}\n`;
+}
+
+async function runCheckCommand(argv: readonly string[], io: CliIO): Promise<number> {
+  if (argv.includes('--help')) { io.stdout(CHECK_HELP); return 0; }
+  const unknown = argv.filter((arg) => arg.startsWith('--') && arg !== '--json');
+  const positional = argv.filter((arg) => !arg.startsWith('--'));
+  if (unknown.length > 0 || positional.length > 1 || argv.filter((arg) => arg === '--json').length > 1) {
+    io.stderr('error: check accepts at most one baseline alias and one --json flag\n');
+    io.stderr(CHECK_HELP);
+    return 1;
+  }
+  const discovered = await discoverFrontendObserverProject(process.cwd());
+  let result: import('./projectWorkflow/checkResult.js').CheckWorkflowResult;
+  if (!discovered.ok) {
+    result = (await import('./projectWorkflow/checkResult.js')).emptyCheckResult();
+    result.blockers.push({ code: 'project-not-initialized', message: 'check requires an initialized project' });
+  } else result = await checkProject(discovered.projectRoot, positional[0]);
+  io.stdout(argv.includes('--json') ? `${JSON.stringify(result)}\n` : formatCheckHumanResult(result));
+  return { PASS: 0, FAIL: 1, REVIEW_REQUIRED: 2, BLOCKED: 3 }[result.status];
+}
 
 type ParsedViewArgs = { ok: true; root?: string; port?: number; noOpen: boolean; bindingsFilePath?: string; contextFilePath?: string } | { ok: false; errors: string[] };
 
@@ -2340,6 +2344,7 @@ export async function runCli(argv: readonly string[], io: CliIO = defaultIO): Pr
 
   if (command === 'init') return runInitCommand(rest, io);
   if (command === 'capture') return runCaptureCommand(rest, io);
+  if (command === 'check') return runCheckCommand(rest, io);
 
   if (command === 'compare') {
     return runCompareCommand(rest, io);
