@@ -386,12 +386,101 @@ The frozen concrete batch plan and implementation sequencing live in
 `docs/plans/v0.8-implementation-plan.md`; this roadmap intentionally does not
 copy those batches.
 
+## v0.8.1 — Project Workflow CLI and Human-Readable Evidence Aliases
+
+Current status: planned usability patch after released `v0.8.0`. The frozen
+concrete implementation plan is
+`docs/plans/v0.8.1-cli-usability-patch-plan.md`.
+
+Objective/problem: preserve the canonical v0.1-v0.8 evidence engines while
+removing artifact-plumbing friction from ordinary human and coding-agent use.
+The released low-level CLI still requires users to repeat observation
+configuration, choose output paths, pass exact artifact roots between commands,
+and may expose long immutable artifact identifiers during routine navigation.
+Those identities remain valuable provenance, but they should not be the normal
+workflow interface.
+
+Required capabilities: project-local versioned configuration; upward project
+discovery; managed project-local Observer state; a versioned alias catalog that
+maps human-readable names to canonical immutable artifacts; `init` for one-time
+project configuration; `capture <name>` for project-configured observation;
+`check [<baseline>]` for high-level capture plus canonical comparison and
+applicable contract/reference evaluation; bounded `check --json` output for
+coding agents; project-aware `view` without a required `--root`; alias-first
+viewer navigation with canonical IDs retained as provenance; and reorganized
+help that distinguishes the common workflow from advanced artifact-level
+commands.
+
+The normal workflow should become:
+
+```text
+my-frontend-observer init
+my-frontend-observer capture baseline
+my-frontend-observer check baseline
+my-frontend-observer view
+```
+
+Existing low-level commands remain supported unchanged for automation,
+compatibility, debugging, and advanced workflows:
+
+```text
+observe
+compare
+approve-baseline
+save-change-contract
+evaluate-contract
+import-reference
+approve-reference
+evaluate-reference-fidelity
+```
+
+Acceptance semantics: `check` may report PASS only when every configured
+executable acceptance dimension required by the project passes. It reports FAIL
+when a configured executable criterion fails, REVIEW_REQUIRED when useful
+comparison evidence exists but executable criteria are insufficient to declare
+success or failure, and BLOCKED when required evidence cannot be obtained or
+evaluated reliably. A raw comparison or apparent lack of differences must never
+be promoted to PASS by itself. Reference-fidelity PASS must not override an
+active frontend-contract FAIL.
+
+Architectural/evidence constraints: this patch is a thin project/workflow layer
+over the existing canonical observation, comparison, contract, reference,
+binding, compatibility, fidelity, context, and viewer owners. Project
+configuration and aliases are workflow metadata, not replacement artifact
+identities. Alias replacement never deletes canonical evidence or silently
+approves/supersedes a baseline or reference. Existing artifact/evaluation schema
+versions stay unchanged. Existing CLI/programmatic paths remain first-class and
+do not require project initialization.
+
+Dependencies/ecosystem/compatibility: depends on released v0.8.0 and must remain
+compatible with the existing v0.7 coding-agent/reference workflow. The patch is
+specifically designed so v0.9 annotation can extend the existing viewer without
+another top-level workflow command architecture, while v0.10 coding-agent
+correction can repeatedly consume `check <baseline> --json` after external
+source edits.
+
+Exclusions: annotation authoring, source editing, automatic frontend correction,
+coding-agent orchestration inside Observer, automatic binding, image-to-code
+generation, deleting historical canonical evidence, implicit baseline/reference
+approval or supersession, new evidence/evaluation engines, cloud hosting,
+authentication, collaboration, and databases.
+
+Acceptance: a new user can initialize a project once, capture a named baseline,
+change the frontend, run one high-level check, and inspect the result without
+typing an output path, evidence root, or canonical artifact hash. A coding agent
+can consume the same acceptance operation through bounded JSON. Real Chromium
+and a clean packed-consumer installation must prove the workflow, and all
+existing low-level commands must remain backward compatible.
+
 ## v0.9 — Human Visual Annotation and Design-Intent Capture
 
 Objective/problem: add structured visual human intent to the already working
 v0.7 coding-agent workflow through the v0.8 viewer without inventing a separate
 change-semantics system, and allow that intent to be authored against either a
-runtime observation or an external visual reference.
+runtime observation or an external visual reference. The v0.8.1 project
+workflow/alias layer should be reused for ordinary project discovery and
+human-readable selection rather than replaced by annotation-specific command
+plumbing.
 
 Required capabilities: a bounded annotation set chosen during planning, such as
 point/select, rectangle/area, arrow, line/boundary, textual note, preserve,
@@ -457,7 +546,9 @@ annotated-image derivation.
 
 Objective/problem: complete the visual communication branch by combining the
 already operational coding-agent loop with graphical inspection, external design
-references, and structured annotation.
+references, structured annotation, and the v0.8.1 project-level acceptance
+surface so ordinary correction iterations do not require direct artifact-path
+plumbing.
 
 Two visual entry modes must coexist:
 
@@ -496,6 +587,10 @@ confirmed requested/dependent/protected/preserved scope
   supersede an approved reference according to project policy
 ```
 
+The ordinary machine-facing correction loop should consume the same canonical
+acceptance through `check <baseline> --json` rather than recreate comparison or
+contract/reference semantics in the orchestrator or coding-agent prompt.
+
 Architectural/evidence constraints: a visual request or reference does not
 erase existing baseline contracts. Unless explicitly superseded, existing
 approved contracts plus the new visual/per-change contract must both pass.
@@ -513,10 +608,10 @@ approved reference, and an approved reference never silently supersedes an
 existing baseline or another approved reference.
 
 Dependencies/ecosystem/compatibility: depends on all prior versions, especially
-the v0.7 core/reference loop, v0.8 viewer, and v0.9 dual-context annotation
-intent model. Use exact compatible observer/static/orchestrator/context/
-reference/annotation/viewer contracts and retain the four-project responsibility
-split.
+the v0.7 core/reference loop, v0.8 viewer, v0.8.1 project workflow/acceptance
+surface, and v0.9 dual-context annotation intent model. Use exact compatible
+observer/static/orchestrator/context/reference/annotation/viewer contracts and
+retain the four-project responsibility split.
 
 Exclusions: replacing the external coding agent with observer source editing,
 visual/reference intent silently overriding baseline contracts, autonomous
