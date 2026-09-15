@@ -27,7 +27,7 @@ function fail(message) {
 
 function run(cmd, args, opts = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'], shell: process.platform === 'win32', ...opts });
+    const child = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'], shell: false, ...opts });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', (d) => {
@@ -72,10 +72,12 @@ async function main() {
   try {
     await writeFile(path.join(consumerDir, 'package.json'), JSON.stringify({ name: 'mfo-ci-smoke-consumer', version: '0.0.0', private: true }, null, 2));
 
-    const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+    const npmCli = process.platform === 'win32' ? path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js') : undefined;
+    const npmCmd = process.platform === 'win32' ? process.execPath : 'npm';
+    const npmInstallArgs = process.platform === 'win32' ? [npmCli, 'install', tarballPath, '--no-audit', '--no-fund'] : ['install', tarballPath, '--no-audit', '--no-fund'];
     console.log(`[t+0ms] installing candidate tarball with ${npmCmd}...`);
     const t0 = Date.now();
-    const install = await run(npmCmd, ['install', tarballPath, '--no-audit', '--no-fund'], { cwd: consumerDir });
+    const install = await run(npmCmd, npmInstallArgs, { cwd: consumerDir });
     console.log(`[t+${Date.now() - t0}ms] npm install exit=${install.code}`);
     if (install.code !== 0) fail(`npm install of candidate tarball failed:\n${install.stdout}\n${install.stderr}`);
 

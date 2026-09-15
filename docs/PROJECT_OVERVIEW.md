@@ -79,7 +79,8 @@ engines used by the CLI, never a second implementation of them. See
 and `docs/reports/v0.8-prerelease-readiness-cross-platform-security-code-rot.md`
 for the implementation and release evidence.
 
-The next planned work is v0.8.1, a project-workflow CLI usability patch. It does
+The repository implementation now includes v0.8.1, a project-workflow CLI
+usability patch that is awaiting pre-release readiness and publication. It does
 not introduce a new evidence model. It adds project configuration,
 human-readable aliases, managed project-local Observer state, and a small
 high-level `init` / `capture` / `check` / project-aware `view` workflow above
@@ -106,7 +107,7 @@ runtime observation and stable identity
   + reference-vs-candidate structured fidelity evaluation
   + controlled end-to-end correction workflow (released as 0.7.0)
 → interactive viewer with reference/candidate inspection (released as 0.8.0)
-→ project workflow CLI + human-readable evidence aliases (planned v0.8.1)
+→ project workflow CLI + human-readable evidence aliases (implemented in source; not published)
 → structured visual annotation on runtime screenshots and external references
   (planned v0.9)
 → full visual human-LLM workflow with actual-frontend-driven and
@@ -126,7 +127,7 @@ semantics rather than create a second PASS/FAIL taxonomy.
 Viewer and annotation enhance the proven coding-agent workflow; they are not
 prerequisites for proving it. The viewer must consume the reference model and
 fidelity evidence established before it rather than inventing a UI-only
-comparison engine. The planned v0.8.1 workflow layer likewise resolves project
+comparison engine. The implemented v0.8.1 workflow layer likewise resolves project
 configuration and human aliases to existing canonical artifacts and services;
 it does not replace artifact identity or evaluation semantics.
 
@@ -141,7 +142,7 @@ Repository-local authorities and navigation:
 - [CURRENT_STATE.md](CURRENT_STATE.md) records current implementation and
   release state.
 - [plans/v0.8.1-cli-usability-patch-plan.md](plans/v0.8.1-cli-usability-patch-plan.md)
-  freezes the concrete implementation plan for the planned v0.8.1 patch.
+  freezes the concrete implementation plan for the v0.8.1 patch.
 
 Historical greenfield artifacts and reports are retained as evidence that an
 earlier run overreached into v0.1; they are not current-state authority.

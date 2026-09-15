@@ -21,7 +21,8 @@ the workflow result remain in memory/presentation.
 ## Current package architecture
 
 The current repository is one published TypeScript ESM package
-(`my-frontend-observer@0.7.0`):
+(`my-frontend-observer@0.8.0`). The additive v0.8.1 source workflow is
+implemented here but not yet published:
 
 - `src/cli.ts` is the real, thin public CLI parsing/dispatch/presentation
   boundary for the current command surface (`observe`, `compare`,
@@ -459,7 +460,7 @@ later v0.8 batches, which must consume this runtime boundary rather than
 redefine it.
 
 ```text
-my-frontend-observer view --root <evidence-root>
+my-frontend-observer view [--root <evidence-root>]
         |
         v
   thin CLI dispatch (src/cli.ts: parseViewArgs/runViewCommand)
@@ -502,7 +503,7 @@ my-frontend-observer view --root <evidence-root>
   `sw.js`, not a hand-written approximation). An install affordance appears
   only when the browser actually fires `beforeinstallprompt`; its absence is
   shown honestly, never as a disabled-looking fake control.
-- **CLI**: `view --root <evidence-root> [--port <n>] [--no-open]` remains a
+- **CLI**: `view [--root <evidence-root>] [--port <n>] [--no-open]` remains a
   thin dispatcher — it parses syntax, delegates once to `startViewer`, prints
   the URL/root, and optionally best-effort opens the system browser (failure
   there is never fatal to server startup). All v0.1-v0.7 commands are

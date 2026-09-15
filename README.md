@@ -193,7 +193,7 @@ implementation record.
 
 ### Interactive local viewer (v0.8.0)
 
-`my-frontend-observer view --root <evidence-root> [--bindings-file <json-file>] [--context-file <json-file>] [--port <n>] [--no-open]`
+`my-frontend-observer view [--root <evidence-root>] [--bindings-file <json-file>] [--context-file <json-file>] [--port <n>] [--no-open]`
 starts a loopback-only (`127.0.0.1`) Node server that serves a React +
 TypeScript + Vite viewer application - usable in a normal browser or as an
 installed Progressive Web App - over the same evidence root used by every
@@ -201,6 +201,10 @@ other command above. It never edits target source, never mutates any
 evidence artifact, and never runs `@dailephd/my-dev-kit`:
 
 ```powershell
+# In an initialized project, use managed evidence and aliases.
+my-frontend-observer view --port 4319 --no-open
+
+# `--root` remains the standalone/advanced form.
 my-frontend-observer view --root observations --port 4319 --no-open
 ```
 

@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createServer, type Server } from 'node:http';
+import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -103,6 +104,17 @@ describe('project check real-Chromium acceptance', () => {
     await writeFile(path.join(roots.review, 'source', 'index.html'), page({ nav: 195, workspace: 560, rail: 150 }));
     const checked = await runCheckJson(roots.review);
     expect(checked.exitCode).toBe(2); expect(checked.value.status).toBe('REVIEW_REQUIRED'); expect(checked.value.comparison.differenceCount).toBeGreaterThan(0);
+  }, 120_000);
+
+  it('never mutates disposable target source during capture, check, or view', async () => {
+    await resetProject(roots.review); const sourcePath = path.join(roots.review, 'source', 'index.html'); await writeFile(sourcePath, page({ nav: 200, workspace: 500, rail: 150 }));
+    const before = createHash('sha256').update(await readFile(sourcePath)).digest('hex');
+    const url = await startFileFrontend(roots.review); await initialize(roots.review, url);
+    const checked = await runCheckJson(roots.review); expect(checked.exitCode).toBe(2);
+    viewer = await startViewer({ root: projectEvidenceRoot(roots.review), port: 0, assetsRoot: viewerDist }) as Extract<StartViewerResult, { ok: true }>;
+    await viewer.close(); viewer = undefined;
+    const after = createHash('sha256').update(await readFile(sourcePath)).digest('hex');
+    expect(after).toBe(before);
   }, 120_000);
 
   it('uses unchanged canonical contracts for actionable FAIL then PASS and preserves current history', async () => {

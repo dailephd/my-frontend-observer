@@ -1,6 +1,6 @@
 # Development
 
-The v0.8.1 workflow is exercised through unit and real-Chromium tests. Project fixtures use `init`, `capture baseline`, and `check`; coding-agent consumers use bounded `check --json`. `tests/browser/projectCheckWorkflow.test.ts` covers REVIEW_REQUIRED, contract FAIL→PASS, reference FAIL/PASS/BLOCKED, incomparable BLOCKED, current history, and contained acceptance paths. `scripts/ci/runPackedCheckSmoke.mjs` repeats REVIEW_REQUIRED and unchanged-contract FAIL→PASS through one installed tarball. Run the full unit, browser, security, build, documentation, and packed-consumer validations before release readiness.
+The v0.8.1 workflow is exercised through unit and real-Chromium tests. Project fixtures use `init`, `capture baseline`, and `check`; coding-agent consumers use bounded `check --json`. `tests/browser/projectCheckWorkflow.test.ts` covers REVIEW_REQUIRED, contract FAIL-to-PASS, reference FAIL/PASS/BLOCKED, incomparable BLOCKED, current history, and contained acceptance paths. `scripts/ci/runPackedViewerSmoke.mjs` is the single installed-package viewer/project-workflow smoke owner: it repeats REVIEW_REQUIRED and unchanged-contract FAIL-to-PASS before alias-aware viewer proof. Run the full unit, browser, security, build, documentation, and packed-consumer validations before release readiness.
 
 Install the current scaffold with `npm install`. Node.js 24+ is required.
 

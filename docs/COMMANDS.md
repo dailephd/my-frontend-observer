@@ -757,8 +757,9 @@ and exits nonzero.
 
 ## `view`
 
-**Current status: released as package version `0.8.0`, following formal
-cross-platform and security readiness validation.** Starts one
+**Current status: v0.8 viewer behavior is released as package version `0.8.0`;
+the additive v0.8.1 project-aware form is implemented in this repository but
+not yet published.** Starts one
 loopback-only Node viewer server and serves the same React + TypeScript +
 Vite application to a normal browser or an installed Progressive Web App.
 `--root` is used as a bounded, read-only evidence-discovery root: the server
@@ -859,10 +860,15 @@ spanning contract and fidelity — they remain two independent,
 separately-displayed evidence dimensions.
 
 ```text
-my-frontend-observer view --root <evidence-root> [--bindings-file <json-file>] [--context-file <json-file>] [options]
+my-frontend-observer view [--root <evidence-root>] [--bindings-file <json-file>] [--context-file <json-file>] [options]
 ```
 
-Required:
+Without `--root`, `view` discovers the nearest initialized project and uses
+its managed evidence root plus ephemeral alias metadata. With `--root`, it
+uses standalone evidence-root behavior and does not require a project or
+catalog.
+
+Options:
 
 - `--root <path>` — local evidence-root directory the viewer session
   represents. Validated operationally (must exist and be a directory); this
