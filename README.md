@@ -1,6 +1,6 @@
 # my-frontend-observer
 
-## Common project workflow (v0.8.1 source)
+## Common project workflow (v0.8.1)
 
 ```powershell
 my-frontend-observer init --url http://127.0.0.1:3000 --target app=#app
@@ -17,8 +17,7 @@ my-frontend-observer view
 `1`, `2`, or `3` for `PASS`, `FAIL`, `REVIEW_REQUIRED`, or `BLOCKED`.
 Canonical hashes remain available in viewer details and persisted provenance,
 but are not normal workflow command inputs. The existing low-level commands
-remain supported. This v0.8.1 implementation is complete in source but is not
-yet published; package metadata remains `0.8.0`.
+remain supported. v0.8.1 is the current published release.
 
 `my-frontend-observer` is the local-first rendered browser/runtime evidence
 producer in the my-dev-kit ecosystem. Its durable product purpose is defined
@@ -26,8 +25,9 @@ in [docs/PROJECT_DESCRIPTION.md](docs/PROJECT_DESCRIPTION.md).
 
 ## Current status
 
-`v0.8.0`, Interactive Local Observation Viewer, is the current published
-release. It builds on `v0.7.0`, End-to-End Coding-Agent Frontend Change
+`v0.8.1`, Project Workflow CLI and Human-Readable Evidence Aliases, is the
+current published release. It builds on `v0.8.0`, Interactive Local Observation
+Viewer, and `v0.7.0`, End-to-End Coding-Agent Frontend Change
 Review, `v0.6.0`, Bounded Agent Context and Native my-dev-kit Ecosystem
 Integration, and `v0.5.0`, Executable Frontend Contracts and Explicit Change
 Scope: `my-frontend-observer observe` launches a real,
@@ -48,7 +48,7 @@ contract schema `1.0.0`; evaluation artifact schema `1.0.0`).
 Install:
 
 ```powershell
-npm install my-frontend-observer
+npm install --save-dev @dailephd/my-frontend-observer
 npx playwright install chromium
 ```
 
@@ -209,6 +209,10 @@ my-frontend-observer view --root observations --port 4319 --no-open
 ```
 
 (From a source checkout, use `node dist/cli.js view ...` instead.)
+
+## License
+
+MIT. See [LICENSE](LICENSE).
 
 The viewer shows observation screenshots and SVG target overlays,
 before/after comparisons and contract/change-scope results, approved

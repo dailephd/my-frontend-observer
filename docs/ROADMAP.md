@@ -1,6 +1,7 @@
 # Roadmap
 
-v0.8.1 status: implemented in the repository and awaiting release validation/publication. v0.9 and v0.10 remain future work.
+v0.8.1 status: released as v0.8.1 and published to npm as
+`@dailephd/my-frontend-observer@0.8.1`. v0.9 and v0.10 remain future work.
 
 This is a version-level specification, not an implementation checklist.
 Concrete steps and sequencing are designed only when a version begins, after
@@ -390,7 +391,8 @@ copy those batches.
 
 ## v0.8.1 — Project Workflow CLI and Human-Readable Evidence Aliases
 
-Current status: implemented in the repository and awaiting release validation/publication. The frozen
+Current status: released as `v0.8.1` and published to npm as
+`@dailephd/my-frontend-observer@0.8.1`. The frozen
 concrete implementation plan is
 `docs/plans/v0.8.1-cli-usability-patch-plan.md`.
 

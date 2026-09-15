@@ -19,6 +19,12 @@ import path from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 
+const INSTALLED_PACKAGE_NAME = '@dailephd/my-frontend-observer';
+
+function installedPackageDir(consumerDir) {
+  return path.join(consumerDir, 'node_modules', ...INSTALLED_PACKAGE_NAME.split('/'));
+}
+
 function fail(message) {
   console.error(`SMOKE FAILURE: ${message}`);
   process.exitCode = 1;
@@ -81,13 +87,14 @@ async function main() {
     console.log(`[t+${Date.now() - t0}ms] npm install exit=${install.code}`);
     if (install.code !== 0) fail(`npm install of candidate tarball failed:\n${install.stdout}\n${install.stderr}`);
 
-    const installedPkgPath = path.join(consumerDir, 'node_modules', 'my-frontend-observer', 'package.json');
+    const installedDir = installedPackageDir(consumerDir);
+    const installedPkgPath = path.join(installedDir, 'package.json');
     console.log(`checking installed package at ${installedPkgPath}`);
     const installedPkg = JSON.parse(await readFile(installedPkgPath, 'utf8'));
     const binName = Object.keys(installedPkg.bin ?? {})[0];
     if (!binName) fail('installed package.json has no bin entry');
     const binRelativePath = installedPkg.bin[binName];
-    const binAbsolutePath = path.join(consumerDir, 'node_modules', 'my-frontend-observer', binRelativePath);
+    const binAbsolutePath = path.join(installedDir, binRelativePath);
     summary.binName = binName;
     summary.packageVersion = installedPkg.version;
     console.log(`binName=${binName} packageVersion=${installedPkg.version} binPath=${binAbsolutePath}`);
@@ -566,7 +573,7 @@ async function main() {
     // Installed-package-independence: resolve isValidComparisonArtifact/isValidObservationArtifact
     // from the *consumer's own* node_modules, not the source checkout, and validate the real
     // persisted manifest through it (never manual key inspection only).
-    const installedIndexPath = path.join(consumerDir, 'node_modules', 'my-frontend-observer', 'dist', 'index.js');
+    const installedIndexPath = path.join(installedDir, 'dist', 'index.js');
     const installedPackageApi = await import(pathToFileURL(installedIndexPath).href);
     if (!installedIndexPath.startsWith(installedNodeModules) || installedIndexPath.startsWith(repoSrcDir)) {
       fail('resolved installed package index unexpectedly points at the source checkout');

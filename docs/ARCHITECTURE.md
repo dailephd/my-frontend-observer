@@ -21,8 +21,9 @@ the workflow result remain in memory/presentation.
 ## Current package architecture
 
 The current repository is one published TypeScript ESM package
-(`my-frontend-observer@0.8.0`). The additive v0.8.1 source workflow is
-implemented here but not yet published:
+(`@dailephd/my-frontend-observer@0.8.1`). The CLI remains
+`my-frontend-observer`; the npm scope does not rename the product or artifact
+identities.
 
 - `src/cli.ts` is the real, thin public CLI parsing/dispatch/presentation
   boundary for the current command surface (`observe`, `compare`,

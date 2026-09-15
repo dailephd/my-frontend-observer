@@ -15,7 +15,14 @@ bounded runtime evidence, correct source externally, and rerun until `PASS`.
 Observer never edits source. Canonical IDs remain available in details and
 provenance but are not required as ordinary command input.
 
-Prerequisites are Node.js 24 or later and npm.
+Prerequisites are Node.js 24 or later and npm. For the published package:
+
+```powershell
+npm install --save-dev @dailephd/my-frontend-observer
+npx playwright install chromium
+```
+
+The installed CLI is still named `my-frontend-observer`.
 
 ```powershell
 npm install

@@ -1,6 +1,10 @@
 {
-  "name": "my-frontend-observer",
-  "version": "0.8.0",
+  "name": "@dailephd/my-frontend-observer",
+  "version": "0.8.1",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "Local-first browser runtime evidence producer",
   "type": "module",
   "repository": {
@@ -17,7 +21,8 @@
     "dist",
     "README.md",
     "CHANGELOG.md",
-    "docs"
+    "docs",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=24"

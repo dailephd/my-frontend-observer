@@ -22,6 +22,12 @@ import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 
+const INSTALLED_PACKAGE_NAME = '@dailephd/my-frontend-observer';
+
+function installedPackageDir(consumerDir) {
+  return path.join(consumerDir, 'node_modules', ...INSTALLED_PACKAGE_NAME.split('/'));
+}
+
 function fail(message) {
   console.error(`VIEWER SMOKE FAILURE: ${message}`);
   process.exitCode = 1;
@@ -144,11 +150,12 @@ async function main() {
     const install = await run(npmCmd, npmInstallArgs, { cwd: consumerDir });
     if (install.code !== 0) fail(`npm install of candidate tarball failed:\n${install.stdout}\n${install.stderr}`);
 
-    const installedPkgPath = path.join(consumerDir, 'node_modules', 'my-frontend-observer', 'package.json');
+    const installedDir = installedPackageDir(consumerDir);
+    const installedPkgPath = path.join(installedDir, 'package.json');
     const installedPkg = JSON.parse(await readFile(installedPkgPath, 'utf8'));
     const binName = Object.keys(installedPkg.bin ?? {})[0];
     if (!binName) fail('installed package.json has no bin entry');
-    const binAbsolutePath = path.join(consumerDir, 'node_modules', 'my-frontend-observer', installedPkg.bin[binName]);
+    const binAbsolutePath = path.join(installedDir, installedPkg.bin[binName]);
     summary.packageVersion = installedPkg.version;
 
     // Purity: the resolved bin must live inside this consumer's own installed
@@ -315,7 +322,7 @@ async function main() {
     // Built through the installed package's own exported projectBoundedAgentContext -
     // never hand-edited - against the real observation created above (task requires
     // "installed public/programmatic API if exported", never fabricated schema fields).
-    const installedIndexPath = path.join(consumerDir, 'node_modules', 'my-frontend-observer', 'dist', 'index.js');
+    const installedIndexPath = path.join(installedDir, 'dist', 'index.js');
     const installedPackageApi = await import(pathToFileURL(installedIndexPath).href);
     if (typeof installedPackageApi.projectBoundedAgentContext !== 'function') fail('installed package does not export projectBoundedAgentContext');
     const contextProjection = installedPackageApi.projectBoundedAgentContext({

@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## 0.8.1 - 2026-09-15
+
+Project workflow release for `my-frontend-observer`.
+
+- Added the managed `init`, `capture`, `check`, and project-aware `view`
+  workflow with human-readable aliases and immutable canonical evidence.
+- Added `PASS`, `FAIL`, `REVIEW_REQUIRED`, and `BLOCKED` check outcomes plus a
+  bounded `check --json` interface for coding agents.
+- Added current-candidate history and reuse of canonical frontend-contract and
+  approved-reference fidelity evaluation.
+- Added alias-first viewer navigation with canonical IDs retained in details
+  and provenance.
+- Completed cross-platform, security, and installed-package validation.
+- Published the npm package as `@dailephd/my-frontend-observer` and added the
+  MIT license.
+
 ## 0.8.0 - 2026-09-10
 
 Interactive Local Observation Viewer.

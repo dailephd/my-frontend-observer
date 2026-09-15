@@ -1,6 +1,8 @@
 # Project Overview
 
-The repository now contains the complete v0.8.1 source workflow (`init`, `capture`, `check`, project-aware `view`) while package metadata remains `0.8.0`. v0.8.1 has not yet been published.
+The repository contains the complete v0.8.1 source workflow (`init`, `capture`,
+`check`, project-aware `view`), released as
+`@dailephd/my-frontend-observer@0.8.1` under the MIT license.
 
 `my-frontend-observer` is the rendered browser/runtime evidence producer in
 the my-dev-kit ecosystem. It addresses the gap between source-level evidence
@@ -28,7 +30,7 @@ Comparison; v0.5, Executable Frontend Contracts and Explicit Change Scope;
 v0.6, Bounded Agent Context and Native my-dev-kit Ecosystem Integration;
 v0.7, End-to-End Coding-Agent Frontend Change Review; and v0.8, Interactive
 Local Observation Viewer, are released and published to npm. The current
-package version is `0.8.0` (observation schema `1.2.0`, comparison schema
+package version is `0.8.1` as `@dailephd/my-frontend-observer` (observation schema `1.2.0`, comparison schema
 `1.0.0`, frontend contract schema `1.0.0`, evaluation artifact schema `1.0.0`,
 bounded-agent-context schema `1.0.0`, external-reference schema `1.0.0`). The
 released package was validated as a packed npm tarball in a clean consumer
@@ -79,8 +81,8 @@ engines used by the CLI, never a second implementation of them. See
 and `docs/reports/v0.8-prerelease-readiness-cross-platform-security-code-rot.md`
 for the implementation and release evidence.
 
-The repository implementation now includes v0.8.1, a project-workflow CLI
-usability patch that is awaiting pre-release readiness and publication. It does
+The repository implementation now includes released v0.8.1, a project-workflow
+CLI usability patch published as `@dailephd/my-frontend-observer@0.8.1`. It does
 not introduce a new evidence model. It adds project configuration,
 human-readable aliases, managed project-local Observer state, and a small
 high-level `init` / `capture` / `check` / project-aware `view` workflow above

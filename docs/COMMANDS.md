@@ -757,9 +757,8 @@ and exits nonzero.
 
 ## `view`
 
-**Current status: v0.8 viewer behavior is released as package version `0.8.0`;
-the additive v0.8.1 project-aware form is implemented in this repository but
-not yet published.** Starts one
+**Current status: v0.8.1 viewer behavior is released as package
+`@dailephd/my-frontend-observer@0.8.1`.** Starts one
 loopback-only Node viewer server and serves the same React + TypeScript +
 Vite application to a normal browser or an installed Progressive Web App.
 `--root` is used as a bounded, read-only evidence-discovery root: the server
