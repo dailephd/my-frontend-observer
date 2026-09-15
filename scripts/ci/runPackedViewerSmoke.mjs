@@ -16,7 +16,7 @@
 
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm, realpath, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -70,6 +70,46 @@ function artifactPathFromCliOutput(projectDir, artifactPath) {
     : path.resolve(projectDir, artifactPath);
 }
 
+// A status root is a filesystem identity, not a caller-visible spelling.
+// macOS commonly exposes /var through the physical /private/var path.
+async function canonicalFilesystemPath(candidate) {
+  const physical = await realpath(candidate);
+  return process.platform === 'win32'
+    ? path.normalize(physical).toLowerCase()
+    : path.normalize(physical);
+}
+
+async function assertFilesystemIdentityRegression(root) {
+  const target = path.join(root, 'filesystem-identity-target');
+  const alias = path.join(root, 'filesystem-identity-alias');
+  const different = path.join(root, 'filesystem-identity-different');
+  await rm(target, { recursive: true, force: true });
+  await rm(alias, { recursive: true, force: true });
+  await rm(different, { recursive: true, force: true });
+  try {
+    await mkdir(target);
+    await mkdir(different);
+    try {
+      await symlink(target, alias, process.platform === 'win32' ? 'junction' : 'dir');
+    } catch (error) {
+      // A locked-down platform may prohibit test-owned link creation. The
+      // macOS matrix remains the mandatory realpath proof in that case.
+      console.log(`filesystem identity alias self-check skipped: ${String(error)}`);
+      return 'SKIPPED';
+    }
+    const targetCanonical = await canonicalFilesystemPath(target);
+    const aliasCanonical = await canonicalFilesystemPath(alias);
+    const differentCanonical = await canonicalFilesystemPath(different);
+    if (targetCanonical !== aliasCanonical) fail('filesystem identity self-check: alias did not resolve to target');
+    if (targetCanonical === differentCanonical) fail('filesystem identity self-check: distinct directories resolved identically');
+    return 'PASS';
+  } finally {
+    await rm(target, { recursive: true, force: true });
+    await rm(alias, { recursive: true, force: true });
+    await rm(different, { recursive: true, force: true });
+  }
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const tarballArg = args.find((a) => !a.startsWith('--'));
@@ -94,6 +134,7 @@ async function main() {
     if (projectDir !== consumerDir) await rm(projectDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 });
     await mkdir(consumerDir, { recursive: true });
     await mkdir(projectDir, { recursive: true });
+    summary.filesystemIdentitySelfCheck = await assertFilesystemIdentityRegression(projectDir);
     await writeFile(path.join(consumerDir, 'package.json'), JSON.stringify({ name: 'mfo-ci-viewer-smoke-consumer', version: '0.0.0', private: true }, null, 2));
 
     const npmCli = process.platform === 'win32' ? path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js') : undefined;
@@ -325,7 +366,17 @@ async function main() {
     const statusRes = await fetch(`${viewerUrl}/api/status`);
     if (!statusRes.ok) fail(`/api/status failed: ${statusRes.status}`);
     const statusBody = await statusRes.json();
-    if (statusBody.root !== evidenceRoot) fail(`/api/status root mismatch: ${statusBody.root}`);
+    const expectedEvidenceRoot = await canonicalFilesystemPath(evidenceRoot);
+    const reportedEvidenceRoot = await canonicalFilesystemPath(statusBody.root);
+    if (reportedEvidenceRoot !== expectedEvidenceRoot) {
+      fail(
+        `/api/status root mismatch: ` +
+        `reported=${statusBody.root} ` +
+        `reportedRealpath=${reportedEvidenceRoot} ` +
+        `expected=${evidenceRoot} ` +
+        `expectedRealpath=${expectedEvidenceRoot}`,
+      );
+    }
     summary.viewerProtocolVersion = statusBody.viewerProtocolVersion;
 
     const indexRes = await fetch(`${viewerUrl}/api/index`);
