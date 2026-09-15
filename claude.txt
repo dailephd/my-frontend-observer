@@ -1,0 +1,23 @@
+# Claude Code repository adapter
+
+This repository uses one canonical detailed coding-agent manual:
+
+@agents.txt
+
+Before making changes:
+
+1. Read `@agents.txt` in full.
+2. Inspect the current repository state and relevant owning source/tests/docs.
+3. Follow the task's exact scope, path, report, validation, Git, and release
+   instructions.
+4. Preserve the existing `my-frontend-observer` architecture and canonical
+   evidence engines.
+5. Keep substantial generated state inside the approved repository-local
+   `.my-dev-kit-workflow` root on `Z:\`, never under `C:\`.
+6. Do not make planner-owned product decisions, release decisions, or
+   architecture changes that the task does not authorize.
+
+Do not create a competing instruction system in this file.
+
+If `CLAUDE.md`, `AGENTS.md`, `claude.txt`, and `agents.txt` overlap,
+`agents.txt` is authoritative and the others are discovery adapters only.
