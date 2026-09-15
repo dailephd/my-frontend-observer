@@ -1,5 +1,7 @@
 # CI/CD
 
+CI interprets `check` as PASS `0`, FAIL `1`, REVIEW_REQUIRED `2`, or BLOCKED `3`. The released package is `@dailephd/my-frontend-observer@0.8.1`; its CLI remains `my-frontend-observer`. Packed readiness installs one exact tarball and runs `runPackedViewerSmoke.mjs` as the single project/viewer smoke owner for `init`, `capture`, bounded `check --json` REVIEW_REQUIRED and unchanged-contract FAIL-to-PASS, alias-aware project `view`, and viewer security. `runPackedObservationSmoke.mjs` remains the lower-level legacy observation smoke.
+
 A GitHub Actions pre-release readiness workflow exists at
 `.github/workflows/pre-release-readiness.yml` (triggered manually via
 `workflow_dispatch`, by pushing a `validation/**` or `release/**` branch, or
@@ -215,10 +217,10 @@ unchanged on all three platforms - see
 `docs/reports/v0.7-pre-release-readiness.md` for the complete readiness
 report.
 
-## v0.8 packaging implications (released as `0.8.0`; formal cross-platform readiness passed)
+## v0.8.1 packaging implications (released as `0.8.1`; formal cross-platform readiness passed)
 
-v0.8 (Interactive Local Observation Viewer) is released as package version
-`0.8.0` - see `docs/CURRENT_STATE.md`. `.github/workflows/pre-release-readiness.yml`'s
+v0.8.1 is released as `@dailephd/my-frontend-observer@0.8.1` - see
+`docs/CURRENT_STATE.md`. `.github/workflows/pre-release-readiness.yml`'s
 matrix now covers it: alongside the pre-existing packed-observation smoke,
 each platform runner also installs the exact candidate tarball and runs
 `scripts/ci/runPackedViewerSmoke.mjs`, proving in real Chromium that the

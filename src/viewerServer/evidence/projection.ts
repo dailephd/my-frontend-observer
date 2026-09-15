@@ -24,6 +24,7 @@ export interface EvidenceMetadataRecord {
   family: ArtifactFamily | 'unrecognized';
   supportState: ClassifiedRecord['supportState'];
   relativeDir: string;
+  alias?: string;
   logicalId?: string;
   schemaVersion?: string;
   foundSchemaVersion?: string;

@@ -120,7 +120,7 @@ jobs:
         shell: bash
         run: node scripts/ci/runPackedObservationSmoke.mjs "${{ needs.candidate.outputs.tarball }}" --out smoke-summary.json
 
-      - name: Packed-viewer smoke (installed tarball only, real Chromium)
+      - name: Packed v0.8.1 project/viewer smoke (installed tarball only, real Chromium)
         shell: bash
         run: node scripts/ci/runPackedViewerSmoke.mjs "${{ needs.candidate.outputs.tarball }}" --out viewer-smoke-summary.json
 

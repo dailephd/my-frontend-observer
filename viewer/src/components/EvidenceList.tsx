@@ -47,7 +47,7 @@ export function EvidenceList({ index, selectedHandle, onSelect }: { index: Evide
         <li key={record.handle}>
           <button type="button" className={`evidence-list__item evidence-list__item--${record.supportState}${record.handle === selectedHandle ? ' evidence-list__item--selected' : ''}`} onClick={() => onSelect(record)}>
             <span className="evidence-list__family">{record.family}</span>
-            <span className="evidence-list__id">{record.logicalId ?? record.relativeDir}</span>
+            <span className="evidence-list__id">{record.alias ?? record.logicalId ?? record.relativeDir}</span>
             <span className={`evidence-list__state evidence-list__state--${record.supportState}`}>{supportLabel(record)}</span>
           </button>
         </li>

@@ -1,6 +1,28 @@
 # Quickstart
 
-Prerequisites are Node.js 24 or later and npm.
+The common source workflow is:
+
+```powershell
+node dist/cli.js init --url http://127.0.0.1:3000 --target app=#app
+node dist/cli.js capture baseline
+# make a frontend change
+node dist/cli.js check baseline
+node dist/cli.js view
+```
+
+Use `check baseline --json` for a coding agent: on `FAIL`, use the returned
+bounded runtime evidence, correct source externally, and rerun until `PASS`.
+Observer never edits source. Canonical IDs remain available in details and
+provenance but are not required as ordinary command input.
+
+Prerequisites are Node.js 24 or later and npm. For the published package:
+
+```powershell
+npm install --save-dev @dailephd/my-frontend-observer
+npx playwright install chromium
+```
+
+The installed CLI is still named `my-frontend-observer`.
 
 ```powershell
 npm install
@@ -41,11 +63,12 @@ candidate observation against it (implemented in the current development
 state; see [COMMANDS.md](COMMANDS.md) and [CONTRACTS.md](CONTRACTS.md) for
 the exact flags and contract).
 
-To inspect any of the above visually instead of opening raw artifact files,
-`my-frontend-observer view --root observations --no-open` starts a local,
+To inspect a project visually instead of opening raw artifact files,
+`my-frontend-observer view --no-open` starts a local,
 loopback-only viewer server (usable in a normal browser or as an installed
-PWA) over the same evidence roots you already have (v0.8, released as
-package version `0.8.0`). See [COMMANDS.md](COMMANDS.md#view) for the full
+PWA) over managed project evidence. For existing standalone evidence roots,
+use `my-frontend-observer view --root observations --no-open`. See
+[COMMANDS.md](COMMANDS.md#view) for the full
 flag reference, including `--bindings-file` and `--context-file`.
 
 To validate the repository itself instead:

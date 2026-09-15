@@ -1,18 +1,13 @@
 # Release
 
-`v0.7.0` (End-to-End Coding-Agent Frontend Change Review) is release-
-prepared for npm publication as `my-frontend-observer`: the external-
-reference foundation, approval lifecycle, applicability/compatibility,
-region-to-target binding, structured fidelity evaluation, its bounded-
-agent-context integration, and the controlled end-to-end correction
-workflow are complete and validated. A pre-version-bump implementation
-candidate was hash-verified and proven on Windows, Linux, and macOS as an
-installed packed-tarball consumer (covering every v0.1-v0.6 packed
-behavior described below plus the new v0.7 external-reference CLI/
-programmatic surface) before this release's version bump - see
-`docs/reports/v0.7-pre-release-readiness.md` and
-`docs/CURRENT_STATE.md`. No project license has been declared yet; that
-decision remains open for a later explicit task.
+`v0.8.1` (Project Workflow CLI and Human-Readable Evidence Aliases) is
+released and published to npm as `@dailephd/my-frontend-observer`. The
+release includes the managed project workflow, bounded check interface,
+alias-aware viewer, cross-platform validation, and MIT license.
+
+The CLI remains `my-frontend-observer`; package identity and product identity
+are intentionally distinct. Canonical artifact schemas remain versioned
+independently from the npm package version.
 
 Observation, comparison, frontend contract, evaluation artifact,
 bounded-agent-context, external-reference, and package version all remain

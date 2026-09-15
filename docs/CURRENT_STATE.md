@@ -1,6 +1,10 @@
 # Current State
 
-The project is published at package version `0.8.0` (roadmap v0.8,
+v0.8.1 is released and published as `@dailephd/my-frontend-observer@0.8.1`.
+Project aliases, `init`, `capture`, project-aware `view`, and `check`
+orchestration are implemented and MIT licensed.
+
+The project is published at package version `0.8.1` (roadmap v0.8.1,
 Interactive Local Observation Viewer; observation schema `1.2.0`; comparison
 schema `1.0.0`; frontend contract schema `1.0.0`; evaluation artifact schema
 `1.0.0`; bounded-agent-context schema `1.0.0`; external-reference schema
@@ -1031,7 +1035,8 @@ for the completeness audit, and
 readiness validation that preceded this release.
 
 v0.8 (Interactive Local Observation Viewer) is fully implemented, tested,
-and released - see "v0.8 status" above: package metadata is `0.8.0`. All
+and released - see "v0.8 status" above. v0.8.1 is the current package
+release: `@dailephd/my-frontend-observer@0.8.1`. All
 eight implementation batches, the hardened documentation/implementation-
 completeness audit, and formal pre-release readiness (cross-platform and
 security validation) have passed - see `docs/ROADMAP.md` for v0.8's full

@@ -1,5 +1,24 @@
 # Workflows
 
+## Project and coding-agent workflow
+
+```text
+init
+capture baseline
+implement frontend change outside Observer
+check baseline --json
+if FAIL:
+  use returned canonical runtime failure evidence
+  correct frontend source outside Observer
+  run the identical check again
+finish only after PASS
+view
+```
+
+Observer reports evidence and acceptance. The external human, coding agent, or
+orchestrator edits source; Observer never does. With no executable contract or
+approved reference, successful comparison yields `REVIEW_REQUIRED`, not PASS.
+
 ## Current validation workflow
 
 ```text
@@ -615,3 +634,9 @@ released), consumes the v0.7 reference/evaluation model exactly as
 required - it does not create a second UI-only one (see "Current
 interactive viewer workflow" above). v0.9 remains future and must preserve
 the same constraint when implemented.
+# v0.8.1 release workflow
+
+The published package is `@dailephd/my-frontend-observer@0.8.1`; install it
+with npm and use the `my-frontend-observer` CLI. The ordinary workflow is
+`init`, `capture baseline`, `check baseline`, then `view`. Existing sections
+below retain the historical low-level and viewer workflows for compatibility.

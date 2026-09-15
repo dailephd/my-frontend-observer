@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Cross-platform (Windows/Linux/macOS) readiness-only smoke helper.
 //
-// Proves that the actual packed npm tarball's installed v0.8 viewer -
+// Proves that the actual packed npm tarball's installed v0.8.1 workflow -
 // never the source checkout - starts, serves its React/PWA shell over a
 // loopback-only HTTP listener, indexes real evidence produced by the same
 // installed CLI, renders a real observation (SVG target overlay) and a real
@@ -12,15 +12,21 @@
 // imported by production code and is not itself part of the npm package
 // (see package.json "files").
 //
-// Usage: node scripts/ci/runPackedViewerSmoke.mjs <path-to-tarball> [--out <summary-json-path>]
+// Usage: node scripts/ci/runPackedViewerSmoke.mjs <path-to-tarball> [--consumer-root <root>] [--out <summary-json-path>]
 
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm, realpath, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { pathToFileURL, fileURLToPath } from 'node:url';
+
+const INSTALLED_PACKAGE_NAME = '@dailephd/my-frontend-observer';
+
+function installedPackageDir(consumerDir) {
+  return path.join(consumerDir, 'node_modules', ...INSTALLED_PACKAGE_NAME.split('/'));
+}
 
 function fail(message) {
   console.error(`VIEWER SMOKE FAILURE: ${message}`);
@@ -30,7 +36,7 @@ function fail(message) {
 
 function run(cmd, args, opts = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'], shell: process.platform === 'win32', ...opts });
+    const child = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'], shell: false, ...opts });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', (d) => (stdout += d.toString()));
@@ -59,33 +65,97 @@ function buildMinimalPng(width, height) {
   return Buffer.from(bytes);
 }
 
+// The CLI intentionally presents artifact locations relative to its working
+// directory when that is more useful to a human.  The installed-package smoke
+// accepts either that portable form or an absolute path before using a result
+// as a filesystem input.  macOS exposed that the previous harness accidentally
+// made the latter assumption when authoring project acceptance configuration.
+function artifactPathFromCliOutput(projectDir, artifactPath) {
+  return path.isAbsolute(artifactPath)
+    ? artifactPath
+    : path.resolve(projectDir, artifactPath);
+}
+
+// A status root is a filesystem identity, not a caller-visible spelling.
+// macOS commonly exposes /var through the physical /private/var path.
+async function canonicalFilesystemPath(candidate) {
+  const physical = await realpath(candidate);
+  return process.platform === 'win32'
+    ? path.normalize(physical).toLowerCase()
+    : path.normalize(physical);
+}
+
+async function assertFilesystemIdentityRegression(root) {
+  const target = path.join(root, 'filesystem-identity-target');
+  const alias = path.join(root, 'filesystem-identity-alias');
+  const different = path.join(root, 'filesystem-identity-different');
+  await rm(target, { recursive: true, force: true });
+  await rm(alias, { recursive: true, force: true });
+  await rm(different, { recursive: true, force: true });
+  try {
+    await mkdir(target);
+    await mkdir(different);
+    try {
+      await symlink(target, alias, process.platform === 'win32' ? 'junction' : 'dir');
+    } catch (error) {
+      // A locked-down platform may prohibit test-owned link creation. The
+      // macOS matrix remains the mandatory realpath proof in that case.
+      console.log(`filesystem identity alias self-check skipped: ${String(error)}`);
+      return 'SKIPPED';
+    }
+    const targetCanonical = await canonicalFilesystemPath(target);
+    const aliasCanonical = await canonicalFilesystemPath(alias);
+    const differentCanonical = await canonicalFilesystemPath(different);
+    if (targetCanonical !== aliasCanonical) fail('filesystem identity self-check: alias did not resolve to target');
+    if (targetCanonical === differentCanonical) fail('filesystem identity self-check: distinct directories resolved identically');
+    return 'PASS';
+  } finally {
+    await rm(target, { recursive: true, force: true });
+    await rm(alias, { recursive: true, force: true });
+    await rm(different, { recursive: true, force: true });
+  }
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const tarballArg = args.find((a) => !a.startsWith('--'));
   const outIndex = args.indexOf('--out');
   const outPath = outIndex >= 0 ? args[outIndex + 1] : undefined;
-  if (!tarballArg) fail('usage: runPackedViewerSmoke.mjs <path-to-tarball> [--out <summary-json-path>]');
+  const consumerRootIndex = args.indexOf('--consumer-root');
+  const suppliedConsumerRoot = consumerRootIndex >= 0 ? args[consumerRootIndex + 1] : undefined;
+  if (!tarballArg || (consumerRootIndex >= 0 && !suppliedConsumerRoot)) fail('usage: runPackedViewerSmoke.mjs <path-to-tarball> [--consumer-root <root>] [--out <summary-json-path>]');
   const tarballPath = path.resolve(tarballArg);
 
-  const consumerDir = await mkdtemp(path.join(tmpdir(), 'mfo-ci-viewer-smoke-'));
+  const consumerDir = suppliedConsumerRoot === undefined
+    ? await mkdtemp(path.join(tmpdir(), 'mfo-ci-viewer-smoke-'))
+    : path.join(path.resolve(suppliedConsumerRoot), 'installed-package');
+  const projectDir = suppliedConsumerRoot === undefined ? consumerDir : path.join(path.resolve(suppliedConsumerRoot), 'target');
   const summary = { platform: process.platform, arch: process.arch, nodeVersion: process.version };
   let fixtureServer;
   let viewerProcess;
   let browser;
 
   try {
+    await rm(consumerDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 });
+    if (projectDir !== consumerDir) await rm(projectDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 });
+    await mkdir(consumerDir, { recursive: true });
+    await mkdir(projectDir, { recursive: true });
+    summary.filesystemIdentitySelfCheck = await assertFilesystemIdentityRegression(projectDir);
     await writeFile(path.join(consumerDir, 'package.json'), JSON.stringify({ name: 'mfo-ci-viewer-smoke-consumer', version: '0.0.0', private: true }, null, 2));
 
-    const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+    const npmCli = process.platform === 'win32' ? path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js') : undefined;
+    const npmCmd = process.platform === 'win32' ? process.execPath : 'npm';
+    const npmInstallArgs = process.platform === 'win32' ? [npmCli, 'install', tarballPath, '--no-audit', '--no-fund'] : ['install', tarballPath, '--no-audit', '--no-fund'];
     console.log('installing candidate tarball...');
-    const install = await run(npmCmd, ['install', tarballPath, '--no-audit', '--no-fund'], { cwd: consumerDir });
+    const install = await run(npmCmd, npmInstallArgs, { cwd: consumerDir });
     if (install.code !== 0) fail(`npm install of candidate tarball failed:\n${install.stdout}\n${install.stderr}`);
 
-    const installedPkgPath = path.join(consumerDir, 'node_modules', 'my-frontend-observer', 'package.json');
+    const installedDir = installedPackageDir(consumerDir);
+    const installedPkgPath = path.join(installedDir, 'package.json');
     const installedPkg = JSON.parse(await readFile(installedPkgPath, 'utf8'));
     const binName = Object.keys(installedPkg.bin ?? {})[0];
     if (!binName) fail('installed package.json has no bin entry');
-    const binAbsolutePath = path.join(consumerDir, 'node_modules', 'my-frontend-observer', installedPkg.bin[binName]);
+    const binAbsolutePath = path.join(installedDir, installedPkg.bin[binName]);
     summary.packageVersion = installedPkg.version;
 
     // Purity: the resolved bin must live inside this consumer's own installed
@@ -97,7 +167,7 @@ async function main() {
     }
 
     function runBin(binArgs, opts = {}) {
-      return run(process.execPath, [binAbsolutePath, ...binArgs], { cwd: consumerDir, shell: false, ...opts });
+      return run(process.execPath, [binAbsolutePath, ...binArgs], { cwd: projectDir, shell: false, ...opts });
     }
 
     const playwrightPkgPath = path.join(consumerDir, 'node_modules', 'playwright', 'package.json');
@@ -128,9 +198,14 @@ async function main() {
       if (!viewHelpRes.stdout.includes(flag)) fail(`view --help missing expected flag documentation: ${flag}`);
     }
     summary.viewHelpOk = true;
+    for (const command of ['init', 'capture', 'check']) {
+      const help = await runBin([command, '--help']);
+      if (help.code !== 0) fail(`${command} --help failed:\n${help.stderr}`);
+    }
+    summary.projectWorkflowHelpOk = true;
 
     // --- build one real ObservationArtifact via the installed CLI, against a disposable local fixture ---
-    const html =
+    let html =
       '<!doctype html><html><head><title>viewer smoke fixture</title><style>' +
       'html,body{margin:0;padding:0}' +
       '#header{position:absolute;top:0;left:0;width:800px;height:80px;}' +
@@ -149,56 +224,105 @@ async function main() {
     const fixturePort = fixtureServer.address().port;
     const targetUrl = `http://127.0.0.1:${fixturePort}/smoke`;
 
-    // --output must be a relative, portable path (no drive letter/leading "/") -
-    // resolved from the CLI's cwd, which every runBin() call fixes to consumerDir.
-    const evidenceRootRel = 'evidence';
-    const evidenceRoot = path.join(consumerDir, evidenceRootRel);
-    await mkdir(evidenceRoot, { recursive: true });
-    const observationOutRel = path.join(evidenceRootRel, 'observation-1');
-    await mkdir(path.join(consumerDir, observationOutRel), { recursive: true });
-
-    const observeRes = await runBin(['observe', '--url', targetUrl, '--viewport', '1024x768', '--target', 'header=#header', '--target', 'sidebar=#sidebar', '--output', observationOutRel]);
-    if (observeRes.code !== 0) fail(`observe failed (exit ${observeRes.code}):\n${observeRes.stdout}\n${observeRes.stderr}`);
-    const observeArtifactLine = observeRes.stdout.split('\n').find((l) => l.startsWith('Artifact: '));
-    if (!observeArtifactLine) fail(`observe stdout missing "Artifact: " line:\n${observeRes.stdout}`);
-    const observationOutDir = observeArtifactLine.slice('Artifact: '.length).trim();
+    const initRes = await runBin(['init', '--url', targetUrl, '--viewport', '1024x768', '--target', 'header=#header', '--target', 'sidebar=#sidebar']);
+    if (initRes.code !== 0) fail(`init failed (exit ${initRes.code}):\n${initRes.stdout}\n${initRes.stderr}`);
+    const captureRes = await runBin(['capture', 'baseline']);
+    if (captureRes.code !== 0) fail(`capture baseline failed (exit ${captureRes.code}):\n${captureRes.stdout}\n${captureRes.stderr}`);
+    const captureArtifactLine = captureRes.stdout.split('\n').find((l) => l.startsWith('Artifact: '));
+    if (!captureArtifactLine) fail(`capture stdout missing "Artifact: " line:\n${captureRes.stdout}`);
+    const observationOutDir = artifactPathFromCliOutput(projectDir, captureArtifactLine.slice('Artifact: '.length).trim());
     const observationManifest = JSON.parse(await readFile(path.join(observationOutDir, 'manifest.json'), 'utf8'));
     summary.observationId = observationManifest.observationId;
+    const evidenceRootRel = path.join('.frontend-observer', 'evidence');
+    const evidenceRoot = path.join(projectDir, evidenceRootRel);
+    const catalog = JSON.parse(await readFile(path.join(projectDir, '.frontend-observer', 'catalog.json'), 'utf8'));
+    if (catalog.observations?.baseline?.observationId !== observationManifest.observationId) fail('project alias catalog does not resolve baseline to the captured observation');
+    summary.projectCaptureAliasOk = true;
+
+    // --- v0.8.1 installed normal workflow: REVIEW_REQUIRED, then unchanged-contract FAIL -> PASS ---
+    html = html.replace('width:800px;height:80px', 'width:780px;height:80px');
+    const review = await runBin(['check', 'baseline', '--json']);
+    const reviewJson = JSON.parse(review.stdout);
+    if (review.code !== 2 || reviewJson.status !== 'REVIEW_REQUIRED') fail(`check REVIEW_REQUIRED failed: ${review.code} ${review.stdout} ${review.stderr}`);
+    summary.checkReviewRequired = true;
+
+    const contractsDir = path.join(projectDir, 'contracts');
+    await mkdir(contractsDir, { recursive: true });
+    const baselineContractFile = path.join(contractsDir, 'baseline.json');
+    const changeContractFile = path.join(contractsDir, 'change.json');
+    await writeFile(baselineContractFile, JSON.stringify({ artifactKind: 'my-frontend-observer/frontend-contract', schemaVersion: '1.0.0', contractClass: 'baseline', baselineId: 'packed-viewer-baseline', sourceObservation: { observationId: observationManifest.observationId, requestId: observationManifest.requestId, producer: observationManifest.producer, observationSchemaVersion: observationManifest.schemaVersion }, clauses: [], provenance: { approvedAt: new Date(0).toISOString() } }));
+    await writeFile(changeContractFile, JSON.stringify({ artifactKind: 'my-frontend-observer/frontend-contract', schemaVersion: '1.0.0', contractClass: 'change', contractId: 'packed-viewer-change', contractRequestId: 'packed-viewer-change-request', activeBaselineIds: ['packed-viewer-baseline'], clauses: [
+      { clauseId: 'requested-header-shrink', primitive: { kind: 'property-decreases', target: 'header', property: 'width' }, category: 'requested', supportingEvidence: [] },
+      { clauseId: 'protected-sidebar-width', primitive: { kind: 'property-unchanged-within-tolerance', target: 'sidebar', property: 'width', tolerance: { kind: 'exact' } }, category: 'protected', supportingEvidence: [] },
+    ] }));
+    const approvedBaseline = await runBin(['approve-baseline', '--observation', observationOutDir, '--contract-file', baselineContractFile, '--output', '.frontend-observer/evidence/contracts/baseline']);
+    const baselineContractOutput = approvedBaseline.stdout.split('\n').find((line) => line.startsWith('Artifact: '))?.slice('Artifact: '.length).trim();
+    if (approvedBaseline.code !== 0 || !baselineContractOutput) fail(`approve-baseline failed: ${approvedBaseline.stdout} ${approvedBaseline.stderr}`);
+    const savedContract = await runBin(['save-change-contract', '--contract-file', changeContractFile, '--output', '.frontend-observer/evidence/contracts/change']);
+    const changeContractOutput = savedContract.stdout.split('\n').find((line) => line.startsWith('Artifact: '))?.slice('Artifact: '.length).trim();
+    if (savedContract.code !== 0 || !changeContractOutput) fail(`save-change-contract failed: ${savedContract.stdout} ${savedContract.stderr}`);
+    const projectConfigPath = path.join(projectDir, 'frontend-observer.json');
+    const projectConfig = JSON.parse(await readFile(projectConfigPath, 'utf8'));
+    projectConfig.schemaVersion = '1.1.0';
+    // The smoke itself authored these canonical artifact roots through the
+    // installed CLI. Keep project acceptance configuration in the same
+    // portable, project-relative vocabulary users author; do not round-trip
+    // OS-specific absolute presentation paths through path.relative().
+    projectConfig.acceptance = {
+      contract: {
+        baselineArtifact: '.frontend-observer/evidence/contracts/baseline/packed-viewer-baseline',
+        changeArtifact: '.frontend-observer/evidence/contracts/change/packed-viewer-change',
+      },
+    };
+    await writeFile(projectConfigPath, JSON.stringify(projectConfig, null, 2));
+    const acceptanceBefore = await readFile(projectConfigPath);
+    html = html.replace('width:200px;height:400px', 'width:150px;height:400px');
+    const failed = await runBin(['check', 'baseline', '--json']);
+    const failedJson = JSON.parse(failed.stdout);
+    if (failed.code !== 1 || failedJson.status !== 'FAIL' || !failedJson.contract.failedClauses.some((clause) => clause.clauseId === 'protected-sidebar-width' && clause.category === 'protected')) fail(`check FAIL failed: ${failed.code} ${failed.stdout} ${failed.stderr}`);
+    html = html.replace('width:150px;height:400px', 'width:200px;height:400px');
+    const passed = await runBin(['check', 'baseline', '--json']);
+    const passedJson = JSON.parse(passed.stdout);
+    if (passed.code !== 0 || passedJson.status !== 'PASS') fail(`check PASS failed: ${passed.code} ${passed.stdout} ${passed.stderr}`);
+    if (!(await readFile(projectConfigPath)).equals(acceptanceBefore)) fail('acceptance criteria changed during FAIL-to-PASS correction');
+    const checkedCatalog = JSON.parse(await readFile(path.join(projectDir, '.frontend-observer', 'catalog.json'), 'utf8'));
+    if (!checkedCatalog.observations?.baseline || !checkedCatalog.observations?.current) fail('check did not retain baseline/current aliases');
+    summary.checkFailPass = true;
 
     // --- build one real imported + one approved external-reference artifact via the installed CLI ---
-    const referenceImagePath = path.join(consumerDir, 'reference.png');
+    const referenceImagePath = path.join(projectDir, 'reference.png');
     await writeFile(referenceImagePath, buildMinimalPng(800, 500));
-    const regionsFilePath = path.join(consumerDir, 'regions.json');
+    const regionsFilePath = path.join(projectDir, 'regions.json');
     await writeFile(regionsFilePath, JSON.stringify({ regions: [{ id: 'header', rectangle: { x: 0, y: 0, width: 800, height: 80 } }] }), 'utf8');
 
     const importedRefOutRel = path.join(evidenceRootRel, 'reference-imported-1');
-    await mkdir(path.join(consumerDir, importedRefOutRel), { recursive: true });
+    await mkdir(path.join(projectDir, importedRefOutRel), { recursive: true });
     const importRes = await runBin(['import-reference', referenceImagePath, '--output', importedRefOutRel, '--regions-file', regionsFilePath, '--label', 'ci viewer smoke reference']);
     if (importRes.code !== 0) fail(`import-reference failed (exit ${importRes.code}):\n${importRes.stdout}\n${importRes.stderr}`);
     const importArtifactLine = importRes.stdout.split('\n').find((l) => l.startsWith('Artifact: '));
     if (!importArtifactLine) fail(`import-reference stdout missing "Artifact: " line:\n${importRes.stdout}`);
-    const importedRefOutDir = importArtifactLine.slice('Artifact: '.length).trim();
+    const importedRefOutDir = artifactPathFromCliOutput(projectDir, importArtifactLine.slice('Artifact: '.length).trim());
     const importedRefManifest = JSON.parse(await readFile(path.join(importedRefOutDir, 'manifest.json'), 'utf8'));
     summary.importedReferenceId = importedRefManifest.referenceId;
 
     const approvedRefOutRel = path.join(evidenceRootRel, 'reference-approved-1');
-    await mkdir(path.join(consumerDir, approvedRefOutRel), { recursive: true });
+    await mkdir(path.join(projectDir, approvedRefOutRel), { recursive: true });
     const approveRes = await runBin(['approve-reference', '--reference', importedRefOutDir, '--output', approvedRefOutRel]);
     if (approveRes.code !== 0) fail(`approve-reference failed (exit ${approveRes.code}):\n${approveRes.stdout}\n${approveRes.stderr}`);
     const approveArtifactLine = approveRes.stdout.split('\n').find((l) => l.startsWith('Artifact: '));
     if (!approveArtifactLine) fail(`approve-reference stdout missing "Artifact: " line:\n${approveRes.stdout}`);
-    const approvedRefOutDir = approveArtifactLine.slice('Artifact: '.length).trim();
+    const approvedRefOutDir = artifactPathFromCliOutput(projectDir, approveArtifactLine.slice('Artifact: '.length).trim());
     const approvedRefManifest = JSON.parse(await readFile(path.join(approvedRefOutDir, 'manifest.json'), 'utf8'));
     summary.approvedReferenceId = approvedRefManifest.referenceId;
 
     // --- explicit bindings-file / context-file session input ---
-    const bindingsFilePath = path.join(consumerDir, 'bindings.json');
+    const bindingsFilePath = path.join(projectDir, 'bindings.json');
     await writeFile(bindingsFilePath, JSON.stringify({ bindings: [{ referenceRegion: 'header', runtimeTarget: 'header' }] }), 'utf8');
 
     // Built through the installed package's own exported projectBoundedAgentContext -
     // never hand-edited - against the real observation created above (task requires
     // "installed public/programmatic API if exported", never fabricated schema fields).
-    const installedIndexPath = path.join(consumerDir, 'node_modules', 'my-frontend-observer', 'dist', 'index.js');
+    const installedIndexPath = path.join(installedDir, 'dist', 'index.js');
     const installedPackageApi = await import(pathToFileURL(installedIndexPath).href);
     if (typeof installedPackageApi.projectBoundedAgentContext !== 'function') fail('installed package does not export projectBoundedAgentContext');
     const contextProjection = installedPackageApi.projectBoundedAgentContext({
@@ -209,12 +333,12 @@ async function main() {
       observation: observationManifest,
     });
     if (!contextProjection.ok) fail(`installed projectBoundedAgentContext failed: ${contextProjection.reason}`);
-    const contextFilePath = path.join(consumerDir, 'context.json');
+    const contextFilePath = path.join(projectDir, 'context.json');
     await writeFile(contextFilePath, JSON.stringify(contextProjection.artifact), 'utf8');
 
     // --- start the installed viewer as a real child process (port 0 = ephemeral) ---
-    viewerProcess = spawn(process.execPath, [binAbsolutePath, 'view', '--root', evidenceRoot, '--port', '0', '--no-open', '--bindings-file', bindingsFilePath, '--context-file', contextFilePath], {
-      cwd: consumerDir,
+    viewerProcess = spawn(process.execPath, [binAbsolutePath, 'view', '--port', '0', '--no-open', '--bindings-file', bindingsFilePath, '--context-file', contextFilePath], {
+      cwd: projectDir,
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: false,
     });
@@ -249,7 +373,17 @@ async function main() {
     const statusRes = await fetch(`${viewerUrl}/api/status`);
     if (!statusRes.ok) fail(`/api/status failed: ${statusRes.status}`);
     const statusBody = await statusRes.json();
-    if (statusBody.root !== evidenceRoot) fail(`/api/status root mismatch: ${statusBody.root}`);
+    const expectedEvidenceRoot = await canonicalFilesystemPath(evidenceRoot);
+    const reportedEvidenceRoot = await canonicalFilesystemPath(statusBody.root);
+    if (reportedEvidenceRoot !== expectedEvidenceRoot) {
+      fail(
+        `/api/status root mismatch: ` +
+        `reported=${statusBody.root} ` +
+        `reportedRealpath=${reportedEvidenceRoot} ` +
+        `expected=${evidenceRoot} ` +
+        `expectedRealpath=${expectedEvidenceRoot}`,
+      );
+    }
     summary.viewerProtocolVersion = statusBody.viewerProtocolVersion;
 
     const indexRes = await fetch(`${viewerUrl}/api/index`);
@@ -257,6 +391,11 @@ async function main() {
     const indexBody = await indexRes.json();
     if (!Array.isArray(indexBody.records) || indexBody.records.length < 3) fail(`/api/index did not index the expected evidence (observation + 2 references): ${JSON.stringify(indexBody.records)}`);
     summary.indexedRecordCount = indexBody.records.length;
+    const aliased = indexBody.records.find((record) => record.alias === 'baseline');
+    if (!aliased || aliased.logicalId !== observationManifest.observationId) fail('project-aware viewer index did not attach baseline to the exact observation');
+    const currentAliased = indexBody.records.find((record) => record.alias === 'current');
+    if (!currentAliased || currentAliased.logicalId !== checkedCatalog.observations.current.observationId) fail('project-aware viewer index did not attach current to the exact newest observation');
+    summary.projectAwareViewerAliasOk = true;
 
     // --- path containment / traversal against a media-style route ---
     const traversalRes = await fetch(`${viewerUrl}/api/media/${encodeURIComponent('observation:' + observationManifest.observationId)}/..%2f..%2f..%2fetc%2fpasswd`);
@@ -279,8 +418,9 @@ async function main() {
 
     await page.goto(viewerUrl, { waitUntil: 'load' });
 
-    const observationItem = page.locator('.evidence-list__item', { hasText: observationManifest.observationId });
+    const observationItem = page.locator('.evidence-list__item').filter({ has: page.locator('.evidence-list__id', { hasText: /^baseline$/ }) });
     await observationItem.waitFor({ timeout: 15_000 });
+    if ((await observationItem.locator('.evidence-list__id').textContent()) !== 'baseline') fail('viewer did not render baseline as the primary evidence-list identity');
     await observationItem.click();
 
     const overlayImage = page.locator('.target-overlay-svg image').first();
@@ -298,6 +438,13 @@ async function main() {
     const mediaBuf = Buffer.from(await mediaRes.arrayBuffer());
     if (mediaBuf.length === 0) fail('overlay screenshot media is empty');
     summary.screenshotMediaLoaded = true;
+
+    const currentItem = page.locator('.evidence-list__item').filter({ has: page.locator('.evidence-list__id', { hasText: /^current$/ }) });
+    await currentItem.waitFor({ timeout: 15_000 });
+    if ((await currentItem.locator('.evidence-list__id').textContent()) !== 'current') fail('viewer did not render current as the primary evidence-list identity');
+    await currentItem.click();
+    await page.getByText(checkedCatalog.observations.current.observationId, { exact: false }).waitFor({ timeout: 15_000 });
+    summary.currentAliasAndProvenanceOk = true;
 
     const approvedRefItem = page.locator('.evidence-list__item', { hasText: approvedRefManifest.referenceId });
     await approvedRefItem.waitFor({ timeout: 15_000 });
@@ -369,7 +516,8 @@ async function main() {
     } catch {
       /* best-effort */
     }
-    await rm(consumerDir, { recursive: true, force: true }).catch(() => {});
+    await rm(consumerDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 }).catch(() => {});
+    if (projectDir !== consumerDir) await rm(projectDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 }).catch(() => {});
     if (outPath) {
       await writeFile(outPath, JSON.stringify(summary, null, 2), 'utf8').catch(() => {});
     }

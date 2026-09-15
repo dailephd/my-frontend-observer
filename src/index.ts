@@ -526,8 +526,20 @@ export { evaluateReferenceCandidateFidelityFromArtifactRoots } from './applicati
 export { buildReferenceCorrectionReviewIdentity, buildReferenceCorrectionAttemptIdentity } from './domain/referenceCorrectionIdentity.js';
 
 export { DEFAULT_VIEWER_PORT, VIEWER_HOST, isValidViewerPort } from './viewerServer/port.js';
-export type { StartViewerOptions, StartViewerResult } from './viewerServer/viewerService.js';
+export type { StartViewerOptions, StartViewerResult, ViewerAliasMetadata } from './viewerServer/viewerService.js';
 export { startViewer, defaultViewerAssetsRoot } from './viewerServer/viewerService.js';
+export type { FrontendObserverProjectConfig, ProjectConfigReadResult } from './projectWorkflow/projectConfig.js';
+export { PROJECT_CONFIG_FILENAME, PROJECT_CONFIG_SCHEMA_VERSION, OBSERVATION_ALIAS_PATTERN, validateObservationAlias, validateProjectConfig, readProjectConfig } from './projectWorkflow/projectConfig.js';
+export type { DiscoverProjectResult } from './projectWorkflow/projectDiscovery.js';
+export { discoverFrontendObserverProject } from './projectWorkflow/projectDiscovery.js';
+export type { AliasCatalog, AliasCatalogReadResult, ObservationAliasRecord } from './projectWorkflow/aliasCatalog.js';
+export { ALIAS_CATALOG_SCHEMA_VERSION, readAliasCatalog, serializeAliasCatalog, validateAliasCatalog, writeAliasCatalog } from './projectWorkflow/aliasCatalog.js';
+export { projectConfigPath, projectStateRoot, aliasCatalogPath, projectEvidenceRoot, projectObservationsRoot, observationOutputLocation } from './projectWorkflow/projectPaths.js';
+export type { CaptureNamedObservationInput, CaptureNamedObservationResult, InitializeProjectInput, ProjectWorkflowErrorCode } from './application/projectWorkflowService.js';
+export { initializeFrontendObserverProject, captureNamedObservation, loadProjectViewerState } from './application/projectWorkflowService.js';
+export type { CheckWorkflowStatus, CheckWorkflowResult } from './projectWorkflow/checkResult.js';
+export { CHECK_RESULT_SCHEMA_VERSION, CHECK_WORKFLOW_STATUSES } from './projectWorkflow/checkResult.js';
+export { checkProject } from './application/projectCheckService.js';
 export { VIEWER_PROTOCOL_VERSION } from './viewerServer/httpServer.js';
 
 export type {

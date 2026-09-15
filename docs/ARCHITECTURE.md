@@ -1,9 +1,29 @@
 # Architecture
 
+## v0.8.1 project workflow
+
+Versioned project configuration (`1.0.0` compatibility plus current `1.1.0`
+acceptance input), upward discovery, centralized managed paths, and the atomic
+alias catalog live under `src/projectWorkflow`. Aliases select exact canonical
+artifact directories; they never replace artifact identities.
+
+`src/application/projectCheckService.ts` composes the existing observation,
+comparison, contract-evaluation, reference-reader, explicit-binding,
+compatibility, and fidelity owners. `src/projectWorkflow/checkAcceptance.ts`
+owns contained acceptance-input resolution and shared file-wrapper parsing.
+`checkResult.ts` owns the bounded ephemeral projection, not a persisted check
+artifact or evaluation engine. Status precedence is `BLOCKED`, then `FAIL`,
+then `PASS` when all configured executable dimensions pass, then
+`REVIEW_REQUIRED` when comparison is the only evidence. Canonical observations,
+comparisons, and contract evaluations remain persisted; reference fidelity and
+the workflow result remain in memory/presentation.
+
 ## Current package architecture
 
 The current repository is one published TypeScript ESM package
-(`my-frontend-observer@0.7.0`):
+(`@dailephd/my-frontend-observer@0.8.1`). The CLI remains
+`my-frontend-observer`; the npm scope does not rename the product or artifact
+identities.
 
 - `src/cli.ts` is the real, thin public CLI parsing/dispatch/presentation
   boundary for the current command surface (`observe`, `compare`,
@@ -441,7 +461,7 @@ later v0.8 batches, which must consume this runtime boundary rather than
 redefine it.
 
 ```text
-my-frontend-observer view --root <evidence-root>
+my-frontend-observer view [--root <evidence-root>]
         |
         v
   thin CLI dispatch (src/cli.ts: parseViewArgs/runViewCommand)
@@ -484,7 +504,7 @@ my-frontend-observer view --root <evidence-root>
   `sw.js`, not a hand-written approximation). An install affordance appears
   only when the browser actually fires `beforeinstallprompt`; its absence is
   shown honestly, never as a disabled-looking fake control.
-- **CLI**: `view --root <evidence-root> [--port <n>] [--no-open]` remains a
+- **CLI**: `view [--root <evidence-root>] [--port <n>] [--no-open]` remains a
   thin dispatcher — it parses syntax, delegates once to `startViewer`, prints
   the URL/root, and optionally best-effort opens the system browser (failure
   there is never fatal to server startup). All v0.1-v0.7 commands are

@@ -49,6 +49,12 @@ export interface StartViewerOptions {
    * `{status:'none'}`.
    */
   context?: ContextSessionState;
+  /** Ephemeral project-workflow display metadata keyed by exact POSIX evidence-relative directory. */
+  aliasMetadata?: ViewerAliasMetadata;
+}
+
+export interface ViewerAliasMetadata {
+  observationAliasesByRelativeDir: Readonly<Record<string, string>>;
 }
 
 export type StartViewerResult =
@@ -95,7 +101,12 @@ export async function startViewer(options: StartViewerOptions): Promise<StartVie
   const assetsRoot = options.assetsRoot ?? defaultViewerAssetsRoot();
   const server: Server = createViewerServer({
     assetsRoot,
-    state: { root: options.root, bindingDeclarations: options.bindingDeclarations ?? [], context: options.context ?? { status: 'none' } },
+    state: {
+      root: options.root,
+      bindingDeclarations: options.bindingDeclarations ?? [],
+      context: options.context ?? { status: 'none' },
+      aliasMetadata: options.aliasMetadata ?? { observationAliasesByRelativeDir: {} },
+    },
   });
 
   const listenResult = await new Promise<{ ok: true } | { ok: false; message: string }>((resolvePromise) => {

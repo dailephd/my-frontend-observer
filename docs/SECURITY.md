@@ -1,5 +1,7 @@
 # Security
 
+Project acceptance paths are portable, project-relative, and realpath-contained before use, including symlink/junction escape rejection. `current` alias replacement changes only catalog metadata and never deletes or overwrites canonical evidence. `check` adds no generic file-serving route, inferred binding, source mutation, persisted check artifact, or image bytes to JSON; configured references must be explicitly approved. JSON artifact paths are project-relative.
+
 ## Current controls
 
 `my-frontend-observer` launches a real, sandboxed Chromium browser
@@ -195,7 +197,7 @@ rejects any non-regular-file entry, closing that escape.
 Certificate-failure-specific handling, permission-prompt-specific handling
 (Chromium's default deny-all applies; no permission is ever explicitly
 granted), and any non-loopback/remote browsing mode remain unimplemented and
-out of scope. `my-frontend-observer@0.8.0` is published to npm, and a
+out of scope. `@dailephd/my-frontend-observer@0.8.1` is published to npm, and a
 pre-release readiness CI workflow (Windows/Linux/macOS packed-candidate
 validation, now covering the v0.8 viewer alongside every earlier version's
 packed behavior) exists (see `docs/CI_CD.md`). The v0.7 external-reference/

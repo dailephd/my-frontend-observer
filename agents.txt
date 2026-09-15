@@ -1,0 +1,770 @@
+# Coding-agent operating manual for my-frontend-observer
+
+This file is the canonical detailed operating manual for coding agents working in
+`my-frontend-observer`. It describes how to work in this repository. It is not
+product documentation, a roadmap, a release note, or an implementation plan.
+
+`claude.txt`, `AGENTS.md`, and `CLAUDE.md` are thin adapters that point here.
+Keep substantive coding-agent rules in this file so the repository has one
+instruction source of truth.
+
+## 1. Repository identity and role separation
+
+Repository:
+
+`Z:\Users\newuser\Projects\my-frontend-observer`
+
+Package:
+
+`my-frontend-observer`
+
+The product is a local-first frontend observation and change-review system. It
+captures bounded browser evidence, persists structured artifacts, compares
+observations, evaluates change contracts, works with external design references,
+and exposes the same canonical evidence through a read-only local viewer/PWA.
+
+Role separation is mandatory:
+
+- The planner/user owns product scope, version scope, architecture choices,
+  scientific/product semantics, release decisions, and other behavior-critical
+  decisions.
+- The coding agent is the implementer and repository inspector.
+- Do not silently convert an implementation task into a design task.
+- Do not replace an explicit project decision with a generic convention.
+- When a task already freezes behavior or architecture, implement that contract.
+- Local implementation choices are allowed only where the task and repository
+  intentionally leave them open.
+- If implementation evidence proves a frozen assumption is wrong and fixing it
+  would materially change scope or architecture, stop and report the concrete
+  evidence instead of redesigning the product silently.
+
+For ordered version work, assume earlier completed prompts/batches in the current
+milestone are already implemented in the repository state. Extend that
+architecture. Do not recreate it.
+
+## 2. Authority and source of truth
+
+Before changing code, inspect repository evidence.
+
+Use this order when relevant:
+
+1. Current explicit task requirements.
+2. Current Git branch, HEAD, worktree, ignore rules, package metadata, and
+   repository files.
+3. `docs/DOCUMENTATION_PRESERVATION_POLICY.md`.
+4. `docs/PROJECT_DESCRIPTION.md` for durable product intent.
+5. `docs/PROJECT_MILESTONES.md` for ordered capability requirements.
+6. `docs/ROADMAP.md` for version-level direction.
+7. `docs/plans/<version>-implementation-plan.md`, when present, for the frozen
+   concrete implementation plan for that version.
+8. `docs/CURRENT_STATE.md` for current implementation/release state.
+9. `docs/ARCHITECTURE.md`, `docs/CONTRACTS.md`, `docs/COMMANDS.md`,
+   `docs/WORKFLOWS.md`, `docs/SECURITY.md`, `docs/DEVELOPMENT.md`, and
+   `docs/CI_CD.md` as applicable.
+10. Current implementation and tests.
+11. Historical reports as evidence of what was previously done.
+
+Actual source and executable behavior control claims about what currently
+exists. Documentation must be reconciled to implementation when stale.
+Historical reports do not override current source.
+
+Never implement from an assumption when bounded repository inspection can answer
+the question.
+
+## 3. Read before edit
+
+Do not edit a file because its name looks relevant.
+
+Before editing, determine:
+
+- what component owns the behavior;
+- the relevant symbols and contracts;
+- who calls them;
+- what they call;
+- input and output shapes;
+- failure states;
+- persistence behavior;
+- tests that protect the boundary;
+- documentation that describes the boundary.
+
+Prefer direct, bounded repository inspection. Use repository indexing/retrieval
+tools when the task explicitly requires them or they materially improve a large
+inspection. Do not make an optional retrieval tool a substitute for reading the
+actual owning source. If a retrieval tool is unavailable, distinguish
+"unavailable" from "passed" and use direct bounded inspection when the task
+allows it.
+
+## 4. Small, bounded changes
+
+Keep edits inside the requested task.
+
+Do not opportunistically:
+
+- refactor unrelated components;
+- rename unrelated APIs;
+- reformat unrelated files;
+- add later-version features early;
+- expand roadmap scope;
+- replace working components without demonstrated need;
+- introduce a new framework because it is convenient;
+- rewrite historical documentation unrelated to the task.
+
+When a correction is necessary, change the smallest coherent ownership boundary
+and add regression evidence.
+
+## 5. Version-plan governance
+
+`docs/ROADMAP.md` is high-level. It must not become a batch-by-batch execution
+plan.
+
+When a frozen version plan exists at:
+
+`docs/plans/<version>-implementation-plan.md`
+
+it owns the concrete version-start implementation plan, including architecture
+decisions, implementation batches, order, gates, exclusions, and post-
+implementation handoff.
+
+Treat a frozen plan as planning authority, not proof of implementation.
+
+Do not silently reorder batches or revise a frozen plan during implementation.
+If a material plan change is required, report the evidence and wait for an
+explicitly accepted plan revision before later batches rely on it.
+
+## 6. Current architecture ownership
+
+Re-check the current source before every task because file ownership can evolve.
+The established ownership model is:
+
+### CLI and public library
+
+- `src/cli.ts` owns CLI parsing, command dispatch, help/version rendering, and
+  CLI exit-code/output mapping. Keep it thin.
+- `src/index.ts` is the public library export boundary. Keep it a thin export
+  surface, not a second implementation layer.
+
+### Requests and safety
+
+- `src/request/` owns request normalization and portable input contracts.
+- `src/safety/` owns navigation/safety policy used by browser observation.
+- Do not duplicate validation or request normalization in CLI/viewer code.
+
+### Browser observation
+
+- `src/browser/` owns the one canonical Playwright/Chromium observation path,
+  target resolution, evidence capture, scrolling behavior, and browser
+  lifecycle.
+- Never create a second browser observer or second target resolver.
+- Viewer code must not re-query the inspected target DOM to fill missing
+  persisted evidence.
+
+### Domain evidence and engines
+
+- `src/domain/` owns canonical evidence contracts and pure engines.
+- Reuse the existing canonical owners for relationships, comparison,
+  frontend-contract evaluation, external-reference regions/requirements,
+  applicability/compatibility, explicit runtime binding, reference fidelity,
+  bounded context, and runtime/static correlation.
+- Do not duplicate domain semantics in React, viewer-server adapters, CLI
+  parsing, tests, or documentation helpers.
+
+### Artifact persistence
+
+- `src/artifacts/` owns persisted artifact readers/writers and their structural
+  persistence boundaries.
+- Do not invent another artifact format for viewer convenience.
+- Do not silently migrate or coerce unsupported artifact versions.
+
+### Application use cases
+
+- `src/application/` owns reusable application-level workflows connecting
+  canonical readers/domain engines/writers.
+- Public CLI behavior should delegate into these owners instead of embedding
+  product semantics directly in command routing.
+
+### Local viewer server
+
+- `src/viewerServer/` owns the read-only Node local viewer server, evidence
+  indexing, safe handles, session input, viewer projections/adapters, and safe
+  media/API boundaries.
+- The viewer server is not a generic filesystem server.
+- It must remain loopback-only.
+
+### Viewer UI
+
+- `viewer/` owns React + TypeScript + Vite/PWA presentation.
+- UI state is presentation state, not Observer evidence.
+- React may format, filter, select, and transform for display. It must not
+  become a second evidence engine.
+
+### CI and project scripts
+
+- `scripts/` and `.github/workflows/` own build, documentation, package,
+  security, readiness, and release automation as currently implemented.
+- Do not replace an established script with an ad hoc command sequence unless
+  the task explicitly changes that workflow.
+
+## 7. Core product invariants
+
+Preserve these unless an explicit task changes them:
+
+- One canonical browser observer.
+- One canonical target-resolution path.
+- One canonical relationship engine.
+- One canonical comparison engine.
+- One canonical frontend-contract evaluator.
+- One canonical external-reference model.
+- One canonical reference/candidate compatibility implementation.
+- One canonical explicit binding evaluator.
+- One canonical reference-fidelity evaluator.
+- One canonical reference/runtime coordinate mapping rule.
+- One canonical bounded-context builder.
+- One canonical runtime/static correlation implementation.
+- Viewer presentation must consume those owners rather than replacing them.
+
+Runtime target identity, reference-region identity, static candidate identity,
+and filesystem identity are separate domains. Never collapse them for
+convenience.
+
+## 8. Evidence-state honesty
+
+Do not turn uncertainty into success.
+
+Preserve the distinctions the product already models, including as applicable:
+
+- supported vs unsupported-version;
+- complete vs partial;
+- available vs unavailable;
+- found vs not-found vs ambiguous;
+- comparable vs comparable-with-warnings vs incomparable;
+- requested vs expected-dependent vs protected vs preserved vs unexpected;
+- clause pass vs fail vs unavailable vs conflict;
+- binding bound vs ambiguous vs unavailable;
+- fidelity not-evaluated vs pass vs fail;
+- context adequate vs partial vs inadequate;
+- correlation correlated vs ambiguous vs unavailable.
+
+Do not replace absent/unknown evidence with false, zero, empty string, fake
+geometry, or a fabricated PASS.
+
+A fidelity PASS never overrides an active frontend-contract FAIL.
+Compatibility is not fidelity. Adequacy is not fidelity. Binding status is not
+fidelity status. Correlation is not source ownership.
+
+## 9. Viewer-specific invariants
+
+The viewer is local, optional, read-only, and non-mutating.
+
+Preserve:
+
+- loopback binding to `127.0.0.1`;
+- the current fixed default port from implementation/documentation;
+- safe evidence-root containment;
+- metadata-first loading;
+- on-demand artifact and media loading;
+- no arbitrary filesystem browsing;
+- no evidence mutation;
+- no target-source editing;
+- no baseline/reference approval through viewing;
+- no viewer-created evidence artifact family;
+- no automatic reference/runtime binding;
+- no my-dev-kit invocation from the shipped viewer;
+- no bounded-context rebuild from the viewer;
+- no runtime/static correlation rebuild from the viewer.
+
+Reference-image coordinates and runtime/CSS coordinates are different domains.
+Use the existing canonical coordinate mapping when cross-domain interpretation
+is required.
+
+PWA caching may cache the application shell and immutable viewer assets. It must
+not make evidence/API/media responses appear as stale authoritative truth when
+the local viewer server/evidence root changes or disappears.
+
+## 10. Current viewer session inputs
+
+The viewer may accept explicit operational session input such as the currently
+implemented:
+
+- evidence root;
+- bindings file;
+- bounded-context file;
+- port;
+- browser-open behavior.
+
+Re-check `node dist/cli.js view --help` before documenting or changing exact
+flags.
+
+Binding declarations and bounded context are session input. Do not persist them
+as new viewer artifacts merely to simplify UI implementation.
+
+## 11. CLI path semantics
+
+Do not assume all CLI paths have the same contract.
+
+In particular, current observation output locations are portable relative paths,
+not arbitrary absolute output paths. Viewer evidence roots may have different
+operational path semantics.
+
+Before writing examples or tests, inspect the actual command parser and
+`--help` output.
+
+Never change path semantics just to make an example command easier.
+
+## 12. Filesystem and workspace safety
+
+C:\ is space-constrained for this project.
+
+Do not create project workspaces, temporary project copies, indexes, caches,
+consumer installs, tarballs, browser profiles, smoke evidence, or large generated
+artifacts under C:\.
+
+Repository root:
+
+`Z:\Users\newuser\Projects\my-frontend-observer`
+
+Do not create sibling scratch repositories such as:
+
+`Z:\Users\newuser\Projects\my-frontend-observer-temp`
+
+or the malformed historical sibling:
+
+`Z:\Users\newuser\Projects\my-frontend-observer.my-dev-kit-workflow`
+
+When a task specifies a workflow root, use that exact root.
+
+For substantial generated workflow state, use a repository-local root beneath:
+
+`<repo>\.my-dev-kit-workflow\...`
+
+Construct Windows paths with `Join-Path` or equivalent path APIs. Do not form
+execution-critical paths by string concatenation when a path API is available.
+
+If a task needs significant generated state but provides no task-specific root,
+use the deterministic fallback:
+
+`<repo>\.my-dev-kit-workflow\adhoc`
+
+and report every generated subpath. Do not invent sibling workspaces.
+
+Redirect process-local TEMP/TMP/npm cache into the approved workflow root when a
+task would otherwise create substantial state on C:\. Do not permanently change
+user or machine environment variables.
+
+Never use `git clean` as a substitute for workspace discipline.
+
+## 13. Target and evidence immutability
+
+Observation, comparison, contract, reference, viewer, and audit workflows are
+non-destructive unless a task explicitly authorizes a mutation operation.
+
+Do not modify an inspected external frontend simply because the command runs
+from its directory.
+
+Keep these concepts separate:
+
+- repository/package root;
+- writable workflow/output root;
+- inspected target root;
+- evidence root;
+- temporary working directory;
+- clean package consumer directory.
+
+Do not assume an installed npm package directory is writable.
+
+## 14. Cross-platform behavior
+
+Windows is a first-class platform. Preserve Linux and macOS behavior.
+
+Do not assume:
+
+- POSIX path separators;
+- `/tmp`;
+- Bash-only shell behavior in product code;
+- Unix executable bits as the only execution model;
+- case-sensitive filesystems;
+- symlink behavior identical across operating systems.
+
+Use Node/path abstractions at product boundaries.
+
+Path containment and symlink/junction/reparse-point safety are security
+properties, not formatting details.
+
+## 15. Security rules
+
+Preserve the existing browser and local-viewer safety model.
+
+At minimum:
+
+- observation navigation remains constrained by the existing safety policy;
+- viewer listener remains loopback-only;
+- evidence/media access remains inside the authorized evidence root;
+- traversal and absolute-path escape must fail closed;
+- symlink/junction/reparse-point escape must fail closed where relevant;
+- `EvidenceReference.path` is structured provenance, not a local filesystem
+  path;
+- static candidate ids such as `file:...` and `symbol:...` are correlation
+  evidence, not filesystem paths or edit authorization;
+- browser-controlled input must never choose arbitrary local binding/context
+  file paths;
+- APIs remain read-only unless a future explicitly authorized version changes
+  that contract;
+- service-worker behavior must not serve stale evidence as current truth.
+
+Do not use dynamic code execution or shell interpolation for user/evidence input
+without an explicit reviewed need.
+
+## 16. Dependencies
+
+Do not add or upgrade dependencies without demonstrated need.
+
+Before adding a dependency:
+
+1. check Node/platform built-ins;
+2. check current dependencies;
+3. identify runtime vs development role;
+4. confirm package metadata matches actual use;
+5. add focused tests;
+6. run affected full validation.
+
+Do not rely on accidental dev-dependency hoisting in a consumer installation.
+
+Do not perform broad dependency modernization during an unrelated task.
+
+Security-driven patch/minor updates require full regression validation.
+
+## 17. Public interfaces and compatibility
+
+Before changing a public command, API, schema, artifact contract, package
+entrypoint, report format, or viewer protocol:
+
+- find current callers;
+- read current tests;
+- read command/help/docs;
+- identify compatibility expectations;
+- determine whether the task explicitly authorizes a breaking change.
+
+Preserve existing behavior unless breaking change is explicitly authorized.
+
+Additive work must remain additive at existing boundaries.
+
+Developer scripts are not substitutes for package-distributed architecture.
+
+## 18. Testing and regression protection
+
+Test the changed component directly first.
+
+Cover:
+
+- normal behavior;
+- boundary behavior;
+- expected failures;
+- determinism;
+- security properties;
+- cross-platform-sensitive behavior when relevant.
+
+Then run integration tests around affected components.
+
+For a defect fix, add a regression test that would fail under the broken
+behavior whenever practical.
+
+Do not weaken or delete a valid test to obtain green status.
+
+Do not add `.skip`, `.only`, `continue-on-error`, `|| true`, or equivalent to
+hide a required failure.
+
+Task-specified tests are mandatory. Do not replace planner-authored acceptance
+tests with easier alternatives.
+
+## 19. Browser and PWA validation
+
+For browser-facing work, unit tests are not sufficient when the task controls
+real viewer or observation behavior.
+
+Use the existing real-Chromium test infrastructure where applicable.
+
+For PWA/service-worker work, distinguish:
+
+- static source inspection;
+- live service-worker registration;
+- browser-level shell/cache behavior;
+- actual OS-level installation.
+
+Do not claim stronger proof than was actually executed.
+
+## 20. Packaging and clean-consumer proof
+
+When package-distributed behavior is affected, source-checkout tests are not
+sufficient.
+
+Use the repository's established package validation flow when relevant:
+
+build
+→ pack exact tarball
+→ hash exact tarball
+→ install exact tarball into clean consumer
+→ invoke installed CLI/library/viewer
+→ verify behavior
+
+Do not build a different candidate per platform when a readiness/release task
+requires exact-candidate parity.
+
+Keep tarballs and consumer installations beneath the approved workflow root.
+
+`package.json#files` and any `.npmignore` rules define the package boundary.
+Agent-control files (`agents.txt`, `claude.txt`, `AGENTS.md`, `CLAUDE.md`) and
+`.claude/` are repository-local controls and should remain outside npm artifacts
+unless the package policy explicitly changes.
+
+## 21. Documentation roles
+
+Respect document ownership.
+
+- `README.md`: first-use and current overview.
+- `docs/PROJECT_DESCRIPTION.md`: durable product intent.
+- `docs/PROJECT_MILESTONES.md`: ordered capability design and acceptance.
+- `docs/ROADMAP.md`: high-level version goals, constraints, exclusions,
+  dependencies, and status. Never batch-by-batch implementation instructions.
+- `docs/plans/<version>-implementation-plan.md`: frozen concrete version plan,
+  when present.
+- `docs/CURRENT_STATE.md`: actual current implementation and release state.
+- `docs/ARCHITECTURE.md`: current architecture and clearly labeled future
+  constraints.
+- `docs/COMMANDS.md`: implemented command reference.
+- `docs/WORKFLOWS.md`: current procedures.
+- `docs/CONTRACTS.md`: canonical evidence/schema/behavior contracts.
+- `docs/SECURITY.md`: current safety boundaries.
+- `docs/DEVELOPMENT.md`: current development/test workflow.
+- `docs/CI_CD.md`: current CI, readiness, packaging, and release process.
+- `CHANGELOG.md`: released history plus the repository's established unreleased
+  convention.
+
+Do not describe planned behavior as implemented.
+
+Do not describe implemented-but-unreleased work as already published.
+
+Do not silently delete roadmap history, release history, milestone detail, or
+historical reports.
+
+## 22. Reports and factual handoff
+
+For substantial implementation, audit, validation, readiness, or release stages,
+create the task-specified tracked report under:
+
+`docs/reports/<name>.md`
+
+If the task gives an exact report path, use it exactly.
+
+Reports must be factual. Include:
+
+- verdict;
+- repository path;
+- branch;
+- starting and ending HEAD;
+- files changed;
+- architecture decisions actually made;
+- tests/commands actually run;
+- exact PASS/FAIL results;
+- skipped steps and reasons;
+- generated paths;
+- remaining risks/blockers;
+- next-stage readiness.
+
+Always print the report path in the final console summary when a report was
+created.
+
+Do not claim a command passed unless it was actually executed successfully.
+
+## 23. Git safety
+
+Preserve user work.
+
+Do not automatically run:
+
+- `git reset --hard`;
+- `git clean`;
+- `git stash` on unrelated work;
+- force checkout/restore over unrelated files;
+- force-push.
+
+Inspect branch, HEAD, remote, and worktree before editing.
+
+If unrelated pre-existing changes do not conflict, leave them untouched.
+
+Stage explicit files. Avoid `git add -A` when unrelated/generated files exist.
+
+Only commit or push when the task explicitly authorizes it.
+
+Do not claim a clean worktree unless preflight/final status proved it.
+
+## 24. Release-stage separation
+
+Keep these stages separate:
+
+implementation
+→ hardened documentation/completeness audit
+→ pre-release readiness/cross-platform/security/code-rot audit
+→ release preparation/version bump/package hygiene
+→ user-authorized publication
+
+Passing implementation tests does not authorize release.
+
+Passing pre-release readiness does not authorize publication.
+
+Do not bump versions, tag, publish, create a GitHub Release, or merge release
+work unless the current task explicitly authorizes that exact action.
+
+## 25. Pre-release readiness invariants
+
+When a readiness task requires cross-platform packed validation:
+
+- create one exact npm candidate tarball;
+- hash it;
+- use the same tarball on Windows, Linux, and macOS;
+- do not repack independently per platform;
+- exercise installed package behavior, including viewer behavior when relevant;
+- preserve required security tests;
+- investigate flakes instead of blindly rerunning them;
+- do not weaken the OS matrix to obtain green status.
+
+A validation branch may be used only when explicitly authorized by the task.
+Never substitute a validation branch for a release branch.
+
+## 26. Release protocol
+
+When an explicit standardized release task authorizes publication, preserve the
+repository's release order.
+
+A typical authorized release flow is:
+
+release branch
+→ release PR
+→ required PR CI
+→ merge to primary branch
+→ required primary-branch CI
+→ annotated release tag
+→ tag CI when required
+→ GitHub Release
+→ release-channel/package parity checks
+→ final npm package inspection
+→ npm publication
+
+For npm releases, when the task explicitly requires it:
+
+`npm publish --access public`
+
+must be the final state-changing command.
+
+After publication, run read-only verification only.
+
+Never publish from an unvalidated or materially changed candidate.
+
+## 27. Current version and release facts
+
+Never hardcode the current package version from this manual.
+
+Read:
+
+`package.json`
+`package-lock.json`
+Git tags/releases
+current repository documentation
+
+before making version/release claims.
+
+Package version and artifact schema versions are distinct. Do not bump artifact
+schemas merely because the npm package version changes.
+
+## 28. Current public command surface
+
+The product has historically included commands such as:
+
+- `observe`
+- `compare`
+- `approve-baseline`
+- `save-change-contract`
+- `evaluate-contract`
+- `import-reference`
+- `approve-reference`
+- `evaluate-reference-fidelity`
+- `view`
+
+Do not treat this list as a substitute for actual CLI inspection.
+
+Before changing command documentation or compatibility, run the current built
+CLI help and inspect `src/cli.ts`.
+
+## 29. User-facing examples
+
+When adding examples or documentation:
+
+- use real executable syntax;
+- validate examples against the current CLI;
+- keep output roots/path semantics correct;
+- distinguish portable relative output paths from absolute operational input
+  roots where the CLI does;
+- prefer realistic deterministic examples over toy pseudo-commands;
+- do not write examples that scatter evidence into the repository root unless
+  that is the intended workflow.
+
+Human-readable demos are valuable, but they must use the same canonical product
+interfaces as tests.
+
+## 30. Style for reports and documentation
+
+Use clear, short sentences.
+
+Prefer plain English over jargon where a simpler term exists.
+
+Avoid unnecessary:
+
+- em dashes;
+- semicolons;
+- opaque shorthand labels;
+- unexplained abbreviations;
+- long ASCII divider lines.
+
+Use numbered headings for substantial reports/prompts where structure helps.
+Prefer plain text and numbered lists over tables unless the task or an existing
+canonical report format specifically requires a table.
+
+If an existing product contract uses a technical term or status code, preserve
+that exact term and explain it rather than renaming it casually.
+
+## 31. Stop conditions
+
+Stop rather than guessing when a task would require:
+
+- a material product decision not authorized by the task;
+- architecture redesign contradicting a frozen plan;
+- a breaking public-contract change not authorized by the task;
+- destructive Git action over unrelated work;
+- writing substantial generated project state outside approved Z:\ paths;
+- weakening security/evidence semantics to make tests pass;
+- publication/release action not explicitly authorized;
+- claiming unavailable evidence as PASS.
+
+When stopping, report the exact evidence, impact, and next required decision.
+Do not hide the blocker behind a vague summary.
+
+## 32. Final checklist
+
+Before reporting completion, verify as applicable:
+
+- correct repository and branch;
+- correct starting/current HEAD;
+- unrelated user work preserved;
+- requested scope only;
+- existing architecture reused;
+- no duplicate semantic engine introduced;
+- path/workflow policy followed;
+- no substantial generated state on C:\;
+- focused tests passed;
+- required full tests passed;
+- browser/security/package tests passed where affected;
+- documentation updated where behavior changed;
+- package/release state stated accurately;
+- generated paths inventoried;
+- required report created and committed when authorized;
+- final `git status --short` inspected;
+- exact remaining blockers/risks stated.
+
