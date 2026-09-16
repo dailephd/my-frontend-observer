@@ -30,13 +30,13 @@ install dependencies (npm install; npx playwright install chromium)
 → validate documentation (npm run check:docs)
 ```
 
-## Current observation workflow (published and current in 0.7.0)
+## Current observation workflow (supported in 0.8.1)
 
-The real `observe` workflow remains part of the published
-`my-frontend-observer@0.7.0` package. Its browser-observation behavior was
-established in earlier releases and remains unchanged by v0.6/v0.7. It accepts target
-configuration through either of two input paths, plus one optional runtime
-scroll scenario:
+The real `observe` workflow remains supported in the current published
+`my-frontend-observer@0.8.1` package. Its browser-observation behavior was
+established in earlier releases; later project/viewer releases compose it
+rather than replacing it. It accepts target configuration through either of
+two input paths, plus one optional runtime scroll scenario:
 
 ```text
 CLI arguments (--url, --viewport, --output, --timeout, exactly one of:
@@ -83,10 +83,10 @@ temporary consumer directory outside the repository, on Windows, Linux, and
 macOS (`scripts/ci/runPackedObservationSmoke.mjs`) - the same workflow,
 independent of the source checkout.
 
-## Current comparison workflow (published and current in 0.7.0)
+## Current comparison workflow (supported in 0.8.1)
 
 **Current status: shipped originally as part of
-`my-frontend-observer@0.4.0` and unchanged through `0.7.0`.** This is a
+`my-frontend-observer@0.4.0` and remains supported in `0.8.1`.** This is a
 separate workflow from the observation workflow above - it consumes two
 already-persisted observation artifacts rather than producing one, and it
 never launches a browser:
@@ -132,10 +132,10 @@ fixture (`scripts/dev/builtCliCompareSmoke.mjs`), and packed-tarball
 validation of the installed `compare` command
 (`scripts/ci/runPackedObservationSmoke.mjs` - see `docs/CI_CD.md`).
 
-## Current frontend contract workflow (published and current in 0.7.0)
+## Current frontend contract workflow (supported in 0.8.1)
 
-This text/config-driven workflow shipped in `0.5.0` and remains current in
-`0.7.0`. It is layered downstream of the two workflows above - it does not
+This text/config-driven workflow shipped in `0.5.0` and remains supported in
+`0.8.1`. It is layered downstream of the two workflows above - it does not
 replace them. The complete v0.7 coding-agent workflow (the external-reference
 evidence foundation and end-to-end correction loop) is layered on top of
 it - see "Current external-reference foundation workflow" and "Current
@@ -629,12 +629,12 @@ than fabricated visual failures.
 
 The v0.7 coding-agent workflow and reference foundation are released as
 part of this repository and work without the v0.8 viewer or v0.9
-annotation system. v0.8, implemented in the current repository (not yet
-released), consumes the v0.7 reference/evaluation model exactly as
-required - it does not create a second UI-only one (see "Current
-interactive viewer workflow" above). v0.9 remains future and must preserve
-the same constraint when implemented.
-# v0.8.1 release workflow
+annotation system. v0.8, released as `0.8.0`, consumes the v0.7
+reference/evaluation model exactly as required - it does not create a second
+UI-only one (see "Current interactive viewer workflow" above). v0.9 remains
+future and must preserve the same constraint when implemented.
+
+## v0.8.1 release workflow
 
 The published package is `@dailephd/my-frontend-observer@0.8.1`; install it
 with npm and use the `my-frontend-observer` CLI. The ordinary workflow is
