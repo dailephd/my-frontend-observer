@@ -247,7 +247,7 @@ Planning authorities:
   intent and responsibility boundaries.
 - [Project Milestones](docs/PROJECT_MILESTONES.md): complete ordered capability
   design and cross-milestone rules.
-- [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.8 are
+- [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.8.1 are
   released; v0.9+ remain future.
 - [Current State](docs/CURRENT_STATE.md): retained scaffold and release state.
 
