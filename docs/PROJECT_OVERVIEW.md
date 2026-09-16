@@ -28,13 +28,15 @@ Region Identity; v0.3, Runtime Scrolling, Overflow, and Visibility Behavior;
 v0.4, Layout Relationships, Dependency Evidence, and Before/After
 Comparison; v0.5, Executable Frontend Contracts and Explicit Change Scope;
 v0.6, Bounded Agent Context and Native my-dev-kit Ecosystem Integration;
-v0.7, End-to-End Coding-Agent Frontend Change Review; and v0.8, Interactive
-Local Observation Viewer, are released and published to npm. The current
-package version is `0.8.1` as `@dailephd/my-frontend-observer` (observation schema `1.2.0`, comparison schema
-`1.0.0`, frontend contract schema `1.0.0`, evaluation artifact schema `1.0.0`,
-bounded-agent-context schema `1.0.0`, external-reference schema `1.0.0`). The
-released package was validated as a packed npm tarball in a clean consumer
-environment across Windows, Linux, and macOS.
+v0.7, End-to-End Coding-Agent Frontend Change Review; v0.8, Interactive
+Local Observation Viewer; and v0.8.1, Project Workflow CLI and Human-Readable
+Evidence Aliases, are released and published to npm. The current package
+version is `0.8.1` as `@dailephd/my-frontend-observer` (observation schema
+`1.2.0`, comparison schema `1.0.0`, frontend contract schema `1.0.0`,
+evaluation artifact schema `1.0.0`, bounded-agent-context schema `1.0.0`,
+external-reference schema `1.0.0`). The released package was validated as a
+packed npm tarball in a clean consumer environment across Windows, Linux, and
+macOS.
 
 The released low-level command surface remains artifact-oriented: a real
 `observe` command launches Chromium, enforces loopback-only safety, captures
@@ -109,7 +111,7 @@ runtime observation and stable identity
   + reference-vs-candidate structured fidelity evaluation
   + controlled end-to-end correction workflow (released as 0.7.0)
 → interactive viewer with reference/candidate inspection (released as 0.8.0)
-→ project workflow CLI + human-readable evidence aliases (implemented in source; not published)
+→ project workflow CLI + human-readable evidence aliases (released as 0.8.1)
 → structured visual annotation on runtime screenshots and external references
   (planned v0.9)
 → full visual human-LLM workflow with actual-frontend-driven and
