@@ -94,10 +94,15 @@ artifact identifiers during ordinary use. Existing low-level commands remain
 supported. The frozen plan is
 `docs/plans/v0.8.1-cli-usability-patch-plan.md`.
 
-v0.9 and v0.10 remain future and unimplemented. v0.9 adds structured visual
-annotation through the existing viewer. v0.10 completes the visual human-LLM
-workflow and should consume the v0.8.1 high-level acceptance surface rather than
-introduce another Observer command architecture.
+v0.9 remains unimplemented, but its version-start architecture and concrete
+seven-prompt implementation sequence are now frozen in
+`docs/plans/v0.9-implementation-plan.md`, grounded by
+`docs/reports/v0.9-architecture-retrieval.md`. v0.9 adds structured visual
+annotation through the existing viewer for both runtime observations and
+external references while reusing the current contract/reference semantics.
+v0.10 remains future and unimplemented and completes the visual human-LLM
+workflow on top of the v0.9 annotation model and v0.8.1 high-level acceptance
+surface.
 
 The revised dependency path reaches practical coding-agent use before graphical
 interaction and keeps later visual work on the same canonical evidence system:
@@ -113,7 +118,7 @@ runtime observation and stable identity
 → interactive viewer with reference/candidate inspection (released as 0.8.0)
 → project workflow CLI + human-readable evidence aliases (released as 0.8.1)
 → structured visual annotation on runtime screenshots and external references
-  (planned v0.9)
+  (planned v0.9; implementation plan frozen)
 → full visual human-LLM workflow with actual-frontend-driven and
   reference-driven entry modes (planned v0.10)
 ```
@@ -147,6 +152,12 @@ Repository-local authorities and navigation:
   release state.
 - [plans/v0.8.1-cli-usability-patch-plan.md](plans/v0.8.1-cli-usability-patch-plan.md)
   freezes the concrete implementation plan for the v0.8.1 patch.
+- [plans/v0.9-implementation-plan.md](plans/v0.9-implementation-plan.md)
+  freezes the concrete implementation architecture, seven ordered batches,
+  gates, and validation expectations for v0.9; it does not claim v0.9 is
+  implemented.
+- [reports/v0.9-architecture-retrieval.md](reports/v0.9-architecture-retrieval.md)
+  preserves the bounded current-source retrieval that grounded the v0.9 plan.
 
 Historical greenfield artifacts and reports are retained as evidence that an
 earlier run overreached into v0.1; they are not current-state authority.
