@@ -28,10 +28,13 @@ identities.
 - `src/cli.ts` is the real, thin public CLI parsing/dispatch/presentation
   boundary for the current command surface (`observe`, `compare`,
   `approve-baseline`, `save-change-contract`, `evaluate-contract`,
-  `import-reference`, `approve-reference`, `evaluate-reference-fidelity`);
-  argument parsing and output formatting only, per command - the commands do
-  not share domain semantics in the CLI. v0.6 added no new CLI command; v0.7
-  added the three external-reference commands.
+  `import-reference`, `approve-reference`, `evaluate-reference-fidelity`,
+  `view`, `init`, `capture`, `check`); argument parsing and output formatting
+  only, per command - domain semantics remain owned by application/domain
+  services rather than the CLI. v0.6 added no new CLI command; v0.7 added the
+  three external-reference commands; v0.8 added `view`; v0.8.1 added `init`,
+  `capture`, and `check` and made `view` project-aware while preserving its
+  standalone `--root` behavior.
 - `src/index.ts` is the library entry point re-exporting the observer-owned
   contracts/functions from every layer below, including the v0.6 bounded-agent-
   context projection and runtime/static correlation surface, and the v0.7
@@ -1241,18 +1244,19 @@ itself, not a new parallel context system, gains one new optional input (an
 already-computed Prompt 6 fidelity evaluation): fidelity-relevant runtime
 targets fold into the exact same required/permitted-target-allocation,
 evidence-tiering, omission/truncation, and adequacy machinery v0.5 contract
-clauses already compete in, and a new `fidelity?` field on
-`BoundedAgentContextArtifact` (mirroring `correlations?`'s own additive,
-non-version-bumping precedent from v0.6 Batch 3) carries a bounded,
-priority-ordered selection of Prompt 6's non-passing requirement results
-plus passing protected/preserved context. No second bounded-context
-architecture, no recomputation of Prompt 2-6/v0.4/v0.5 logic, and no change
-to v0.6's own runtime/static correlation (`deriveRuntimeStaticCorrelations`/
-`attachRuntimeStaticCorrelations` are untouched and reused exactly as
-before) - a caller joins fidelity, target, and correlation evidence by the
-one stable v0.2 runtime target id all three already share. Every new field
-is optional and additive; a pre-Prompt-7 caller supplying no fidelity
-evidence receives byte-identical output, including logical identity.
+clauses already compete in, and a new `fidelity?:
+BoundedReferenceFidelityProjection` field on `BoundedAgentContextArtifact`
+(mirroring `correlations?`'s own additive, non-version-bumping precedent
+from v0.6 Batch 3) carries a bounded, priority-ordered selection of Prompt
+6's non-passing requirement results plus passing protected/preserved
+context. No second bounded-context architecture, no recomputation of Prompt
+2-6/v0.4/v0.5 logic, and no change to v0.6's own runtime/static correlation
+(`deriveRuntimeStaticCorrelations`/`attachRuntimeStaticCorrelations` are
+untouched and reused exactly as before) - a caller joins fidelity, target,
+and correlation evidence by the one stable v0.2 runtime target id all three
+already share. Every new field is optional and additive; a pre-Prompt-7
+caller supplying no fidelity evidence receives byte-identical output,
+including logical identity.
 
 v0.7 Prompt 8 adds the first complete, controlled end-to-end external-
 reference correction workflow (`domain/referenceCorrectionWorkflow.ts`,
