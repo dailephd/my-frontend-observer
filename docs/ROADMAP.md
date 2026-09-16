@@ -1,12 +1,18 @@
 # Roadmap
 
 v0.8.1 status: released as v0.8.1 and published to npm as
-`@dailephd/my-frontend-observer@0.8.1`. v0.9 and v0.10 remain future work.
+`@dailephd/my-frontend-observer@0.8.1`. v0.9 version-start planning is frozen
+but implementation has not started. v0.10 remains future work.
 
 This is a version-level specification, not an implementation checklist.
 Concrete steps and sequencing are designed only when a version begins, after
 the planner reads that version, inspects current repository state, and performs
-needed my-dev-kit retrieval and architecture work.
+needed my-dev-kit retrieval and architecture work. Once those version-start
+decisions are frozen, this roadmap records the durable version-level design so
+a later planner can reconstruct the intended implementation without stitching
+critical architecture decisions across reports, chats, or batch prompts. Exact
+files, interfaces, tests, batch gates, and prompt sequencing belong in the
+version implementation plan.
 
 ## v0.1 — Runtime Observation Foundation
 
@@ -478,77 +484,406 @@ existing low-level commands must remain backward compatible.
 
 ## v0.9 — Human Visual Annotation and Design-Intent Capture
 
+Current status: version-start architecture is frozen; implementation has not
+started. The source-grounding report is
+`docs/reports/v0.9-architecture-retrieval.md`, and the concrete file-level,
+test-level, and seven-prompt implementation plan is
+`docs/plans/v0.9-implementation-plan.md`. The version-level decisions below are
+the durable design authority. A future planner should be able to derive an
+implementation plan from this section plus current repository state without
+recovering critical choices from old chats or implementation reports.
+
 Objective/problem: add structured visual human intent to the already working
-v0.7 coding-agent workflow through the v0.8 viewer without inventing a separate
-change-semantics system, and allow that intent to be authored against either a
-runtime observation or an external visual reference. The v0.8.1 project
-workflow/alias layer should be reused for ordinary project discovery and
-human-readable selection rather than replaced by annotation-specific command
-plumbing.
+v0.7 coding-agent/reference workflow through the v0.8 viewer without inventing
+a separate change-semantics system. Intent may be authored against either an
+existing runtime observation screenshot or an existing external visual
+reference. The v0.8.1 project workflow and alias layer remain the normal project
+discovery and human-selection surface. v0.9 extends `view`; it does not create a
+new top-level annotation workflow architecture.
 
-Required capabilities: a bounded annotation set chosen during planning, such as
-point/select, rectangle/area, arrow, line/boundary, textual note, preserve,
-resize, move, remove, and inspect; structured annotation artifacts preserving
-their annotation context (runtime observation or external reference), source
-observation/screenshot or reference identity, geometry, type, text, provenance,
-and reliable target/relationship/reference-region association; save/reload;
-annotated image references; and explicit interpretation/confirmation state.
+### Frozen annotation evidence model
 
-Runtime-screenshot annotations and external-reference annotations are separate
-coordinate/identity domains. The annotation model must never assume that a
-reference-region identity is a runtime-target identity. Coordinate transforms,
-selection, overlays, persistence, and provenance must preserve which source
-image the annotation belongs to.
+v0.9 introduces one distinct persisted observer-owned annotation evidence
+family, `VisualAnnotationArtifact`, with initial schema version `1.0.0`.
+Annotations are not mutable fields added to observations, external references,
+comparisons, contracts, or evaluation artifacts. Original runtime observations,
+screenshots, imported/approved external references, and reference images remain
+immutable source evidence.
 
-Canonical intent flow:
+Every explicit annotation save creates a new immutable annotation artifact
+instance. A later edit creates another artifact and may explicitly point
+forward to the previous instance through `supersedesAnnotationId`; the old
+artifact is never rewritten or deleted. Annotation logical/request identity is
+deterministic from canonical semantic content, while annotation instance
+identity is fresh for each persisted instance, following the repository's
+existing request-identity versus instance-identity pattern.
+
+Persisted annotation provenance must use canonical source identity. Human aliases
+such as `baseline` and `current`, viewer handles, viewer URLs, ports, absolute
+paths, and other session-local selectors must never become annotation identity.
+Aliases remain conveniences for selecting canonical artifacts before authoring.
+
+### Frozen source contexts and coordinate domains
+
+Each annotation has exactly one source context:
 
 ```text
-runtime screenshot annotation OR external reference annotation
-→ target/relationship/reference-region binding
-→ candidate requested/dependent/protected/preserved intent
-→ explicit confirmation/interpretation where necessary
-→ canonical change contract
+runtime-observation
+external-reference
 ```
 
-For external references, annotation may also define or refine meaningful
-reference regions and relationships, mark an asset-sensitive region, identify
-which visual details are informational, and promote selected geometry/style/
-relationship requirements into the canonical contract. A visible pixel never
-becomes a hard requirement merely because it exists in the image.
+Runtime annotations are tied to one canonical observation/screenshot identity
+and use the existing runtime screenshot coordinate domain: viewport CSS pixels.
+They do not multiply geometry by device pixel ratio, round to screenshot-device
+pixels, or invent a second transform.
 
-Architectural/evidence constraints: annotation feeds the existing canonical
-reference, change-scope, contract, bounded-context, and coding-agent workflow. It
-must not create annotation-only or reference-only requested/protected semantics
-or different PASS/FAIL rules. Ambiguous drawings never silently become strong
-requirements. Original raw observations and imported reference images remain
-immutable evidence; annotation and approval/supersession state are separate.
+External-reference annotations are tied to one canonical reference/image
+identity and use reference-image pixels. Reference-image pixels are never
+silently treated as runtime CSS pixels.
 
-Dependencies/ecosystem/compatibility: depends on stable runtime identity,
-reference identity, contracts, v0.7 coding-agent review/reference evaluation,
-v0.8 viewer/coordinate mapping, and v0.8.1 project discovery, human-readable
-aliases, project-aware viewer behavior, and canonical identity resolution
-beneath aliases. Aliases are selection conveniences only. Persisted annotation
-identity must reference the exact canonical observation/reference identity,
-never mutable aliases such as `baseline` or `current`. Structured annotation/context/reference
-versions must be explicit and remain traceable to supported observation,
-screenshot, and external-reference identities.
+The existing runtime and reference SVG workspaces remain separate coordinate
+and identity domains. The same zoom/pan interaction machinery may be reused,
+but each workspace supplies its own frame. Annotation rendering should be a
+layer inside the existing source SVG coordinate frame rather than an
+independently transformed canvas.
 
-Exclusions: flattening intent into pixels only, bypassing confirmation,
-replacing text/config requests, image-to-code generation, source editing, or
-making annotation mandatory for ordinary coding-agent changes.
+A reference-region ID is not a runtime-target identity. Runtime-target,
+reference-region, annotation-item, artifact, filesystem, source-symbol, and
+project-alias identities remain distinct even when explicit relationships link
+them.
 
-Acceptance: a user can annotate either an existing observation or an external
-reference in the viewer; annotations survive save/reload; their source context
-remains explicit; target/relationship/reference-region associations remain
-available where reliable; preserve/resize/move/remove/inspect intent can be
-represented where supported; reference regions and selected design requirements
-can be authored without turning every pixel into a contract; ambiguous intent
-requires explicit interpretation or confirmation; and annotations can drive the
-existing coding-agent change-review workflow through the canonical contract and
-reference models. Version-start planning must select the first annotation set,
-coordinate transforms for both source contexts, persistence/versioning,
-interpretation/confirmation workflow, conflicts, region-authoring behavior, and
-annotated-image derivation.
+### Frozen first annotation set
+
+The first persisted visual mark vocabulary is deliberately bounded to:
+
+```text
+point
+rectangle
+line
+arrow
+note
+```
+
+`select` and `pan` are viewer interaction modes, not persisted annotation
+marks. v0.9 does not add freehand drawing, polygons, Bezier paths, paint
+strokes, masks, arbitrary SVG input, OCR-driven regions, or computer-vision
+segmentation.
+
+The first human-facing intent operations are:
+
+```text
+inspect
+move
+resize
+remove
+preserve
+```
+
+External-reference annotation additionally supports candidate intent for:
+
+```text
+reference-region
+reference-requirement
+asset-sensitive
+```
+
+`asset-sensitive` and `inspect` may remain informational. Their existence must
+not silently add an acceptance rule.
+
+### Explicit association, interpretation, and confirmation
+
+Drawing geometry alone does not establish semantic ownership or executable
+intent. Runtime annotation may associate with an existing runtime target or
+existing runtime relationship only through explicit structured selection.
+Reference annotation may associate with an existing reference region or
+existing reference relationship only through explicit structured selection.
+
+The following must never silently create association or binding:
+
+```text
+name similarity
+rectangle overlap
+nearest element
+visual proximity
+drawing containment
+same textual identifier across runtime/reference domains
+```
+
+An unbound drawing remains valid visual/narrative evidence but cannot be
+promoted into a canonical requirement that needs a structured target or region.
+
+Each annotation interpretation has an explicit state:
+
+```text
+uninterpreted
+candidate
+confirmed
+```
+
+The viewer may suggest a bounded candidate interpretation from explicit user
+choices and known canonical evidence, but ambiguous geometry never silently
+becomes a strong requirement. Only a `confirmed` interpretation may be selected
+for canonical promotion. Before confirmation, the viewer must show the exact
+candidate structured meaning that would be persisted/promoted.
+
+### Canonical change-scope and contract reuse
+
+v0.9 reuses exactly the existing authored change-scope categories:
+
+```text
+requested
+expected-dependent
+protected
+preserved
+```
+
+For `expected-dependent`, the existing `required`/`permitted` mode remains
+mandatory. `unexpected` remains evaluator output and is never authorable through
+annotation.
+
+Runtime annotation does not introduce a second contract language. Confirmed
+runtime visual intent may promote only into the existing bounded
+`ContractPrimitive` vocabulary. High-value mappings include move/resize intent
+through existing `x`, `y`, `width`, and `height` property increase/decrease
+primitives and preserve intent through existing property-with-tolerance or
+relationship-unchanged primitives. Existing visibility, clipping, width-bound,
+overlap, relative-width, vertical-sequence, containment, page-width, and
+scroll-owner primitives remain available when they accurately represent the
+confirmed intent.
+
+The drawing is not itself the contract. Promotion produces an ordinary
+canonical `PerChangeContract`, using the existing contract identity,
+persistence, validation, conflict, evaluation, and PASS/FAIL semantics.
+Annotation does not evaluate contracts.
+
+The first version must preserve unsupported human intent honestly. In
+particular, `remove` can be represented and explicitly confirmed as annotation
+intent, but the current canonical contract vocabulary has no target-absent
+primitive. v0.9 therefore must not fabricate an approximate clause or expand the
+contract language merely to make `remove` executable. It remains confirmed but
+not canonically promotable until a future version deliberately extends the
+contract model.
+
+### External-reference region and requirement authoring
+
+External-reference annotation may explicitly create or refine meaningful
+reference regions and may promote selected design requirements, but a drawn
+rectangle never turns every enclosed pixel into a requirement.
+
+A confirmed new region uses its annotation rectangle directly in the existing
+reference-image pixel domain. A confirmed refinement explicitly selects an
+existing region ID; the resulting new reference revision may retain that region
+identity while changing its rectangle. Relationship choices must come from the
+existing canonical reference-region relationship derivation rather than a
+viewer-only relationship engine.
+
+Confirmed reference requirements reuse the existing
+`RawReferenceRequirement` / `ReferenceRequirementSubject` model and the same
+authored change-scope categories. Supported subjects remain the existing
+bounded region-property, region-relationship, and region-measurement forms with
+existing reference tolerance semantics (`exact`, `absolute-reference-px`, or
+`percent` where applicable). Visible geometry that the user did not explicitly
+promote remains informational reference evidence.
+
+Materializing confirmed reference annotation creates a new immutable imported
+`ExternalReferenceArtifact` revision through the existing canonical reference
+persistence model. The new artifact carries forward unchanged image content,
+applicability, regions, and requirements except where selected confirmed intent
+explicitly adds or refines them; it explicitly supersedes the selected source
+reference. The prior reference remains unchanged. The new revision is not
+automatically approved and does not automatically replace the project's active
+approved reference. Approval and project reference selection remain separate,
+explicit governance actions.
+
+### Annotation persistence and annotated rendering
+
+The structured annotation manifest is authoritative. v0.9 also derives one
+bounded system-generated annotation overlay, `annotation-overlay.svg`, for each
+saved annotation artifact. The overlay uses the same source-native coordinate
+frame recorded by the artifact, contains only validated system-generated SVG,
+and has an integrity digest. It does not embed arbitrary user SVG/HTML and does
+not copy the underlying screenshot or external-reference image.
+
+The annotated visual is reconstructed as:
+
+```text
+canonical source image
++
+structured annotation overlay
+```
+
+The derived overlay is not a second evidence or interpretation model. If any
+presentation bug causes disagreement, structured annotation data remains the
+authority.
+
+### Viewer authoring and security boundary
+
+Normal annotation authoring is available through project-aware:
+
+```text
+my-frontend-observer view
+```
+
+inside a valid initialized project. Existing advanced
+`my-frontend-observer view --root <evidence-root>` remains a supported
+inspection surface and stays read-only when it is not operating with the normal
+initialized-project authoring context.
+
+Because v0.8 intentionally exposed only GET/HEAD inspection routes, v0.9 may add
+POST only for the narrow annotation-authoring and confirmed-promotion operations
+required by this version. It must not add arbitrary filesystem writes, target
+source writes, PUT/PATCH/DELETE mutation APIs, permissive CORS, or a generic
+local RPC endpoint.
+
+The project-aware viewer authoring session must use a short-lived in-memory
+capability token plus strict loopback same-origin/Host enforcement, bounded JSON
+bodies, and canonical server-side resolution of evidence handles to source
+artifacts. The browser must never supply arbitrary output paths. The token is
+session-only, is not persisted as project/evidence identity, and must not become
+service-worker cached authority.
+
+Annotation persistence follows the repository's established immutable artifact
+pattern: structural validation before write, fresh final instance directory,
+sibling temporary directory, deterministic owned-media generation, manifest
+write, atomic rename, no overwrite, and cleanup on failure.
+
+Project-managed annotation evidence belongs under the managed Observer evidence
+root using canonical IDs. v0.9 does not introduce an annotation alias catalog.
+
+### Conflict and revision rules
+
+Annotation revision conflict is handled by explicit lineage, not last-write-wins.
+A revision save identifies the canonical parent annotation. A stale edit must be
+rejected rather than silently overwrite newer evidence. If malformed/historical
+evidence presents multiple lineage heads, the viewer must expose that ambiguity
+and require an explicit choice rather than select a winner by timestamp.
+
+Semantic contract conflicts remain owned by the existing contract validators and
+evaluator. Reference requirement validity/adequacy remains owned by the existing
+reference model. Annotation must not add a second conflict-resolution engine.
+Unsupported confirmed intent is reported as unsupported for canonical promotion,
+not silently converted to PASS, FAIL, or another requirement.
+
+### Canonical intent flow
+
+The version-level flow is:
+
+```text
+runtime screenshot annotation OR external-reference annotation
+→ explicit source-domain association where reliable
+→ candidate requested/dependent/protected/preserved or informational intent
+→ explicit interpretation/confirmation
+→ save immutable structured annotation evidence
+→ selected confirmed runtime intent may become a canonical per-change contract
+  OR
+  selected confirmed reference intent may become a new imported reference revision
+→ existing contract/reference approval and evaluation workflows remain authoritative
+```
+
+This version stops before the full post-edit human/LLM correction loop. v0.10
+owns automatic workflow coordination around external coding-agent source edits,
+rerendering, repeated `check <baseline> --json`, final human approval, and
+baseline/reference governance across correction iterations.
+
+### Dependencies/ecosystem/compatibility
+
+v0.9 depends on:
+
+- stable runtime observation and target identity;
+- existing relationship and comparison evidence;
+- existing baseline/per-change contract vocabulary and evaluator;
+- v0.7 external-reference identity, region, requirement, applicability,
+  binding, compatibility, fidelity, and bounded-context integration;
+- v0.8 viewer server, runtime/reference SVG workspaces, source-domain coordinate
+  rendering, zoom/pan, metadata-first discovery, safe media resolution, and
+  explicit binding cross-selection;
+- v0.8.1 project discovery, managed evidence root, human-readable aliases,
+  project-aware viewer startup, and canonical identity resolution beneath
+  aliases.
+
+Existing observation, comparison, frontend-contract, evaluation,
+bounded-agent-context, and external-reference schema semantics remain
+independently authoritative. Annotation may reference and promote into them but
+must not redefine them.
+
+The existing bounded agent-context system may later include relevant annotation
+references/structured annotation evidence as part of the proven coding-agent
+workflow, but heavy source images or unrelated annotation history should not be
+embedded by default. v0.9 does not require changes to my-dev-kit,
+orchestrator, or lab unless an actual compatibility need is demonstrated during
+implementation.
+
+### Exclusions
+
+v0.9 explicitly excludes:
+
+```text
+application source editing
+automatic coding-agent execution
+full correction-loop orchestration
+image-to-code or raster-to-HTML/CSS/SVG generation
+automatic target discovery
+automatic reference/runtime binding
+automatic reference-region detection
+OCR-driven requirements
+computer-vision segmentation
+freehand drawing or arbitrary SVG authoring
+a second contract/change-scope taxonomy
+a second reference-requirement taxonomy
+a second PASS/FAIL evaluator
+automatic reference approval
+automatic baseline approval or replacement
+automatic approved-reference replacement
+cloud synchronization
+accounts/authentication/collaboration/comment threads
+database storage
+making annotation mandatory for ordinary capture/check/coding-agent workflows
+```
+
+### Acceptance
+
+v0.9 is complete only when all of the following are true:
+
+- a user can annotate an existing runtime observation in the project-aware
+  viewer and save/reload it without coordinate drift;
+- a user can annotate an imported or approved external reference and save/reload
+  it in reference-image coordinates;
+- saved annotations remain tied to exact canonical source identities even when a
+  human alias later points somewhere else;
+- runtime-target, runtime-relationship, reference-region, and
+  reference-relationship associations occur only when explicitly and reliably
+  selected;
+- zoomed/panned drawing maps back to the same source-native coordinates used by
+  the existing SVG workspace;
+- point/rectangle/line/arrow/note marks persist as structured evidence, not only
+  flattened pixels;
+- preserve/resize/move/remove/inspect intent can be represented, with unsupported
+  executable mappings reported honestly;
+- ambiguous or unbound drawings cannot silently become strong requirements;
+- a supported confirmed runtime move/resize/preserve intent can produce a normal
+  canonical per-change contract without a second contract evaluator;
+- selected confirmed external-reference region/requirement intent can produce a
+  new immutable imported reference revision without modifying or approving the
+  source reference;
+- informational notes/asset-sensitive regions remain informational unless
+  explicitly promoted through a supported canonical model;
+- annotation revision conflicts fail explicitly instead of overwriting history;
+- original observation artifacts, screenshots, external-reference artifacts,
+  and reference images remain unchanged;
+- the bounded local write surface rejects unauthorized origins, missing/invalid
+  session capability, unsafe paths, unsupported methods, and malformed/oversized
+  requests;
+- existing v0.8 viewer inspection and v0.8.1 `init`/`capture`/`check`/`view`
+  workflows remain backward compatible;
+- a clean packed npm candidate proves annotation save/reload and canonical
+  promotion behavior, with the existing cross-platform/security validation
+  expectations preserved.
+
+The frozen concrete module contracts, validation rules, test responsibilities,
+seven implementation prompts, and batch gates live in
+`docs/plans/v0.9-implementation-plan.md`. That plan must be derivable from the
+version-level decisions above plus current repository inspection; this roadmap
+intentionally does not duplicate batch-by-batch instructions.
 
 ## v0.10 — Full Visual Human–LLM Frontend Change Workflow
 
