@@ -59,9 +59,9 @@ and [WORKFLOWS.md](WORKFLOWS.md) for the full flow.
 
 If you also have an external design-reference image, `import-reference`/
 `approve-reference`/`evaluate-reference-fidelity` let you compare a
-candidate observation against it (implemented in the current development
-state; see [COMMANDS.md](COMMANDS.md) and [CONTRACTS.md](CONTRACTS.md) for
-the exact flags and contract).
+candidate observation against it. These commands are released and supported
+in the current package; see [COMMANDS.md](COMMANDS.md) and
+[CONTRACTS.md](CONTRACTS.md) for the exact flags and contract.
 
 To inspect a project visually instead of opening raw artifact files,
 `my-frontend-observer view --no-open` starts a local,

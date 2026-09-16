@@ -5,11 +5,12 @@ Project aliases, `init`, `capture`, project-aware `view`, and `check`
 orchestration are implemented and MIT licensed.
 
 The project is published at package version `0.8.1` (roadmap v0.8.1,
-Interactive Local Observation Viewer; observation schema `1.2.0`; comparison
-schema `1.0.0`; frontend contract schema `1.0.0`; evaluation artifact schema
-`1.0.0`; bounded-agent-context schema `1.0.0`; external-reference schema
-`1.0.0` - no schema version changed for v0.8) - see "v0.8 status" below for
-the final, complete v0.8 state.
+Project Workflow CLI and Human-Readable Evidence Aliases; observation schema
+`1.2.0`; comparison schema `1.0.0`; frontend contract schema `1.0.0`;
+evaluation artifact schema `1.0.0`; bounded-agent-context schema `1.0.0`;
+external-reference schema `1.0.0`). v0.8.1 did not change any canonical
+evidence schema version; see "v0.8 status" below for the final, complete
+v0.8 viewer state.
 
 v0.8 (Interactive Local Observation Viewer) is fully implemented, tested,
 formally cross-platform/security validated, and released. All eight v0.8
@@ -38,13 +39,14 @@ The retained repository contains:
   and standardized documentation.
 
 The package bin (`src/cli.ts`) now exposes the real current public CLI
-surface described below - the five commands released through `0.6.0`
+surface described below: the five low-level commands released through `0.6.0`
 (`observe`, `compare`, `approve-baseline`, `save-change-contract`,
-`evaluate-contract`) plus three additional commands released as part of
-`0.7.0` (`import-reference`, `approve-reference`,
-`evaluate-reference-fidelity` - see "v0.7 Prompt 1/6 status" below) - while
-remaining a thin parsing/dispatch/presentation boundary; it is no longer the
-not-implemented placeholder.
+`evaluate-contract`); three reference commands released in `0.7.0`
+(`import-reference`, `approve-reference`, `evaluate-reference-fidelity`);
+`view`, released in `0.8.0`; and the v0.8.1 high-level `init`, `capture`, and
+`check` commands. v0.8.1 also makes `view` project-aware while preserving its
+standalone `--root` form. `src/cli.ts` remains a thin parsing/dispatch/
+presentation boundary; it is no longer the not-implemented placeholder.
 
 ## v0.1 progress (Batch 1–6; implemented and released as 0.1.0)
 
@@ -546,13 +548,11 @@ binding, or fidelity evaluation yet.
   extends outside the owning image's bounds.
 - **Domain** (`src/domain/externalReferenceRegionRelationships.ts`): reuses
   the exact pure geometry predicates `deriveLayoutRelationships` uses for
-  runtime targets (now exported additively from `relationships.ts`, formulas
-  unchanged) to derive the six geometry-only relationship families
-  (horizontal order, vertical order, area overlap, relative width, geometric
-  fit, vertical sequencing) between reference regions. Not persisted -
-  `deriveReferenceRegionRelationships()` is a pure function callers invoke
-  on demand against an artifact's own `regions`, bounded at
-  `MAX_REFERENCE_REGION_RELATIONSHIP_RECORDS`.
+  runtime targets (now exported additively) from `relationships.ts` rather
+  than reimplemented, so reference-region geometry and runtime-target
+  geometry can never diverge on the same underlying formula; only the
+  geometry-only relationship families apply, since a static image exposes
+  no DOM, scroll, or viewport evidence.
 - **Schema**: `ExternalReferenceArtifact` gained one additive, optional
   `regions?: ReferenceRegion[]` field. No schema version bump
   (`EXTERNAL_REFERENCE_SCHEMA_VERSION` remains `'1.0.0'`) - every Prompt 1
