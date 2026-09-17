@@ -8,7 +8,7 @@ import { resolveContainedFile } from './pathSafety.js';
 
 /** One bounded, UI-facing summary of one recognized media role owned/referenced by an artifact. Never the media bytes themselves. */
 export interface MediaSummary {
-  role: 'screenshot' | 'image' | 'source-image';
+  role: 'screenshot' | 'image' | 'source-image' | 'annotation-overlay';
   available: boolean;
   /** Present only when unavailable, for an honest (never fabricated) reason. */
   reason?: string;
@@ -37,6 +37,10 @@ export interface EvidenceMetadataRecord {
   media?: MediaSummary[];
   relatedIds?: Record<string, string>;
   message?: string;
+  /** v0.9 Batch 2: bounded visual-annotation summary only - full items stay on demand via /api/artifacts. */
+  annotationSourceKind?: 'runtime-observation' | 'external-reference';
+  annotationItemCount?: number;
+  annotationConfirmedItemCount?: number;
 }
 
 /** Ephemeral, non-persisted wrapper around one already-validated domain artifact, for the on-demand full-artifact API. Not a new evidence schema - selects/wraps existing canonical fields only. */
@@ -196,6 +200,27 @@ export async function buildMetadataRecord(classified: ClassifiedRecord, relative
         lifecycleState,
         media,
         ...(lifecycleState === 'approved' && 'sourceReference' in artifact ? { relatedIds: { sourceReferenceId: artifact.sourceReference.referenceId } } : {}),
+      };
+    }
+
+    case 'visual-annotation': {
+      const resolved = resolveContainedFile(absoluteDir, artifact.overlay.path);
+      const available = resolved !== undefined && (await fileAvailable(resolved));
+      const supersedes = artifact.supersedesAnnotationId === undefined ? {} : { supersedesAnnotationId: artifact.supersedesAnnotationId };
+      const relatedIds: Record<string, string> =
+        artifact.source.kind === 'runtime-observation'
+          ? { sourceObservationId: artifact.source.observationId, ...supersedes }
+          : { sourceReferenceId: artifact.source.referenceId, ...supersedes };
+      return {
+        ...base,
+        logicalId: artifact.annotationId,
+        schemaVersion: artifact.schemaVersion,
+        producerVersion: artifact.producer.version,
+        annotationSourceKind: artifact.source.kind,
+        annotationItemCount: artifact.items.length,
+        annotationConfirmedItemCount: artifact.items.filter((item) => item.interpretation.state === 'confirmed').length,
+        media: [{ role: 'annotation-overlay', available, ...(available ? {} : { reason: 'annotation overlay file not found on disk' }) }],
+        relatedIds,
       };
     }
   }

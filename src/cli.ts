@@ -2280,6 +2280,8 @@ async function runViewCommand(argv: readonly string[], io: CliIO): Promise<numbe
 
   let root: string;
   let aliasMetadata: import('./viewerServer/viewerService.js').ViewerAliasMetadata | undefined;
+  // v0.9 Batch 2: only the normal project-aware form enables annotation authoring; explicit --root stays read-only.
+  let authoringProjectRoot: string | undefined;
   if (parsedArgs.root !== undefined) {
     root = parsedArgs.root;
   } else {
@@ -2289,6 +2291,7 @@ async function runViewCommand(argv: readonly string[], io: CliIO): Promise<numbe
     if (!projectState.ok) { io.stderr(`error [${projectState.code}]: ${projectState.message}\n`); return 1; }
     root = projectState.root;
     aliasMetadata = { observationAliasesByRelativeDir: projectState.aliases };
+    authoringProjectRoot = projectState.projectRoot;
   }
 
   const result = await startViewer({
@@ -2297,6 +2300,7 @@ async function runViewCommand(argv: readonly string[], io: CliIO): Promise<numbe
     bindingDeclarations,
     context: contextState,
     ...(aliasMetadata === undefined ? {} : { aliasMetadata }),
+    ...(authoringProjectRoot === undefined ? {} : { authoringProjectRoot }),
   });
   if (!result.ok) {
     for (const diagnostic of result.diagnostics) io.stderr(`${formatDiagnostic(diagnostic)}\n`);

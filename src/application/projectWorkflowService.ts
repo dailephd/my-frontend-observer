@@ -65,12 +65,13 @@ async function captureObservation(input: CaptureNamedObservationInput, allowRese
 export async function captureNamedObservation(input: CaptureNamedObservationInput): Promise<CaptureNamedObservationResult> { return captureObservation(input, false); }
 export async function captureCurrentObservation(projectRoot: string): Promise<CaptureNamedObservationResult> { return captureObservation({ projectRoot, alias: 'current', replace: true }, true); }
 
-export async function loadProjectViewerState(projectRoot: string): Promise<{ ok: true; root: string; aliases: Readonly<Record<string, string>> } | WorkflowFailure> {
+export async function loadProjectViewerState(projectRootInput: string): Promise<{ ok: true; projectRoot: string; root: string; aliases: Readonly<Record<string, string>> } | WorkflowFailure> {
+  const projectRoot = path.resolve(projectRootInput);
   const config = await readProjectConfig(projectConfigPath(projectRoot));
   if (!config.ok) return { ok: false, code: 'project-config-invalid', message: config.reason };
   const catalog = await readAliasCatalog(aliasCatalogPath(projectRoot));
   if (!catalog.ok) return { ok: false, code: 'project-catalog-invalid', message: catalog.reason };
   const aliases: Record<string, string> = {};
   for (const [alias, record] of Object.entries(catalog.catalog.observations)) aliases[record.relativeArtifactDir] = alias;
-  return { ok: true, root: projectEvidenceRoot(projectRoot), aliases };
+  return { ok: true, projectRoot, root: projectEvidenceRoot(projectRoot), aliases };
 }

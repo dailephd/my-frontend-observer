@@ -14,6 +14,9 @@ import { readFrontendContractEvaluationArtifact } from '../../artifacts/frontend
 import { EXTERNAL_REFERENCE_ARTIFACT_KIND, EXTERNAL_REFERENCE_SCHEMA_VERSION } from '../../domain/externalReference.js';
 import type { ExternalReferenceArtifact } from '../../domain/externalReference.js';
 import { readExternalReferenceArtifact } from '../../artifacts/externalReferenceArtifactReader.js';
+import { VISUAL_ANNOTATION_ARTIFACT_KIND, VISUAL_ANNOTATION_SCHEMA_VERSION } from '../../domain/visualAnnotation.js';
+import type { VisualAnnotationArtifact } from '../../domain/visualAnnotation.js';
+import { readVisualAnnotationArtifact } from '../../artifacts/visualAnnotationArtifactReader.js';
 import { MAX_MANIFEST_CANDIDATE_BYTES } from './limits.js';
 
 export type ArtifactFamily =
@@ -23,7 +26,8 @@ export type ArtifactFamily =
   | 'change-contract'
   | 'contract-evaluation'
   | 'external-reference-imported'
-  | 'external-reference-approved';
+  | 'external-reference-approved'
+  | 'visual-annotation';
 
 /**
  * Honest, independent viewer-loading/support state - deliberately distinct
@@ -40,6 +44,7 @@ type FamilyArtifact = {
   'contract-evaluation': FrontendContractEvaluationArtifact;
   'external-reference-imported': ExternalReferenceArtifact;
   'external-reference-approved': ExternalReferenceArtifact;
+  'visual-annotation': VisualAnnotationArtifact;
 };
 
 /** Per-family discriminated union (not a generically-indexed field) so switching on `family` correctly narrows `artifact`'s type. */
@@ -155,6 +160,16 @@ export async function classifyManifest(manifestPath: string): Promise<Classified
       if (!read.ok) return { supportState: 'invalid-structure', family: undefined, reason: read.reason };
       const family: ArtifactFamily = read.artifact.lifecycle.state === 'approved' ? 'external-reference-approved' : 'external-reference-imported';
       return { supportState: 'supported', family, artifact: read.artifact };
+    }
+
+    case VISUAL_ANNOTATION_ARTIFACT_KIND: {
+      if (version !== VISUAL_ANNOTATION_SCHEMA_VERSION) {
+        return { supportState: 'unsupported-version', family: 'visual-annotation', foundSchemaVersion: version ?? 'unknown', supportedSchemaVersion: VISUAL_ANNOTATION_SCHEMA_VERSION };
+      }
+      // v0.9 Batch 2: the canonical annotation reader (manifest validation plus owned-overlay SHA-256 check) remains the sole authority.
+      const read = await readVisualAnnotationArtifact(manifestPath);
+      if (!read.ok) return { supportState: 'invalid-structure', family: 'visual-annotation', reason: read.reason };
+      return { supportState: 'supported', family: 'visual-annotation', artifact: read.artifact };
     }
 
     default:

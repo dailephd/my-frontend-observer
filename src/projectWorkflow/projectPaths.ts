@@ -27,3 +27,12 @@ export function projectObservationsRoot(projectRoot: string): string {
 export function observationOutputLocation(alias: string): string {
   return `${PROJECT_STATE_DIRECTORY}/evidence/observations/${alias}`;
 }
+
+export function projectAnnotationsRoot(projectRoot: string): string {
+  return path.join(projectEvidenceRoot(projectRoot), 'annotations');
+}
+
+/** Portable project-relative output location for visual-annotation artifacts. Created lazily by the annotation writer. */
+export function annotationOutputLocation(): string {
+  return `${PROJECT_STATE_DIRECTORY}/evidence/annotations`;
+}

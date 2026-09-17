@@ -7,6 +7,8 @@ import path from 'node:path';
 import { chromium, type Browser, type BrowserContext } from 'playwright';
 import { startViewer, type StartViewerResult } from '../../src/viewerServer/viewerService.js';
 import { writeManyRegionsOneTargetFixture } from '../support/evidenceFixtures.js';
+import { persistAnnotationUnder, readManifest, referencePointItem, referenceSourceFor } from '../support/annotationAuthoringFixtures.js';
+import type { ExternalReferenceArtifact } from '../../src/domain/externalReference.js';
 
 const repoRoot = path.resolve(__dirname, '../..');
 const viewerDist = path.join(repoRoot, 'dist', 'viewer');
@@ -48,7 +50,9 @@ describe('PWA live proof - service worker, shell precache, server-down behavior'
 
   beforeAll(async () => {
     root = await mkdtemp(path.join(tmpdir(), 'my-frontend-observer-b8-pwa-'));
-    await writeManyRegionsOneTargetFixture(root);
+    const fixture = await writeManyRegionsOneTargetFixture(root);
+    // v0.9 Batch 2: one real annotation so the annotation view/media routes answer 200 during the cache-boundary proof.
+    await persistAnnotationUnder(root, referenceSourceFor(await readManifest<ExternalReferenceArtifact>(fixture.approvedRoot)), [referencePointItem()]);
     server = await startForRoot(root);
     context = await chromium.launchPersistentContext(workflowPwaProfile, { headless: true });
   }, 60_000);
@@ -99,6 +103,25 @@ describe('PWA live proof - service worker, shell precache, server-down behavior'
       await page.goto(server.url);
       await page.locator('.evidence-list__item').first().waitFor({ timeout: 10_000 });
       await page.waitForFunction(async () => (await navigator.serviceWorker.getRegistration())?.active !== undefined, { timeout: 10_000 });
+
+      // v0.9 Batch 2: exercise every new annotation/authoring API surface from the page before inspecting cache storage.
+      const annotationRouteStatuses = await page.evaluate(async () => {
+        const index = (await (await fetch('/api/index')).json()) as { records: { family: string; handle: string }[] };
+        const annotation = index.records.find((record) => record.family === 'visual-annotation');
+        if (annotation === undefined) return { missing: true };
+        const encoded = encodeURIComponent(annotation.handle);
+        const session = await fetch('/api/authoring/session');
+        const view = await fetch(`/api/annotations/${encoded}/view`);
+        const media = await fetch(`/api/media/${encoded}/annotation-overlay`);
+        const save = await fetch('/api/annotations', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sourceHandle: annotation.handle, items: [] }) });
+        return {
+          session: [session.status, session.headers.get('cache-control')],
+          view: [view.status, view.headers.get('cache-control')],
+          media: [media.status, media.headers.get('cache-control')],
+          save: [save.status, save.headers.get('cache-control')],
+        };
+      });
+      expect(annotationRouteStatuses).toEqual({ session: [200, 'no-store'], view: [200, 'no-store'], media: [200, 'no-store'], save: [403, 'no-store'] });
 
       const apiCacheEntryCount = await page.evaluate(async () => {
         const cacheNames = await caches.keys();

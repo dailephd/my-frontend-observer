@@ -143,4 +143,30 @@ describe('runCli view - thin delegation to startViewer', () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
+  it('v0.9 Batch 2: the normal project-aware view passes the discovered project root for authoring, while explicit --root never does', async () => {
+    const { initializeFrontendObserverProject } = await import('../../src/application/projectWorkflowService.js');
+    const { projectEvidenceRoot } = await import('../../src/projectWorkflow/projectPaths.js');
+    const projectRoot = await mkdtemp(path.join(tmpdir(), 'my-frontend-observer-view-authoring-dispatch-'));
+    const previous = process.cwd();
+    try {
+      const initialized = await initializeFrontendObserverProject({ projectRoot, url: 'http://127.0.0.1:3000', viewport: { width: 800, height: 600 }, targets: [{ name: 'header', selector: '#header' }], replace: false });
+      expect(initialized.ok).toBe(true);
+      process.chdir(projectRoot);
+
+      startViewerMock.mockClear();
+      expect(await runCli(['view', '--no-open'], capture().io)).toBe(0);
+      expect(startViewerMock).toHaveBeenCalledTimes(1);
+      expect(startViewerMock).toHaveBeenCalledWith(
+        expect.objectContaining({ root: projectEvidenceRoot(path.resolve(projectRoot)), authoringProjectRoot: path.resolve(projectRoot), aliasMetadata: { observationAliasesByRelativeDir: {} } }),
+      );
+
+      startViewerMock.mockClear();
+      expect(await runCli(['view', '--root', projectEvidenceRoot(projectRoot), '--no-open'], capture().io)).toBe(0);
+      const explicitOptions = (startViewerMock.mock.calls[0] as unknown[])[0] as Record<string, unknown>;
+      expect('authoringProjectRoot' in explicitOptions).toBe(false);
+    } finally {
+      process.chdir(previous);
+      await rm(projectRoot, { recursive: true, force: true });
+    }
+  });
 });

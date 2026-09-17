@@ -11,6 +11,8 @@ import { readAliasCatalog } from '../../src/projectWorkflow/aliasCatalog.js';
 import { aliasCatalogPath, projectEvidenceRoot } from '../../src/projectWorkflow/projectPaths.js';
 import { startViewer, type StartViewerResult } from '../../src/viewerServer/viewerService.js';
 import { checkProject } from '../../src/application/projectCheckService.js';
+import { projectAnnotationsRoot } from '../../src/projectWorkflow/projectPaths.js';
+import { loadProjectViewerState } from '../../src/application/projectWorkflowService.js';
 
 const repoRoot = path.resolve(__dirname, '../..');
 const viewerDist = path.join(repoRoot, 'dist', 'viewer');
@@ -67,5 +69,43 @@ describe('project workflow alias viewer (real Chromium)', () => {
       expect(await page.textContent('body')).toContain(secondRecord.observationId);
       await page.close();
     } finally { process.chdir(previous); }
+  }, 120_000);
+
+  it('v0.9 Batch 2: a real same-origin page in a project-aware viewer can save an annotation, while a read-only viewer cannot', async () => {
+    const state = await loadProjectViewerState(projectRoot);
+    if (!state.ok) throw new Error(state.message);
+    const authoringViewer = await startViewer({ root: state.root, port: 0, assetsRoot: viewerDist, aliasMetadata: { observationAliasesByRelativeDir: state.aliases }, authoringProjectRoot: state.projectRoot });
+    if (!authoringViewer.ok) throw new Error(JSON.stringify(authoringViewer.diagnostics));
+    const readOnlyViewer = await startViewer({ root: state.root, port: 0, assetsRoot: viewerDist });
+    if (!readOnlyViewer.ok) throw new Error(JSON.stringify(readOnlyViewer.diagnostics));
+    const page = await browser.newPage();
+    try {
+      await page.goto(authoringViewer.url);
+      const saved = await page.evaluate(async () => {
+        const session = (await (await fetch('/api/authoring/session')).json()) as { enabled: boolean; token: string };
+        const index = (await (await fetch('/api/index')).json()) as { records: { family: string; handle: string; alias?: string }[] };
+        const source = index.records.find((record) => record.family === 'observation' && record.alias === 'baseline');
+        const body = JSON.stringify({ sourceHandle: source?.handle, items: [{ annotationItemId: 'item-1', mark: { kind: 'rectangle', x: 10, y: 20, width: 100, height: 50 }, association: { kind: 'runtime-target', target: 'header' }, interpretation: { state: 'uninterpreted' } }] });
+        const withoutToken = await fetch('/api/annotations', { method: 'POST', headers: { 'content-type': 'application/json' }, body });
+        const response = await fetch('/api/annotations', { method: 'POST', headers: { 'content-type': 'application/json', 'x-frontend-observer-authoring-token': session.token }, body });
+        return { enabled: session.enabled, withoutToken: withoutToken.status, status: response.status, json: (await response.json()) as { annotationId?: string; handle?: string } };
+      });
+      expect(saved.enabled).toBe(true);
+      expect(saved.withoutToken).toBe(403);
+      expect(saved.status).toBe(201);
+      expect(existsSync(path.join(projectAnnotationsRoot(projectRoot), saved.json.annotationId!, 'manifest.json'))).toBe(true);
+
+      await page.goto(readOnlyViewer.url);
+      const readOnly = await page.evaluate(async () => {
+        const session = (await (await fetch('/api/authoring/session')).json()) as { enabled: boolean };
+        const response = await fetch('/api/annotations', { method: 'POST', headers: { 'content-type': 'application/json', 'x-frontend-observer-authoring-token': 'a'.repeat(64) }, body: '{}' });
+        return { enabled: session.enabled, status: response.status };
+      });
+      expect(readOnly).toEqual({ enabled: false, status: 403 });
+    } finally {
+      await page.close();
+      await authoringViewer.close();
+      await readOnlyViewer.close();
+    }
   }, 120_000);
 });

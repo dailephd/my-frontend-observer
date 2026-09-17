@@ -5,7 +5,8 @@ import path from 'node:path';
 import { validateObservationAlias, validateProjectConfig } from '../../src/projectWorkflow/projectConfig.js';
 import { discoverFrontendObserverProject } from '../../src/projectWorkflow/projectDiscovery.js';
 import { ALIAS_CATALOG_SCHEMA_VERSION, readAliasCatalog, serializeAliasCatalog, validateAliasCatalog, writeAliasCatalog } from '../../src/projectWorkflow/aliasCatalog.js';
-import { aliasCatalogPath, observationOutputLocation, projectConfigPath, projectEvidenceRoot, projectObservationsRoot, projectStateRoot } from '../../src/projectWorkflow/projectPaths.js';
+import { aliasCatalogPath, annotationOutputLocation, observationOutputLocation, projectAnnotationsRoot, projectConfigPath, projectEvidenceRoot, projectObservationsRoot, projectStateRoot } from '../../src/projectWorkflow/projectPaths.js';
+import { initializeFrontendObserverProject, loadProjectViewerState } from '../../src/application/projectWorkflowService.js';
 
 const roots: string[] = [];
 afterEach(async () => Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))));
@@ -63,6 +64,20 @@ describe('project discovery and paths', () => {
     expect(projectEvidenceRoot(dir)).toBe(path.join(dir, '.frontend-observer', 'evidence'));
     expect(projectObservationsRoot(dir)).toBe(path.join(dir, '.frontend-observer', 'evidence', 'observations'));
     expect(observationOutputLocation('baseline')).toBe('.frontend-observer/evidence/observations/baseline');
+  });
+  it('v0.9: derives the managed annotation root and portable annotation output location without aliases', async () => {
+    const dir = await root();
+    expect(projectAnnotationsRoot(dir)).toBe(path.join(dir, '.frontend-observer', 'evidence', 'annotations'));
+    expect(annotationOutputLocation()).toBe('.frontend-observer/evidence/annotations');
+    expect(observationOutputLocation('baseline')).toBe('.frontend-observer/evidence/observations/baseline');
+  });
+  it('v0.9: loadProjectViewerState reports the canonical resolved project root alongside the unchanged evidence root and aliases', async () => {
+    const dir = await root();
+    const initialized = await initializeFrontendObserverProject({ projectRoot: dir, url: validConfig.url, viewport: validConfig.viewport, targets: validConfig.targets, replace: false });
+    expect(initialized.ok).toBe(true);
+    const relativeInput = path.relative(process.cwd(), dir);
+    const state = await loadProjectViewerState(relativeInput);
+    expect(state).toEqual({ ok: true, projectRoot: path.resolve(dir), root: projectEvidenceRoot(path.resolve(dir)), aliases: {} });
   });
 });
 
