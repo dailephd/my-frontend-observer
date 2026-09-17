@@ -45,3 +45,12 @@ export function projectContractsRoot(projectRoot: string): string {
 export function contractOutputLocation(): string {
   return `${PROJECT_STATE_DIRECTORY}/evidence/contracts`;
 }
+
+export function projectReferencesRoot(projectRoot: string): string {
+  return path.join(projectEvidenceRoot(projectRoot), 'references');
+}
+
+/** Portable project-relative output location for annotation-materialized external-reference revisions. Created lazily by the reference writer. */
+export function referenceOutputLocation(): string {
+  return `${PROJECT_STATE_DIRECTORY}/evidence/references`;
+}

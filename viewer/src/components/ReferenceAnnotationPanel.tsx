@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReferenceRegion, ReferenceRegionRelationship } from '../types/reference.js';
 import type { VisualAnnotationItem } from '../types/visualAnnotation.js';
 import type { AuthoringSessionState } from '../hooks/useAuthoringSession.js';
 import type { SourceAnnotationsState } from '../hooks/useRuntimeAnnotations.js';
 import type { AnnotationDraft } from '../hooks/useRuntimeAnnotationDraft.js';
+import type { ReferenceMaterializationState } from '../hooks/useAnnotationReferenceMaterialization.js';
 import { ANNOTATION_NOTE_MAX_LENGTH } from '../annotation/annotationGeometry.js';
 import {
   EMPTY_REQUIREMENT_FORM,
@@ -14,6 +15,8 @@ import {
   TOLERANCE_KINDS,
   buildRequirementFromForm,
   candidateRegionSummary,
+  isReferenceMaterializationListItem,
+  referenceMaterializationStatus,
   regionCreateBlockedReason,
   regionIntentOf,
   requirementRegionIds,
@@ -49,6 +52,124 @@ function interpretationLabel(item: VisualAnnotationItem): string {
   return `Interpretation: confirmed ${interpretation.intent.kind} at ${interpretation.confirmedAt}`;
 }
 
+function materializationItemLabel(item: VisualAnnotationItem): string {
+  const { interpretation } = item;
+  if (interpretation.state === 'uninterpreted') return 'no intent';
+  const { intent } = interpretation;
+  switch (intent.kind) {
+    case 'reference-region':
+      return `region ${intent.mode} ${intent.region.id} (x ${intent.region.rectangle.x}, y ${intent.region.rectangle.y}, width ${intent.region.rectangle.width}, height ${intent.region.rectangle.height})`;
+    case 'reference-requirement':
+      return `requirement ${JSON.stringify(intent.requirement)}`;
+    default:
+      return intent.kind;
+  }
+}
+
+/**
+ * v0.9 Batch 6: explicit selection of confirmed reference-region and
+ * reference-requirement intent from the saved annotation for materialization
+ * into a new imported reference revision. Candidate and informational items
+ * are never selectable. Nothing here composes the final region or requirement
+ * sets, approves anything, or switches the viewed reference.
+ */
+function ReferenceMaterializationSection({
+  draft,
+  materialization,
+  onMaterialize,
+}: {
+  draft: AnnotationDraft;
+  materialization: ReferenceMaterializationState;
+  onMaterialize: (itemIds: string[]) => void;
+}) {
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [draft.parentAnnotationHandle]);
+  // A successful materialization clears the selection, so the same items are never materialized again by accident.
+  const materializedReferenceId = materialization.state === 'materialized' ? materialization.referenceId : undefined;
+  useEffect(() => {
+    if (materializedReferenceId !== undefined) setSelectedIds([]);
+  }, [materializedReferenceId]);
+
+  const saved = draft.parentAnnotationHandle !== undefined && !draft.dirty;
+  const listItems = draft.items.filter(isReferenceMaterializationListItem);
+  const materializableIds = new Set(listItems.filter((item) => referenceMaterializationStatus(item).materializable).map((item) => item.annotationItemId));
+  const effectiveSelection = selectedIds.filter((id) => materializableIds.has(id));
+  const canMaterialize = saved && effectiveSelection.length > 0 && materialization.state !== 'materializing';
+
+  return (
+    <div className="annotation-panel__promotion annotation-panel__materialization">
+      <h4>Confirmed reference intent</h4>
+      {!saved ? (
+        <p className="annotation-panel__hint" data-materialization-blocked="true">
+          Save the annotation before materializing reference intent.
+        </p>
+      ) : listItems.length === 0 ? (
+        <p className="placeholder-note">No reference intent in this saved annotation.</p>
+      ) : (
+        <ul className="annotation-panel__proposal-list">
+          {listItems.map((item) => {
+            const status = referenceMaterializationStatus(item);
+            return (
+              <li key={item.annotationItemId} data-materialization-item-id={item.annotationItemId} data-materializable={status.materializable ? 'true' : 'false'}>
+                <label>
+                  <input
+                    type="checkbox"
+                    aria-label={`Materialize annotation item ${item.annotationItemId}`}
+                    disabled={!status.materializable}
+                    checked={effectiveSelection.includes(item.annotationItemId)}
+                    onChange={(e) => {
+                      const { checked } = e.target;
+                      setSelectedIds((current) => (checked ? [...current.filter((id) => id !== item.annotationItemId), item.annotationItemId] : current.filter((id) => id !== item.annotationItemId)));
+                    }}
+                  />
+                  {materializationItemLabel(item)} ({item.interpretation.state})
+                </label>
+                {status.materializable ? null : <span className="annotation-panel__hint"> {status.reason}</span>}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <p className="placeholder-note" data-materialization-warning="true">
+        This creates a new imported reference revision. The current reference remains unchanged. The new reference is not approved automatically.
+      </p>
+      <button type="button" disabled={!canMaterialize} onClick={() => onMaterialize(effectiveSelection)}>
+        Materialize selected into new reference revision
+      </button>
+      {materialization.state === 'materializing' ? (
+        <p className="annotation-panel__status" role="status">
+          Materializing…
+        </p>
+      ) : null}
+      {materialization.state === 'materialized' ? (
+        <div
+          className="annotation-panel__status annotation-panel__status--success"
+          role="status"
+          data-materialized-reference-id={materialization.referenceId}
+          data-materialized-lifecycle="imported"
+          data-supersedes-reference-id={materialization.supersedesReferenceId}
+        >
+          <p>New reference ID: {materialization.referenceId}</p>
+          <p>Lifecycle: imported</p>
+          <p>Supersedes: {materialization.supersedesReferenceId}</p>
+          <p>
+            Regions: {materialization.regionCount} · Requirements: {materialization.requirementCount}
+          </p>
+          <p>Approval required: {materialization.approvalRequired ? 'yes' : 'no'}</p>
+          <p>The new reference is imported but not approved. Use the existing explicit approval workflow when ready.</p>
+        </div>
+      ) : null}
+      {materialization.state === 'failed' ? (
+        <p className="annotation-panel__error" role="alert" data-materialization-status-code={materialization.status ?? 'network'}>
+          {materialization.message}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * v0.9 Batch 4 external-reference annotation panel. Shares the saved list and
  * draft lifecycle with the runtime panel, and adds explicit reference-side
@@ -56,7 +177,9 @@ function interpretationLabel(item: VisualAnnotationItem): string {
  * candidate region create/refine, informational and asset-sensitive intent,
  * candidate reference requirements, and explicit confirmation. The exact
  * candidate structure is always shown before confirmation. Nothing here
- * changes the source reference or materializes a new one.
+ * changes the source reference. v0.9 Batch 6 adds explicit materialization of
+ * selected confirmed items of a saved annotation into a new imported
+ * reference revision through the server's canonical use case.
  */
 export function ReferenceAnnotationPanel({
   session,
@@ -72,6 +195,8 @@ export function ReferenceAnnotationPanel({
   onDeleteSelected,
   onCancelChanges,
   onSave,
+  materialization,
+  onMaterialize,
 }: {
   session: AuthoringSessionState;
   saved: SourceAnnotationsState;
@@ -86,6 +211,9 @@ export function ReferenceAnnotationPanel({
   onDeleteSelected: () => void;
   onCancelChanges: () => void;
   onSave: () => void;
+  /** v0.9 Batch 6: materialization state for the currently loaded saved annotation. */
+  materialization: ReferenceMaterializationState;
+  onMaterialize: (itemIds: string[]) => void;
 }) {
   const [associationRelationshipIndex, setAssociationRelationshipIndex] = useState('');
   const [proposedRegionId, setProposedRegionId] = useState('');
@@ -459,6 +587,8 @@ export function ReferenceAnnotationPanel({
           ) : null}
         </div>
       )}
+
+      {editable ? <ReferenceMaterializationSection draft={draft} materialization={materialization} onMaterialize={onMaterialize} /> : null}
     </section>
   );
 }

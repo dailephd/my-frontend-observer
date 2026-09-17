@@ -4,13 +4,13 @@ import { readProjectConfig } from '../projectWorkflow/projectConfig.js';
 import { contractOutputLocation, projectConfigPath } from '../projectWorkflow/projectPaths.js';
 import { resolveContainedAcceptancePath } from '../projectWorkflow/checkAcceptance.js';
 import { readPersistentBaselineContract } from '../artifacts/frontendContractArtifactReader.js';
-import { promoteVisualAnnotationContract, MAX_PROMOTION_ITEM_IDS } from '../application/visualAnnotationContractPromotionService.js';
+import { promoteVisualAnnotationContract } from '../application/visualAnnotationContractPromotionService.js';
 import type { PromoteVisualAnnotationContractFailureCode } from '../application/visualAnnotationContractPromotionService.js';
 import { activateProjectChangeContract } from '../application/projectWorkflowService.js';
 import { getAnnotationView } from './evidence/annotationView.js';
 import { loadArtifactByHandle } from './evidence/index.js';
 import { encodeArtifactHandle } from './evidence/handles.js';
-import { runSerializedAuthoringWrite } from './annotationAuthoring.js';
+import { parseAuthoringItemIds, runSerializedAuthoringWrite } from './annotationAuthoring.js';
 import type { ViewerAuthoringSession } from './authoringSecurity.js';
 
 /** v0.9 Batch 5 closed promotion request. The browser supplies only annotation item ids and the explicit activation choice. */
@@ -28,13 +28,10 @@ export function parsePromoteAnnotationContractRequest(value: unknown): ParseProm
   const record = value as Record<string, unknown>;
   const unknownKeys = Object.keys(record).filter((key) => !(PROMOTE_REQUEST_KEYS as readonly string[]).includes(key));
   if (unknownKeys.length > 0) return { ok: false, error: `unsupported request field(s): ${unknownKeys.slice(0, 10).join(', ')}` };
-  const { itemIds, activateForCheck } = record;
-  if (!Array.isArray(itemIds) || itemIds.length === 0) return { ok: false, error: 'itemIds must be a non-empty array' };
-  if (itemIds.length > MAX_PROMOTION_ITEM_IDS) return { ok: false, error: `itemIds must contain at most ${MAX_PROMOTION_ITEM_IDS} entries` };
-  if (!itemIds.every((id) => typeof id === 'string' && id.length > 0)) return { ok: false, error: 'every itemIds entry must be a non-empty string' };
-  if (new Set(itemIds).size !== itemIds.length) return { ok: false, error: 'itemIds must be unique' };
-  if (typeof activateForCheck !== 'boolean') return { ok: false, error: 'activateForCheck must be a boolean' };
-  return { ok: true, request: { itemIds: itemIds as string[], activateForCheck } };
+  const itemIds = parseAuthoringItemIds(record.itemIds);
+  if (!itemIds.ok) return itemIds;
+  if (typeof record.activateForCheck !== 'boolean') return { ok: false, error: 'activateForCheck must be a boolean' };
+  return { ok: true, request: { itemIds: itemIds.itemIds, activateForCheck: record.activateForCheck } };
 }
 
 export type ContractActivation = { state: 'not-requested' } | { state: 'activated' } | { state: 'not-configured'; reason: string } | { state: 'failed'; reason: string };

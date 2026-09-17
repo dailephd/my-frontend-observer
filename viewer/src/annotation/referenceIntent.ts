@@ -243,3 +243,32 @@ export function withRequirementCandidate(item: VisualAnnotationItem, requirement
 export function applyReferenceItemEdit(item: VisualAnnotationItem, edit: (item: VisualAnnotationItem) => VisualAnnotationItem): VisualAnnotationItem {
   return withdrawChangedConfirmation(item, syncRegionGeometry(edit(item)));
 }
+
+// --- v0.9 Batch 6 materialization eligibility ----------------------------------------
+
+export const INFORMATIONAL_NOT_MATERIALIZED_REASON = 'Informational annotation intent is not materialized into the external-reference contract.';
+
+export type ReferenceMaterializationStatus = { materializable: true } | { materializable: false; reason: string };
+
+/** Item kinds shown in the materialization section: reference intent plus informational intent (shown disabled). */
+export function isReferenceMaterializationListItem(item: VisualAnnotationItem): boolean {
+  const { interpretation } = item;
+  if (interpretation.state === 'uninterpreted') return false;
+  const { kind } = interpretation.intent;
+  return kind === 'reference-region' || kind === 'reference-requirement' || kind === 'inspect' || kind === 'asset-sensitive';
+}
+
+/**
+ * Presentation-side materialization eligibility for the reference panel. The
+ * server's canonical materialization service repeats these checks, composes
+ * the final region and requirement sets, and remains authoritative.
+ */
+export function referenceMaterializationStatus(item: VisualAnnotationItem): ReferenceMaterializationStatus {
+  const { interpretation } = item;
+  if (interpretation.state === 'uninterpreted') return { materializable: false, reason: 'No interpretation.' };
+  const { kind } = interpretation.intent;
+  if (kind === 'inspect' || kind === 'asset-sensitive') return { materializable: false, reason: INFORMATIONAL_NOT_MATERIALIZED_REASON };
+  if (kind !== 'reference-region' && kind !== 'reference-requirement') return { materializable: false, reason: 'Not external-reference intent.' };
+  if (interpretation.state === 'candidate') return { materializable: false, reason: 'Candidate intent must be confirmed before materialization.' };
+  return { materializable: true };
+}

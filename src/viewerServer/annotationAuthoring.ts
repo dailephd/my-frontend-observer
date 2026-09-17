@@ -33,6 +33,22 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;
 }
 
+/** Maximum number of annotation item ids accepted by one promotion or materialization request. */
+export const MAX_AUTHORING_ITEM_IDS = 100;
+
+/**
+ * v0.9 Batch 5/6 shared `itemIds` shape rule for authoring requests that act on
+ * selected items of a saved annotation: a non-empty array of at most 100
+ * unique, non-empty strings.
+ */
+export function parseAuthoringItemIds(value: unknown): { ok: true; itemIds: string[] } | { ok: false; error: string } {
+  if (!Array.isArray(value) || value.length === 0) return { ok: false, error: 'itemIds must be a non-empty array' };
+  if (value.length > MAX_AUTHORING_ITEM_IDS) return { ok: false, error: `itemIds must contain at most ${MAX_AUTHORING_ITEM_IDS} entries` };
+  if (!value.every((id) => typeof id === 'string' && id.length > 0)) return { ok: false, error: 'every itemIds entry must be a non-empty string' };
+  if (new Set(value).size !== value.length) return { ok: false, error: 'itemIds must be unique' };
+  return { ok: true, itemIds: value as string[] };
+}
+
 /** Request-shape validation only. Item content is validated later by the canonical visual-annotation domain. */
 export function parseSaveAnnotationRequest(value: unknown): ParseSaveAnnotationRequestResult {
   if (!isPlainObject(value)) return { ok: false, error: 'request body must be a JSON object' };

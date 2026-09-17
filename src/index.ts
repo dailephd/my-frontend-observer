@@ -591,3 +591,10 @@ export { readVisualAnnotationArtifact } from './artifacts/visualAnnotationArtifa
 
 export type { PersistVisualAnnotationOptions, ApplicationPersistVisualAnnotationResult } from './application/visualAnnotationPersistenceService.js';
 export { persistVisualAnnotation } from './application/visualAnnotationPersistenceService.js';
+
+export type {
+  MaterializeVisualAnnotationReferenceOptions,
+  MaterializeVisualAnnotationReferenceResult,
+  MaterializeVisualAnnotationReferenceFailureCode,
+} from './application/visualAnnotationReferenceMaterializationService.js';
+export { materializeVisualAnnotationReference } from './application/visualAnnotationReferenceMaterializationService.js';

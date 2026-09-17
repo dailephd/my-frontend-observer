@@ -101,7 +101,8 @@ describe('POST /api/annotations/:handle/promote-contract security boundary', () 
     expect(getRoute.status).toBe(405);
     expect(getRoute.headers.allow).toBe('POST');
     const materialize = await rawRequest(ctx.viewer, { method: 'POST', path: `/api/annotations/${encodeURIComponent(ctx.annotationHandle)}/materialize-reference`, headers: authoringHeaders(ctx.viewer, ctx.token, '{}'), body: '{}' });
-    expect(materialize.status).toBe(405);
+    // v0.9 Batch 6: the materialization route exists now; its closed body rejects this shape before any resolution.
+    expect(materialize.status).toBe(400);
     expect(await contractDirs(ctx.project)).toEqual([]);
   });
 

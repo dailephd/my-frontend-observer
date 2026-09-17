@@ -17,6 +17,8 @@ import { parseSaveAnnotationRequest, saveAnnotationFromViewer } from './annotati
 import type { SaveAnnotationFailureReason } from './annotationAuthoring.js';
 import { parsePromoteAnnotationContractRequest, promoteAnnotationContractFromViewer } from './annotationContractPromotion.js';
 import type { PromoteAnnotationContractFailureReason } from './annotationContractPromotion.js';
+import { materializeAnnotationReferenceFromViewer, parseMaterializeAnnotationReferenceRequest } from './annotationReferenceMaterialization.js';
+import type { MaterializeAnnotationReferenceFailureReason } from './annotationReferenceMaterialization.js';
 import type { ContextSessionState } from './context.js';
 import type { ViewerAliasMetadata } from './viewerService.js';
 
@@ -27,8 +29,9 @@ import type { ViewerAliasMetadata } from './viewerService.js';
  * role, GET /api/annotations/:handle/view, GET /api/authoring/session, and
  * POST /api/annotations. 1.2.0 (v0.9 Batch 5) adds
  * POST /api/annotations/:handle/promote-contract and its response contract.
+ * 1.3.0 (v0.9 Batch 6) adds POST /api/annotations/:handle/materialize-reference.
  */
-export const VIEWER_PROTOCOL_VERSION = '1.2.0';
+export const VIEWER_PROTOCOL_VERSION = '1.3.0';
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -121,7 +124,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
     return;
   }
 
-  // v0.9 Batch 2/5: POST exists for exactly two authoring routes. Every other path keeps the read-only GET/HEAD method set.
+  // v0.9 Batch 2/5/6: POST exists for exactly three authoring routes. Every other path keeps the read-only GET/HEAD method set.
   if (pathname === ANNOTATION_SAVE_PATH) {
     if (method !== 'POST') {
       res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' });
@@ -139,6 +142,16 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
       return;
     }
     await handleAnnotationContractPromotion(req, res, state, promoteMatch[1] as string);
+    return;
+  }
+  const materializeMatch = ANNOTATION_MATERIALIZE_REFERENCE_PATH.exec(pathname);
+  if (materializeMatch) {
+    if (method !== 'POST') {
+      res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' });
+      res.end('method not allowed');
+      return;
+    }
+    await handleAnnotationReferenceMaterialization(req, res, state, materializeMatch[1] as string);
     return;
   }
   if (method === 'POST') {
@@ -450,6 +463,22 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
 const ANNOTATION_SAVE_PATH = '/api/annotations';
 const ANNOTATION_PROMOTE_CONTRACT_PATH = /^\/api\/annotations\/([^/]+)\/promote-contract$/;
 
+const ANNOTATION_MATERIALIZE_REFERENCE_PATH = /^\/api\/annotations\/([^/]+)\/materialize-reference$/;
+
+const MATERIALIZE_FAILURE_STATUS: Record<MaterializeAnnotationReferenceFailureReason, number> = {
+  'unknown-annotation-handle': 404,
+  'not-an-annotation': 409,
+  'runtime-annotation': 409,
+  'source-unavailable': 404,
+  'source-image-unavailable': 404,
+  'image-read-failure': 500,
+  'invalid-source': 409,
+  'source-mismatch': 409,
+  'invalid-selection': 422,
+  'invalid-materialized-reference': 422,
+  'persistence-failure': 500,
+};
+
 const PROMOTE_FAILURE_STATUS: Record<PromoteAnnotationContractFailureReason, number> = {
   'unknown-annotation-handle': 404,
   'not-an-annotation': 409,
@@ -579,6 +608,51 @@ async function handleAnnotationContractPromotion(req: IncomingMessage, res: Serv
     });
   } catch {
     writeJsonError(res, 'POST', 500, 'the change contract could not be promoted');
+  }
+}
+
+/**
+ * POST /api/annotations/:handle/materialize-reference (v0.9 Batch 6). Same
+ * shared authoring gate, a closed `{ itemIds }` body, then the one canonical
+ * materialization use case. The route never composes regions, requirements,
+ * or reference identity and never returns filesystem paths.
+ */
+async function handleAnnotationReferenceMaterialization(req: IncomingMessage, res: ServerResponse, state: ViewerServerState, encodedHandle: string): Promise<void> {
+  const authoring = await readAuthoringJsonRequest(req, res, state);
+  if (authoring === undefined) return;
+  const { session, parsed } = authoring;
+
+  const handle = decodeURIComponentSafe(encodedHandle);
+  if (handle === undefined) {
+    writeJsonError(res, 'POST', 400, 'malformed annotation handle');
+    return;
+  }
+
+  const request = parseMaterializeAnnotationReferenceRequest(parsed);
+  if (!request.ok) {
+    writeJsonError(res, 'POST', 400, request.error);
+    return;
+  }
+
+  try {
+    const materialized = await materializeAnnotationReferenceFromViewer(state.root, session, handle, request.request);
+    if (!materialized.ok) {
+      writeJsonError(res, 'POST', MATERIALIZE_FAILURE_STATUS[materialized.reason], materialized.error);
+      return;
+    }
+    writeJsonBody(res, 'POST', 201, {
+      ok: true,
+      referenceId: materialized.referenceId,
+      referenceRequestId: materialized.referenceRequestId,
+      handle: materialized.handle,
+      lifecycle: 'imported',
+      supersedesReferenceId: materialized.supersedesReferenceId,
+      regionCount: materialized.regionCount,
+      requirementCount: materialized.requirementCount,
+      approvalRequired: true,
+    });
+  } catch {
+    writeJsonError(res, 'POST', 500, 'the reference revision could not be materialized');
   }
 }
 

@@ -1342,3 +1342,8 @@ body {
   margin: 0.3rem 0;
   color: var(--text-dim);
 }
+
+/* v0.9 Batch 6: reference materialization result lines */
+.annotation-panel__materialization .annotation-panel__status p {
+  margin: 0;
+}

@@ -43,7 +43,7 @@ describe('authoring security constants and helpers', () => {
     expect(VIEWER_AUTHORING_TOKEN_BYTES).toBe(32);
     expect(VIEWER_AUTHORING_TOKEN_HEADER).toBe('x-frontend-observer-authoring-token');
     expect(MAX_ANNOTATION_AUTHORING_BODY_BYTES).toBe(262144);
-    expect(VIEWER_PROTOCOL_VERSION).toBe('1.2.0');
+    expect(VIEWER_PROTOCOL_VERSION).toBe('1.3.0');
   });
 
   it('generates fresh 64-character lowercase hex tokens', () => {
@@ -195,7 +195,7 @@ describe('POST /api/annotations security boundary', () => {
         expect(response.status, `${method} ${path}`).toBe(405);
       }
     }
-    for (const path of ['/api/index', '/api/status', '/api/authoring/session', '/api/artifacts/x', '/api/annotations/x/view', '/api/annotations/x/materialize-reference', '/api/media/x/screenshot', '/']) {
+    for (const path of ['/api/index', '/api/status', '/api/authoring/session', '/api/artifacts/x', '/api/annotations/x/view', '/api/media/x/screenshot', '/']) {
       const response = await post(viewer, headers, PROBE_BODY, path);
       expect(response.status, `POST ${path}`).toBe(405);
       expect(response.headers.allow).toBe('GET, HEAD');
@@ -212,6 +212,6 @@ describe('POST /api/annotations security boundary', () => {
       expect((await fetch(`${viewer.url}${path}`, { method: 'HEAD' })).status, path).toBe(200);
     }
     const status = (await (await fetch(`${viewer.url}/api/status`)).json()) as { viewerProtocolVersion: string };
-    expect(status.viewerProtocolVersion).toBe('1.2.0');
+    expect(status.viewerProtocolVersion).toBe('1.3.0');
   });
 });

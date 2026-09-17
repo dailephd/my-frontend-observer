@@ -24,6 +24,7 @@ import { AnnotationToolbar } from './AnnotationToolbar.js';
 import { AnnotationLayer } from './AnnotationLayer.js';
 import { CandidateRegionPreviewLayer } from './CandidateRegionPreviewLayer.js';
 import { ReferenceAnnotationPanel } from './ReferenceAnnotationPanel.js';
+import { useAnnotationReferenceMaterialization } from '../hooks/useAnnotationReferenceMaterialization.js';
 
 function requirementSubjectRegionIds(subject: ExternalReferenceRequirement['subject']): string[] {
   return subject.kind === 'region-property' ? [subject.region] : [subject.subjectRegion, subject.relatedRegion];
@@ -156,6 +157,7 @@ export function ReferenceWorkspace({ handle, artifact }: { handle: string; artif
   const referenceFamily = approved ? 'external-reference-approved' : 'external-reference-imported';
   const savedAnnotations = useReferenceAnnotations(handle, referenceFamily, artifact.referenceId);
   const annotationDraft = useReferenceAnnotationDraft(handle);
+  const referenceMaterialization = useAnnotationReferenceMaterialization(annotationDraft.draft.parentAnnotationHandle);
   const [annotationMode, setAnnotationMode] = useState<AnnotationInteractionMode>('select');
   const [noteText, setNoteText] = useState('');
   const annotationInteraction = useAnnotationPointerInteraction({
@@ -472,6 +474,11 @@ export function ReferenceWorkspace({ handle, artifact }: { handle: string; artif
             onSave={() => {
               if (session.state !== 'available') return;
               void annotationDraft.save(session.token, savedAnnotations.reload);
+            }}
+            materialization={referenceMaterialization.state}
+            onMaterialize={(itemIds) => {
+              if (session.state !== 'available') return;
+              void referenceMaterialization.materialize(session.token, itemIds);
             }}
           />
         </section>

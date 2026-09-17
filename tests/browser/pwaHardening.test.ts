@@ -114,14 +114,17 @@ describe('PWA live proof - service worker, shell precache, server-down behavior'
         const view = await fetch(`/api/annotations/${encoded}/view`);
         const media = await fetch(`/api/media/${encoded}/annotation-overlay`);
         const save = await fetch('/api/annotations', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sourceHandle: annotation.handle, items: [] }) });
+        // v0.9 Batch 6: the reference materialization POST route is likewise never cached.
+        const materialize = await fetch(`/api/annotations/${encoded}/materialize-reference`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ itemIds: ['x'] }) });
         return {
           session: [session.status, session.headers.get('cache-control')],
           view: [view.status, view.headers.get('cache-control')],
           media: [media.status, media.headers.get('cache-control')],
           save: [save.status, save.headers.get('cache-control')],
+          materialize: [materialize.status, materialize.headers.get('cache-control')],
         };
       });
-      expect(annotationRouteStatuses).toEqual({ session: [200, 'no-store'], view: [200, 'no-store'], media: [200, 'no-store'], save: [403, 'no-store'] });
+      expect(annotationRouteStatuses).toEqual({ session: [200, 'no-store'], view: [200, 'no-store'], media: [200, 'no-store'], save: [403, 'no-store'], materialize: [403, 'no-store'] });
 
       const apiCacheEntryCount = await page.evaluate(async () => {
         const cacheNames = await caches.keys();
