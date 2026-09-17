@@ -5,8 +5,8 @@ import path from 'node:path';
 import { validateObservationAlias, validateProjectConfig } from '../../src/projectWorkflow/projectConfig.js';
 import { discoverFrontendObserverProject } from '../../src/projectWorkflow/projectDiscovery.js';
 import { ALIAS_CATALOG_SCHEMA_VERSION, readAliasCatalog, serializeAliasCatalog, validateAliasCatalog, writeAliasCatalog } from '../../src/projectWorkflow/aliasCatalog.js';
-import { aliasCatalogPath, annotationOutputLocation, observationOutputLocation, projectAnnotationsRoot, projectConfigPath, projectEvidenceRoot, projectObservationsRoot, projectStateRoot } from '../../src/projectWorkflow/projectPaths.js';
-import { initializeFrontendObserverProject, loadProjectViewerState } from '../../src/application/projectWorkflowService.js';
+import { aliasCatalogPath, annotationOutputLocation, contractOutputLocation, observationOutputLocation, projectAnnotationsRoot, projectConfigPath, projectContractsRoot, projectEvidenceRoot, projectObservationsRoot, projectStateRoot } from '../../src/projectWorkflow/projectPaths.js';
+import { activateProjectChangeContract, initializeFrontendObserverProject, loadProjectViewerState } from '../../src/application/projectWorkflowService.js';
 
 const roots: string[] = [];
 afterEach(async () => Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))));
@@ -102,5 +102,61 @@ describe('alias catalog', () => {
     const dir = await root(); const file = path.join(dir, 'catalog.json'); await writeAliasCatalog(file, catalog);
     await writeAliasCatalog(file, { schemaVersion: ALIAS_CATALOG_SCHEMA_VERSION, observations: {} });
     expect((await readAliasCatalog(file)).ok).toBe(true); expect(await readFile(file, 'utf8')).toBe('{\n  "schemaVersion": "1.0.0",\n  "observations": {}\n}\n');
+  });
+});
+
+describe('v0.9 Batch 5: explicit change-contract activation', () => {
+
+  const acceptanceConfig = {
+    ...validConfig,
+    schemaVersion: '1.1.0',
+    acceptance: {
+      comparisonConfigFile: 'comparison.json',
+      contract: { baselineArtifact: '.frontend-observer/evidence/baselines/base-1', changeArtifact: '.frontend-observer/evidence/contracts/old' },
+      reference: { approvedArtifact: '.frontend-observer/evidence/references/ref-1', bindingsFile: 'bindings.json' },
+    },
+  };
+
+  it('derives the managed contracts root and portable contract output location', async () => {
+    const dir = await root();
+    expect(projectContractsRoot(dir)).toBe(path.join(dir, '.frontend-observer', 'evidence', 'contracts'));
+    expect(contractOutputLocation()).toBe('.frontend-observer/evidence/contracts');
+  });
+
+  it('updates only acceptance.contract.changeArtifact and keeps every other field, including the baseline path, byte-identical in value', async () => {
+    const dir = await root();
+    await writeFile(projectConfigPath(dir), `${JSON.stringify(acceptanceConfig, null, 2)}\n`);
+    const result = await activateProjectChangeContract(dir, '.frontend-observer/evidence/contracts/new-contract');
+    expect(result).toEqual({ ok: true });
+    const written = JSON.parse(await readFile(projectConfigPath(dir), 'utf8')) as typeof acceptanceConfig;
+    expect(written).toEqual({ ...acceptanceConfig, acceptance: { ...acceptanceConfig.acceptance, contract: { baselineArtifact: '.frontend-observer/evidence/baselines/base-1', changeArtifact: '.frontend-observer/evidence/contracts/new-contract' } } });
+    expect(Object.keys(written)).toEqual(Object.keys(acceptanceConfig));
+    expect(validateProjectConfig(written).ok).toBe(true);
+  });
+
+  it('never creates contract acceptance when the project does not configure it', async () => {
+    const dir = await root();
+    const text = `${JSON.stringify({ ...validConfig, schemaVersion: '1.1.0', acceptance: { comparisonConfigFile: 'comparison.json' } }, null, 2)}\n`;
+    await writeFile(projectConfigPath(dir), text);
+    const result = await activateProjectChangeContract(dir, '.frontend-observer/evidence/contracts/new-contract');
+    expect(result).toMatchObject({ ok: false, code: 'not-configured' });
+    expect(await readFile(projectConfigPath(dir), 'utf8')).toBe(text);
+
+    const noAcceptance = `${JSON.stringify(validConfig, null, 2)}\n`;
+    await writeFile(projectConfigPath(dir), noAcceptance);
+    expect(await activateProjectChangeContract(dir, '.frontend-observer/evidence/contracts/new-contract')).toMatchObject({ ok: false, code: 'not-configured' });
+    expect(await readFile(projectConfigPath(dir), 'utf8')).toBe(noAcceptance);
+  });
+
+  it('never writes an invalid full configuration', async () => {
+    const dir = await root();
+    const text = `${JSON.stringify(acceptanceConfig, null, 2)}\n`;
+    await writeFile(projectConfigPath(dir), text);
+    for (const unsafe of ['../outside', 'C:/absolute', '', 'a' + String.fromCharCode(92) + 'b']) {
+      expect(await activateProjectChangeContract(dir, unsafe)).toMatchObject({ ok: false, code: 'project-config-invalid' });
+      expect(await readFile(projectConfigPath(dir), 'utf8')).toBe(text);
+    }
+    await writeFile(projectConfigPath(dir), '{ not json');
+    expect(await activateProjectChangeContract(dir, '.frontend-observer/evidence/contracts/x')).toMatchObject({ ok: false, code: 'project-config-invalid' });
   });
 });

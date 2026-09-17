@@ -7,6 +7,10 @@ import type {
   RegionPropertyRequirementSubject,
   RawReferenceRequirement,
 } from '../types/reference.js';
+import { withdrawChangedConfirmation } from './confirmation.js';
+
+// v0.9 Batch 5: confirmation helpers moved to the shared ./confirmation.ts (behavior unchanged).
+export { confirmCandidate } from './confirmation.js';
 
 /**
  * v0.9 Batch 4: pure, presentation-side model for external-reference
@@ -230,28 +234,6 @@ export function withRequirementCandidate(item: VisualAnnotationItem, requirement
 
 // --- confirmation -----------------------------------------------------------------------
 
-/** Explicit confirmation of an existing candidate. Anything else is returned unchanged. */
-export function confirmCandidate(item: VisualAnnotationItem, confirmedAt: string): VisualAnnotationItem {
-  if (item.interpretation.state !== 'candidate') return item;
-  return withInterpretation(item, { state: 'confirmed', intent: item.interpretation.intent, confirmedAt });
-}
-
-function stableStringify(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
-  if (value !== null && typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>)
-      .filter(([, v]) => v !== undefined)
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stableStringify(v)}`).join(',')}}`;
-  }
-  return JSON.stringify(value);
-}
-
-function meaning(item: VisualAnnotationItem): string {
-  const intent = item.interpretation.state === 'uninterpreted' ? undefined : item.interpretation.intent;
-  return stableStringify({ mark: item.mark, association: item.association, intent });
-}
-
 /**
  * Applies one draft edit to a reference annotation item. Region proposals
  * follow their rectangle's geometry. If the item was confirmed and the edit
@@ -259,9 +241,5 @@ function meaning(item: VisualAnnotationItem): string {
  * withdrawn: the intent is kept as a candidate and `confirmedAt` is removed.
  */
 export function applyReferenceItemEdit(item: VisualAnnotationItem, edit: (item: VisualAnnotationItem) => VisualAnnotationItem): VisualAnnotationItem {
-  const next = syncRegionGeometry(edit(item));
-  if (item.interpretation.state === 'confirmed' && next.interpretation.state === 'confirmed' && meaning(item) !== meaning(next)) {
-    return withInterpretation(next, candidate(next.interpretation.intent));
-  }
-  return next;
+  return withdrawChangedConfirmation(item, syncRegionGeometry(edit(item)));
 }

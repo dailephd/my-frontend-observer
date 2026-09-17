@@ -17,6 +17,9 @@ export interface DiscoveryResult {
   truncated: boolean;
 }
 
+/** Prefix every canonical artifact writer uses for its sibling temporary directory (`.tmp-<id>`) before the atomic rename. */
+export const WRITER_TEMP_DIRECTORY_PREFIX = '.tmp-';
+
 function toPosixRelative(root: string, absoluteDir: string): string {
   const rel = relative(root, absoluteDir);
   return rel === '' ? '.' : rel.split(sep).join('/');
@@ -72,6 +75,9 @@ export async function discoverManifests(root: string): Promise<DiscoveryResult> 
       if (entry.isSymbolicLink()) continue; // never follow symlinks/junctions/reparse points, for files or directories
 
       if (entry.isDirectory()) {
+        // v0.9 Batch 5: a writer's sibling `.tmp-<id>` directory is incomplete internal state, never evidence. Skipping it
+        // (at any depth) also keeps discovery from holding handles inside it while the writer renames it into place.
+        if (entry.name.startsWith(WRITER_TEMP_DIRECTORY_PREFIX)) continue;
         await walk(join(dir, entry.name), depth + 1);
         continue;
       }

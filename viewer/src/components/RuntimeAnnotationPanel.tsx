@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { LayoutRelationshipGraph } from '../types/observation.js';
 import type { RuntimeAnnotationAssociation, VisualAnnotationItem } from '../types/visualAnnotation.js';
 import type { AuthoringSessionState } from '../hooks/useAuthoringSession.js';
@@ -6,6 +6,265 @@ import type { RuntimeAnnotationsState } from '../hooks/useRuntimeAnnotations.js'
 import type { RuntimeAnnotationDraft } from '../hooks/useRuntimeAnnotationDraft.js';
 import { ANNOTATION_NOTE_MAX_LENGTH } from '../annotation/annotationGeometry.js';
 import { AnnotationSessionNotice, DraftLifecycleSection, SavedAnnotationList } from './AnnotationPanelSections.js';
+import type { ContractPromotionState } from '../hooks/useAnnotationContractPromotion.js';
+import {
+  CONTRACT_TOLERANCE_KINDS,
+  EMPTY_RUNTIME_INTENT_FORM,
+  MOVE_DIRECTIONS,
+  PRESERVE_PROPERTIES,
+  REMOVE_NOT_PROMOTABLE_REASON,
+  RESIZE_DIRECTIONS,
+  RUNTIME_AUTHORED_CATEGORIES,
+  RUNTIME_EXPECTED_DEPENDENT_MODES,
+  RUNTIME_OPERATIONS,
+  buildRuntimeIntent,
+  describePrimitive,
+  runtimePromotionStatus,
+  withRuntimeIntentCandidate,
+} from '../annotation/runtimeIntent.js';
+import type { RuntimeIntentForm } from '../annotation/runtimeIntent.js';
+
+function promotionDisplay(item: VisualAnnotationItem): string {
+  const { interpretation } = item;
+  if (interpretation.state === 'uninterpreted') return 'Promotion: no intent';
+  const intent = interpretation.intent;
+  if (intent.kind === 'inspect') return 'Promotion: informational only, never a contract clause';
+  if (intent.kind !== 'change') return 'Promotion: not runtime change intent';
+  if (intent.operation === 'remove') {
+    return interpretation.state === 'confirmed' ? `Confirmed but not canonically promotable: ${REMOVE_NOT_PROMOTABLE_REASON}` : `Not canonically promotable: ${REMOVE_NOT_PROMOTABLE_REASON}`;
+  }
+  if (interpretation.state === 'candidate') return 'Promotion: requires explicit confirmation first';
+  const status = runtimePromotionStatus(item);
+  return status.promotable ? 'Promotion: canonically promotable' : `Promotion: ${status.reason}`;
+}
+
+function RuntimeIntentSection({ item, onUpdate, onConfirm }: { item: VisualAnnotationItem; onUpdate: (update: (item: VisualAnnotationItem) => VisualAnnotationItem) => void; onConfirm: () => void }) {
+  const [form, setForm] = useState<RuntimeIntentForm>(EMPTY_RUNTIME_INTENT_FORM);
+  useEffect(() => {
+    setForm(EMPTY_RUNTIME_INTENT_FORM);
+  }, [item.annotationItemId]);
+  const built = buildRuntimeIntent(form, item.association);
+  function setField<K extends keyof RuntimeIntentForm>(key: K, value: RuntimeIntentForm[K]): void {
+    setForm((current) => ({ ...current, [key]: value }));
+  }
+  const needsCategory = form.operation !== '' && form.operation !== 'inspect';
+
+  return (
+    <fieldset className="annotation-panel__group">
+      <legend>Runtime intent</legend>
+      <div className="annotation-panel__requirement-form">
+        <label>
+          Operation
+          <select aria-label="Runtime intent operation" value={form.operation} onChange={(e) => setField('operation', e.target.value as RuntimeIntentForm['operation'])}>
+            <option value="">Choose…</option>
+            {RUNTIME_OPERATIONS.map((operation) => (
+              <option key={operation} value={operation}>
+                {operation}
+              </option>
+            ))}
+          </select>
+        </label>
+        {form.operation === 'move' ? (
+          <label>
+            Direction
+            <select aria-label="Move direction" value={form.moveDirection} onChange={(e) => setField('moveDirection', e.target.value as RuntimeIntentForm['moveDirection'])}>
+              <option value="">Choose…</option>
+              {MOVE_DIRECTIONS.map((direction) => (
+                <option key={direction} value={direction}>
+                  {direction}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        {form.operation === 'resize' ? (
+          <label>
+            Direction
+            <select aria-label="Resize direction" value={form.resizeDirection} onChange={(e) => setField('resizeDirection', e.target.value as RuntimeIntentForm['resizeDirection'])}>
+              <option value="">Choose…</option>
+              {RESIZE_DIRECTIONS.map((direction) => (
+                <option key={direction} value={direction}>
+                  {direction}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        {needsCategory ? (
+          <label>
+            Category
+            <select aria-label="Intent category" value={form.category} onChange={(e) => setField('category', e.target.value)}>
+              <option value="">Choose…</option>
+              {RUNTIME_AUTHORED_CATEGORIES.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        {needsCategory && form.category === 'expected-dependent' ? (
+          <label>
+            Mode
+            <select aria-label="Intent expected-dependent mode" value={form.expectedDependentMode} onChange={(e) => setField('expectedDependentMode', e.target.value)}>
+              <option value="">Choose…</option>
+              {RUNTIME_EXPECTED_DEPENDENT_MODES.map((mode) => (
+                <option key={mode} value={mode}>
+                  {mode}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        {form.operation === 'preserve' && item.association?.kind === 'runtime-target' ? (
+          <>
+            <label>
+              Property
+              <select aria-label="Preserved property" value={form.preserveProperty} onChange={(e) => setField('preserveProperty', e.target.value as RuntimeIntentForm['preserveProperty'])}>
+                <option value="">Choose…</option>
+                {PRESERVE_PROPERTIES.map((property) => (
+                  <option key={property} value={property}>
+                    {property}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Tolerance
+              <select aria-label="Contract tolerance" value={form.toleranceKind} onChange={(e) => setField('toleranceKind', e.target.value as RuntimeIntentForm['toleranceKind'])}>
+                <option value="">Choose…</option>
+                {CONTRACT_TOLERANCE_KINDS.map((kind) => (
+                  <option key={kind} value={kind}>
+                    {kind === 'absolute-px' ? 'absolute-px (runtime CSS pixels)' : kind}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {form.toleranceKind === 'absolute-px' || form.toleranceKind === 'percent' ? (
+              <label>
+                Amount
+                <input aria-label="Contract tolerance amount" type="number" min={0} max={100} step="any" value={form.toleranceAmount} onChange={(e) => setField('toleranceAmount', e.target.value)} />
+              </label>
+            ) : null}
+          </>
+        ) : null}
+        <button
+          type="button"
+          disabled={!built.ok}
+          onClick={() => {
+            if (built.ok) onUpdate((current) => withRuntimeIntentCandidate(current, built.intent));
+          }}
+        >
+          Set candidate intent
+        </button>
+        {built.ok ? null : <span className="annotation-panel__hint">{built.reason}</span>}
+      </div>
+      <p className="annotation-panel__promotion-status" data-promotion-status="true">
+        {promotionDisplay(item)}
+      </p>
+      <button type="button" disabled={item.interpretation.state !== 'candidate'} onClick={onConfirm}>
+        Confirm runtime intent
+      </button>
+    </fieldset>
+  );
+}
+
+function RuntimeContractPromotionSection({
+  draft,
+  promotion,
+  onPromote,
+}: {
+  draft: RuntimeAnnotationDraft;
+  promotion: ContractPromotionState;
+  onPromote: (itemIds: string[], activateForCheck: boolean) => void;
+}) {
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [activate, setActivate] = useState(false);
+  useEffect(() => {
+    setSelectedIds([]);
+    setActivate(false);
+  }, [draft.parentAnnotationHandle]);
+  // A successful promotion clears the selection, so the same items are never promoted again by accident.
+  const promotedContractId = promotion.state === 'promoted' ? promotion.contractId : undefined;
+  useEffect(() => {
+    if (promotedContractId !== undefined) setSelectedIds([]);
+  }, [promotedContractId]);
+
+  const saved = draft.parentAnnotationHandle !== undefined && !draft.dirty;
+  const changeItems = draft.items.filter((item) => item.interpretation.state === 'confirmed' && item.interpretation.intent.kind === 'change');
+  const promotableIds = new Set(changeItems.filter((item) => runtimePromotionStatus(item).promotable).map((item) => item.annotationItemId));
+  const effectiveSelection = selectedIds.filter((id) => promotableIds.has(id));
+  const canPromote = saved && effectiveSelection.length > 0 && promotion.state !== 'promoting';
+
+  return (
+    <div className="annotation-panel__promotion">
+      <h4>Confirmed contract intent</h4>
+      {!saved ? (
+        <p className="annotation-panel__hint" data-promotion-blocked="true">
+          Save the annotation before promoting contract intent.
+        </p>
+      ) : changeItems.length === 0 ? (
+        <p className="placeholder-note">No confirmed runtime change intent in this saved annotation.</p>
+      ) : (
+        <ul className="annotation-panel__proposal-list">
+          {changeItems.map((item) => {
+            const status = runtimePromotionStatus(item);
+            const intent = item.interpretation.state === 'confirmed' && item.interpretation.intent.kind === 'change' ? item.interpretation.intent : undefined;
+            if (intent === undefined) return null;
+            return (
+              <li key={item.annotationItemId} data-promotion-item-id={item.annotationItemId}>
+                <label>
+                  <input
+                    type="checkbox"
+                    aria-label={`Promote annotation item ${item.annotationItemId}`}
+                    disabled={!status.promotable}
+                    checked={effectiveSelection.includes(item.annotationItemId)}
+                    onChange={(e) => {
+                      const { checked } = e.target;
+                      setSelectedIds((current) => (checked ? [...current.filter((id) => id !== item.annotationItemId), item.annotationItemId] : current.filter((id) => id !== item.annotationItemId)));
+                    }}
+                  />
+                  {intent.operation} · {intent.category}
+                  {intent.expectedDependentMode === undefined ? '' : ` (${intent.expectedDependentMode})`} · {describePrimitive(intent.contractPrimitive)}
+                </label>
+                {status.promotable ? null : <span className="annotation-panel__hint"> {status.reason}</span>}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <label>
+        <input type="checkbox" checked={activate} onChange={(e) => setActivate(e.target.checked)} />
+        Activate this change contract for project check
+      </label>
+      <button type="button" disabled={!canPromote} onClick={() => onPromote(effectiveSelection, activate)}>
+        Promote selected to change contract
+      </button>
+      {promotion.state === 'promoting' ? (
+        <p className="annotation-panel__status" role="status">
+          Promoting…
+        </p>
+      ) : null}
+      {promotion.state === 'promoted' ? (
+        <p className="annotation-panel__status annotation-panel__status--success" role="status" data-promoted-contract-id={promotion.contractId} data-activation-state={promotion.activation.state}>
+          Promoted change contract {promotion.contractId} with {promotion.clauseCount} clause{promotion.clauseCount === 1 ? '' : 's'}.{' '}
+          {promotion.activation.state === 'activated'
+            ? 'Activation: activated. It is now configured for project check.'
+            : promotion.activation.state === 'not-configured'
+              ? 'Activation: not configured. The contract was persisted but is not active for project check.'
+              : promotion.activation.state === 'failed'
+                ? `Activation: failed. The contract exists, but project activation failed${promotion.activation.reason === undefined ? '' : ` (${promotion.activation.reason})`}.`
+                : 'Activation: not requested.'}
+        </p>
+      ) : null}
+      {promotion.state === 'failed' ? (
+        <p className="annotation-panel__error" role="alert" data-promotion-status-code={promotion.status ?? 'network'}>
+          {promotion.message}
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 interface RelationshipOption {
   key: string;
@@ -49,6 +308,11 @@ export function describeAssociation(association: VisualAnnotationItem['associati
  * canonical observation, the in-memory draft's lifecycle actions, and
  * explicit association of the selected draft item. Association and
  * interpretation are never inferred; new items stay uninterpreted.
+ *
+ * v0.9 Batch 5 adds explicit runtime intent (inspect/move/resize/remove/
+ * preserve), the exact candidate structure, explicit confirmation, and
+ * explicit promotion of selected confirmed items of a saved annotation into a
+ * canonical change contract. Mark geometry never decides intent.
  */
 export function RuntimeAnnotationPanel({
   session,
@@ -62,6 +326,9 @@ export function RuntimeAnnotationPanel({
   onDeleteSelected,
   onCancelChanges,
   onSave,
+  onConfirmSelected,
+  promotion,
+  onPromote,
 }: {
   session: AuthoringSessionState;
   saved: RuntimeAnnotationsState;
@@ -74,6 +341,11 @@ export function RuntimeAnnotationPanel({
   onDeleteSelected: () => void;
   onCancelChanges: () => void;
   onSave: () => void;
+  /** v0.9 Batch 5: explicit confirmation of the selected item's candidate runtime intent. */
+  onConfirmSelected: () => void;
+  /** v0.9 Batch 5: promotion state for the currently loaded saved annotation. */
+  promotion: ContractPromotionState;
+  onPromote: (itemIds: string[], activateForCheck: boolean) => void;
 }) {
   const [relationshipKey, setRelationshipKey] = useState('');
   const editable = session.state === 'available';
@@ -105,7 +377,15 @@ export function RuntimeAnnotationPanel({
           <p className="annotation-panel__association" data-association-kind={selectedItem.association?.kind ?? 'none'}>
             {describeAssociation(selectedItem.association)}
           </p>
-          <p className="annotation-panel__interpretation">Interpretation: {selectedItem.interpretation.state}</p>
+          <p className="annotation-panel__interpretation" data-interpretation-state={selectedItem.interpretation.state}>
+            Interpretation: {selectedItem.interpretation.state}
+            {selectedItem.interpretation.state === 'confirmed' ? ` at ${selectedItem.interpretation.confirmedAt}` : ''}
+          </p>
+          {selectedItem.interpretation.state === 'uninterpreted' ? null : (
+            <pre className="annotation-panel__intent" data-runtime-intent="true" aria-label="Structured runtime intent">
+              {JSON.stringify(selectedItem.interpretation.intent, null, 2)}
+            </pre>
+          )}
 
           {editable && selectedItem.mark.kind === 'note' ? (
             <label className="annotation-panel__note-editor">
@@ -173,8 +453,11 @@ export function RuntimeAnnotationPanel({
               </button>
             </div>
           ) : null}
+          {editable ? <RuntimeIntentSection item={selectedItem} onUpdate={onUpdateSelectedItem} onConfirm={onConfirmSelected} /> : null}
         </div>
       )}
+
+      {editable ? <RuntimeContractPromotionSection draft={draft} promotion={promotion} onPromote={onPromote} /> : null}
     </section>
   );
 }

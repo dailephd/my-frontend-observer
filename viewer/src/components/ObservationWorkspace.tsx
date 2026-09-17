@@ -6,6 +6,7 @@ import { useZoomPan } from '../hooks/useZoomPan.js';
 import { useAuthoringSession } from '../hooks/useAuthoringSession.js';
 import { useRuntimeAnnotations } from '../hooks/useRuntimeAnnotations.js';
 import { useRuntimeAnnotationDraft } from '../hooks/useRuntimeAnnotationDraft.js';
+import { useAnnotationContractPromotion } from '../hooks/useAnnotationContractPromotion.js';
 import { useAnnotationPointerInteraction } from '../hooks/useAnnotationPointerInteraction.js';
 import type { AnnotationInteractionMode } from '../annotation/annotationGeometry.js';
 import { isDrawingMode } from '../annotation/annotationGeometry.js';
@@ -43,6 +44,7 @@ export function ObservationWorkspace({ handle, artifact }: { handle: string; art
   const saved = useRuntimeAnnotations(handle, artifact.observationId);
   const draftApi = useRuntimeAnnotationDraft(handle);
   const { draft } = draftApi;
+  const promotion = useAnnotationContractPromotion(draft.parentAnnotationHandle);
   const [mode, setMode] = useState<AnnotationInteractionMode>('select');
   const [noteText, setNoteText] = useState('');
 
@@ -160,6 +162,14 @@ export function ObservationWorkspace({ handle, artifact }: { handle: string; art
             onSave={() => {
               if (session.state !== 'available') return;
               void draftApi.save(session.token, saved.reload);
+            }}
+            onConfirmSelected={() => {
+              if (draft.selectedItemId !== undefined) draftApi.confirmItem(draft.selectedItemId);
+            }}
+            promotion={promotion.state}
+            onPromote={(itemIds, activateForCheck) => {
+              if (session.state !== 'available') return;
+              void promotion.promote(session.token, itemIds, activateForCheck);
             }}
           />
           <ObservationInspector artifact={artifact} selectedTargetName={selected} relationships={relationships} />

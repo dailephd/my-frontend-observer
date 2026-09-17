@@ -36,3 +36,12 @@ export function projectAnnotationsRoot(projectRoot: string): string {
 export function annotationOutputLocation(): string {
   return `${PROJECT_STATE_DIRECTORY}/evidence/annotations`;
 }
+
+export function projectContractsRoot(projectRoot: string): string {
+  return path.join(projectEvidenceRoot(projectRoot), 'contracts');
+}
+
+/** Portable project-relative output location for annotation-promoted change contracts. Created lazily by the contract writer. */
+export function contractOutputLocation(): string {
+  return `${PROJECT_STATE_DIRECTORY}/evidence/contracts`;
+}

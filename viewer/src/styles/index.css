@@ -1309,3 +1309,36 @@ body {
   stroke: #022c22;
   stroke-width: 3px;
 }
+
+/* --- v0.9 Batch 5: runtime intent confirmation and contract promotion --- */
+
+.annotation-panel__promotion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.4rem;
+}
+
+.annotation-panel__promotion button,
+.annotation-panel__group > button {
+  align-self: flex-start;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.annotation-panel__promotion button:disabled,
+.annotation-panel__group > button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.annotation-panel__promotion-status {
+  margin: 0.3rem 0;
+  color: var(--text-dim);
+}

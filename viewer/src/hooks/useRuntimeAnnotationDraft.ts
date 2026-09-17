@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { VisualAnnotationArtifact, VisualAnnotationItem } from '../types/visualAnnotation.js';
+import { applyRuntimeItemEdit, confirmCandidate } from '../annotation/runtimeIntent.js';
 
 export type DraftSaveState =
   | { state: 'idle' }
@@ -136,6 +137,32 @@ export function useAnnotationDraft(sourceHandle: string) {
 
 export type UseAnnotationDraftResult = ReturnType<typeof useAnnotationDraft>;
 
-/** v0.9 Batch 3 runtime observation draft: the generic draft lifecycle, unchanged. */
-export const useRuntimeAnnotationDraft = useAnnotationDraft;
-export type UseRuntimeAnnotationDraftResult = UseAnnotationDraftResult;
+/**
+ * v0.9 Batch 3/5 runtime observation draft: the generic draft lifecycle, plus
+ * Batch 5 runtime intent rules. Every edit (moves, note text, association
+ * changes, intent changes) passes through `applyRuntimeItemEdit`, so a change
+ * primitive always follows its explicit association and a confirmed item
+ * whose meaning changes goes back to candidate. Confirmation is explicit.
+ */
+export function useRuntimeAnnotationDraft(observationHandle: string) {
+  const draftApi = useAnnotationDraft(observationHandle);
+  const { updateItem: rawUpdateItem } = draftApi;
+
+  const updateItem = useCallback(
+    (annotationItemId: string, update: (item: VisualAnnotationItem) => VisualAnnotationItem) => {
+      rawUpdateItem(annotationItemId, (item) => applyRuntimeItemEdit(item, update));
+    },
+    [rawUpdateItem],
+  );
+
+  const confirmItem = useCallback(
+    (annotationItemId: string) => {
+      rawUpdateItem(annotationItemId, (item) => confirmCandidate(item, new Date().toISOString()));
+    },
+    [rawUpdateItem],
+  );
+
+  return { ...draftApi, updateItem, confirmItem };
+}
+
+export type UseRuntimeAnnotationDraftResult = ReturnType<typeof useRuntimeAnnotationDraft>;

@@ -15,6 +15,8 @@ import { checkAuthoringRequestHeaders, isExpectedAuthoringHost, readBoundedAutho
 import type { ViewerAuthoringSession } from './authoringSecurity.js';
 import { parseSaveAnnotationRequest, saveAnnotationFromViewer } from './annotationAuthoring.js';
 import type { SaveAnnotationFailureReason } from './annotationAuthoring.js';
+import { parsePromoteAnnotationContractRequest, promoteAnnotationContractFromViewer } from './annotationContractPromotion.js';
+import type { PromoteAnnotationContractFailureReason } from './annotationContractPromotion.js';
 import type { ContextSessionState } from './context.js';
 import type { ViewerAliasMetadata } from './viewerService.js';
 
@@ -23,9 +25,10 @@ import type { ViewerAliasMetadata } from './viewerService.js';
  * independently of package/schema versions. 1.1.0 (v0.9 Batch 2) adds the
  * visual-annotation family, annotation metadata, the annotation-overlay media
  * role, GET /api/annotations/:handle/view, GET /api/authoring/session, and
- * POST /api/annotations.
+ * POST /api/annotations. 1.2.0 (v0.9 Batch 5) adds
+ * POST /api/annotations/:handle/promote-contract and its response contract.
  */
-export const VIEWER_PROTOCOL_VERSION = '1.1.0';
+export const VIEWER_PROTOCOL_VERSION = '1.2.0';
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -118,7 +121,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
     return;
   }
 
-  // v0.9 Batch 2: POST exists for exactly one route. Every other path keeps the read-only GET/HEAD method set.
+  // v0.9 Batch 2/5: POST exists for exactly two authoring routes. Every other path keeps the read-only GET/HEAD method set.
   if (pathname === ANNOTATION_SAVE_PATH) {
     if (method !== 'POST') {
       res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' });
@@ -126,6 +129,16 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
       return;
     }
     await handleAnnotationSave(req, res, state);
+    return;
+  }
+  const promoteMatch = ANNOTATION_PROMOTE_CONTRACT_PATH.exec(pathname);
+  if (promoteMatch) {
+    if (method !== 'POST') {
+      res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' });
+      res.end('method not allowed');
+      return;
+    }
+    await handleAnnotationContractPromotion(req, res, state, promoteMatch[1] as string);
     return;
   }
   if (method === 'POST') {
@@ -435,6 +448,21 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
 }
 
 const ANNOTATION_SAVE_PATH = '/api/annotations';
+const ANNOTATION_PROMOTE_CONTRACT_PATH = /^\/api\/annotations\/([^/]+)\/promote-contract$/;
+
+const PROMOTE_FAILURE_STATUS: Record<PromoteAnnotationContractFailureReason, number> = {
+  'unknown-annotation-handle': 404,
+  'not-an-annotation': 409,
+  'reference-annotation': 409,
+  'source-unavailable': 404,
+  'project-config-invalid': 409,
+  'configured-baseline-invalid': 409,
+  'invalid-annotation': 409,
+  'unsupported-source': 409,
+  'source-mismatch': 409,
+  'invalid-selection': 422,
+  'persistence-failed': 500,
+};
 
 const SAVE_FAILURE_STATUS: Record<SaveAnnotationFailureReason, number> = {
   'unknown-source-handle': 404,
@@ -457,31 +485,9 @@ const SAVE_FAILURE_STATUS: Record<SaveAnnotationFailureReason, number> = {
  * nothing here logs request bodies or tokens.
  */
 async function handleAnnotationSave(req: IncomingMessage, res: ServerResponse, state: ViewerServerState): Promise<void> {
-  const session = state.authoring;
-  if (session === undefined) {
-    rejectAuthoringRequest(res, 403, 'annotation authoring is not enabled for this viewer session');
-    return;
-  }
-
-  const headerCheck = checkAuthoringRequestHeaders(req, session);
-  if (!headerCheck.ok) {
-    rejectAuthoringRequest(res, headerCheck.status, headerCheck.error);
-    return;
-  }
-
-  const body = await readBoundedAuthoringBody(req);
-  if (!body.ok) {
-    rejectAuthoringRequest(res, body.status, body.error);
-    return;
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(body.body.toString('utf8'));
-  } catch {
-    writeJsonError(res, 'POST', 400, 'request body is not valid JSON');
-    return;
-  }
+  const authoring = await readAuthoringJsonRequest(req, res, state);
+  if (authoring === undefined) return;
+  const { session, parsed } = authoring;
 
   const request = parseSaveAnnotationRequest(parsed);
   if (!request.ok) {
@@ -498,6 +504,81 @@ async function handleAnnotationSave(req: IncomingMessage, res: ServerResponse, s
     writeJsonBody(res, 'POST', 201, { ok: true, annotationId: saved.annotationId, annotationRequestId: saved.annotationRequestId, handle: saved.handle });
   } catch {
     writeJsonError(res, 'POST', 500, 'the annotation could not be saved');
+  }
+}
+
+/**
+ * The one shared authoring POST gate (v0.9 Batch 2, reused unchanged by Batch
+ * 5): authoring enabled, then Host/Origin/token/content-type/content-encoding,
+ * then the bounded body and JSON parsing. Returns undefined when it has
+ * already written the rejection response.
+ */
+async function readAuthoringJsonRequest(req: IncomingMessage, res: ServerResponse, state: ViewerServerState): Promise<{ session: ViewerAuthoringSession; parsed: unknown } | undefined> {
+  const session = state.authoring;
+  if (session === undefined) {
+    rejectAuthoringRequest(res, 403, 'annotation authoring is not enabled for this viewer session');
+    return undefined;
+  }
+
+  const headerCheck = checkAuthoringRequestHeaders(req, session);
+  if (!headerCheck.ok) {
+    rejectAuthoringRequest(res, headerCheck.status, headerCheck.error);
+    return undefined;
+  }
+
+  const body = await readBoundedAuthoringBody(req);
+  if (!body.ok) {
+    rejectAuthoringRequest(res, body.status, body.error);
+    return undefined;
+  }
+
+  try {
+    return { session, parsed: JSON.parse(body.body.toString('utf8')) as unknown };
+  } catch {
+    writeJsonError(res, 'POST', 400, 'request body is not valid JSON');
+    return undefined;
+  }
+}
+
+/**
+ * POST /api/annotations/:handle/promote-contract (v0.9 Batch 5). Same shared
+ * authoring gate as the save route, then a closed request shape, then the one
+ * canonical promotion use case. The route itself never builds clauses or
+ * contract identity and never returns filesystem paths.
+ */
+async function handleAnnotationContractPromotion(req: IncomingMessage, res: ServerResponse, state: ViewerServerState, encodedHandle: string): Promise<void> {
+  const authoring = await readAuthoringJsonRequest(req, res, state);
+  if (authoring === undefined) return;
+  const { session, parsed } = authoring;
+
+  const handle = decodeURIComponentSafe(encodedHandle);
+  if (handle === undefined) {
+    writeJsonError(res, 'POST', 400, 'malformed annotation handle');
+    return;
+  }
+
+  const request = parsePromoteAnnotationContractRequest(parsed);
+  if (!request.ok) {
+    writeJsonError(res, 'POST', 400, request.error);
+    return;
+  }
+
+  try {
+    const promoted = await promoteAnnotationContractFromViewer(state.root, session, handle, request.request);
+    if (!promoted.ok) {
+      writeJsonError(res, 'POST', PROMOTE_FAILURE_STATUS[promoted.reason], promoted.error);
+      return;
+    }
+    writeJsonBody(res, 'POST', 201, {
+      ok: true,
+      contractId: promoted.contractId,
+      contractRequestId: promoted.contractRequestId,
+      handle: promoted.handle,
+      clauseCount: promoted.clauseCount,
+      activation: promoted.activation,
+    });
+  } catch {
+    writeJsonError(res, 'POST', 500, 'the change contract could not be promoted');
   }
 }
 

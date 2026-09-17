@@ -175,8 +175,16 @@ async function scanForExistingChild(root: string, parentAnnotationId: string): P
   return { status: 'none' };
 }
 
-/** One in-process save at a time per authoring session, so the stale-revision check and the persisted write cannot interleave. */
+/** One in-process authoring write at a time per session, so read-check-write sequences (stale revisions, contract promotion and activation) cannot interleave. */
 const saveQueues = new WeakMap<ViewerAuthoringSession, Promise<unknown>>();
+
+/** v0.9 Batch 5: runs one authoring write through the session's single in-process write queue. */
+export function runSerializedAuthoringWrite<T>(session: ViewerAuthoringSession, write: () => Promise<T>): Promise<T> {
+  const previous = saveQueues.get(session) ?? Promise.resolve();
+  const next = previous.then(write, write);
+  saveQueues.set(session, next);
+  return next;
+}
 
 /**
  * The one v0.9 Batch 2 viewer save use case. Resolves the source (and optional
@@ -188,13 +196,7 @@ const saveQueues = new WeakMap<ViewerAuthoringSession, Promise<unknown>>();
  * paths.
  */
 export function saveAnnotationFromViewer(root: string, session: ViewerAuthoringSession, request: SaveAnnotationRequest): Promise<SaveAnnotationResult> {
-  const previous = saveQueues.get(session) ?? Promise.resolve();
-  const next = previous.then(
-    () => performSave(root, session, request),
-    () => performSave(root, session, request),
-  );
-  saveQueues.set(session, next);
-  return next;
+  return runSerializedAuthoringWrite(session, () => performSave(root, session, request));
 }
 
 async function performSave(root: string, session: ViewerAuthoringSession, request: SaveAnnotationRequest): Promise<SaveAnnotationResult> {
