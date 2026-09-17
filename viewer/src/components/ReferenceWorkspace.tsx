@@ -14,6 +14,16 @@ import type { OverlayToggles } from './TargetOverlaySvg.js';
 import type { ExternalReferenceArtifact, ExternalReferenceRequirement, ApprovedExternalReferenceArtifact, ImportedExternalReferenceArtifact } from '../types/reference.js';
 import type { FrontendContractEvaluationArtifact } from '../types/contracts.js';
 import type { ObservationArtifact } from '../types/observation.js';
+import { useAuthoringSession } from '../hooks/useAuthoringSession.js';
+import { useReferenceAnnotations } from '../hooks/useReferenceAnnotations.js';
+import { useReferenceAnnotationDraft } from '../hooks/useReferenceAnnotationDraft.js';
+import { useAnnotationPointerInteraction } from '../hooks/useAnnotationPointerInteraction.js';
+import type { AnnotationInteractionMode } from '../annotation/annotationGeometry.js';
+import { isDrawingMode } from '../annotation/annotationGeometry.js';
+import { AnnotationToolbar } from './AnnotationToolbar.js';
+import { AnnotationLayer } from './AnnotationLayer.js';
+import { CandidateRegionPreviewLayer } from './CandidateRegionPreviewLayer.js';
+import { ReferenceAnnotationPanel } from './ReferenceAnnotationPanel.js';
 
 function requirementSubjectRegionIds(subject: ExternalReferenceRequirement['subject']): string[] {
   return subject.kind === 'region-property' ? [subject.region] : [subject.subjectRegion, subject.relatedRegion];
@@ -43,6 +53,12 @@ const FITTED_ZOOM: ZoomPanState['scale'] = 1;
  * its sole source-space mapping - never a second aspect-ratio/scale
  * implementation. Fidelity is evaluated only on explicit user action
  * (`ReferenceFidelityPanel`), never automatically.
+ *
+ * v0.9 Batch 4 adds external-reference annotation authoring in the reference
+ * pane only, through the shared Prompt 3 layer, toolbar, pointer interaction,
+ * and draft lifecycle. Annotation geometry is always reference-image pixels
+ * of this exact imported or approved reference; the view lock, candidate
+ * pane, and explicit bindings are never used to transform, bind, or copy it.
  */
 export function ReferenceWorkspace({ handle, artifact }: { handle: string; artifact: ExternalReferenceArtifact }) {
   const referenceView = useReferenceView(handle);
@@ -133,6 +149,35 @@ export function ReferenceWorkspace({ handle, artifact }: { handle: string; artif
   }
 
   const refZoomPan = useZoomPan(imageWidth, imageHeight, { state: refZoom, onChange: handleRefZoomChange });
+
+  // --- v0.9 Batch 4 reference annotation authoring (reference pane only) ---
+  const session = useAuthoringSession();
+  const annotationEditable = session.state === 'available' && imageWidth > 0 && imageHeight > 0;
+  const referenceFamily = approved ? 'external-reference-approved' : 'external-reference-imported';
+  const savedAnnotations = useReferenceAnnotations(handle, referenceFamily, artifact.referenceId);
+  const annotationDraft = useReferenceAnnotationDraft(handle);
+  const [annotationMode, setAnnotationMode] = useState<AnnotationInteractionMode>('select');
+  const [noteText, setNoteText] = useState('');
+  const annotationInteraction = useAnnotationPointerInteraction({
+    mode: annotationMode,
+    frame: { width: imageWidth, height: imageHeight },
+    zoomPan: refZoomPan,
+    editable: annotationEditable,
+    items: annotationDraft.draft.items,
+    noteText,
+    onAddItem: annotationDraft.addItem,
+    onUpdateItem: annotationDraft.updateItem,
+  });
+  const { clearTransient } = annotationInteraction;
+
+  useEffect(() => {
+    setAnnotationMode('select');
+    clearTransient();
+  }, [handle, clearTransient]);
+
+  useEffect(() => {
+    if (!annotationEditable && isDrawingMode(annotationMode)) setAnnotationMode('select');
+  }, [annotationEditable, annotationMode]);
   const candZoomPan = useZoomPan(candidateViewport.width, candidateViewport.height, { state: candZoom, onChange: handleCandZoomChange });
 
   function toggleLock(): void {
@@ -180,8 +225,18 @@ export function ReferenceWorkspace({ handle, artifact }: { handle: string; artif
               Relationships
             </label>
           </div>
+          <AnnotationToolbar
+            mode={annotationMode}
+            onModeChange={(next) => {
+              clearTransient();
+              setAnnotationMode(next);
+            }}
+            editable={annotationEditable}
+            noteText={noteText}
+            onNoteTextChange={setNoteText}
+          />
           <ZoomControls scale={refZoomPan.scale} onZoomIn={refZoomPan.zoomIn} onZoomOut={refZoomPan.zoomOut} onFit={refZoomPan.fit} onReset={refZoomPan.reset} label="reference" />
-          <div className="comparison-pane">
+          <div className="comparison-pane" data-annotation-mode={annotationMode}>
             <ReferenceRegionOverlaySvg
               imageUrl={imageUrl}
               imageWidth={imageWidth}
@@ -193,7 +248,22 @@ export function ReferenceWorkspace({ handle, artifact }: { handle: string; artif
               toggles={referenceToggles}
               requirementRegionIds={requirementRegionIds}
               highlightRegionIds={regionHighlightIds}
-              zoomPan={refZoomPan}
+              zoomPan={annotationInteraction.binding}
+              regionsInteractive={annotationInteraction.targetsInteractive}
+              interactionClassName={`target-overlay-svg--mode-${annotationMode}`}
+              annotationLayer={
+                <>
+                  <CandidateRegionPreviewLayer items={annotationDraft.draft.items} sourceRegions={regions} />
+                  <AnnotationLayer
+                    items={annotationDraft.draft.items}
+                    selectedItemId={annotationDraft.draft.selectedItemId}
+                    selectable={annotationInteraction.marksSelectable}
+                    onSelectItem={annotationDraft.selectItem}
+                    onItemPointerDown={annotationInteraction.onItemPointerDown}
+                    previewMark={annotationInteraction.previewMark}
+                  />
+                </>
+              }
             />
           </div>
         </div>
@@ -368,6 +438,43 @@ export function ReferenceWorkspace({ handle, artifact }: { handle: string; artif
             )}
           </section>
         ) : null}
+
+        <section>
+          <ReferenceAnnotationPanel
+            session={session}
+            saved={savedAnnotations}
+            draft={annotationDraft.draft}
+            sourceRegions={regions}
+            relationships={regionRelationships?.pairwiseRelationships ?? []}
+            selectedRegionId={selectedRegionId}
+            onLoadSaved={(savedHandle) => {
+              if (savedAnnotations.state !== 'available') return;
+              const entry = savedAnnotations.annotations.find((candidate) => candidate.handle === savedHandle);
+              if (entry === undefined) return;
+              clearTransient();
+              annotationDraft.loadPersisted(entry.handle, entry.annotation);
+            }}
+            onNewAnnotation={() => {
+              clearTransient();
+              annotationDraft.newAnnotation();
+            }}
+            onUpdateSelectedItem={(update) => {
+              if (annotationDraft.draft.selectedItemId !== undefined) annotationDraft.updateItem(annotationDraft.draft.selectedItemId, update);
+            }}
+            onConfirmSelected={() => {
+              if (annotationDraft.draft.selectedItemId !== undefined) annotationDraft.confirmItem(annotationDraft.draft.selectedItemId);
+            }}
+            onDeleteSelected={annotationDraft.deleteSelected}
+            onCancelChanges={() => {
+              clearTransient();
+              annotationDraft.cancelChanges();
+            }}
+            onSave={() => {
+              if (session.state !== 'available') return;
+              void annotationDraft.save(session.token, savedAnnotations.reload);
+            }}
+          />
+        </section>
 
         <section>
           <ReferenceInspector artifact={artifact} selectedRegionId={selectedRegionId} regionRelationships={regionRelationships} requirementAdequacy={requirementAdequacy} />

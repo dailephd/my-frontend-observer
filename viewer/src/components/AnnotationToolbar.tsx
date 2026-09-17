@@ -28,13 +28,16 @@ export function AnnotationToolbar({
   noteText,
   onNoteTextChange,
   zoom,
+  zoomLabel = 'observation',
 }: {
   mode: AnnotationInteractionMode;
   onModeChange: (mode: AnnotationInteractionMode) => void;
   editable: boolean;
   noteText: string;
   onNoteTextChange: (text: string) => void;
-  zoom: { scale: number; zoomIn: () => void; zoomOut: () => void; fit: () => void; reset: () => void };
+  /** Optional: a workspace that already renders its own zoom controls (the reference pane) omits this. */
+  zoom?: { scale: number; zoomIn: () => void; zoomOut: () => void; fit: () => void; reset: () => void } | undefined;
+  zoomLabel?: string;
 }) {
   const modes = editable ? ANNOTATION_INTERACTION_MODES : READ_ONLY_MODES;
   return (
@@ -62,7 +65,7 @@ export function AnnotationToolbar({
       ) : (
         <span className="annotation-toolbar__read-only">Read-only viewer</span>
       )}
-      <ZoomControls scale={zoom.scale} onZoomIn={zoom.zoomIn} onZoomOut={zoom.zoomOut} onFit={zoom.fit} onReset={zoom.reset} label="observation" />
+      {zoom === undefined ? null : <ZoomControls scale={zoom.scale} onZoomIn={zoom.zoomIn} onZoomOut={zoom.zoomOut} onFit={zoom.fit} onReset={zoom.reset} label={zoomLabel} />}
     </div>
   );
 }

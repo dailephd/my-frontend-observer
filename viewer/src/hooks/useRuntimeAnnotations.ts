@@ -1,19 +1,26 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { VisualAnnotationArtifact } from '../types/visualAnnotation.js';
 
-export interface SavedRuntimeAnnotation {
+export interface SavedAnnotation {
   handle: string;
   annotation: VisualAnnotationArtifact;
 }
 
-export type RuntimeAnnotationsState =
+export type SavedRuntimeAnnotation = SavedAnnotation;
+
+export type SourceAnnotationsState =
   | { state: 'idle' }
   | { state: 'loading' }
-  | { state: 'available'; annotations: SavedRuntimeAnnotation[]; truncated: boolean }
+  | { state: 'available'; annotations: SavedAnnotation[]; truncated: boolean }
   | { state: 'error'; message: string };
 
-/** Bounded number of candidate annotation views fetched for one observation. */
-export const MAX_RUNTIME_ANNOTATION_CANDIDATES = 100;
+export type RuntimeAnnotationsState = SourceAnnotationsState;
+
+/** Bounded number of candidate annotation views fetched for one source. */
+export const MAX_SOURCE_ANNOTATION_CANDIDATES = 100;
+export const MAX_RUNTIME_ANNOTATION_CANDIDATES = MAX_SOURCE_ANNOTATION_CANDIDATES;
+
+export type AnnotatableSourceFamily = 'observation' | 'external-reference-imported' | 'external-reference-approved';
 
 interface IndexRecord {
   handle: string;
@@ -29,24 +36,35 @@ interface AnnotationViewBody {
 }
 
 /**
- * Pure membership rule: a saved annotation belongs to the selected observation
- * workspace only when its server-resolved source is available, is observation
- * evidence, and resolves to exactly the selected observation handle. Logical
- * ids, aliases, directories, and labels are never enough on their own.
+ * Pure membership rule: a saved annotation belongs to the selected source
+ * workspace only when its server-resolved source is available, is evidence of
+ * the selected source's family, and resolves to exactly the selected source
+ * handle. Logical ids, aliases, directories, labels, image dimensions, and
+ * region ids are never enough on their own.
  */
+export function annotationViewBelongsToSource(view: AnnotationViewBody, sourceHandle: string, sourceFamily: AnnotatableSourceFamily): boolean {
+  return view.ok === true && view.annotation !== undefined && view.source?.status === 'available' && view.source.family === sourceFamily && view.source.handle === sourceHandle;
+}
+
 export function annotationViewBelongsToObservation(view: AnnotationViewBody, observationHandle: string): boolean {
-  return view.ok === true && view.annotation !== undefined && view.source?.status === 'available' && view.source.family === 'observation' && view.source.handle === observationHandle;
+  return annotationViewBelongsToSource(view, observationHandle, 'observation');
 }
 
 /**
- * v0.9 Batch 3: discovers saved annotations for one selected observation using
+ * v0.9 Batch 3/4: discovers saved annotations for one selected source using
  * only existing Prompt 2 APIs. `/api/index` narrows candidates by family,
- * support state, and `relatedIds.sourceObservationId`; each candidate is then
- * confirmed through `/api/annotations/:handle/view` with the exact-handle
- * rule above. No browser-side cache or storage is used.
+ * support state, and the source's related id (`sourceObservationId` or
+ * `sourceReferenceId`); each candidate is then confirmed through
+ * `/api/annotations/:handle/view` with the exact-handle rule above. No
+ * browser-side cache or storage is used.
  */
-export function useRuntimeAnnotations(observationHandle: string, observationId: string): RuntimeAnnotationsState & { reload: () => void } {
-  const [state, setState] = useState<RuntimeAnnotationsState>({ state: 'idle' });
+export function useSourceAnnotations(
+  sourceHandle: string,
+  sourceFamily: AnnotatableSourceFamily,
+  relatedIdKey: 'sourceObservationId' | 'sourceReferenceId',
+  sourceLogicalId: string,
+): SourceAnnotationsState & { reload: () => void } {
+  const [state, setState] = useState<SourceAnnotationsState>({ state: 'idle' });
   const [generation, setGeneration] = useState(0);
 
   useEffect(() => {
@@ -58,15 +76,15 @@ export function useRuntimeAnnotations(observationHandle: string, observationId: 
         const indexResponse = await fetch('/api/index', { cache: 'no-store' });
         if (!indexResponse.ok) throw new Error(`index endpoint returned ${indexResponse.status}`);
         const index = (await indexResponse.json()) as { records: IndexRecord[] };
-        const candidates = index.records.filter((r) => r.family === 'visual-annotation' && r.supportState === 'supported' && r.relatedIds?.sourceObservationId === observationId);
-        const bounded = candidates.slice(0, MAX_RUNTIME_ANNOTATION_CANDIDATES);
+        const candidates = index.records.filter((r) => r.family === 'visual-annotation' && r.supportState === 'supported' && r.relatedIds?.[relatedIdKey] === sourceLogicalId);
+        const bounded = candidates.slice(0, MAX_SOURCE_ANNOTATION_CANDIDATES);
 
-        const annotations: SavedRuntimeAnnotation[] = [];
+        const annotations: SavedAnnotation[] = [];
         for (const candidate of bounded) {
           const response = await fetch(`/api/annotations/${encodeURIComponent(candidate.handle)}/view`, { cache: 'no-store' });
           if (!response.ok) continue;
           const view = (await response.json()) as AnnotationViewBody;
-          if (annotationViewBelongsToObservation(view, observationHandle)) {
+          if (annotationViewBelongsToSource(view, sourceHandle, sourceFamily)) {
             annotations.push({ handle: candidate.handle, annotation: view.annotation as VisualAnnotationArtifact });
           }
         }
@@ -80,8 +98,13 @@ export function useRuntimeAnnotations(observationHandle: string, observationId: 
     return () => {
       cancelled = true;
     };
-  }, [observationHandle, observationId, generation]);
+  }, [sourceHandle, sourceFamily, relatedIdKey, sourceLogicalId, generation]);
 
   const reload = useCallback(() => setGeneration((g) => g + 1), []);
   return { ...state, reload };
+}
+
+/** v0.9 Batch 3 runtime observation discovery. */
+export function useRuntimeAnnotations(observationHandle: string, observationId: string): RuntimeAnnotationsState & { reload: () => void } {
+  return useSourceAnnotations(observationHandle, 'observation', 'sourceObservationId', observationId);
 }

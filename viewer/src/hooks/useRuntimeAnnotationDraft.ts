@@ -7,7 +7,7 @@ export type DraftSaveState =
   | { state: 'saved'; annotationId: string }
   | { state: 'failed'; status: number | undefined; message: string };
 
-export interface RuntimeAnnotationDraft {
+export interface AnnotationDraft {
   items: VisualAnnotationItem[];
   /** Handle of the persisted annotation this draft revises; undefined for a new root annotation. */
   parentAnnotationHandle: string | undefined;
@@ -17,7 +17,10 @@ export interface RuntimeAnnotationDraft {
   save: DraftSaveState;
 }
 
-const EMPTY_DRAFT: RuntimeAnnotationDraft = { items: [], parentAnnotationHandle: undefined, parentAnnotationId: undefined, selectedItemId: undefined, dirty: false, save: { state: 'idle' } };
+/** v0.9 Batch 3 name, kept for the runtime workspace. */
+export type RuntimeAnnotationDraft = AnnotationDraft;
+
+const EMPTY_DRAFT: AnnotationDraft = { items: [], parentAnnotationHandle: undefined, parentAnnotationId: undefined, selectedItemId: undefined, dirty: false, save: { state: 'idle' } };
 
 /** Concise, bounded save failure text for each Prompt 2 status family. Server detail is appended only as a short hint. */
 export function describeSaveFailure(status: number | undefined, serverError: string | undefined): string {
@@ -26,7 +29,7 @@ export function describeSaveFailure(status: number | undefined, serverError: str
     case 403:
       return `Save forbidden: annotation authoring is unavailable or this session has expired${detail}.`;
     case 404:
-      return `Save failed: the selected source observation or parent annotation no longer exists${detail}.`;
+      return `Save failed: the selected source evidence or parent annotation no longer exists${detail}.`;
     case 409:
       return `Save conflict: this annotation was already revised elsewhere, or its source changed. Your draft was kept; reload the saved annotations before revising${detail}.`;
     case 413:
@@ -43,22 +46,23 @@ export function describeSaveFailure(status: number | undefined, serverError: str
 }
 
 /**
- * v0.9 Batch 3 in-memory draft for one runtime observation. The draft never
+ * v0.9 Batch 3 in-memory annotation draft for one source handle (a runtime
+ * observation, or since Batch 4 an external reference). The draft never
  * touches browser storage and is discarded on reload. Saving posts only
  * `{ sourceHandle, parentAnnotationHandle?, items }` to the Prompt 2 API; on
  * 201 the canonical saved annotation is re-read from the server and becomes
  * both the draft content and the new parent. Failures keep the draft, are
  * never retried automatically, and never fall back to a new root annotation.
  */
-export function useRuntimeAnnotationDraft(observationHandle: string) {
-  const [draft, setDraft] = useState<RuntimeAnnotationDraft>(EMPTY_DRAFT);
+export function useAnnotationDraft(sourceHandle: string) {
+  const [draft, setDraft] = useState<AnnotationDraft>(EMPTY_DRAFT);
   const [baselineItems, setBaselineItems] = useState<VisualAnnotationItem[]>([]);
 
-  // A different observation never inherits another observation's draft.
+  // A different source never inherits another source's draft.
   useEffect(() => {
     setDraft(EMPTY_DRAFT);
     setBaselineItems([]);
-  }, [observationHandle]);
+  }, [sourceHandle]);
 
   const newAnnotation = useCallback(() => {
     setDraft(EMPTY_DRAFT);
@@ -100,7 +104,7 @@ export function useRuntimeAnnotationDraft(observationHandle: string) {
           method: 'POST',
           cache: 'no-store',
           headers: { 'content-type': 'application/json', 'x-frontend-observer-authoring-token': token },
-          body: JSON.stringify({ sourceHandle: observationHandle, ...(current.parentAnnotationHandle === undefined ? {} : { parentAnnotationHandle: current.parentAnnotationHandle }), items: current.items }),
+          body: JSON.stringify({ sourceHandle, ...(current.parentAnnotationHandle === undefined ? {} : { parentAnnotationHandle: current.parentAnnotationHandle }), items: current.items }),
         });
         status = response.status;
         const body = (await response.json().catch(() => ({}))) as { ok?: boolean; handle?: string; error?: string };
@@ -124,10 +128,14 @@ export function useRuntimeAnnotationDraft(observationHandle: string) {
         setDraft((d) => ({ ...d, save: { state: 'failed', status, message: describeSaveFailure(status, err instanceof Error ? err.message : String(err)) } }));
       }
     },
-    [draft, observationHandle],
+    [draft, sourceHandle],
   );
 
   return { draft, newAnnotation, loadPersisted, addItem, updateItem, selectItem, deleteSelected, cancelChanges, save };
 }
 
-export type UseRuntimeAnnotationDraftResult = ReturnType<typeof useRuntimeAnnotationDraft>;
+export type UseAnnotationDraftResult = ReturnType<typeof useAnnotationDraft>;
+
+/** v0.9 Batch 3 runtime observation draft: the generic draft lifecycle, unchanged. */
+export const useRuntimeAnnotationDraft = useAnnotationDraft;
+export type UseRuntimeAnnotationDraftResult = UseAnnotationDraftResult;

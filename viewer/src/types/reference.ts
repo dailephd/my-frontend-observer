@@ -19,6 +19,7 @@ export type { ReferenceRegionRelationship, ReferenceRegionRelationshipGraph } fr
 
 export type {
   ExternalReferenceRequirement,
+  RawReferenceRequirement,
   ReferenceRequirementSubject,
   RegionPropertyRequirementSubject,
   RegionRelationshipRequirementSubject,

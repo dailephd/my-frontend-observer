@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { ReferenceRegion, ReferenceRegionRelationshipGraph } from '../types/reference.js';
 import type { ZoomPanBinding } from '../hooks/useZoomPan.js';
 
@@ -29,6 +30,9 @@ export function ReferenceRegionOverlaySvg({
   requirementRegionIds,
   highlightRegionIds,
   zoomPan,
+  annotationLayer,
+  regionsInteractive = true,
+  interactionClassName,
 }: {
   imageUrl: string;
   imageWidth: number;
@@ -44,12 +48,18 @@ export function ReferenceRegionOverlaySvg({
   highlightRegionIds?: ReadonlySet<string> | undefined;
   /** Batch 6 additive, optional - see TargetOverlaySvg.tsx's identical prop. */
   zoomPan?: ZoomPanBinding | undefined;
+  /** v0.9 Batch 4 additive, optional: reference-image-pixel annotation content (candidate region previews and an `AnnotationLayer`) rendered last, above regions, inside this same SVG and viewBox. */
+  annotationLayer?: ReactNode;
+  /** v0.9 Batch 4 additive, optional: when false, region rectangles ignore pointer input (pan/drawing modes) while keeping keyboard selection. Defaults to true. */
+  regionsInteractive?: boolean;
+  /** v0.9 Batch 4 additive, optional: extra root class for the active interaction mode. */
+  interactionClassName?: string | undefined;
 }) {
   const byId = new Map(regions.map((r) => [r.id, r] as const));
 
   return (
     <svg
-      className={`target-overlay-svg reference-region-overlay-svg${zoomPan?.isPannable ? ' target-overlay-svg--pannable' : ''}`}
+      className={`target-overlay-svg reference-region-overlay-svg${zoomPan?.isPannable ? ' target-overlay-svg--pannable' : ''}${interactionClassName === undefined ? '' : ` ${interactionClassName}`}`}
       viewBox={zoomPan?.viewBox ?? `0 0 ${imageWidth} ${imageHeight}`}
       role="img"
       aria-label={`Reference image, ${imageWidth} by ${imageHeight} pixels`}
@@ -90,7 +100,7 @@ export function ReferenceRegionOverlaySvg({
             return (
               <g key={region.id} data-region-id={region.id}>
                 <rect
-                  className={`target-overlay-svg__rect reference-region-overlay-svg__rect${isSelected ? ' target-overlay-svg__rect--selected' : ''}${isHighlighted ? ' target-overlay-svg__rect--highlighted' : ''}${hasRequirement ? ' reference-region-overlay-svg__rect--has-requirement' : ''}`}
+                  className={`target-overlay-svg__rect reference-region-overlay-svg__rect${isSelected ? ' target-overlay-svg__rect--selected' : ''}${isHighlighted ? ' target-overlay-svg__rect--highlighted' : ''}${hasRequirement ? ' reference-region-overlay-svg__rect--has-requirement' : ''}${regionsInteractive ? '' : ' target-overlay-svg__rect--inert'}`}
                   data-region-id={region.id}
                   x={region.rectangle.x}
                   y={region.rectangle.y}
@@ -118,6 +128,8 @@ export function ReferenceRegionOverlaySvg({
             );
           })
         : null}
+
+      {annotationLayer}
     </svg>
   );
 }
