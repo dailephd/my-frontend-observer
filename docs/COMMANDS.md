@@ -757,6 +757,31 @@ and exits nonzero.
 
 ## `view`
 
+**v0.9 visual annotation (implemented in the repository, not yet released).**
+There is no separate annotation command. `view` is the annotation entry point:
+
+- `my-frontend-observer view` (inside an initialized project, without
+  `--root`) is the normal project-aware viewer. It enables local annotation
+  authoring for that project. In the browser you can draw on observations and
+  external references, explicitly associate and confirm structured intent,
+  save immutable annotations, promote selected confirmed runtime intent into a
+  change contract, and materialize selected confirmed reference intent into a
+  new imported reference revision. New artifacts are written only under the
+  project's managed evidence root (`.frontend-observer/evidence`). Nothing is
+  approved automatically.
+- `my-frontend-observer view --root <root>` is the advanced standalone form
+  for arbitrary evidence roots. It is always read-only. Saved annotations can
+  be inspected but not edited, and every authoring request is refused.
+
+In a project-aware session the viewer protocol is `1.3.0` and the API adds
+`GET /api/authoring/session`, `GET /api/annotations/<handle>/view`, the
+`annotation-overlay` media role, and exactly three authoring routes:
+`POST /api/annotations`, `POST /api/annotations/<handle>/promote-contract`,
+and `POST /api/annotations/<handle>/materialize-reference`. See
+`docs/SECURITY.md` for the local write boundary and `docs/WORKFLOWS.md` for
+the annotation workflow. The rest of this section describes the inspection
+surface, which is unchanged.
+
 **Current status: v0.8.1 viewer behavior is released as package
 `@dailephd/my-frontend-observer@0.8.1`.** Starts one
 loopback-only Node viewer server and serves the same React + TypeScript +
@@ -925,8 +950,10 @@ Options:
 The server binds only to `127.0.0.1` (never `0.0.0.0`), serves only the
 built viewer application assets plus the bounded, read-only `/api/*`
 endpoints described above, and never exposes the supplied evidence root as a
-generic static directory or arbitrary filesystem path. It accepts no write
-methods and mutates nothing. On success,
+generic static directory or arbitrary filesystem path. With `--root` it
+accepts no write methods and writes nothing. Without `--root`, the only
+writes are the three v0.9 authoring routes above, which create new immutable
+artifacts and never modify existing ones. On success,
 prints the viewer URL and keeps running (serving the viewer) until
 interrupted. On invalid syntax, a missing/non-directory `--root`, an
 invalid `--port`, an invalid `--bindings-file`, an invalid `--context-file`

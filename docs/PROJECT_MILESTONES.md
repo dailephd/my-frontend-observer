@@ -1715,6 +1715,11 @@ Milestone 8 is complete when:
 
 ## Milestone 9 — Human Visual Annotation and Design-Intent Capture
 
+Implementation status: implemented in the current unreleased development state
+(v0.9 implementation complete in the repository, validated locally, not yet
+released). The milestone design below is unchanged and remains the capability
+authority. Milestone 10 remains future.
+
 ### Objective
 
 Add visual human intent to the already working Milestone 7 coding-agent/reference workflow through the Milestone 8 viewer.

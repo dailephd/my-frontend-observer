@@ -124,10 +124,15 @@ jobs:
         shell: bash
         run: node scripts/ci/runPackedViewerSmoke.mjs "${{ needs.candidate.outputs.tarball }}" --out viewer-smoke-summary.json
 
+      - name: Packed v0.9 annotation smoke (installed tarball only, real Chromium)
+        shell: bash
+        run: node scripts/ci/runPackedV09AnnotationSmoke.mjs "${{ needs.candidate.outputs.tarball }}" --out v09-annotation-smoke-summary.json
+
       - uses: actions/upload-artifact@v4
         with:
           name: smoke-summary-${{ matrix.os }}
           path: |
             smoke-summary.json
             viewer-smoke-summary.json
+            v09-annotation-smoke-summary.json
           if-no-files-found: error

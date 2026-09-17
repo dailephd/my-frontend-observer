@@ -165,14 +165,18 @@ rejects any non-regular-file entry, closing that escape.
 - **No arbitrary filesystem browsing, no static-candidate path
   interpretation**: the viewer offers no directory-listing or free-path
   endpoint; every route addresses one specific, already-discovered handle.
-- **Read-only API**: every `/api/*` route rejects non-`GET`/`HEAD` methods
-  with `405` at a single top-of-handler check
-  (`src/viewerServer/httpServer.ts`), covering every route uniformly,
-  including ones added in later batches.
-- **No target-source or evidence mutation**: the viewer server has no
-  filesystem-write call anywhere in its own code path; it never edits
-  target source and never modifies, supersedes, or persists a new instance
-  of any existing Observer evidence artifact.
+- **Read-only API (v0.8)**: in v0.8 every `/api/*` route rejected
+  non-`GET`/`HEAD` methods with `405` at a single top-of-handler check
+  (`src/viewerServer/httpServer.ts`). v0.9 keeps that check for every
+  inspection route and adds exactly three project-aware authoring `POST`
+  routes, described in "v0.9 local annotation write boundary" below.
+- **No target-source or evidence mutation**: the viewer never edits target
+  source and never modifies an existing Observer evidence artifact. In v0.8
+  the viewer server had no filesystem-write path at all. In v0.9 a
+  project-aware session may create new immutable annotation, change-contract,
+  and imported external-reference artifacts through the canonical writers,
+  only on an explicit authoring request. A standalone `view --root` session
+  still never writes.
 - **Binding/context files are explicit local session input, not persisted
   evidence**: `--bindings-file`/`--context-file` are read once at startup,
   validated through the existing canonical validators, held only in server
@@ -191,6 +195,59 @@ rejects any non-regular-file entry, closing that escape.
   render from the precache, but the evidence-dependent surface shows an
   explicit unavailable state, never previously-fetched evidence presented
   as current.
+
+## v0.9 local annotation write boundary (implemented, not yet released)
+
+v0.9 adds a narrow local write surface to the viewer. It is implemented in the
+repository and not yet released. It is a same-machine capability boundary for
+one local viewer session. It is not remote account authentication and does not
+protect against other software already running as the same user.
+
+- **Loopback only**: the viewer still binds only to `127.0.0.1`.
+- **Project-aware authoring only**: authoring is enabled only when `view` runs
+  without `--root` inside an initialized project. The standalone arbitrary-root
+  viewer (`view --root <root>`) stays read-only. Its
+  `GET /api/authoring/session` reports `enabled: false`, and every authoring
+  `POST` returns `403`.
+- **Session capability**: each project-aware server creates a random 32-byte
+  token (64 hex characters) in memory. It is handed out by
+  `GET /api/authoring/session` only on the exact expected loopback `Host`, as a
+  defense against DNS rebinding. The viewer keeps it only in React memory. It
+  is never persisted, never written into evidence, and never cached.
+- **Request checks, in order**: exact `Host`, exact same-origin `Origin`, the
+  `x-frontend-observer-authoring-token` header compared in constant time,
+  `content-type: application/json`, identity `content-encoding` only, a
+  256 KiB (`262144` byte) body limit, valid JSON, and a closed request shape
+  with unknown fields rejected.
+- **Exactly three `POST` routes**: `POST /api/annotations`,
+  `POST /api/annotations/:handle/promote-contract`, and
+  `POST /api/annotations/:handle/materialize-reference`. `PUT`, `PATCH`, and
+  `DELETE` stay unsupported everywhere. Any other `POST` returns `405`.
+- **No permissive CORS**: no `Access-Control-Allow-*` headers are sent, so a
+  page from any other origin cannot read the capability or send a JSON
+  authoring request. A real-Chromium test proves this for all three routes.
+- **Server-side resolution only**: the browser sends evidence handles and item
+  ids, never output paths. The server resolves handles through canonical
+  discovery with path containment and writes only under the project's managed
+  evidence root (`annotations`, `contracts`, and `references`) through the
+  canonical writers.
+- **Serialized writes**: all three routes share one write queue per session.
+  Annotation revisions use stale-parent conflict detection instead of
+  last-write-wins.
+- **No automatic approval**: promotion never approves a baseline, and
+  materialization never approves a reference or changes project reference
+  acceptance. Contract activation for `check` happens only on explicit
+  request.
+- **No caching of authority**: authoring and evidence API responses use
+  `cache-control: no-store`, and the service worker never caches `/api/`
+  routes, including the new `POST` routes.
+- **Safe media**: annotation overlay media is served only after the stored
+  SVG is re-rendered from the canonical artifact and verified. It uses a
+  script-blocking `content-security-policy` with `sandbox` and `nosniff`.
+  Existing media containment and symlink checks apply unchanged.
+- **Temporary directories**: evidence discovery skips writer temporary
+  `.tmp-*` directories, so a partially written artifact is never presented as
+  evidence.
 
 ## Not yet addressed
 
@@ -211,8 +268,8 @@ security validation stage (see
 Symlink/junction filesystem-escape handling for the viewer's raw-evidence
 routes is now exercised by a dedicated regression test
 (`tests/unit/viewerEvidenceServer.test.ts`), which caught and led to the fix
-described above. Annotation (v0.9) remains a future, unimplemented concern
-with its own security review still to come. None of this expands the
-security scope above: remote browsing, certificate handling,
-permission-prompt handling, and future annotation-specific file handling
-remain separate, unimplemented concerns.
+described above. The v0.9 annotation write boundary described above is
+implemented and covered by local security tests, but its formal
+cross-platform pre-release security validation has not run yet. None of this
+expands the security scope above: remote browsing, certificate handling, and
+permission-prompt handling remain separate, unimplemented concerns.

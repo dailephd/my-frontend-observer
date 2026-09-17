@@ -187,7 +187,11 @@ This starts a real, loopback-only server serving the actual built PWA. As of
 v0.8 (all eight implementation batches), it reads `--root` only for bounded,
 read-only evidence discovery through the existing canonical
 readers/classifiers - it never writes to `--root` or modifies any artifact
-under it.
+under it. The v0.9 annotation authoring surface (implemented, not yet
+released) is available only from the project-aware `node dist/cli.js view`
+inside an initialized project, never from `--root`. Its end-to-end browser
+proof is `tests/browser/v09IntegratedAcceptance.test.ts`, and its packed
+installed proof is `scripts/ci/runPackedV09AnnotationSmoke.mjs`.
 
 Unlike `scripts/ci/runPackedObservationSmoke.mjs`, none of these five dev
 smokes is wired into any CI workflow or is a release gate - they are

@@ -71,6 +71,32 @@ use `my-frontend-observer view --root observations --no-open`. See
 [COMMANDS.md](COMMANDS.md#view) for the full
 flag reference, including `--bindings-file` and `--context-file`.
 
+### Visual annotation (v0.9, implemented, not yet released)
+
+The current repository state adds visual annotation to the project-aware
+viewer. It is not in a published release yet; the published package is
+`0.8.1`.
+
+```powershell
+node dist/cli.js view
+```
+
+1. Run the project-aware `view` (without `--root`) and open the printed URL.
+2. Select an observation or an external reference in the evidence list.
+3. Pick a drawing mode and draw a point, rectangle, line, arrow, or note.
+4. Explicitly associate the mark with a target, relationship, or region if it
+   is about one. Drawing over something never associates it.
+5. Choose a structured intent, review the candidate, and confirm it.
+6. Save the annotation. Each save is a new immutable revision.
+7. Optionally, select confirmed runtime intent and promote it to a change
+   contract, or select confirmed reference intent and materialize it into a
+   new reference revision.
+
+Activating a promoted contract for `check` is a separate explicit choice. A
+materialized reference stays `imported` until you approve it with the
+existing `approve-reference` command. `view --root <root>` is always
+read-only.
+
 To validate the repository itself instead:
 
 ```powershell

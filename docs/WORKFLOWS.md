@@ -560,11 +560,75 @@ started with. See `docs/COMMANDS.md#view` for the full flag reference and
 `docs/ARCHITECTURE.md` "v0.8 Batch 1" through "v0.8 Batch 8" for the
 implementation record.
 
-## Future workflows (v0.9–v0.10)
+## Current visual annotation workflow (v0.9, implemented, not yet released)
 
-The still-future sequence on top of the v0.7/v0.8 foundation above preserves
-the current engines and lets later graphical interfaces consume rather than
-invent the reference model:
+v0.9 visual annotation is implemented in the repository. It is not released;
+the published package is still `0.8.1`. Authoring works only in the
+project-aware viewer (`my-frontend-observer view` inside an initialized
+project). `view --root <root>` inspects the same evidence read-only.
+
+### Runtime visual flow
+
+```text
+project-aware view
+→ select a runtime observation
+→ draw a point, rectangle, line, arrow, or note (runtime CSS pixels)
+→ explicitly associate a runtime target or canonical runtime relationship
+→ choose candidate intent (inspect, move, resize, remove, or preserve)
+→ explicitly confirm the intent
+→ save an immutable VisualAnnotationArtifact
+→ select confirmed supported intent (move, resize, or preserve)
+→ promote into a normal canonical PerChangeContract
+→ optionally, explicitly activate that contract for project check
+→ existing check and the existing contract evaluator produce the verdict
+```
+
+Notes and `inspect` intent stay informational. A free mark with no explicit
+association never becomes a target association or a contract clause.
+Confirmed `remove` intent is saved but cannot be promoted, because the current
+contract vocabulary has no target-absent primitive. The promotion categories
+are the existing requested, expected-dependent, protected, and preserved
+categories. `unexpected` stays evaluator-derived.
+
+### Reference visual flow
+
+```text
+project-aware view
+→ select an imported or approved external reference
+→ draw marks (reference-image pixels)
+→ explicitly associate a reference region or canonical region relationship
+→ choose a candidate region create or refine, or a candidate reference
+  requirement (region-property, region-relationship, or region-measurement)
+→ explicitly confirm the intent
+→ save an immutable VisualAnnotationArtifact
+→ select confirmed materializable items
+→ materialize a new imported external-reference revision that supersedes the
+  source reference
+→ explicit approval stays separate (the existing approve-reference command)
+```
+
+Informational and asset-sensitive intent is never materialized. The source
+reference and its image are never changed. The new revision reuses the exact
+source image bytes, keeps the source regions, requirements, applicability, and
+label, and is never approved automatically. Project reference acceptance is
+not changed.
+
+### Revisions and missing sources
+
+Editing a saved annotation and saving again creates a child revision that
+supersedes its parent. Saving another child from a stale parent fails with a
+conflict and keeps the draft. If a saved annotation's source evidence
+disappears, the annotation stays inspectable and its source is reported as
+`unavailable`. No replacement source is guessed.
+
+v0.10 correction orchestration (automatic coding-agent runs, rerender loops,
+and automatic approvals) is not implemented.
+
+## Visual workflow progression (v0.9 implemented, v0.10 future)
+
+The sequence on top of the v0.7/v0.8 foundation above preserves the current
+engines and lets graphical interfaces consume rather than invent the reference
+model. v0.9 is implemented but not yet released. v0.10 is still future:
 
 ```text
 stable targets and bounded runtime behavior
@@ -582,6 +646,8 @@ stable targets and bounded runtime behavior
 → v0.8 interactive viewer with reference/candidate inspection (released as
   package version `0.8.0` - see "Current interactive viewer workflow" above)
 → v0.9 structured visual annotation on runtime screenshots and references
+  (implemented, not yet released - see "Current visual annotation workflow"
+  above)
 → v0.10 full visual human–LLM workflow with both actual-frontend-driven and
   reference-driven entry modes
 ```
@@ -631,8 +697,10 @@ The v0.7 coding-agent workflow and reference foundation are released as
 part of this repository and work without the v0.8 viewer or v0.9
 annotation system. v0.8, released as `0.8.0`, consumes the v0.7
 reference/evaluation model exactly as required - it does not create a second
-UI-only one (see "Current interactive viewer workflow" above). v0.9 remains
-future and must preserve the same constraint when implemented.
+UI-only one (see "Current interactive viewer workflow" above). v0.9,
+implemented but not yet released, preserves the same constraint: promotion and
+materialization go through the existing canonical contract and
+external-reference services.
 
 ## v0.8.1 release workflow
 

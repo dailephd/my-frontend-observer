@@ -377,8 +377,10 @@ actual architecture, and `docs/CURRENT_STATE.md` for release state. It
 extends the existing v0.1-v0.6 evidence architecture rather than becoming a
 UI-only feature or a parallel visual-comparison stack. v0.8 (interactive
 viewer) is released as package version `0.8.0`. v0.9 (structured visual
-annotation) and v0.10 (full graphical human-LLM workflow) remain future and
-unimplemented; the constraints below apply to that still-future work.
+annotation) is implemented in the repository but not yet released - see "v0.9
+visual annotation architecture" below. v0.10 (full graphical human-LLM
+workflow) remains future and unimplemented. The constraints below applied to
+v0.9 and still apply to v0.10.
 
 The evidence domains remain distinct:
 
@@ -445,8 +447,9 @@ described in "v0.7 Prompt 1" through "v0.7 Prompt 8" below: explicit
 identity/provenance, applicability/compatibility, region-to-target bindings,
 requested/expected-dependent/protected/preserved reuse, and the non-mutating
 Chromium/correlation boundaries all remain as constrained here. v0.8 (see
-"v0.8 Batch 1" through "v0.8 Batch 8" below) applied them unchanged; they
-continue to apply unchanged to the still-future v0.9-v0.10 work.
+"v0.8 Batch 1" through "v0.8 Batch 8" below) applied them unchanged, and so
+does the implemented v0.9 annotation layer. They continue to apply unchanged
+to the still-future v0.10 work.
 
 The exact public artifact names, schema versions, persistence layout, supported
 image formats, coordinate model, requirement/tolerance primitives, and fidelity
@@ -1078,6 +1081,86 @@ record.
 - **Re-confirmed the no-second-engine invariant** across all eight batches by
   re-running the exact `grep -rn` audit from earlier batches - unchanged
   findings, no duplicate evidence engine exists.
+
+## v0.9 visual annotation architecture (implemented, not yet released)
+
+v0.9 is implemented in the repository and is not released. It adds one new
+evidence family and a narrow local authoring path to the existing viewer. It
+adds no new evaluator, no second contract or reference model, and no new
+PASS/FAIL semantics.
+
+**Evidence ownership**:
+
+- `src/domain/visualAnnotation.ts` owns `VisualAnnotationArtifact` (artifact
+  kind `my-frontend-observer/visual-annotation`, schema `1.0.0`): the source
+  union, structured marks, explicit associations, candidate/confirmed
+  interpretation, validation, and the pure overlay SVG renderer.
+- `src/domain/visualAnnotationIdentity.ts` owns deterministic request identity
+  and fresh instance identity.
+- `src/artifacts/visualAnnotationArtifactWriter.ts` and
+  `visualAnnotationArtifactReader.ts` own atomic persistence (temporary
+  `.tmp-<id>` directory, then rename) and canonical reading, including the
+  derived `annotation-overlay.svg` and its digest.
+- `src/application/visualAnnotationPersistenceService.ts` owns saving one
+  annotation or one superseding revision.
+
+**Coordinate domains**: runtime annotations use the observation's runtime CSS
+pixel space. Reference annotations use the reference image's own pixel space
+(for an approved reference, the owning imported image). The two domains are
+never mixed. Zoomed or panned drawing is mapped back through the SVG's own
+transform (`viewer/src/svg/sourceCoordinates.ts`).
+
+**Viewer discovery and media** (`src/viewerServer/evidence/`): the index
+classifies `visual-annotation` evidence and skips writer `.tmp-*`
+directories. `annotationView.ts` resolves an annotation's exact canonical
+source and reports `unavailable` instead of guessing a replacement. The media
+resolver serves the `annotation-overlay` role only after re-rendering the SVG
+from the artifact and verifying it, with a script-blocking sandbox policy.
+
+**Project-aware authoring security**: `src/viewerServer/authoringSecurity.ts`
+owns the in-memory 32-byte session capability and the Host, Origin, token,
+content-type, and content-encoding checks. `httpServer.ts` owns the shared
+bounded JSON gate and routes exactly three `POST` responsibilities.
+`view --root` never creates an authoring session, so the standalone
+arbitrary-root viewer stays read-only.
+
+1. `POST /api/annotations` (`src/viewerServer/annotationAuthoring.ts`) saves
+   a new annotation or a revision through the canonical persistence service,
+   with stale-parent conflict detection. This module also owns the single
+   per-session write queue used by all three routes.
+2. `POST /api/annotations/:handle/promote-contract`
+   (`src/viewerServer/annotationContractPromotion.ts`) calls
+   `src/application/visualAnnotationContractPromotionService.ts`. Selected
+   confirmed runtime intent becomes one canonical `PerChangeContract` through
+   the existing contract persistence service. Optional activation goes only
+   through `activateProjectChangeContract` in
+   `src/application/projectWorkflowService.ts`.
+3. `POST /api/annotations/:handle/materialize-reference`
+   (`src/viewerServer/annotationReferenceMaterialization.ts`) calls
+   `src/application/visualAnnotationReferenceMaterializationService.ts`.
+   Selected confirmed reference intent becomes a new imported
+   `ExternalReferenceArtifact` through the existing `importExternalReference`,
+   superseding the source. The image bytes come only from the safe media
+   resolver.
+
+Output locations come from `src/projectWorkflow/projectPaths.ts`
+(`annotations`, `contracts`, and `references` under
+`.frontend-observer/evidence`). The browser never supplies a path.
+
+**Viewer UI** (`viewer/src/`): `annotation/` holds pure presentation models
+(`annotationGeometry.ts`, `runtimeIntent.ts`, `referenceIntent.ts`,
+`confirmation.ts`). `components/AnnotationLayer.tsx`,
+`AnnotationToolbar.tsx`, `RuntimeAnnotationPanel.tsx`,
+`ReferenceAnnotationPanel.tsx`, `CandidateRegionPreviewLayer.tsx`, and
+`AnnotationPanelSections.tsx` render marks, tools, intent, promotion, and
+materialization. Hooks under `hooks/` hold draft, saved-list, session,
+pointer, promotion, and materialization state. The authoring token lives only
+in React memory.
+
+**Existing evaluators remain authoritative**: the canonical contract
+evaluator, reference relationship derivation, requirement adequacy, reference
+fidelity, and project `check` are unchanged. Annotation evidence feeds them
+only through promoted contracts and materialized references.
 
 ## Retained v0.1 architecture constraints
 

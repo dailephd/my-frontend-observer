@@ -4,6 +4,14 @@ v0.8.1 is released and published as `@dailephd/my-frontend-observer@0.8.1`.
 Project aliases, `init`, `capture`, project-aware `view`, and `check`
 orchestration are implemented and MIT licensed.
 
+v0.9 (Human Visual Annotation and Design-Intent Capture) implementation is
+complete in this repository. All seven v0.9 implementation prompts passed,
+including integrated real-Chromium acceptance and a local packed
+installed-candidate smoke. v0.9 is not released: it is not published to npm,
+the package version is still `0.8.1`, and cross-platform pre-release readiness
+and release preparation are pending. The viewer protocol is `1.3.0` and the
+visual annotation schema is `1.0.0`. See "v0.9 status" below.
+
 The project is published at package version `0.8.1` (roadmap v0.8.1,
 Project Workflow CLI and Human-Readable Evidence Aliases; observation schema
 `1.2.0`; comparison schema `1.0.0`; frontend contract schema `1.0.0`;
@@ -980,7 +988,9 @@ most one designated server-side call site, and several (`compareObservations`,
 never called by the viewer at all. The viewer never runs
 `@dailephd/my-dev-kit`, never mutates target source or any Observer
 artifact, never persists a new viewer-owned evidence family, and every route
-rejects non-`GET`/`HEAD` methods.
+rejects non-`GET`/`HEAD` methods. (That was the complete v0.8 surface. v0.9
+later adds exactly three project-aware authoring `POST` routes. See "v0.9
+status" below.)
 
 **Validated on the canonical worktree**: `npm run typecheck`, `npm run
 lint`, `npm test`, `npm run build`, `npm run check:docs`, `npm run
@@ -998,20 +1008,83 @@ viewer surface both passed - see the readiness report above, including the
 one security finding it found and fixed (a symlinked-media evidence-root
 escape in the viewer's media route).
 
+## v0.9 status (Human Visual Annotation and Design-Intent Capture) - implementation complete, not released
+
+v0.9 is implemented in this repository against the frozen plan
+`docs/plans/v0.9-implementation-plan.md`. It is not released. The published
+package is still `0.8.1`.
+
+- **Prompt 1** (`docs/reports/v0.9-batch1-visual-annotation-foundation.md`)
+  added the `VisualAnnotationArtifact` domain (schema `1.0.0`), structured
+  point/rectangle/line/arrow/note marks, runtime and reference coordinate
+  spaces, explicit associations, candidate/confirmed interpretation,
+  deterministic identity, the atomic writer, the canonical reader, the
+  persistence service, and the derived overlay SVG.
+- **Prompt 2**
+  (`docs/reports/v0.9-batch2-viewer-annotation-authoring-boundary.md`) added
+  viewer discovery of annotations, the source-resolving annotation view
+  route, the verified overlay media role, and the project-aware authoring
+  boundary with `POST /api/annotations`. `view --root` stays read-only.
+- **Prompt 3**
+  (`docs/reports/v0.9-batch3-runtime-screenshot-annotation-authoring.md`)
+  added runtime screenshot annotation in runtime CSS pixels with zoom, pan,
+  keyboard selection, save, reload, revisions, and stale-parent conflicts.
+- **Prompt 4**
+  (`docs/reports/v0.9-batch4-external-reference-annotation-authoring.md`)
+  added external-reference annotation in reference-image pixels, candidate
+  region create and refine proposals, candidate reference requirements, and
+  informational and asset-sensitive intent.
+- **Prompt 5**
+  (`docs/reports/v0.9-batch5-runtime-intent-contract-promotion.md`) added
+  runtime intent, explicit confirmation, promotion of selected confirmed
+  `move`/`resize`/`preserve` intent into a canonical per-change contract
+  (`POST /api/annotations/:handle/promote-contract`), optional explicit
+  project contract activation, and `.tmp-*` discovery exclusion. Confirmed
+  `remove` intent is honestly non-promotable.
+- **Prompt 6** (`docs/reports/v0.9-batch6-reference-materialization.md`)
+  added materialization of selected confirmed reference regions and
+  requirements into a new imported external-reference revision
+  (`POST /api/annotations/:handle/materialize-reference`). The source is never
+  changed and nothing is approved automatically.
+- **Prompt 7** (`docs/reports/v0.9-batch7-integrated-acceptance.md`) added the
+  integrated real-Chromium acceptance suite
+  (`tests/browser/v09IntegratedAcceptance.test.ts`), the packed installed
+  annotation smoke (`scripts/ci/runPackedV09AnnotationSmoke.mjs`), its step in
+  the pre-release readiness matrix, and this documentation reconciliation.
+
+Current versions: package `0.8.1`, viewer protocol `1.3.0`, visual annotation
+schema `1.0.0`, frontend contract schema `1.0.0`, external-reference schema
+`1.0.0`. No other schema changed.
+
+Invariants: annotations are evidence, not contracts. Only selected confirmed
+supported intent is promoted or materialized, always through the existing
+canonical contract and external-reference services. The existing contract,
+reference relationship, adequacy, and fidelity evaluators remain the only
+source of verdicts. Observer never edits target source, never approves a
+baseline or reference automatically, and never updates project reference
+acceptance.
+
+Validation state: the full local validation suite, the integrated acceptance
+suite, and all three packed installed-candidate smokes passed locally on
+Windows. The cross-platform pre-release readiness workflow is wired for the
+v0.9 smoke but has not yet run for this candidate. See the Prompt 7 report for
+exact results.
+
 ## Not implemented
 
 - v0.5 baseline-selection/discovery policy (the caller must supply which
   baseline to approve/evaluate against; there is no "find the current
-  baseline" command), source ownership, orchestrator/lab product
-  integration, and annotation all remain unimplemented in this repository.
+  baseline" command), source ownership, and orchestrator/lab product
+  integration all remain unimplemented in this repository.
   (v0.6's bounded runtime projection and runtime/static correlation, the
   complete v0.7 external-reference correction workflow described above, and
   the v0.8 interactive viewer described in "v0.8 status" above, *are* now
   implemented.) A CLI surface for Prompt 8's correction workflow specifically
   remains unimplemented by design (programmatic-only, library-level use is
   the current supported entry point) - see "v0.7 Prompt 8 status" above.
-  Structured visual annotation (v0.9) and the full graphical human-LLM
-  workflow (v0.10) remain future and unimplemented.
+  The full graphical human-LLM workflow (v0.10) remains future and
+  unimplemented. Structured visual annotation (v0.9) is implemented but not
+  released - see "v0.9 status" above.
 
 ## Next target
 
@@ -1044,6 +1117,11 @@ scope,
 `docs/reports/v0.8-implementation-completeness-documentation-reconciliation.md`
 for the completeness audit, and
 `docs/reports/v0.8-prerelease-readiness-cross-platform-security-code-rot.md`
-for the cross-platform readiness validation that preceded this release. v0.9
-(structured visual annotation) and v0.10 (full graphical human-LLM workflow)
-remain future - see `docs/ROADMAP.md`.
+for the cross-platform readiness validation that preceded this release.
+
+v0.9 (structured visual annotation) implementation is complete but not
+released - see "v0.9 status" above. The next step is v0.9 pre-release
+readiness and controlled release preparation: run the exact-candidate
+Windows/Linux/macOS pre-release readiness workflow, reconcile any
+cross-platform failures, then prepare the `0.9.0` release separately. v0.10
+(full graphical human-LLM workflow) remains future - see `docs/ROADMAP.md`.

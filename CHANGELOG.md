@@ -2,6 +2,41 @@
 
 ## [Unreleased]
 
+v0.9, Human Visual Annotation and Design-Intent Capture. Implementation is
+complete in the repository. It is not released or published. The latest
+published package remains `0.8.1`.
+
+- Added the `VisualAnnotationArtifact` evidence family (schema `1.0.0`) with
+  deterministic identity, an atomic writer, a canonical reader, a persistence
+  service, and a derived annotation overlay SVG.
+- Added viewer discovery of visual annotations, a source-resolving annotation
+  view route, and a verified, script-blocking overlay media role.
+- Added a project-aware local authoring boundary: a 32-byte in-memory session
+  capability, strict Host and Origin checks, JSON-only bounded request bodies,
+  and one serialized write queue. `view --root` stays read-only.
+- Added three authoring routes: `POST /api/annotations`,
+  `POST /api/annotations/:handle/promote-contract`, and
+  `POST /api/annotations/:handle/materialize-reference`. The viewer protocol
+  is now `1.3.0`.
+- Added runtime screenshot annotation in runtime CSS pixels and external
+  reference annotation in reference-image pixels, with point, rectangle,
+  line, arrow, and note marks, zoom and pan, keyboard selection, save, reload,
+  and immutable revisions with stale-parent conflict detection.
+- Added explicit runtime and reference associations, candidate intent, and
+  explicit confirmation.
+- Added promotion of selected confirmed runtime `move`, `resize`, and
+  `preserve` intent into a canonical per-change frontend contract, with
+  optional explicit project activation. Confirmed `remove` intent stays
+  non-promotable because the contract vocabulary has no target-absent
+  primitive.
+- Added materialization of selected confirmed reference-region create and
+  refine intent and reference requirements into a new imported
+  external-reference revision that supersedes its source. Nothing is approved
+  automatically.
+- Evidence discovery now skips writer temporary `.tmp-*` directories.
+- Added an integrated real-Chromium acceptance suite and a packed installed
+  v0.9 annotation smoke to the cross-platform pre-release readiness workflow.
+
 ## 0.8.1 - 2026-09-15
 
 Project workflow release for `my-frontend-observer`.

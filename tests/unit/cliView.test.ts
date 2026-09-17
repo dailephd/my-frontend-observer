@@ -40,6 +40,17 @@ describe('runCli view - CLI dispatch (syntax/fast-fail paths only; full server l
     expect(out.stdout()).toContain('never launches a browser observation');
   });
 
+  it('v0.9: view --help states that --root is read-only and project-aware view enables local annotation authoring', async () => {
+    const out = capture();
+    const code = await runCli(['view', '--help'], out.io);
+    expect(code).toBe(0);
+    const help = out.stdout().replace(/\s+/g, ' ');
+    expect(help).toContain('With --root the session is read-only');
+    expect(help).toContain('project-aware session also enables local visual-annotation authoring');
+    expect(help).toContain('never approves baselines or references');
+    expect(help).not.toContain('minimal read-only status endpoint');
+  });
+
   it('requires an initialized project when --root is omitted', async () => {
     const out = capture();
     const code = await runCli(['view'], out.io);

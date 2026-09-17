@@ -19,6 +19,10 @@ Canonical hashes remain available in viewer details and persisted provenance,
 but are not normal workflow command inputs. The existing low-level commands
 remain supported. v0.8.1 is the current published release.
 
+The repository also contains the implementation-complete v0.9 visual
+annotation workflow described below. v0.9 is not released yet: the latest
+published npm package is still `0.8.1`.
+
 `my-frontend-observer` is the local-first rendered browser/runtime evidence
 producer in the my-dev-kit ecosystem. Its durable product purpose is defined
 in [docs/PROJECT_DESCRIPTION.md](docs/PROJECT_DESCRIPTION.md).
@@ -210,6 +214,52 @@ my-frontend-observer view --root observations --port 4319 --no-open
 
 (From a source checkout, use `node dist/cli.js view ...` instead.)
 
+### Visual annotation (v0.9, implemented, not yet released)
+
+The current repository state adds structured visual annotation to the
+project-aware viewer. This work is complete in the repository but is not part
+of a published release. The latest published package remains `0.8.1`.
+
+- **Runtime screenshot annotation**: draw points, rectangles, lines, arrows,
+  and notes on an observation screenshot. Geometry is stored in runtime CSS
+  pixels.
+- **External-reference annotation**: draw the same marks on an imported or
+  approved design reference. Geometry is stored in reference-image pixels.
+- **Explicit association**: a mark is linked to a runtime target, a runtime
+  relationship, a reference region, or a reference relationship only when you
+  choose it. Drawing over something never creates an association.
+- **Candidate and confirmed intent**: you choose a structured intent (for
+  example "move header right" or "create region hero"), review the exact
+  candidate structure, and confirm it explicitly. Editing a confirmed item
+  withdraws the confirmation.
+- **Immutable saves**: each save writes a new `VisualAnnotationArtifact`
+  (schema `1.0.0`). A revision supersedes its parent and never rewrites it.
+- **Runtime contract promotion**: selected confirmed runtime intent can be
+  promoted into a normal per-change frontend contract. Activating that
+  contract for `check` is a separate explicit choice.
+- **Reference materialization**: selected confirmed reference regions and
+  requirements can be materialized into a new imported external-reference
+  revision that supersedes the source. The source reference is never changed,
+  and the new revision is not approved automatically.
+
+Authoring is available only in the project-aware viewer:
+
+```powershell
+# Project-aware: annotation authoring enabled for this project.
+my-frontend-observer view
+
+# Standalone: always read-only, even for annotation evidence.
+my-frontend-observer view --root .frontend-observer/evidence
+```
+
+There is no separate annotation command. Observer still never edits target
+source, never approves a baseline or reference on its own, and never adds a
+new PASS/FAIL rule for annotations. The existing contract and reference
+evaluators remain the only source of verdicts. See
+[docs/WORKFLOWS.md](docs/WORKFLOWS.md) and
+[docs/SECURITY.md](docs/SECURITY.md) for the full workflow and the local write
+boundary.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
@@ -248,7 +298,8 @@ Planning authorities:
 - [Project Milestones](docs/PROJECT_MILESTONES.md): complete ordered capability
   design and cross-milestone rules.
 - [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.8.1 are
-  released; v0.9+ remain future.
+  released; v0.9 implementation is complete but not released; v0.10 remains
+  future.
 - [Current State](docs/CURRENT_STATE.md): retained scaffold and release state.
 
 No sibling ecosystem repository is a runtime dependency of the retained
