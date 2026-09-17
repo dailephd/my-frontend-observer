@@ -208,7 +208,7 @@ export interface RichObservationFixture {
  * single fixture exercises SVG rendering, relationship derivation, and the
  * honest non-geometric case together.
  */
-export async function writeRichObservationFixture(dir: string, observationId = 'rich-obs'): Promise<RichObservationFixture> {
+export async function writeRichObservationFixture(dir: string, observationId = 'rich-obs', requestId?: string): Promise<RichObservationFixture> {
   const viewport = { width: 800, height: 600 };
   const artifact = buildObservation(
     observationId,
@@ -223,7 +223,8 @@ export async function writeRichObservationFixture(dir: string, observationId = '
     realisticPageEvidence(viewport),
     viewport,
   );
-  const written = await writeObservationArtifact(artifact, buildRealPng(viewport.width, viewport.height), { cwd: dir });
+  // v0.9 Batch 3 additive: an optional canonical-shaped requestId (alias catalogs require 64-hex request ids).
+  const written = await writeObservationArtifact(requestId === undefined ? artifact : { ...artifact, requestId }, buildRealPng(viewport.width, viewport.height), { cwd: dir });
   if (!written.ok) throw new Error('expected rich observation write to succeed');
   return { artifactRoot: written.artifactRoot, observationId, viewport };
 }
