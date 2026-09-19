@@ -1,0 +1,1078 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "observer-v09-reference-authoring",
+  "title": "Turning a design reference into explicit requirements",
+  "description": "Working on an approved external reference: binding regions on purpose, and separating what is merely visible from what is actually required.",
+  "targetId": "my-frontend-observer-v09-demo",
+  "browser": {
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  "steps": [
+    {
+      "id": "open-viewer",
+      "narration": "So far everything has been about what the application does. This tutorial is about what it is supposed to look like, which is a different kind of evidence and needs different care.",
+      "action": {
+        "type": "goto",
+        "path": "/",
+        "waitUntil": "load"
+      },
+      "assertions": [
+        {
+          "type": "element-visible",
+          "locator": {
+            "kind": "role",
+            "role": "button",
+            "name": "external-reference-approved"
+          },
+          "timeoutMs": 20000
+        }
+      ]
+    },
+    {
+      "id": "open-reference",
+      "narration": "This is an external design reference that has been imported and then explicitly approved. Approval matters: an imported image is just a picture somebody handed over, while an approved one is a picture the team has agreed to measure against.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "external-reference-approved"
+        },
+        "timeoutMs": 20000
+      },
+      "screenshot": {
+        "id": "reference-open"
+      },
+      "assertions": [
+        {
+          "type": "element-visible",
+          "locator": {
+            "kind": "test-id",
+            "testId": "reference-annotation-surface"
+          },
+          "timeoutMs": 20000
+        }
+      ]
+    },
+    {
+      "id": "explain-coordinates",
+      "narration": "Read the label on this canvas carefully: reference image, 1440 by 900 pixels. Those are pixels in a flat image file. They are not the CSS pixels the browser laid out when the application ran. The two coordinate systems look identical and mean completely different things, so Observer keeps them apart and never quietly converts one into the other.",
+      "action": {
+        "type": "hover",
+        "locator": {
+          "kind": "test-id",
+          "testId": "reference-annotation-surface"
+        }
+      },
+      "callout": {
+        "text": "Reference-image pixels are not runtime CSS pixels.",
+        "placement": "auto"
+      },
+      "assertions": [
+        {
+          "type": "attribute-equals",
+          "locator": {
+            "kind": "test-id",
+            "testId": "reference-annotation-surface"
+          },
+          "name": "aria-label",
+          "expected": "Reference image, 1440 by 900 pixels"
+        }
+      ]
+    },
+    {
+      "id": "show-source-regions",
+      "narration": "The reference already carries seven named regions that came in with it. They are the vocabulary anything said about this design has to be said in.",
+      "action": {
+        "type": "hover",
+        "locator": {
+          "kind": "css",
+          "selector": ".annotation-panel__candidates"
+        }
+      },
+      "assertions": [
+        {
+          "type": "attribute-equals",
+          "locator": {
+            "kind": "css",
+            "selector": ".annotation-panel__candidates"
+          },
+          "name": "data-source-regions",
+          "expected": "7"
+        }
+      ]
+    },
+    {
+      "id": "create-rect-mode",
+      "narration": "The design has a band between the cards and the call to action that nobody named when the reference was imported. Proposing a new region for it starts with drawing one.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Rectangle mode"
+        }
+      }
+    },
+    {
+      "id": "create-rect-draw",
+      "narration": "The rectangle is drawn around the band. Drawing it proposes nothing yet; it is still only a shape on an image.",
+      "action": {
+        "type": "pointer-drag",
+        "locator": {
+          "kind": "test-id",
+          "testId": "reference-annotation-surface"
+        },
+        "from": {
+          "x": 0.3,
+          "y": 0.42
+        },
+        "to": {
+          "x": 0.62,
+          "y": 0.56
+        },
+        "coordinateSpace": "fraction"
+      }
+    },
+    {
+      "id": "name-region",
+      "narration": "Naming it is the deliberate part. A region needs an identity before anything can be required of it, because a requirement has to be about something you can point to by name later.",
+      "action": {
+        "type": "fill",
+        "locator": {
+          "kind": "role",
+          "role": "textbox",
+          "name": "Proposed region ID"
+        },
+        "value": "promo-band"
+      }
+    },
+    {
+      "id": "create-region",
+      "narration": "That turns the rectangle into a proposed new region.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Create candidate region"
+        }
+      },
+      "assertions": [
+        {
+          "type": "text-contains",
+          "locator": {
+            "kind": "css",
+            "selector": "[data-candidate-intent='true']"
+          },
+          "expected": "\"mode\": \"create\""
+        },
+        {
+          "type": "text-contains",
+          "locator": {
+            "kind": "css",
+            "selector": "[data-candidate-intent='true']"
+          },
+          "expected": "promo-band"
+        }
+      ]
+    },
+    {
+      "id": "confirm-create",
+      "narration": "And confirming it says the proposal is meant seriously.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Confirm reference intent"
+        }
+      },
+      "screenshot": {
+        "id": "region-created"
+      },
+      "assertions": [
+        {
+          "type": "attribute-equals",
+          "locator": {
+            "kind": "css",
+            "selector": ".annotation-panel__candidates"
+          },
+          "name": "data-candidate-creates",
+          "expected": "1"
+        }
+      ]
+    },
+    {
+      "id": "select-mode-refine",
+      "narration": "Existing regions can be corrected too. The sidebar in this reference was traced a little loosely when it was imported.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Select mode"
+        }
+      }
+    },
+    {
+      "id": "select-sidebar-region",
+      "narration": "Selecting the sidebar region first, so the refinement has an unambiguous subject.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Select reference region sidebar"
+        }
+      }
+    },
+    {
+      "id": "refine-rect-mode",
+      "narration": "Then drawing the shape it should have had.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Rectangle mode"
+        }
+      }
+    },
+    {
+      "id": "refine-rect-draw",
+      "narration": "Again, the rectangle on its own says nothing. It sits over the sidebar, and Observer still will not assume the two have anything to do with each other.",
+      "action": {
+        "type": "pointer-drag",
+        "locator": {
+          "kind": "test-id",
+          "testId": "reference-annotation-surface"
+        },
+        "from": {
+          "x": 0.02,
+          "y": 0.15
+        },
+        "to": {
+          "x": 0.26,
+          "y": 0.9
+        },
+        "coordinateSpace": "fraction"
+      },
+      "callout": {
+        "text": "Drawing around a region does not bind it.",
+        "placement": "auto"
+      }
+    },
+    {
+      "id": "refine-region",
+      "narration": "The binding is the explicit act: refine the selected sidebar region to this shape.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Refine selected region sidebar"
+        }
+      },
+      "assertions": [
+        {
+          "type": "text-contains",
+          "locator": {
+            "kind": "css",
+            "selector": "[data-candidate-intent='true']"
+          },
+          "expected": "\"mode\": \"refine\""
+        },
+        {
+          "type": "text-contains",
+          "locator": {
+            "kind": "css",
+            "selector": "[data-candidate-intent='true']"
+          },
+          "expected": "\"id\": \"sidebar\""
+        }
+      ]
+    },
+    {
+      "id": "confirm-refine",
+      "narration": "Confirmed.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Confirm reference intent"
+        }
+      },
+      "screenshot": {
+        "id": "region-refined"
+      },
+      "assertions": [
+        {
+          "type": "attribute-equals",
+          "locator": {
+            "kind": "css",
+            "selector": ".annotation-panel__candidates"
+          },
+          "name": "data-candidate-refinements",
+          "expected": "1"
+        }
+      ]
+    },
+    {
+      "id": "property-rect-mode",
+      "narration": "Regions describe where things are. Requirements say which of those facts actually matter. Here is the difference that trips people up most: everything visible in this image is evidence, and almost none of it is automatically a requirement.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Rectangle mode"
+        }
+      }
+    },
+    {
+      "id": "property-rect-draw",
+      "narration": "Marking the hero banner to talk about its width.",
+      "action": {
+        "type": "pointer-drag",
+        "locator": {
+          "kind": "test-id",
+          "testId": "reference-annotation-surface"
+        },
+        "from": {
+          "x": 0.34,
+          "y": 0.16
+        },
+        "to": {
+          "x": 0.9,
+          "y": 0.36
+        },
+        "coordinateSpace": "fraction"
+      }
+    },
+    {
+      "id": "property-category-1",
+      "narration": "The category is protected: this width is not allowed to drift.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Requirement category"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "property-category-2",
+      "narration": "Stepping past expected-dependent.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Requirement category"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "property-category-3",
+      "narration": "Protected.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Requirement category"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "property-subject",
+      "narration": "There are three shapes a requirement can take. This one is about a property of a single region.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Requirement subject"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "property-region-1",
+      "narration": "Choosing which region.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Requirement region"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "property-region-2",
+      "narration": "The hero.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Requirement region"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "property-prop-1",
+      "narration": "And which property.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Region property"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "property-prop-2",
+      "narration": "Stepping past y.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Region property"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "property-prop-3",
+      "narration": "Width.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Region property"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "property-tolerance-1",
+      "narration": "A requirement without a tolerance is a trap, because no implementation ever matches a design to the exact pixel.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Tolerance"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "property-tolerance-2",
+      "narration": "Measured in reference-image pixels, which is the only unit this image can honestly speak in.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Tolerance"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "property-amount",
+      "narration": "Four pixels either way.",
+      "action": {
+        "type": "fill",
+        "locator": {
+          "kind": "role",
+          "role": "spinbutton",
+          "name": "Tolerance amount"
+        },
+        "value": "4"
+      }
+    },
+    {
+      "id": "property-set",
+      "narration": "That is a real requirement: the hero's width, protected, to within four reference pixels.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Set candidate requirement"
+        }
+      },
+      "assertions": [
+        {
+          "type": "text-contains",
+          "locator": {
+            "kind": "css",
+            "selector": "[data-candidate-intent='true']"
+          },
+          "expected": "region-property"
+        },
+        {
+          "type": "text-contains",
+          "locator": {
+            "kind": "css",
+            "selector": "[data-candidate-intent='true']"
+          },
+          "expected": "absolute-reference-px"
+        }
+      ]
+    },
+    {
+      "id": "property-confirm",
+      "narration": "Confirmed.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Confirm reference intent"
+        }
+      },
+      "screenshot": {
+        "id": "property-requirement"
+      }
+    },
+    {
+      "id": "relationship-rect-mode",
+      "narration": "The second shape of requirement is not about one region at all.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Rectangle mode"
+        }
+      }
+    },
+    {
+      "id": "relationship-rect-draw",
+      "narration": "Marking the top of the design, where the header sits above the hero.",
+      "action": {
+        "type": "pointer-drag",
+        "locator": {
+          "kind": "test-id",
+          "testId": "reference-annotation-surface"
+        },
+        "from": {
+          "x": 0.34,
+          "y": 0.04
+        },
+        "to": {
+          "x": 0.9,
+          "y": 0.13
+        },
+        "coordinateSpace": "fraction"
+      }
+    },
+    {
+      "id": "relationship-subject-1",
+      "narration": "The form still holds protected from the last requirement, which is right for this one too. Only the shape of the claim changes: a relationship between two regions rather than a property of one.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Requirement subject"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "relationship-pick",
+      "narration": "The list is built from relationships Observer actually derived from this reference's own geometry. You cannot require a relationship the image does not contain, which stops a requirement from being wishful thinking.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Requirement relationship"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "relationship-set",
+      "narration": "Setting it.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Set candidate requirement"
+        }
+      },
+      "assertions": [
+        {
+          "type": "text-contains",
+          "locator": {
+            "kind": "css",
+            "selector": "[data-candidate-intent='true']"
+          },
+          "expected": "region-relationship"
+        }
+      ]
+    },
+    {
+      "id": "relationship-confirm",
+      "narration": "Confirmed.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Confirm reference intent"
+        }
+      },
+      "screenshot": {
+        "id": "relationship-requirement"
+      }
+    },
+    {
+      "id": "measurement-rect-mode",
+      "narration": "The third shape is a measurement: a distance the design depends on, which belongs to neither region on its own.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Rectangle mode"
+        }
+      }
+    },
+    {
+      "id": "measurement-rect-draw",
+      "narration": "Marking the vertical space between the hero and the call to action.",
+      "action": {
+        "type": "pointer-drag",
+        "locator": {
+          "kind": "test-id",
+          "testId": "reference-annotation-surface"
+        },
+        "from": {
+          "x": 0.66,
+          "y": 0.38
+        },
+        "to": {
+          "x": 0.94,
+          "y": 0.6
+        },
+        "coordinateSpace": "fraction"
+      }
+    },
+    {
+      "id": "measurement-category-1",
+      "narration": "This one is preserved rather than protected: it should survive, but it is not a hard boundary.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Requirement category"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "measurement-subject-1",
+      "narration": "And the shape is a measurement between two regions.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Requirement subject"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "measurement-subject-region-1",
+      "narration": "From the hero.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Subject region"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "measurement-subject-region-2",
+      "narration": "The hero.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Subject region"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "measurement-related-1",
+      "narration": "To the call to action.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Related region"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "measurement-related-2",
+      "narration": "Stepping down.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Related region"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "measurement-related-3",
+      "narration": "Stepping down.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Related region"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "measurement-related-4",
+      "narration": "Stepping down.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Related region"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "measurement-related-5",
+      "narration": "The call to action.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Related region"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "measurement-kind",
+      "narration": "And the measurement is the vertical gap between them.",
+      "action": {
+        "type": "press",
+        "locator": {
+          "kind": "role",
+          "role": "combobox",
+          "name": "Measurement"
+        },
+        "key": "ArrowDown"
+      }
+    },
+    {
+      "id": "measurement-amount",
+      "narration": "The reference-pixel tolerance carries over from the previous requirement; six pixels of slack for this gap.",
+      "action": {
+        "type": "fill",
+        "locator": {
+          "kind": "role",
+          "role": "spinbutton",
+          "name": "Tolerance amount"
+        },
+        "value": "6"
+      }
+    },
+    {
+      "id": "measurement-set",
+      "narration": "Property, relationship and measurement are three genuinely different claims. Collapsing them into one would lose exactly the distinction a designer cares about.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Set candidate requirement"
+        }
+      },
+      "assertions": [
+        {
+          "type": "text-contains",
+          "locator": {
+            "kind": "css",
+            "selector": "[data-candidate-intent='true']"
+          },
+          "expected": "region-measurement"
+        },
+        {
+          "type": "text-contains",
+          "locator": {
+            "kind": "css",
+            "selector": "[data-candidate-intent='true']"
+          },
+          "expected": "vertical-gap"
+        }
+      ]
+    },
+    {
+      "id": "measurement-confirm",
+      "narration": "Confirmed.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Confirm reference intent"
+        }
+      },
+      "screenshot": {
+        "id": "measurement-requirement"
+      }
+    },
+    {
+      "id": "informational-text",
+      "narration": "Not everything worth saying about a design is a requirement.",
+      "action": {
+        "type": "fill",
+        "locator": {
+          "kind": "role",
+          "role": "textbox",
+          "name": "Note text for new notes"
+        },
+        "value": "Check the caption spacing with the design team"
+      }
+    },
+    {
+      "id": "informational-mode",
+      "narration": "Note mode.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Note mode"
+        }
+      }
+    },
+    {
+      "id": "informational-place",
+      "narration": "A question for the design team, placed beside the illustration.",
+      "action": {
+        "type": "pointer-click",
+        "locator": {
+          "kind": "test-id",
+          "testId": "reference-annotation-surface"
+        },
+        "position": {
+          "x": 0.35,
+          "y": 0.86
+        },
+        "coordinateSpace": "fraction"
+      }
+    },
+    {
+      "id": "informational-mark",
+      "narration": "Marking it informational records it honestly as a remark rather than dressing it up as a rule.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Mark informational"
+        }
+      },
+      "assertions": [
+        {
+          "type": "text-contains",
+          "locator": {
+            "kind": "css",
+            "selector": "[data-candidate-intent='true']"
+          },
+          "expected": "inspect"
+        }
+      ]
+    },
+    {
+      "id": "informational-confirm",
+      "narration": "Confirmed as a remark.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Confirm reference intent"
+        }
+      }
+    },
+    {
+      "id": "asset-select-mode",
+      "narration": "There is one more informational kind worth showing, because it is the one people most often expect to behave like a requirement.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Select mode"
+        }
+      }
+    },
+    {
+      "id": "asset-select-region",
+      "narration": "Selecting the illustration region.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Select reference region asset"
+        }
+      }
+    },
+    {
+      "id": "asset-point-mode",
+      "narration": "Point mode.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Point mode"
+        }
+      }
+    },
+    {
+      "id": "asset-place",
+      "narration": "Placing a point to hang the remark on.",
+      "action": {
+        "type": "pointer-click",
+        "locator": {
+          "kind": "test-id",
+          "testId": "reference-annotation-surface"
+        },
+        "position": {
+          "x": 0.6,
+          "y": 0.78
+        },
+        "coordinateSpace": "fraction"
+      }
+    },
+    {
+      "id": "asset-mark",
+      "narration": "Marking the region asset-sensitive says its exact imagery matters to a human eye. It stays informational on purpose. An image being important is not the same as a checkable claim about geometry, and pretending otherwise would produce a requirement that either never fails or fails for reasons nobody can act on.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Mark asset-sensitive for region asset"
+        }
+      },
+      "callout": {
+        "text": "Asset-sensitive is informational until a supported requirement expresses it.",
+        "placement": "auto"
+      },
+      "assertions": [
+        {
+          "type": "text-contains",
+          "locator": {
+            "kind": "css",
+            "selector": "[data-candidate-intent='true']"
+          },
+          "expected": "asset-sensitive"
+        }
+      ]
+    },
+    {
+      "id": "asset-confirm",
+      "narration": "Confirmed, and still informational.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Confirm reference intent"
+        }
+      },
+      "screenshot": {
+        "id": "asset-sensitive"
+      }
+    },
+    {
+      "id": "save",
+      "narration": "Saving writes all seven items as one immutable reference annotation: two region proposals, three real requirements, and two remarks that are honest about being remarks. Nothing has changed the approved reference itself, which is the subject of the next tutorial.",
+      "action": {
+        "type": "click",
+        "locator": {
+          "kind": "role",
+          "role": "button",
+          "name": "Save annotation"
+        }
+      },
+      "screenshot": {
+        "id": "saved"
+      },
+      "assertions": [
+        {
+          "type": "attribute-equals",
+          "locator": {
+            "kind": "css",
+            "selector": ".annotation-panel__draft-summary"
+          },
+          "name": "data-draft-item-count",
+          "expected": "7"
+        },
+        {
+          "type": "attribute-equals",
+          "locator": {
+            "kind": "css",
+            "selector": ".annotation-panel__draft-summary"
+          },
+          "name": "data-draft-dirty",
+          "expected": "false",
+          "timeoutMs": 15000
+        }
+      ]
+    }
+  ]
+}

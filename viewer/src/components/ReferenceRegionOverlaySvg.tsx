@@ -33,6 +33,7 @@ export function ReferenceRegionOverlaySvg({
   annotationLayer,
   regionsInteractive = true,
   interactionClassName,
+  surfaceTestId,
 }: {
   imageUrl: string;
   imageWidth: number;
@@ -54,6 +55,8 @@ export function ReferenceRegionOverlaySvg({
   regionsInteractive?: boolean;
   /** v0.9 Batch 4 additive, optional: extra root class for the active interaction mode. */
   interactionClassName?: string | undefined;
+  /** v0.9 tutorial integration additive, optional: stable `data-testid` for this reference drawing surface. Behavior-neutral; see TargetOverlaySvg. */
+  surfaceTestId?: string | undefined;
 }) {
   const byId = new Map(regions.map((r) => [r.id, r] as const));
 
@@ -65,6 +68,7 @@ export function ReferenceRegionOverlaySvg({
       aria-label={`Reference image, ${imageWidth} by ${imageHeight} pixels`}
       preserveAspectRatio="xMidYMid meet"
       ref={zoomPan?.svgRef}
+      {...(surfaceTestId === undefined ? {} : { 'data-testid': surfaceTestId })}
       {...(zoomPan?.pointerHandlers ?? {})}
     >
       <image href={imageUrl} x={0} y={0} width={imageWidth} height={imageHeight} preserveAspectRatio="none" />

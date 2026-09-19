@@ -253,6 +253,7 @@ export function ReferenceWorkspace({ handle, artifact }: { handle: string; artif
               zoomPan={annotationInteraction.binding}
               regionsInteractive={annotationInteraction.targetsInteractive}
               interactionClassName={`target-overlay-svg--mode-${annotationMode}`}
+              surfaceTestId="reference-annotation-surface"
               annotationLayer={
                 <>
                   <CandidateRegionPreviewLayer items={annotationDraft.draft.items} sourceRegions={regions} />

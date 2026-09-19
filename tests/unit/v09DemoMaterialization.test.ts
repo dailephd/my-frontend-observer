@@ -154,7 +154,7 @@ describe('v0.9 demo materialization - clean, deterministic, non-destructive to t
     }
     // The template keeps its own directories; nothing new appeared beside them.
     const demoEntries = await readdir(DEMO_SOURCE_ROOT, { withFileTypes: true });
-    expect(demoEntries.map((entry) => entry.name).sort()).toEqual(['README.md', 'app', 'references', 'scripts']);
+    expect(demoEntries.map((entry) => entry.name).sort()).toEqual(['README.md', 'app', 'references', 'scripts', 'tutorials']);
   });
 
   it('produces a target whose server can be started from the target root alone', async () => {

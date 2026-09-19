@@ -121,6 +121,7 @@ export function ObservationWorkspace({ handle, artifact }: { handle: string; art
             zoomPan={interaction.binding}
             targetsInteractive={interaction.targetsInteractive}
             interactionClassName={`target-overlay-svg--mode-${mode}`}
+            surfaceTestId="runtime-annotation-surface"
             annotationLayer={
               <AnnotationLayer
                 items={draft.items}

@@ -218,7 +218,122 @@ No approved reference artifact is committed here. Importing and approving this
 PNG happens through the canonical Observer commands, inside a disposable
 materialized target, never in this template.
 
-## 7. What lives where
+## 7. The tutorials
+
+`tutorials/` holds four `TutorialScenarioV1` files for the released
+`@dailephd/my-dev-kit-lab@0.4.8` tutorial runtime. They drive the real Observer
+viewer against a disposable project built from this demo.
+
+```text
+01-annotation-basics.json          marks are evidence, association is explicit
+02-runtime-intent-contract.json    meaning, confirmation, selective promotion, activation
+03-reference-authoring.json        reference regions and explicit design requirements
+04-reference-materialization.json  selected intent becomes a new imported revision
+```
+
+They are pure lab contracts. They contain no Observer-only field, no absolute
+path, and no generated identifier, so nothing in them is specific to one
+machine or one run.
+
+### Requirements
+
+The lab is an external tool, not an Observer dependency. Observer does not
+depend on it at build or run time, and `npm install` never fetches it.
+
+```text
+@dailephd/my-dev-kit-lab@0.4.8 or later
+```
+
+Version 0.4.8 is the minimum, because it is the first release with the
+locator-anchored positional pointer actions (`pointer-click` and
+`pointer-drag`) that annotation drawing needs.
+
+Build Observer first. The tutorials run this checkout's unreleased v0.9
+implementation, not the published package:
+
+```powershell
+npm run build
+```
+
+### Generating a target contract
+
+A target contract carries absolute paths and two dynamic loopback ports, so it
+is generated per run and never committed:
+
+```powershell
+node examples/v09-demo/scripts/generate-tutorial-target.mjs `
+  --scenario observer-v09-annotation-basics `
+  --out .my-dev-kit-workflow/v0.9/tutorial-integration/target-contract.json
+```
+
+Ports are free loopback ports chosen at generation time. Pass `--demo-port` and
+`--viewer-port` to pin them for debugging. Free-port discovery cannot reserve a
+port indefinitely, so generate the contract immediately before the run.
+
+The four `--scenario` values are the four scenario ids:
+
+```text
+observer-v09-annotation-basics
+observer-v09-runtime-contract
+observer-v09-reference-authoring
+observer-v09-reference-materialization
+```
+
+### Validating
+
+```powershell
+npx --yes @dailephd/my-dev-kit-lab@0.4.8 tutorial validate `
+  --scenario examples/v09-demo/tutorials/01-annotation-basics.json `
+  --target-contract .my-dev-kit-workflow/v0.9/tutorial-integration/target-contract.json `
+  --json
+```
+
+Validation is read-only: it starts no process and needs no browser.
+
+### Running
+
+```powershell
+npx --yes @dailephd/my-dev-kit-lab@0.4.8 tutorial run `
+  --scenario examples/v09-demo/tutorials/01-annotation-basics.json `
+  --target-contract .my-dev-kit-workflow/v0.9/tutorial-integration/target-contract.json `
+  --out $env:TEMP\my-frontend-observer-v09-tutorial-smoke\s01 `
+  --json
+```
+
+Always send `--out` somewhere outside the repository. A run writes a video,
+screenshots, subtitles, Markdown, a manifest and a whole disposable Observer
+project; none of that belongs in tracked source.
+
+Each run gets a fresh target root, and each scenario builds its own starting
+state from scratch. No tutorial depends on another tutorial having run.
+
+### What prepare does
+
+The target contract names `scripts/prepare-tutorial-target.mjs` as its prepare
+command. The lab runs it once, before any process or browser starts. It
+materializes the demo with this template's own materialization script, serves
+it temporarily on the demo port, and then uses the built Observer CLI to
+initialize a project, capture a baseline observation, and add whatever the
+chosen scenario needs: contract acceptance for the runtime-contract tutorial,
+an imported and approved reference for the two reference tutorials. The
+temporary server is stopped in a `finally`, so the port is free for the demo
+server the lab manages itself.
+
+Nothing in prepare handwrites an Observer artifact. Every artifact comes from a
+canonical Observer command.
+
+### Driving form controls
+
+The viewer uses native `<select>` elements, and the lab has no select action.
+The scenarios choose an option by focusing the control and pressing
+`ArrowDown`, which is ordinary keyboard use. The number of presses follows the
+order of the frozen vocabularies in `viewer/src/annotation/`. Two consequences
+are worth knowing before editing a scenario: adding an option to one of those
+vocabularies shifts the counts, and the reference requirement form keeps its
+previous values when another mark is selected, so later steps step from where
+the last one left off rather than from empty.
+
+## 8. What lives where
 
 ```text
 examples/v09-demo/
@@ -227,10 +342,14 @@ examples/v09-demo/
         styles.css          all geometry, including every state override
         state.js            the two structural state differences
         assets/             local SVG assets
-    references/             the fixed reference PNG and its provenance record
+    references/             the fixed reference PNG, its provenance record,
+                            and the region geometry the tutorials import
     scripts/
-        prepare.mjs         materialize the template into a disposable target
-        server.mjs          the loopback demo server
-        generate-reference.mjs   deliberate reference-image regeneration
+        prepare.mjs                  materialize the template into a disposable target
+        server.mjs                   the loopback demo server
+        generate-reference.mjs       deliberate reference-image regeneration
+        generate-tutorial-target.mjs per-run lab target contract
+        prepare-tutorial-target.mjs  the lab's trusted prepare command
+    tutorials/              the four lab tutorial scenarios
     README.md               this file
 ```

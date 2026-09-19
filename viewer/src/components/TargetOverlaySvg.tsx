@@ -41,6 +41,7 @@ export function TargetOverlaySvg({
   annotationLayer,
   targetsInteractive = true,
   interactionClassName,
+  surfaceTestId,
 }: {
   artifact: ObservationArtifact;
   screenshotUrl: string;
@@ -59,6 +60,16 @@ export function TargetOverlaySvg({
   targetsInteractive?: boolean;
   /** v0.9 Batch 3 additive, optional: extra root class for the active interaction mode. */
   interactionClassName?: string | undefined;
+  /**
+   * v0.9 tutorial integration additive, optional: a stable `data-testid` for
+   * this SVG as an *interaction surface*, so locator-anchored pointer
+   * gestures bind to a declared automation contract rather than to a
+   * presentation class name. Rendering and every event handler are
+   * unchanged. Optional because this component is also rendered twice
+   * side-by-side in the comparison workspace, where a single shared test id
+   * would be ambiguous; only the annotation-capable workspace supplies one.
+   */
+  surfaceTestId?: string | undefined;
 }) {
   const { width, height } = artifact.requestConfig.viewport;
 
@@ -76,6 +87,7 @@ export function TargetOverlaySvg({
       aria-label={`Observation viewport, ${width} by ${height} CSS pixels`}
       preserveAspectRatio="xMidYMid meet"
       ref={zoomPan?.svgRef}
+      {...(surfaceTestId === undefined ? {} : { 'data-testid': surfaceTestId })}
       {...(zoomPan?.pointerHandlers ?? {})}
     >
       <image href={screenshotUrl} x={0} y={0} width={width} height={height} preserveAspectRatio="none" />
