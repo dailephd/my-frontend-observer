@@ -1,0 +1,14 @@
+{
+  "demoId": "my-frontend-observer-v09-demo",
+  "asset": "v09-reference.png",
+  "sourceDemoState": "reference",
+  "canonicalViewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "imageFormat": "png",
+  "capturedWith": "my-frontend-observer canonical Chromium observation path (src/browser/chromiumAdapter.ts)",
+  "regenerateWith": "npm run build && node examples/v09-demo/scripts/generate-reference.mjs",
+  "intendedUse": "Fixed external visual reference for the v0.9 demo tutorials. Imported and approved through the canonical Observer external-reference commands inside a disposable materialized target, never committed as an approved reference artifact in this template.",
+  "note": "Provenance record for a demo asset. This is not an Observer evidence artifact and defines no Observer schema."
+}

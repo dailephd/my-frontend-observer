@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en" data-demo-state="baseline">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Northwind Observatory - Observer v0.9 demo</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="region region-header" data-demo-target="header">
+      <span class="brand">
+        <img class="brand-mark" src="assets/brand-mark.svg" alt="" width="28" height="28" />
+        <span class="brand-name">Northwind Observatory</span>
+      </span>
+      <span class="state-badge" data-testid="demo-state-badge">baseline</span>
+    </header>
+
+    <nav class="region region-nav" data-demo-target="navigation" aria-label="Demo states">
+      <ul class="nav-list">
+        <li><a href="?state=baseline" data-testid="demo-nav-baseline">baseline</a></li>
+        <li><a href="?state=move-hero" data-testid="demo-nav-move-hero">move-hero</a></li>
+        <li><a href="?state=wider-sidebar" data-testid="demo-nav-wider-sidebar">wider-sidebar</a></li>
+        <li><a href="?state=changed-spacing" data-testid="demo-nav-changed-spacing">changed-spacing</a></li>
+        <li><a href="?state=move-footer" data-testid="demo-nav-move-footer">move-footer</a></li>
+        <li><a href="?state=removed-card" data-testid="demo-nav-removed-card">removed-card</a></li>
+        <li><a href="?state=changed-asset" data-testid="demo-nav-changed-asset">changed-asset</a></li>
+        <li><a href="?state=multi-change" data-testid="demo-nav-multi-change">multi-change</a></li>
+        <li><a href="?state=reference" data-testid="demo-nav-reference">reference</a></li>
+      </ul>
+    </nav>
+
+    <div class="demo-body">
+      <aside class="region region-sidebar" data-demo-target="sidebar" aria-label="Observation filters">
+        <h2 class="sidebar-title">Filters</h2>
+        <ul class="sidebar-list">
+          <li>Runtime observations</li>
+          <li>Comparisons</li>
+          <li>Frontend contracts</li>
+          <li>External references</li>
+          <li>Visual annotations</li>
+        </ul>
+        <p class="sidebar-note">Every region on this page carries a stable demo target name.</p>
+      </aside>
+
+      <main class="region region-content" data-demo-target="content">
+        <section class="region region-hero" data-demo-target="hero" aria-labelledby="hero-title">
+          <h1 class="hero-title" id="hero-title">Layout evidence you can point at</h1>
+          <p class="hero-copy">
+            A deterministic page whose regions move, resize, disappear and change on purpose,
+            so a change-review workflow has something honest to observe.
+          </p>
+        </section>
+
+        <div class="card-row">
+          <article class="region card" data-demo-target="card-1" aria-labelledby="card-1-title">
+            <h2 class="card-title" id="card-1-title">Observed geometry</h2>
+            <p class="card-copy">Bounding boxes captured from a real browser, never inferred from source.</p>
+          </article>
+          <article class="region card" data-demo-target="card-2" aria-labelledby="card-2-title">
+            <h2 class="card-title" id="card-2-title">Relationships</h2>
+            <p class="card-copy">Left-of, follows-vertically, fits-inside and the rest of the frozen vocabulary.</p>
+          </article>
+        </div>
+
+        <section class="region region-cta" data-demo-target="cta" aria-labelledby="cta-title">
+          <h2 class="cta-title" id="cta-title">Ready to review a change?</h2>
+          <button class="cta-button" type="button" data-testid="demo-cta-button">Request a review</button>
+        </section>
+
+        <figure class="region region-asset" data-demo-target="asset">
+          <img
+            class="asset-image"
+            data-testid="demo-asset-image"
+            src="assets/asset-primary.svg"
+            alt="Illustration of three stacked evidence bands"
+            width="600"
+            height="96"
+          />
+          <figcaption class="asset-caption">Local illustration asset. Swapped in the asset-sensitive states.</figcaption>
+        </figure>
+      </main>
+    </div>
+
+    <footer class="region region-footer" data-demo-target="footer">
+      <p class="footer-copy">Northwind Observatory - deterministic demo for my-frontend-observer v0.9.</p>
+    </footer>
+
+    <script src="state.js"></script>
+  </body>
+</html>

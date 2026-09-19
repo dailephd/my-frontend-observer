@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="96" viewBox="0 0 600 96" role="img" aria-label="Three stacked evidence bands">
+  <rect x="0" y="0" width="600" height="96" fill="#e8eef5" />
+  <rect x="16" y="14" width="360" height="18" rx="4" fill="#2f5d8a" />
+  <rect x="16" y="40" width="520" height="18" rx="4" fill="#6d8fb3" />
+  <rect x="16" y="66" width="240" height="16" rx="4" fill="#a8bdd2" />
+  <circle cx="566" cy="48" r="18" fill="#2f5d8a" />
+</svg>

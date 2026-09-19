@@ -1,0 +1,373 @@
+/*
+ * Deterministic demo stylesheet for my-frontend-observer v0.9.
+ *
+ * Every geometric difference between demo states is expressed as an override
+ * of one of the custom properties declared on :root below. No animation, no
+ * transition, no timer, no media query, no network font: the rendered
+ * geometry at the canonical 1440x900 tutorial viewport depends only on the
+ * `data-demo-state` attribute the demo server injects into <html>.
+ */
+
+:root {
+  /* Fixed band heights - never font-dependent, so region geometry is stable. */
+  --header-h: 64px;
+  --nav-h: 48px;
+  --footer-h: 72px;
+
+  /* Geometry knobs the demo states override. Baseline values only. */
+  --sidebar-width: 260px;
+  --region-gap: 24px;
+  --hero-offset-x: 0px;
+  --footer-offset-y: 0px;
+
+  /* Fixed layout constants shared by every state. */
+  --stack-gap: 20px;
+  --body-pad: 20px;
+  --hero-inset: 180px;
+  --card-width: 300px;
+
+  --accent: #2f5d8a;
+  --accent-soft: #e8eef5;
+  --ink: #1c2531;
+  --muted: #5b6673;
+  --line: #c9d2dc;
+  --surface: #ffffff;
+  --canvas: #f4f6f9;
+}
+
+/* --- Demo state overrides (the whole frozen state vocabulary) ------------- */
+
+/* move-hero: horizontal hero geometry only. Hero width is unchanged, so the
+   intended runtime reading is "x increases", not "the hero was resized". */
+html[data-demo-state='move-hero'] {
+  --hero-offset-x: 160px;
+}
+
+/* wider-sidebar: sidebar width only. */
+html[data-demo-state='wider-sidebar'] {
+  --sidebar-width: 400px;
+}
+
+/* changed-spacing: the horizontal gap between the sidebar and the main
+   content region. Purely horizontal, so no band moves vertically. */
+html[data-demo-state='changed-spacing'] {
+  --region-gap: 96px;
+}
+
+/* move-footer: the footer band lifts off the bottom edge, leaving a visible
+   strip of canvas below it. Relative positioning moves the painted box
+   without reflowing the bands above, so nothing else shifts and the page
+   never gains a scrollbar. This is deliberately the shape of a real layout
+   regression a change review should catch. */
+html[data-demo-state='move-footer'] {
+  --footer-offset-y: -64px;
+}
+
+/* removed-card and changed-asset are structural, not geometric: see state.js. */
+
+/* multi-change: several deterministic differences at once. */
+html[data-demo-state='multi-change'] {
+  --hero-offset-x: 160px;
+  --sidebar-width: 400px;
+  --footer-offset-y: -64px;
+}
+
+/* reference: the desired design. Region geometry, a relationship gap and the
+   asset-sensitive area all differ from baseline on purpose. */
+html[data-demo-state='reference'] {
+  --sidebar-width: 320px;
+  --region-gap: 56px;
+  --hero-offset-x: 80px;
+  --accent: #1f6f5c;
+  --accent-soft: #e3f1ec;
+}
+
+/* --- Layout --------------------------------------------------------------- */
+
+html {
+  box-sizing: border-box;
+  /* No scrollbar can ever appear, so the usable layout width is exactly the
+     viewport width on every platform. */
+  overflow: hidden;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
+body {
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.region {
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+/* --- Header --------------------------------------------------------------- */
+
+.region-header {
+  flex: 0 0 var(--header-h);
+  height: var(--header-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--body-pad);
+  border-width: 0 0 1px 0;
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-mark {
+  display: block;
+}
+
+.brand-name {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.state-badge {
+  display: inline-block;
+  width: 180px;
+  overflow: hidden;
+  text-align: right;
+  white-space: nowrap;
+  font-size: 13px;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, 'Liberation Mono', monospace;
+  color: #ffffff;
+}
+
+/* --- Navigation ----------------------------------------------------------- */
+
+.region-nav {
+  flex: 0 0 var(--nav-h);
+  height: var(--nav-h);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--body-pad);
+  border-width: 0 0 1px 0;
+  background: var(--accent-soft);
+}
+
+.nav-list {
+  display: flex;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav-list a {
+  display: inline-block;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 13px;
+  text-decoration: none;
+  color: var(--accent);
+}
+
+.nav-list a[aria-current='page'] {
+  border-color: var(--accent);
+  background: var(--surface);
+  font-weight: 600;
+}
+
+/* --- Middle band ---------------------------------------------------------- */
+
+.demo-body {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  gap: var(--region-gap);
+  padding: var(--body-pad);
+}
+
+.region-sidebar {
+  flex: 0 0 var(--sidebar-width);
+  width: var(--sidebar-width);
+  padding: 16px;
+  overflow: hidden;
+}
+
+.sidebar-title {
+  margin: 0 0 10px 0;
+  font-size: 15px;
+}
+
+.sidebar-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.sidebar-note {
+  margin: 14px 0 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.region-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--stack-gap);
+  padding: var(--body-pad);
+  overflow: hidden;
+}
+
+/* --- Hero ----------------------------------------------------------------- */
+
+.region-hero {
+  position: relative;
+  left: var(--hero-offset-x);
+  flex: 0 0 180px;
+  height: 180px;
+  /* Narrower than the content column so the largest hero offset still lands
+     inside the content region rather than being clipped. */
+  width: calc(100% - var(--hero-inset));
+  padding: 20px 24px;
+  background: var(--accent-soft);
+  overflow: hidden;
+}
+
+.hero-title {
+  margin: 0 0 12px 0;
+  font-size: 30px;
+  line-height: 1.15;
+}
+
+.hero-copy {
+  margin: 0;
+  max-width: 640px;
+  color: var(--muted);
+}
+
+/* --- Cards ---------------------------------------------------------------- */
+
+.card-row {
+  flex: 0 0 170px;
+  height: 170px;
+  display: flex;
+  gap: var(--stack-gap);
+}
+
+.card {
+  flex: 0 0 var(--card-width);
+  width: var(--card-width);
+  padding: 16px;
+  overflow: hidden;
+}
+
+.card-title {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+}
+
+.card-copy {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* --- Call to action ------------------------------------------------------- */
+
+.region-cta {
+  flex: 0 0 72px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  overflow: hidden;
+}
+
+.cta-title {
+  margin: 0;
+  font-size: 16px;
+}
+
+.cta-button {
+  padding: 9px 18px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--accent);
+  color: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* --- Asset ---------------------------------------------------------------- */
+
+.region-asset {
+  flex: 0 0 120px;
+  height: 120px;
+  margin: 0;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.asset-image {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.asset-caption {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* --- Footer --------------------------------------------------------------- */
+
+.region-footer {
+  position: relative;
+  top: var(--footer-offset-y);
+  flex: 0 0 var(--footer-h);
+  height: var(--footer-h);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--body-pad);
+  border-width: 1px 0 0 0;
+  background: var(--accent-soft);
+}
+
+.footer-copy {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* --- Invalid state page --------------------------------------------------- */
+
+.invalid-state {
+  margin: 0;
+  padding: 40px;
+  font-family: ui-sans-serif, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: var(--ink);
+  background: var(--canvas);
+}
