@@ -9,6 +9,7 @@
     {
       "id": "open-viewer",
       "narration": "This is the Observer viewer, running locally against a project that has already captured one observation. Everything you are about to see is read from evidence on disk. The viewer never re-opens the inspected page to fill in a gap.",
+      "pauseAfterMs": 15400,
       "action": { "type": "goto", "path": "/", "waitUntil": "load" },
       "screenshot": { "id": "viewer-open" },
       "assertions": [
@@ -18,6 +19,7 @@
     {
       "id": "select-baseline",
       "narration": "The observation is listed under the human alias its project gave it, baseline, rather than under a generated identifier. An alias is how a person refers to evidence; the identifier underneath it stays the machine's business.",
+      "pauseAfterMs": 15000,
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "observation baseline" }, "timeoutMs": 20000 },
       "callout": { "text": "Captured evidence, selected by its human alias.", "locator": { "kind": "role", "role": "button", "name": "observation baseline" }, "placement": "right" },
       "assertions": [
@@ -27,6 +29,7 @@
     {
       "id": "quieten-relationships",
       "narration": "Observer derives the geometric relationships between targets and can draw them over the screenshot. They are switched off here so the annotation work stays readable. Turning a view off changes nothing about the evidence underneath.",
+      "pauseAfterMs": 15400,
       "action": { "type": "click", "locator": { "kind": "role", "role": "checkbox", "name": "Relationships" } },
       "screenshot": { "id": "observation-ready" },
       "assertions": [
@@ -36,6 +39,7 @@
     {
       "id": "explain-select-mode",
       "narration": "The toolbar has separate modes, and that separation is deliberate. One pointer drag could plausibly mean draw a shape, move a shape, or pan the canvas. Rather than guess from context, the viewer makes you say which one you meant.",
+      "pauseAfterMs": 15300,
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Select mode" } },
       "callout": { "text": "Select, Pan and the drawing modes are separate so a drag is never ambiguous.", "placement": "auto" },
       "assertions": [
@@ -45,6 +49,7 @@
     {
       "id": "explain-pan-mode",
       "narration": "Pan mode moves your view of the screenshot without touching anything in it. Navigating evidence and editing evidence are different activities, so they get different modes.",
+      "pauseAfterMs": 11400,
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Pan mode" } },
       "assertions": [
         { "type": "attribute-equals", "locator": { "kind": "role", "role": "button", "name": "Pan mode" }, "name": "aria-pressed", "expected": "true" }
@@ -52,12 +57,14 @@
     },
     {
       "id": "point-mode",
-      "narration": "Now to the marks themselves. A point simply says: look here. It is the smallest thing you can record.",
+      "narration": "Now to the marks themselves. A mark is evidence of something a person noticed. It is not a requirement anybody has agreed to. A point simply says: look here. It is the smallest thing you can record.",
+      "pauseAfterMs": 13200,
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Point mode" } }
     },
     {
       "id": "point-place",
       "narration": "Placing it on the first card records a position in the screenshot's own coordinates. Notice what has not happened: nothing has been said about the card, and nothing has been asked of anyone.",
+      "pauseAfterMs": 12700,
       "action": { "type": "pointer-click", "locator": { "kind": "test-id", "testId": "runtime-annotation-surface" }, "position": { "x": 0.33, "y": 0.48 }, "coordinateSpace": "fraction" },
       "assertions": [
         { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__draft-summary" }, "name": "data-draft-item-count", "expected": "1" }
@@ -66,11 +73,13 @@
     {
       "id": "rectangle-mode",
       "narration": "A rectangle covers an area rather than a position, which is the usual way to talk about a whole region of the page.",
+      "pauseAfterMs": 7700,
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Rectangle mode" } }
     },
     {
       "id": "rectangle-draw",
       "narration": "Dragging one across the hero banner records exactly that area. The rectangle happens to sit over the hero, but the viewer has not concluded anything from that overlap, and it will not.",
+      "pauseAfterMs": 12300,
       "action": { "type": "pointer-drag", "locator": { "kind": "test-id", "testId": "runtime-annotation-surface" }, "from": { "x": 0.24, "y": 0.18 }, "to": { "x": 0.83, "y": 0.36 }, "coordinateSpace": "fraction" },
       "screenshot": { "id": "rectangle-drawn" },
       "assertions": [
@@ -80,11 +89,13 @@
     {
       "id": "line-mode",
       "narration": "A line records a span between two places, which is how people usually point at a distance or an edge.",
+      "pauseAfterMs": 6800,
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Line mode" } }
     },
     {
       "id": "line-draw",
-      "narration": "This one runs across the call-to-action band.",
+      "narration": "This one runs across the call-to-action band. Like every mark, it records where a person looked, and nothing more.",
+      "pauseAfterMs": 7600,
       "action": { "type": "pointer-drag", "locator": { "kind": "test-id", "testId": "runtime-annotation-surface" }, "from": { "x": 0.24, "y": 0.64 }, "to": { "x": 0.8, "y": 0.64 }, "coordinateSpace": "fraction" },
       "assertions": [
         { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__draft-summary" }, "name": "data-draft-item-count", "expected": "3" }
@@ -93,13 +104,16 @@
     {
       "id": "arrow-mode",
       "narration": "An arrow is a line that also points. It is worth being precise about what that means here.",
+      "pauseAfterMs": 6000,
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Arrow mode" } }
     },
     {
       "id": "arrow-draw",
       "narration": "This one runs from the first card toward the second, pointing right. That is a fact about the drawing, not an instruction about the layout. The viewer records the geometry and stops there. If you want the arrow to mean move this to the right, you will have to say so yourself, which the next tutorial covers.",
+      "pauseAfterMs": 20600,
       "action": { "type": "pointer-drag", "locator": { "kind": "test-id", "testId": "runtime-annotation-surface" }, "from": { "x": 0.3, "y": 0.55 }, "to": { "x": 0.62, "y": 0.55 }, "coordinateSpace": "fraction" },
       "callout": { "text": "A drawn direction is evidence of what you drew, not a decision about the page.", "placement": "auto" },
+      "screenshot": { "id": "arrow-is-evidence" },
       "assertions": [
         { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__draft-summary" }, "name": "data-draft-item-count", "expected": "4" }
       ]
@@ -107,16 +121,19 @@
     {
       "id": "note-text",
       "narration": "A note carries words. The text is written first, so that placing the note is a single deliberate act rather than an empty marker you have to remember to fill in later.",
+      "pauseAfterMs": 11200,
       "action": { "type": "fill", "locator": { "kind": "role", "role": "textbox", "name": "Note text for new notes" }, "value": "Illustration feels crowded against the caption" }
     },
     {
       "id": "note-mode",
-      "narration": "Switching to Note mode.",
+      "narration": "Switching to Note mode, so the next click places the note instead of drawing a shape.",
+      "pauseAfterMs": 5700,
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Note mode" } }
     },
     {
       "id": "note-place",
       "narration": "The note is anchored beside the illustration. Five marks now exist, and every one of them is still only a record of something a person noticed.",
+      "pauseAfterMs": 9600,
       "action": { "type": "pointer-click", "locator": { "kind": "test-id", "testId": "runtime-annotation-surface" }, "position": { "x": 0.35, "y": 0.77 }, "coordinateSpace": "fraction" },
       "screenshot": { "id": "five-marks" },
       "assertions": [
@@ -126,11 +143,13 @@
     {
       "id": "back-to-select",
       "narration": "Back in Select mode the marks become things you can pick up and inspect, instead of strokes you are laying down.",
+      "pauseAfterMs": 7500,
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Select mode" } }
     },
     {
       "id": "select-rectangle",
       "narration": "Selecting the rectangle that was drawn over the hero shows what Observer actually believes about it.",
+      "pauseAfterMs": 6700,
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Rectangle annotation" } },
       "assertions": [
         { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__association" }, "name": "data-association-kind", "expected": "none" }
@@ -139,6 +158,7 @@
     {
       "id": "explain-no-association",
       "narration": "No association. The rectangle covers the hero on screen, yet Observer refuses to claim the mark is about the hero. Overlap is genuinely ambiguous: you might mean the region, the thing next to it, the gap between them, or the whole area. Guessing would turn your drawing into a claim you never made.",
+      "pauseAfterMs": 19900,
       "action": { "type": "hover", "locator": { "kind": "css", "selector": ".annotation-panel__association" } },
       "callout": { "text": "Drawing over a target does not associate it. Overlap is not meaning.", "locator": { "kind": "css", "selector": ".annotation-panel__association" }, "placement": "left" },
       "screenshot": { "id": "no-association" }
@@ -146,11 +166,13 @@
     {
       "id": "select-hero-target",
       "narration": "So the association is made explicitly. First the hero target is chosen from the configured targets this observation captured.",
+      "pauseAfterMs": 8400,
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "hero matched" } }
     },
     {
       "id": "associate-hero",
       "narration": "Then the mark is bound to it. Now the record says this rectangle is about the hero, because a person said so, not because two shapes happened to overlap.",
+      "pauseAfterMs": 10200,
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Associate target hero" } },
       "screenshot": { "id": "associated" },
       "assertions": [
@@ -160,6 +182,7 @@
     {
       "id": "save-annotation",
       "narration": "Saving writes this set of marks to disk as one immutable annotation artifact, tied to the exact observation it was drawn on. From here it is evidence with provenance, not a sketch in a browser tab.",
+      "pauseAfterMs": 13200,
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Save annotation" } },
       "assertions": [
         { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__draft-summary" }, "name": "data-draft-dirty", "expected": "false", "timeoutMs": 15000 }
@@ -168,17 +191,20 @@
     {
       "id": "confirm-saved",
       "narration": "The annotation now appears in the saved list for this observation, which is what proves it survived the round trip to disk rather than merely looking saved.",
+      "pauseAfterMs": 10400,
       "action": { "type": "wait-for", "locator": { "kind": "css", "selector": ".annotation-panel__saved-list" }, "state": "visible", "timeoutMs": 15000 },
       "screenshot": { "id": "saved" }
     },
     {
       "id": "reload-viewer",
       "narration": "Reloading the viewer from scratch proves the point. Nothing is being remembered in the page.",
+      "pauseAfterMs": 6200,
       "action": { "type": "goto", "path": "/", "waitUntil": "load" }
     },
     {
       "id": "reselect-baseline",
       "narration": "Reopening the same observation brings the saved annotation back from disk, exactly as it was written.",
+      "pauseAfterMs": 6800,
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "observation baseline" }, "timeoutMs": 20000 },
       "screenshot": { "id": "reloaded" },
       "assertions": [
@@ -186,8 +212,15 @@
       ]
     },
     {
+      "id": "quieten-relationships-again",
+      "narration": "The relationship lines are back, because a view toggle is page state and a reload resets it. The annotation came back from disk, and the toggle did not. Switching the lines off again.",
+      "pauseAfterMs": 12500,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "checkbox", "name": "Relationships" } }
+    },
+    {
       "id": "open-saved",
       "narration": "Opening the saved annotation loads its marks for editing. What happens next is the part worth understanding.",
+      "pauseAfterMs": 7200,
       "action": { "type": "click", "locator": { "kind": "text", "text": "5 items, 0 confirmed" }, "timeoutMs": 15000 },
       "assertions": [
         { "type": "element-visible", "locator": { "kind": "text", "text": "Draft: revision" }, "timeoutMs": 15000 }
@@ -196,9 +229,51 @@
     {
       "id": "explain-revision",
       "narration": "The draft is labelled a revision, not an edit. Saving again will write a new annotation that records which one it revises, and the original stays on disk untouched. Evidence accumulates; it is never quietly rewritten, because the history of what someone thought is often the most useful part of the record.",
+      "pauseAfterMs": 20400,
       "action": { "type": "hover", "locator": { "kind": "text", "text": "Draft: revision" } },
       "callout": { "text": "Editing produces a revision. The earlier annotation is never overwritten.", "placement": "auto" },
       "screenshot": { "id": "revision" }
+    },
+    {
+      "id": "revise-select-mode",
+      "narration": "To prove it rather than just say it, the revision will change one thing. Select mode first, so a click picks up an existing mark instead of drawing a new one.",
+      "pauseAfterMs": 10600,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Select mode" } }
+    },
+    {
+      "id": "revise-select-point",
+      "narration": "The point on the first card was saved with no association at all.",
+      "pauseAfterMs": 4400,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Point annotation" } },
+      "assertions": [
+        { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__association" }, "name": "data-association-kind", "expected": "none" }
+      ]
+    },
+    {
+      "id": "revise-choose-card1",
+      "narration": "This time the person decides the point is about the first card, and chooses that target explicitly.",
+      "pauseAfterMs": 6600,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "card1 matched" } }
+    },
+    {
+      "id": "revise-associate-card1",
+      "narration": "The point is now bound to card1 in the draft. The saved original still says nothing about it, and it will keep saying nothing.",
+      "pauseAfterMs": 8400,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Associate target card1" } },
+      "assertions": [
+        { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__association" }, "name": "data-association-kind", "expected": "runtime-target" }
+      ]
+    },
+    {
+      "id": "save-revision",
+      "narration": "Saving writes a second annotation that names the first as the one it supersedes. Both are now on disk: the original exactly as it was, and the revision beside it. The history grew, and nothing in it was rewritten.",
+      "pauseAfterMs": 14200,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Save annotation" } },
+      "callout": { "text": "The revision is a new artifact that points back. The original is untouched.", "placement": "auto" },
+      "screenshot": { "id": "revision-saved" },
+      "assertions": [
+        { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__draft-summary" }, "name": "data-draft-dirty", "expected": "false", "timeoutMs": 15000 }
+      ]
     }
   ]
 }

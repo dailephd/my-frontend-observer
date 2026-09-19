@@ -241,12 +241,13 @@ The lab is an external tool, not an Observer dependency. Observer does not
 depend on it at build or run time, and `npm install` never fetches it.
 
 ```text
-@dailephd/my-dev-kit-lab@0.4.8 or later
+@dailephd/my-dev-kit-lab@0.4.8
 ```
 
-Version 0.4.8 is the minimum, because it is the first release with the
-locator-anchored positional pointer actions (`pointer-click` and
-`pointer-drag`) that annotation drawing needs.
+Use exactly this version. It is the version the four scenarios were accepted
+against, and it is the first release with the locator-anchored positional
+pointer actions (`pointer-click` and `pointer-drag`) that annotation drawing
+needs.
 
 Build Observer first. The tutorials run this checkout's unreleased v0.9
 implementation, not the published package:
@@ -296,7 +297,7 @@ Validation is read-only: it starts no process and needs no browser.
 npx --yes @dailephd/my-dev-kit-lab@0.4.8 tutorial run `
   --scenario examples/v09-demo/tutorials/01-annotation-basics.json `
   --target-contract .my-dev-kit-workflow/v0.9/tutorial-integration/target-contract.json `
-  --out $env:TEMP\my-frontend-observer-v09-tutorial-smoke\s01 `
+  --out $env:TEMP\my-frontend-observer-tutorial-review\v0.9\01-annotation-basics `
   --json
 ```
 
@@ -306,6 +307,42 @@ project; none of that belongs in tracked source.
 
 Each run gets a fresh target root, and each scenario builds its own starting
 state from scratch. No tutorial depends on another tutorial having run.
+
+### Reviewing the output
+
+The `--out` directory is the lab's run root. Its layout belongs to the lab and
+should not be reorganized:
+
+```text
+<out>/
+    target/          the disposable Observer project the tutorial worked in
+    artifacts/       tutorial.webm, tutorial.srt, tutorial.vtt, tutorial.md,
+                     tutorial-manifest.json
+    screenshots/     one PNG per requested screenshot
+    logs/            demo server and viewer process logs
+    temporary/       lab scratch space
+```
+
+A run is acceptable only when the printed `TutorialRunResultV1` reports
+`status: passed` and `cleanupErrors: []`. Treat the video as presentation, not
+proof. Correctness is checked by reading the canonical evidence under
+`<out>/target/.frontend-observer/`, for example the saved annotation, the
+promoted change contract and project acceptance, or the materialized reference
+revision. `docs/reports/v0.9-tutorial-end-to-end-acceptance.md` lists the
+checks used for each scenario.
+
+For a review bundle, run all four scenarios into sibling directories named
+after the scenario files (`01-annotation-basics`, `02-runtime-intent-contract`,
+`03-reference-authoring`, `04-reference-materialization`) under one root you
+own, such as `%TEMP%\my-frontend-observer-tutorial-review\v0.9`.
+
+### Pacing
+
+Every step carries a `pauseAfterMs` sized to its narration at 15 characters
+per second, never under 1.2 seconds. Without it a step lasts only as long as
+its action, and a multi-sentence subtitle would flash past in a fraction of a
+second. `tests/unit/v09TutorialScenarios.test.ts` enforces that floor, so
+lengthen the pause whenever you lengthen a narration.
 
 ### What prepare does
 
@@ -331,7 +368,18 @@ order of the frozen vocabularies in `viewer/src/annotation/`. Two consequences
 are worth knowing before editing a scenario: adding an option to one of those
 vocabularies shifts the counts, and the reference requirement form keeps its
 previous values when another mark is selected, so later steps step from where
-the last one left off rather than from empty.
+the last one left off rather than from empty. The runtime intent form does the
+opposite and resets to empty for every mark.
+
+Every select starts with an empty `Choose…` option, so from an empty form the
+first press lands on the first vocabulary entry. Region selects list the
+reference's own regions in import order (`header, hero, sidebar, content, cta,
+asset, footer`) followed by any region the draft proposes, such as
+`promo-band`. One press too many therefore selects a different, equally valid
+value rather than failing. That is why the scenarios assert the resulting
+structured intent (for example `"region": "footer"`) right after setting it.
+The per-step counts are listed in
+`docs/reports/v0.9-tutorial-end-to-end-acceptance.md`.
 
 ## 8. What lives where
 

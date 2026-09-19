@@ -9,6 +9,7 @@
     {
       "id": "open-viewer",
       "narration": "The previous tutorial recorded design intent against an approved reference. This one is about what happens when that intent becomes a reference in its own right, and about everything the system deliberately refuses to do on your behalf along the way.",
+      "pauseAfterMs": 16700,
       "action": { "type": "goto", "path": "/", "waitUntil": "load" },
       "assertions": [
         { "type": "element-visible", "locator": { "kind": "role", "role": "button", "name": "external-reference-approved" }, "timeoutMs": 20000 }
@@ -17,6 +18,7 @@
     {
       "id": "open-reference",
       "narration": "Opening the approved source reference. Everything that follows is authored against this image, and this image is never edited.",
+      "pauseAfterMs": 8400,
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "external-reference-approved" }, "timeoutMs": 20000 },
       "screenshot": { "id": "source-reference" },
       "assertions": [
@@ -28,82 +30,98 @@
     {
       "id": "create-mode",
       "narration": "First a new region, as before.",
+      "pauseAfterMs": 2000,
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Rectangle mode" } }
     },
     {
       "id": "create-draw",
       "narration": "Drawn around the band below the cards.",
+      "pauseAfterMs": 2600,
       "action": { "type": "pointer-drag", "locator": { "kind": "test-id", "testId": "reference-annotation-surface" }, "from": { "x": 0.3, "y": 0.42 }, "to": { "x": 0.62, "y": 0.56 }, "coordinateSpace": "fraction" }
     },
-    { "id": "create-name", "narration": "Named promo-band.", "action": { "type": "fill", "locator": { "kind": "role", "role": "textbox", "name": "Proposed region ID" }, "value": "promo-band" } },
-    { "id": "create-region", "narration": "Proposed as a new region.", "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Create candidate region" } } },
+    { "id": "create-name", "narration": "Named promo-band.", "pauseAfterMs": 1200, "action": { "type": "fill", "locator": { "kind": "role", "role": "textbox", "name": "Proposed region ID" }, "value": "promo-band" } },
+    { "id": "create-region", "narration": "Proposed as a new region.", "pauseAfterMs": 1700, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Create candidate region" } } },
     {
       "id": "create-confirm",
       "narration": "And confirmed.",
+      "pauseAfterMs": 1200,
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Confirm reference intent" } },
       "assertions": [
         { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__candidates" }, "name": "data-candidate-creates", "expected": "1" }
       ]
     },
 
-    { "id": "refine-select-mode", "narration": "Next a correction to a region that already exists.", "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Select mode" } } },
-    { "id": "refine-select-region", "narration": "The sidebar is chosen explicitly as the region being refined.", "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Select reference region sidebar" } } },
-    { "id": "refine-mode", "narration": "Rectangle mode again.", "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Rectangle mode" } } },
+    { "id": "refine-select-mode", "narration": "Next a correction to a region that already exists.", "pauseAfterMs": 3400, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Select mode" } } },
+    { "id": "refine-select-region", "narration": "The sidebar is chosen explicitly as the region being refined.", "pauseAfterMs": 4100, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Select reference region sidebar" } } },
+    { "id": "refine-mode", "narration": "Rectangle mode again.", "pauseAfterMs": 1400, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Rectangle mode" } } },
     {
       "id": "refine-draw",
       "narration": "The shape the sidebar should have.",
+      "pauseAfterMs": 2300,
       "action": { "type": "pointer-drag", "locator": { "kind": "test-id", "testId": "reference-annotation-surface" }, "from": { "x": 0.02, "y": 0.15 }, "to": { "x": 0.26, "y": 0.9 }, "coordinateSpace": "fraction" }
     },
-    { "id": "refine-apply", "narration": "Bound to the sidebar on purpose.", "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Refine selected region sidebar" } } },
+    { "id": "refine-apply", "narration": "Bound to the sidebar on purpose.", "pauseAfterMs": 2200, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Refine selected region sidebar" } } },
     {
       "id": "refine-confirm",
       "narration": "Confirmed.",
+      "pauseAfterMs": 1200,
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Confirm reference intent" } },
       "assertions": [
         { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__candidates" }, "name": "data-candidate-refinements", "expected": "1" }
       ]
     },
 
-    { "id": "req-a-mode", "narration": "Then two requirements, so there is something to choose between later.", "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Rectangle mode" } } },
+    { "id": "req-a-mode", "narration": "Then two requirements, so there is something to choose between later.", "pauseAfterMs": 4600, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Rectangle mode" } } },
     {
       "id": "req-a-draw",
       "narration": "The first is about the hero.",
+      "pauseAfterMs": 1900,
       "action": { "type": "pointer-drag", "locator": { "kind": "test-id", "testId": "reference-annotation-surface" }, "from": { "x": 0.34, "y": 0.16 }, "to": { "x": 0.9, "y": 0.36 }, "coordinateSpace": "fraction" }
     },
-    { "id": "req-a-cat-1", "narration": "Protected.", "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement category" }, "key": "ArrowDown" } },
-    { "id": "req-a-cat-2", "narration": "Stepping down.", "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement category" }, "key": "ArrowDown" } },
-    { "id": "req-a-cat-3", "narration": "Protected.", "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement category" }, "key": "ArrowDown" } },
-    { "id": "req-a-subject", "narration": "A property of a single region.", "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement subject" }, "key": "ArrowDown" } },
-    { "id": "req-a-region-1", "narration": "Choosing the region.", "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
-    { "id": "req-a-region-2", "narration": "The hero.", "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
-    { "id": "req-a-prop-1", "narration": "Choosing the property.", "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Region property" }, "key": "ArrowDown" } },
-    { "id": "req-a-prop-2", "narration": "Stepping down.", "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Region property" }, "key": "ArrowDown" } },
-    { "id": "req-a-prop-3", "narration": "Width.", "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Region property" }, "key": "ArrowDown" } },
-    { "id": "req-a-tol-1", "narration": "With a tolerance.", "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Tolerance" }, "key": "ArrowDown" } },
-    { "id": "req-a-tol-2", "narration": "In reference pixels.", "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Tolerance" }, "key": "ArrowDown" } },
-    { "id": "req-a-amount", "narration": "Four.", "action": { "type": "fill", "locator": { "kind": "role", "role": "spinbutton", "name": "Tolerance amount" }, "value": "4" } },
-    { "id": "req-a-set", "narration": "Set as a candidate.", "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Set candidate requirement" } } },
-    { "id": "req-a-confirm", "narration": "And confirmed.", "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Confirm reference intent" } } },
+    { "id": "req-a-cat-1", "narration": "The category is protected, the third option. The first press lands on requested.", "pauseAfterMs": 5400, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement category" }, "key": "ArrowDown" } },
+    { "id": "req-a-cat-2", "narration": "Expected-dependent.", "pauseAfterMs": 1300, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement category" }, "key": "ArrowDown" } },
+    { "id": "req-a-cat-3", "narration": "Protected.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement category" }, "key": "ArrowDown" } },
+    { "id": "req-a-subject", "narration": "A property of a single region.", "pauseAfterMs": 2000, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement subject" }, "key": "ArrowDown" } },
+    { "id": "req-a-region-1", "narration": "Choosing the region. Header first.", "pauseAfterMs": 2300, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
+    { "id": "req-a-region-2", "narration": "The hero.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
+    { "id": "req-a-prop-1", "narration": "Choosing the property. X first.", "pauseAfterMs": 2100, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Region property" }, "key": "ArrowDown" } },
+    { "id": "req-a-prop-2", "narration": "Y.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Region property" }, "key": "ArrowDown" } },
+    { "id": "req-a-prop-3", "narration": "Width.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Region property" }, "key": "ArrowDown" } },
+    { "id": "req-a-tol-1", "narration": "With a tolerance. Exact comes first, and would allow no difference at all.", "pauseAfterMs": 5000, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Tolerance" }, "key": "ArrowDown" } },
+    { "id": "req-a-tol-2", "narration": "In reference pixels.", "pauseAfterMs": 1400, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Tolerance" }, "key": "ArrowDown" } },
+    { "id": "req-a-amount", "narration": "Four.", "pauseAfterMs": 1200, "action": { "type": "fill", "locator": { "kind": "role", "role": "spinbutton", "name": "Tolerance amount" }, "value": "4" } },
+    { "id": "req-a-set", "narration": "Set as a candidate.", "pauseAfterMs": 1300, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Set candidate requirement" } } },
+    { "id": "req-a-confirm", "narration": "And confirmed.", "pauseAfterMs": 1200, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Confirm reference intent" } } },
 
-    { "id": "req-b-mode", "narration": "The second requirement is about the footer.", "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Rectangle mode" } } },
+    { "id": "req-b-mode", "narration": "The second requirement is about the footer.", "pauseAfterMs": 2900, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Rectangle mode" } } },
     {
       "id": "req-b-draw",
       "narration": "Marked at the bottom of the design.",
+      "pauseAfterMs": 2400,
       "action": { "type": "pointer-drag", "locator": { "kind": "test-id", "testId": "reference-annotation-surface" }, "from": { "x": 0.34, "y": 0.91 }, "to": { "x": 0.9, "y": 0.99 }, "coordinateSpace": "fraction" }
     },
-    { "id": "req-b-cat", "narration": "Preserved rather than protected.", "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement category" }, "key": "ArrowDown" } },
-    { "id": "req-b-region-1", "narration": "Moving the region selection down to the footer.", "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
-    { "id": "req-b-region-2", "narration": "Past sidebar.", "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
-    { "id": "req-b-region-3", "narration": "Past content.", "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
-    { "id": "req-b-region-4", "narration": "Past the call to action.", "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
-    { "id": "req-b-region-5", "narration": "Past the illustration.", "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
-    { "id": "req-b-region-6", "narration": "The footer.", "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
-    { "id": "req-b-prop", "narration": "Its height.", "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Region property" }, "key": "ArrowDown" } },
-    { "id": "req-b-amount", "narration": "Eight pixels of slack.", "action": { "type": "fill", "locator": { "kind": "role", "role": "spinbutton", "name": "Tolerance amount" }, "value": "8" } },
-    { "id": "req-b-set", "narration": "Set as a candidate.", "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Set candidate requirement" } } },
+    { "id": "req-b-cat", "narration": "Preserved rather than protected. This form keeps its values from the previous requirement, so one press from protected is enough.", "pauseAfterMs": 8600, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement category" }, "key": "ArrowDown" } },
+    { "id": "req-b-region-1", "narration": "The region field still holds hero from the first requirement, so the selection steps down from there. Sidebar.", "pauseAfterMs": 7400, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
+    { "id": "req-b-region-2", "narration": "Content.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
+    { "id": "req-b-region-3", "narration": "The call to action.", "pauseAfterMs": 1300, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
+    { "id": "req-b-region-4", "narration": "The illustration.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
+    { "id": "req-b-region-5", "narration": "The footer.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
+    { "id": "req-b-prop", "narration": "The property still holds width, so one press moves it to height.", "pauseAfterMs": 4300, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Region property" }, "key": "ArrowDown" } },
+    { "id": "req-b-amount", "narration": "The tolerance is still measured in reference pixels. Eight of them for the footer's height.", "pauseAfterMs": 6100, "action": { "type": "fill", "locator": { "kind": "role", "role": "spinbutton", "name": "Tolerance amount" }, "value": "8" } },
+    {
+      "id": "req-b-set",
+      "narration": "Set as a candidate.",
+      "pauseAfterMs": 1300,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Set candidate requirement" } },
+      "assertions": [
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-candidate-intent='true']" }, "expected": "\"region\": \"footer\"" },
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-candidate-intent='true']" }, "expected": "\"property\": \"height\"" }
+      ]
+    },
     {
       "id": "req-b-confirm",
       "narration": "Confirmed, just as genuinely as the first one.",
+      "pauseAfterMs": 3100,
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Confirm reference intent" } },
       "screenshot": { "id": "four-confirmed" }
     },
@@ -111,8 +129,10 @@
     {
       "id": "materialize-blocked",
       "narration": "Four confirmed items, and nothing has been materialized. Confirmation says you mean it. It does not say where it should go, and the panel will not even offer to act until the annotation is on disk.",
+      "pauseAfterMs": 13200,
       "action": { "type": "hover", "locator": { "kind": "css", "selector": "[data-materialization-blocked='true']" } },
       "callout": { "text": "Confirming intent does not materialize it.", "placement": "auto" },
+      "screenshot": { "id": "confirmed-not-materialized" },
       "assertions": [
         { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-materialization-blocked='true']" }, "expected": "Save the annotation before materializing" }
       ]
@@ -120,6 +140,7 @@
     {
       "id": "save",
       "narration": "Saving writes the four confirmed items as immutable evidence.",
+      "pauseAfterMs": 4100,
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Save annotation" } },
       "assertions": [
         { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__draft-summary" }, "name": "data-draft-dirty", "expected": "false", "timeoutMs": 15000 }
@@ -128,6 +149,7 @@
     {
       "id": "show-warning",
       "narration": "Now the panel offers to act, and it says up front exactly what acting will and will not do.",
+      "pauseAfterMs": 6100,
       "action": { "type": "wait-for", "locator": { "kind": "css", "selector": ".annotation-panel__materialization .annotation-panel__proposal-list" }, "state": "visible", "timeoutMs": 15000 },
       "screenshot": { "id": "materialization-list" },
       "assertions": [
@@ -138,16 +160,19 @@
     {
       "id": "select-create",
       "narration": "Selecting the new region.",
+      "pauseAfterMs": 1700,
       "action": { "type": "click", "locator": { "kind": "text", "text": "region create promo-band" } }
     },
     {
       "id": "select-refine",
       "narration": "And the sidebar correction.",
+      "pauseAfterMs": 1800,
       "action": { "type": "click", "locator": { "kind": "text", "text": "region refine sidebar" } }
     },
     {
       "id": "select-req-a",
       "narration": "And the hero width requirement. The footer requirement is deliberately left unselected. It is confirmed, it is correct, and it is simply not part of this revision. Selection is where you decide what this particular revision is about.",
+      "pauseAfterMs": 15600,
       "action": { "type": "click", "locator": { "kind": "text", "text": "requirement {\"category\":\"protected\"" } },
       "callout": { "text": "Only selected confirmed items enter the new revision.", "placement": "auto" },
       "screenshot": { "id": "three-of-four-selected" }
@@ -155,6 +180,7 @@
     {
       "id": "materialize",
       "narration": "Materializing writes a brand new reference revision containing the three selected items.",
+      "pauseAfterMs": 5900,
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Materialize selected into new reference revision" } },
       "assertions": [
         { "type": "attribute-equals", "locator": { "kind": "css", "selector": "[data-materialized-lifecycle]" }, "name": "data-materialized-lifecycle", "expected": "imported", "timeoutMs": 20000 }
@@ -163,6 +189,7 @@
     {
       "id": "inspect-result",
       "narration": "Read the result carefully, because it is the whole point of this tutorial. The new reference is imported, not approved. It supersedes the one it came from, and that source reference is untouched on disk. Its image is the original image, not a picture with your annotations burned into it, because the marks were how you decided, not what you decided.",
+      "pauseAfterMs": 23400,
       "action": { "type": "hover", "locator": { "kind": "css", "selector": "[data-materialized-lifecycle]" } },
       "callout": { "text": "Imported is not approved. Materializing is not approving.", "placement": "auto" },
       "screenshot": { "id": "materialized" },
@@ -176,6 +203,7 @@
     {
       "id": "explain-no-auto-switch",
       "narration": "One last thing worth noticing: the viewer did not jump to the new revision. Creating something and adopting it are separate decisions too, and quietly moving you onto an unapproved reference would make the approval step meaningless. The new revision is waiting in the evidence list for whenever somebody decides to approve it.",
+      "pauseAfterMs": 21800,
       "action": { "type": "hover", "locator": { "kind": "test-id", "testId": "reference-annotation-surface" } },
       "screenshot": { "id": "source-still-open" },
       "assertions": [

@@ -9,8 +9,11 @@ complete in this repository. All seven v0.9 implementation prompts passed,
 including integrated real-Chromium acceptance and a local packed
 installed-candidate smoke. v0.9 is not released: it is not published to npm,
 the package version is still `0.8.1`, and cross-platform pre-release readiness
-and release preparation are pending. The viewer protocol is `1.3.0` and the
-visual annotation schema is `1.0.0`. See "v0.9 status" below.
+on the final candidate and release preparation are pending. The viewer
+protocol is `1.3.0` and the visual annotation schema is `1.0.0`. The
+repository also holds a deterministic demo and four tutorial scenarios for
+v0.9, recorded by the external `@dailephd/my-dev-kit-lab@0.4.8` tool. See
+"v0.9 status" below.
 
 The project is published at package version `0.8.1` (roadmap v0.8.1,
 Project Workflow CLI and Human-Readable Evidence Aliases; observation schema
@@ -1066,9 +1069,46 @@ acceptance.
 
 Validation state: the full local validation suite, the integrated acceptance
 suite, and all three packed installed-candidate smokes passed locally on
-Windows. The cross-platform pre-release readiness workflow is wired for the
-v0.9 smoke but has not yet run for this candidate. See the Prompt 7 report for
-exact results.
+Windows. See the Prompt 7 report for exact results. A cross-platform
+pre-release readiness run passed on Windows, Linux, and macOS for the Prompt 7
+commit `a78a058` (`docs/reports/v0.9-pre-release-readiness.md`). That run is
+historical evidence only. It did not contain the demo and tutorial commits
+described below, so it is not readiness evidence for the final candidate.
+
+### v0.9 demo and tutorials (release support, not product behavior)
+
+- **Demo foundation** (commit `59ae009`,
+  `docs/reports/v0.9-demo-foundation.md`): a deterministic demo application
+  in `examples/v09-demo/` with ten stable region names, nine frozen states, a
+  loopback-only demo server, a disposable-target materializer, and a fixed
+  1440x900 reference PNG.
+- **Tutorial integration** (commit `6895b30`,
+  `docs/reports/v0.9-tutorial-integration.md`): four `TutorialScenarioV1`
+  scenarios in `examples/v09-demo/tutorials/`, a per-run target-contract
+  generator, and a prepare command that builds each disposable target through
+  the canonical `init`, `capture`, contract, and reference commands. The only
+  product change was two optional `data-testid` attributes on the viewer
+  drawing surfaces.
+- **End-to-end acceptance**
+  (`docs/reports/v0.9-tutorial-end-to-end-acceptance.md`): all four tutorials
+  regenerated from clean targets with `@dailephd/my-dev-kit-lab@0.4.8`,
+  structural and content acceptance, canonical evidence checks, and a full
+  local regression. Scenario narration, reading pauses, and screenshot
+  requests were corrected in this stage. Human visual review of the videos is
+  pending.
+
+The four scenarios are annotation basics, runtime intent to an active change
+contract, reference authoring, and reference materialization. After each run
+the canonical evidence is read directly from the disposable target. The checks
+prove, for example, that only the two selected clauses were promoted, that
+`remove` and `inspect` never became clauses, and that a materialized reference
+revision is `imported`, supersedes its approved source, and reuses the source
+image bytes unchanged.
+
+`my-dev-kit-lab` is an external tool invoked through `npx`. It is not an
+Observer dependency, and Observer has no tutorial command, recorder, subtitle
+writer, or tutorial manifest schema. `examples/v09-demo/` is excluded from the
+npm package.
 
 ## Not implemented
 
@@ -1120,8 +1160,9 @@ for the completeness audit, and
 for the cross-platform readiness validation that preceded this release.
 
 v0.9 (structured visual annotation) implementation is complete but not
-released - see "v0.9 status" above. The next step is v0.9 pre-release
-readiness and controlled release preparation: run the exact-candidate
-Windows/Linux/macOS pre-release readiness workflow, reconcile any
-cross-platform failures, then prepare the `0.9.0` release separately. v0.10
+released - see "v0.9 status" above. The next step is human visual review of
+the four tutorial videos. After approval, rerun the exact-candidate
+Windows/Linux/macOS pre-release readiness workflow on the final commit,
+reconcile any cross-platform failures, then prepare the `0.9.0` release
+separately. v0.10
 (full graphical human-LLM workflow) remains future - see `docs/ROADMAP.md`.

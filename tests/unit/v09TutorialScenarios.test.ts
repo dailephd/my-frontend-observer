@@ -99,6 +99,22 @@ describe('v0.9 tutorial scenarios - committed set', () => {
     }
   });
 
+  it('holds every step long enough to read its narration', async () => {
+    // Without a pause a step lasts only as long as its action, which left
+    // multi-sentence subtitle cues on screen for a fraction of a second.
+    // 15 characters per second, never under 1.2 seconds, within the lab's
+    // 60 second per-step limit.
+    for (const { file, value } of await loadScenarios()) {
+      for (const step of value.steps as { id: string; narration: string; pauseAfterMs?: number }[]) {
+        const where = `${file}/${step.id}`;
+        const readingMs = Math.max(1200, Math.ceil((step.narration.length / 15) * 10) * 100);
+        expect(Number.isInteger(step.pauseAfterMs), `${where} pauseAfterMs`).toBe(true);
+        expect(step.pauseAfterMs!, where).toBeGreaterThanOrEqual(readingMs);
+        expect(step.pauseAfterMs!, where).toBeLessThanOrEqual(60_000);
+      }
+    }
+  });
+
   it('uses only released lab actions, locators and assertions', async () => {
     for (const { file, value } of await loadScenarios()) {
       expect([...Object.keys(value)].every((key) => SCENARIO_KEYS.has(key)), file).toBe(true);

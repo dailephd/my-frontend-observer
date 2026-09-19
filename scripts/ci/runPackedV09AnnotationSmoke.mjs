@@ -303,6 +303,8 @@ async function main() {
       if (!info?.isFile() || info.size === 0) fail(`installed package is missing ${relative}`);
     }
     if (await stat(path.join(installedDir, 'scripts')).catch(() => undefined)) fail('readiness scripts were unexpectedly packaged');
+    // The v0.9 demo and tutorial sources are repository-owned examples, never npm package content.
+    if (await stat(path.join(installedDir, 'examples')).catch(() => undefined)) fail('examples/v09-demo was unexpectedly packaged');
     summary.packageContentsPass = true;
 
     // --- purity: bin and bare-specifier resolution stay inside the consumer's node_modules ---

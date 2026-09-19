@@ -490,7 +490,13 @@ Current status: implementation complete in the repository and validated
 locally, including real-Chromium integrated acceptance and a packed
 installed-candidate smoke. Not released: the latest published package remains
 `0.8.1`, and cross-platform pre-release readiness and release preparation are
-pending. The per-prompt implementation reports and the integrated acceptance
+pending. The v0.9 implementation is complete and now includes repository-owned
+deterministic demo and tutorial acceptance infrastructure under
+`examples/v09-demo/`. That infrastructure is release support and
+documentation. It is not a new annotation evidence family or v0.10 behavior,
+and it is not shipped in the npm package. An earlier readiness run predates
+the demo and tutorial commits, so readiness must run again on the final
+candidate. The per-prompt implementation reports and the integrated acceptance
 report live under `docs/reports/v0.9-*.md`. The source-grounding report is
 `docs/reports/v0.9-architecture-retrieval.md`, and the concrete file-level,
 test-level, and seven-prompt implementation plan is

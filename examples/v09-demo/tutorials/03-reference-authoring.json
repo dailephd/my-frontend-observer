@@ -14,6 +14,7 @@
     {
       "id": "open-viewer",
       "narration": "So far everything has been about what the application does. This tutorial is about what it is supposed to look like, which is a different kind of evidence and needs different care.",
+      "pauseAfterMs": 12000,
       "action": {
         "type": "goto",
         "path": "/",
@@ -34,6 +35,7 @@
     {
       "id": "open-reference",
       "narration": "This is an external design reference that has been imported and then explicitly approved. Approval matters: an imported image is just a picture somebody handed over, while an approved one is a picture the team has agreed to measure against.",
+      "pauseAfterMs": 16000,
       "action": {
         "type": "click",
         "locator": {
@@ -60,6 +62,7 @@
     {
       "id": "explain-coordinates",
       "narration": "Read the label on this canvas carefully: reference image, 1440 by 900 pixels. Those are pixels in a flat image file. They are not the CSS pixels the browser laid out when the application ran. The two coordinate systems look identical and mean completely different things, so Observer keeps them apart and never quietly converts one into the other.",
+      "pauseAfterMs": 23200,
       "action": {
         "type": "hover",
         "locator": {
@@ -70,6 +73,9 @@
       "callout": {
         "text": "Reference-image pixels are not runtime CSS pixels.",
         "placement": "auto"
+      },
+      "screenshot": {
+        "id": "reference-coordinates"
       },
       "assertions": [
         {
@@ -86,6 +92,7 @@
     {
       "id": "show-source-regions",
       "narration": "The reference already carries seven named regions that came in with it. They are the vocabulary anything said about this design has to be said in.",
+      "pauseAfterMs": 9800,
       "action": {
         "type": "hover",
         "locator": {
@@ -108,6 +115,7 @@
     {
       "id": "create-rect-mode",
       "narration": "The design has a band between the cards and the call to action that nobody named when the reference was imported. Proposing a new region for it starts with drawing one.",
+      "pauseAfterMs": 11200,
       "action": {
         "type": "click",
         "locator": {
@@ -120,6 +128,7 @@
     {
       "id": "create-rect-draw",
       "narration": "The rectangle is drawn around the band. Drawing it proposes nothing yet; it is still only a shape on an image.",
+      "pauseAfterMs": 7400,
       "action": {
         "type": "pointer-drag",
         "locator": {
@@ -140,6 +149,7 @@
     {
       "id": "name-region",
       "narration": "Naming it is the deliberate part. A region needs an identity before anything can be required of it, because a requirement has to be about something you can point to by name later.",
+      "pauseAfterMs": 12000,
       "action": {
         "type": "fill",
         "locator": {
@@ -153,6 +163,7 @@
     {
       "id": "create-region",
       "narration": "That turns the rectangle into a proposed new region.",
+      "pauseAfterMs": 3500,
       "action": {
         "type": "click",
         "locator": {
@@ -183,6 +194,7 @@
     {
       "id": "confirm-create",
       "narration": "And confirming it says the proposal is meant seriously.",
+      "pauseAfterMs": 3700,
       "action": {
         "type": "click",
         "locator": {
@@ -209,6 +221,7 @@
     {
       "id": "select-mode-refine",
       "narration": "Existing regions can be corrected too. The sidebar in this reference was traced a little loosely when it was imported.",
+      "pauseAfterMs": 7900,
       "action": {
         "type": "click",
         "locator": {
@@ -221,6 +234,7 @@
     {
       "id": "select-sidebar-region",
       "narration": "Selecting the sidebar region first, so the refinement has an unambiguous subject.",
+      "pauseAfterMs": 5400,
       "action": {
         "type": "click",
         "locator": {
@@ -233,6 +247,7 @@
     {
       "id": "refine-rect-mode",
       "narration": "Then drawing the shape it should have had.",
+      "pauseAfterMs": 2800,
       "action": {
         "type": "click",
         "locator": {
@@ -245,6 +260,7 @@
     {
       "id": "refine-rect-draw",
       "narration": "Again, the rectangle on its own says nothing. It sits over the sidebar, and Observer still will not assume the two have anything to do with each other.",
+      "pauseAfterMs": 10100,
       "action": {
         "type": "pointer-drag",
         "locator": {
@@ -264,11 +280,15 @@
       "callout": {
         "text": "Drawing around a region does not bind it.",
         "placement": "auto"
+      },
+      "screenshot": {
+        "id": "drawn-not-bound"
       }
     },
     {
       "id": "refine-region",
       "narration": "The binding is the explicit act: refine the selected sidebar region to this shape.",
+      "pauseAfterMs": 5500,
       "action": {
         "type": "click",
         "locator": {
@@ -298,7 +318,8 @@
     },
     {
       "id": "confirm-refine",
-      "narration": "Confirmed.",
+      "narration": "Confirmed. The refinement is a proposal about the sidebar. The approved reference itself has not changed.",
+      "pauseAfterMs": 7000,
       "action": {
         "type": "click",
         "locator": {
@@ -325,6 +346,7 @@
     {
       "id": "property-rect-mode",
       "narration": "Regions describe where things are. Requirements say which of those facts actually matter. Here is the difference that trips people up most: everything visible in this image is evidence, and almost none of it is automatically a requirement.",
+      "pauseAfterMs": 16000,
       "action": {
         "type": "click",
         "locator": {
@@ -337,6 +359,7 @@
     {
       "id": "property-rect-draw",
       "narration": "Marking the hero banner to talk about its width.",
+      "pauseAfterMs": 3200,
       "action": {
         "type": "pointer-drag",
         "locator": {
@@ -356,7 +379,8 @@
     },
     {
       "id": "property-category-1",
-      "narration": "The category is protected: this width is not allowed to drift.",
+      "narration": "The category is protected: this width is not allowed to drift. The list starts at requested.",
+      "pauseAfterMs": 6200,
       "action": {
         "type": "press",
         "locator": {
@@ -369,7 +393,8 @@
     },
     {
       "id": "property-category-2",
-      "narration": "Stepping past expected-dependent.",
+      "narration": "Expected-dependent.",
+      "pauseAfterMs": 1300,
       "action": {
         "type": "press",
         "locator": {
@@ -383,6 +408,7 @@
     {
       "id": "property-category-3",
       "narration": "Protected.",
+      "pauseAfterMs": 1200,
       "action": {
         "type": "press",
         "locator": {
@@ -396,6 +422,7 @@
     {
       "id": "property-subject",
       "narration": "There are three shapes a requirement can take. This one is about a property of a single region.",
+      "pauseAfterMs": 6400,
       "action": {
         "type": "press",
         "locator": {
@@ -408,7 +435,8 @@
     },
     {
       "id": "property-region-1",
-      "narration": "Choosing which region.",
+      "narration": "Choosing which region. The first in the list is the header.",
+      "pauseAfterMs": 4000,
       "action": {
         "type": "press",
         "locator": {
@@ -422,6 +450,7 @@
     {
       "id": "property-region-2",
       "narration": "The hero.",
+      "pauseAfterMs": 1200,
       "action": {
         "type": "press",
         "locator": {
@@ -434,7 +463,8 @@
     },
     {
       "id": "property-prop-1",
-      "narration": "And which property.",
+      "narration": "And which property. The first is x.",
+      "pauseAfterMs": 2400,
       "action": {
         "type": "press",
         "locator": {
@@ -447,7 +477,8 @@
     },
     {
       "id": "property-prop-2",
-      "narration": "Stepping past y.",
+      "narration": "Then y.",
+      "pauseAfterMs": 1200,
       "action": {
         "type": "press",
         "locator": {
@@ -461,6 +492,7 @@
     {
       "id": "property-prop-3",
       "narration": "Width.",
+      "pauseAfterMs": 1200,
       "action": {
         "type": "press",
         "locator": {
@@ -474,6 +506,7 @@
     {
       "id": "property-tolerance-1",
       "narration": "A requirement without a tolerance is a trap, because no implementation ever matches a design to the exact pixel.",
+      "pauseAfterMs": 7500,
       "action": {
         "type": "press",
         "locator": {
@@ -487,6 +520,7 @@
     {
       "id": "property-tolerance-2",
       "narration": "Measured in reference-image pixels, which is the only unit this image can honestly speak in.",
+      "pauseAfterMs": 6200,
       "action": {
         "type": "press",
         "locator": {
@@ -500,6 +534,7 @@
     {
       "id": "property-amount",
       "narration": "Four pixels either way.",
+      "pauseAfterMs": 1600,
       "action": {
         "type": "fill",
         "locator": {
@@ -513,6 +548,7 @@
     {
       "id": "property-set",
       "narration": "That is a real requirement: the hero's width, protected, to within four reference pixels.",
+      "pauseAfterMs": 6000,
       "action": {
         "type": "click",
         "locator": {
@@ -543,6 +579,7 @@
     {
       "id": "property-confirm",
       "narration": "Confirmed.",
+      "pauseAfterMs": 1200,
       "action": {
         "type": "click",
         "locator": {
@@ -558,6 +595,7 @@
     {
       "id": "relationship-rect-mode",
       "narration": "The second shape of requirement is not about one region at all.",
+      "pauseAfterMs": 4200,
       "action": {
         "type": "click",
         "locator": {
@@ -569,7 +607,8 @@
     },
     {
       "id": "relationship-rect-draw",
-      "narration": "Marking the top of the design, where the header sits above the hero.",
+      "narration": "Marking the top of the design, where the header meets the hero.",
+      "pauseAfterMs": 4200,
       "action": {
         "type": "pointer-drag",
         "locator": {
@@ -590,6 +629,7 @@
     {
       "id": "relationship-subject-1",
       "narration": "The form still holds protected from the last requirement, which is right for this one too. Only the shape of the claim changes: a relationship between two regions rather than a property of one.",
+      "pauseAfterMs": 12900,
       "action": {
         "type": "press",
         "locator": {
@@ -602,7 +642,8 @@
     },
     {
       "id": "relationship-pick",
-      "narration": "The list is built from relationships Observer actually derived from this reference's own geometry. You cannot require a relationship the image does not contain, which stops a requirement from being wishful thinking.",
+      "narration": "The list is built from relationships Observer actually derived from this reference's own geometry. You cannot require a relationship the image does not contain, which stops a requirement from being wishful thinking. The first one is that the header and the hero overlap horizontally, meaning they share horizontal extent.",
+      "pauseAfterMs": 21400,
       "action": {
         "type": "press",
         "locator": {
@@ -615,7 +656,8 @@
     },
     {
       "id": "relationship-set",
-      "narration": "Setting it.",
+      "narration": "Setting it as the candidate requirement: the header and the hero must keep overlapping horizontally.",
+      "pauseAfterMs": 6700,
       "action": {
         "type": "click",
         "locator": {
@@ -632,12 +674,21 @@
             "selector": "[data-candidate-intent='true']"
           },
           "expected": "region-relationship"
+        },
+        {
+          "type": "text-contains",
+          "locator": {
+            "kind": "css",
+            "selector": "[data-candidate-intent=true]"
+          },
+          "expected": "\"relationship\": \"horizontally-overlapping\""
         }
       ]
     },
     {
       "id": "relationship-confirm",
       "narration": "Confirmed.",
+      "pauseAfterMs": 1200,
       "action": {
         "type": "click",
         "locator": {
@@ -653,6 +704,7 @@
     {
       "id": "measurement-rect-mode",
       "narration": "The third shape is a measurement: a distance the design depends on, which belongs to neither region on its own.",
+      "pauseAfterMs": 7400,
       "action": {
         "type": "click",
         "locator": {
@@ -665,6 +717,7 @@
     {
       "id": "measurement-rect-draw",
       "narration": "Marking the vertical space between the hero and the call to action.",
+      "pauseAfterMs": 4500,
       "action": {
         "type": "pointer-drag",
         "locator": {
@@ -685,6 +738,7 @@
     {
       "id": "measurement-category-1",
       "narration": "This one is preserved rather than protected: it should survive, but it is not a hard boundary.",
+      "pauseAfterMs": 6300,
       "action": {
         "type": "press",
         "locator": {
@@ -698,6 +752,7 @@
     {
       "id": "measurement-subject-1",
       "narration": "And the shape is a measurement between two regions.",
+      "pauseAfterMs": 3400,
       "action": {
         "type": "press",
         "locator": {
@@ -710,7 +765,8 @@
     },
     {
       "id": "measurement-subject-region-1",
-      "narration": "From the hero.",
+      "narration": "The measurement starts from a subject region. This field was never used before, so it starts empty. Header first.",
+      "pauseAfterMs": 7600,
       "action": {
         "type": "press",
         "locator": {
@@ -724,6 +780,7 @@
     {
       "id": "measurement-subject-region-2",
       "narration": "The hero.",
+      "pauseAfterMs": 1200,
       "action": {
         "type": "press",
         "locator": {
@@ -736,7 +793,8 @@
     },
     {
       "id": "measurement-related-1",
-      "narration": "To the call to action.",
+      "narration": "It runs to a related region, the call to action, further down the same list. Header.",
+      "pauseAfterMs": 5600,
       "action": {
         "type": "press",
         "locator": {
@@ -749,7 +807,8 @@
     },
     {
       "id": "measurement-related-2",
-      "narration": "Stepping down.",
+      "narration": "Hero.",
+      "pauseAfterMs": 1200,
       "action": {
         "type": "press",
         "locator": {
@@ -762,7 +821,8 @@
     },
     {
       "id": "measurement-related-3",
-      "narration": "Stepping down.",
+      "narration": "Sidebar.",
+      "pauseAfterMs": 1200,
       "action": {
         "type": "press",
         "locator": {
@@ -775,7 +835,8 @@
     },
     {
       "id": "measurement-related-4",
-      "narration": "Stepping down.",
+      "narration": "Content.",
+      "pauseAfterMs": 1200,
       "action": {
         "type": "press",
         "locator": {
@@ -789,6 +850,7 @@
     {
       "id": "measurement-related-5",
       "narration": "The call to action.",
+      "pauseAfterMs": 1300,
       "action": {
         "type": "press",
         "locator": {
@@ -802,6 +864,7 @@
     {
       "id": "measurement-kind",
       "narration": "And the measurement is the vertical gap between them.",
+      "pauseAfterMs": 3600,
       "action": {
         "type": "press",
         "locator": {
@@ -815,6 +878,7 @@
     {
       "id": "measurement-amount",
       "narration": "The reference-pixel tolerance carries over from the previous requirement; six pixels of slack for this gap.",
+      "pauseAfterMs": 7200,
       "action": {
         "type": "fill",
         "locator": {
@@ -828,6 +892,7 @@
     {
       "id": "measurement-set",
       "narration": "Property, relationship and measurement are three genuinely different claims. Collapsing them into one would lose exactly the distinction a designer cares about.",
+      "pauseAfterMs": 10700,
       "action": {
         "type": "click",
         "locator": {
@@ -858,6 +923,7 @@
     {
       "id": "measurement-confirm",
       "narration": "Confirmed.",
+      "pauseAfterMs": 1200,
       "action": {
         "type": "click",
         "locator": {
@@ -873,6 +939,7 @@
     {
       "id": "informational-text",
       "narration": "Not everything worth saying about a design is a requirement.",
+      "pauseAfterMs": 4000,
       "action": {
         "type": "fill",
         "locator": {
@@ -885,7 +952,8 @@
     },
     {
       "id": "informational-mode",
-      "narration": "Note mode.",
+      "narration": "Note mode, with the note text already written.",
+      "pauseAfterMs": 3100,
       "action": {
         "type": "click",
         "locator": {
@@ -898,6 +966,7 @@
     {
       "id": "informational-place",
       "narration": "A question for the design team, placed beside the illustration.",
+      "pauseAfterMs": 4200,
       "action": {
         "type": "pointer-click",
         "locator": {
@@ -914,6 +983,7 @@
     {
       "id": "informational-mark",
       "narration": "Marking it informational records it honestly as a remark rather than dressing it up as a rule.",
+      "pauseAfterMs": 6300,
       "action": {
         "type": "click",
         "locator": {
@@ -936,6 +1006,7 @@
     {
       "id": "informational-confirm",
       "narration": "Confirmed as a remark.",
+      "pauseAfterMs": 1500,
       "action": {
         "type": "click",
         "locator": {
@@ -948,6 +1019,7 @@
     {
       "id": "asset-select-mode",
       "narration": "There is one more informational kind worth showing, because it is the one people most often expect to behave like a requirement.",
+      "pauseAfterMs": 8600,
       "action": {
         "type": "click",
         "locator": {
@@ -960,6 +1032,7 @@
     {
       "id": "asset-select-region",
       "narration": "Selecting the illustration region.",
+      "pauseAfterMs": 2300,
       "action": {
         "type": "click",
         "locator": {
@@ -972,6 +1045,7 @@
     {
       "id": "asset-point-mode",
       "narration": "Point mode.",
+      "pauseAfterMs": 1200,
       "action": {
         "type": "click",
         "locator": {
@@ -984,6 +1058,7 @@
     {
       "id": "asset-place",
       "narration": "Placing a point to hang the remark on.",
+      "pauseAfterMs": 2600,
       "action": {
         "type": "pointer-click",
         "locator": {
@@ -1000,6 +1075,7 @@
     {
       "id": "asset-mark",
       "narration": "Marking the region asset-sensitive says its exact imagery matters to a human eye. It stays informational on purpose. An image being important is not the same as a checkable claim about geometry, and pretending otherwise would produce a requirement that either never fails or fails for reasons nobody can act on.",
+      "pauseAfterMs": 20800,
       "action": {
         "type": "click",
         "locator": {
@@ -1026,6 +1102,7 @@
     {
       "id": "asset-confirm",
       "narration": "Confirmed, and still informational.",
+      "pauseAfterMs": 2400,
       "action": {
         "type": "click",
         "locator": {
@@ -1041,6 +1118,7 @@
     {
       "id": "save",
       "narration": "Saving writes all seven items as one immutable reference annotation: two region proposals, three real requirements, and two remarks that are honest about being remarks. Nothing has changed the approved reference itself, which is the subject of the next tutorial.",
+      "pauseAfterMs": 17500,
       "action": {
         "type": "click",
         "locator": {

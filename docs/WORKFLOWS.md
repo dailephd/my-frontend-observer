@@ -624,6 +624,62 @@ disappears, the annotation stays inspectable and its source is reported as
 v0.10 correction orchestration (automatic coding-agent runs, rerender loops,
 and automatic approvals) is not implemented.
 
+## Developer tutorial-generation workflow (v0.9 demo, not a product command)
+
+This is a contributor workflow for producing the v0.9 tutorial videos. It is
+not part of the product, and Observer has no `tutorial` command.
+
+```text
+Observer demo and scenario (examples/v09-demo/)
+        ↓
+generate TutorialTargetContractV1 (generate-tutorial-target.mjs)
+        ↓
+my-dev-kit-lab tutorial validate
+        ↓
+my-dev-kit-lab tutorial run
+        ↓
+disposable target (prepared through canonical Observer commands)
+        ↓
+WebM + screenshots + SRT/VTT + Markdown + manifest
+```
+
+Ownership boundary:
+
+1. Observer owns the demo application, the four scenario files, the
+   target-contract generator, and the prepare command. Prepare builds each
+   disposable project only through the canonical Observer CLI: `init`,
+   `capture baseline`, `approve-baseline`, `save-change-contract`,
+   `import-reference`, and `approve-reference`, as the scenario needs.
+2. `@dailephd/my-dev-kit-lab@0.4.8` owns everything tutorial-specific: scenario
+   validation, process lifecycle, the browser session, the cursor, callouts,
+   video recording, subtitles, Markdown, and the tutorial manifest. It is an
+   external tool run through `npx`, not an Observer dependency.
+3. The tutorial drives the ordinary project-aware viewer through real pointer
+   and keyboard input. Correctness is proved by reading the canonical evidence
+   the run wrote into the disposable target, not by the video.
+
+Steps:
+
+```powershell
+npm run build
+node examples/v09-demo/scripts/generate-tutorial-target.mjs `
+  --scenario observer-v09-runtime-contract `
+  --out .my-dev-kit-workflow/adhoc/target-contract.json
+npx --yes @dailephd/my-dev-kit-lab@0.4.8 tutorial validate `
+  --scenario examples/v09-demo/tutorials/02-runtime-intent-contract.json `
+  --target-contract .my-dev-kit-workflow/adhoc/target-contract.json --json
+npx --yes @dailephd/my-dev-kit-lab@0.4.8 tutorial run `
+  --scenario examples/v09-demo/tutorials/02-runtime-intent-contract.json `
+  --target-contract .my-dev-kit-workflow/adhoc/target-contract.json `
+  --out <run directory outside the repository> --json
+```
+
+Generate the contract immediately before each run, because its loopback ports
+are only known to be free when they are chosen. Send `--out` outside the
+repository. The run result's `status` must be `passed` and its
+`cleanupErrors` must be empty. The demo and scenarios are not in the npm
+package. See `examples/v09-demo/README.md` for details and maintenance notes.
+
 ## Visual workflow progression (v0.9 implemented, v0.10 future)
 
 The sequence on top of the v0.7/v0.8 foundation above preserves the current

@@ -1357,7 +1357,11 @@ The viewer must consume the reusable observation, reference, comparison, contrac
 
 It must not contain a second browser-observation implementation, a second reference model, a second binding engine, a second reference-evaluation implementation, a second contract engine, or a second bounded-context builder.
 
-## Future capability — Human visual annotation
+## Implemented capability (v0.9, not yet released) — Human visual annotation
+
+Status: implemented in the repository and validated locally as v0.9. It is not
+yet released. The intent below is unchanged and remains the capability
+authority.
 
 A later phase should allow the user to communicate visual intent directly on top of either an observed frontend or an approved external reference.
 
