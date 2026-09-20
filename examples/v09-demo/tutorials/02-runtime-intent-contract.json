@@ -85,6 +85,12 @@
       "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "ArrowDown" }
     },
     {
+      "id": "operation-move-commit",
+      "narration": "Committing that choice so the direction control reflects the selected operation on every platform.",
+      "pauseAfterMs": 6200,
+      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "Enter" }
+    },
+    {
       "id": "direction-right",
       "narration": "And here is the point of the left-pointing arrow: the direction chosen here is right. The drawing and the decision disagree on purpose.",
       "pauseAfterMs": 9000,
