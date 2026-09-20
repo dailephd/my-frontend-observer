@@ -113,7 +113,8 @@
       "id": "category-requested-commit",
       "narration": "The requested category is committed before the candidate meaning is saved.",
       "pauseAfterMs": 6600,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "key": "Enter" }
+      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "key": "Enter" },
+      "screenshot": { "id": "move-form-ready" }
     },
     {
       "id": "set-candidate-move",
