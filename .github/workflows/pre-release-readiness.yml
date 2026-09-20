@@ -156,6 +156,7 @@ jobs:
           node --version
           npm --version
       - run: npm ci
+      - run: npm run build
       - name: Install Observer Chromium
         if: runner.os == 'Linux'
         run: npx playwright install --with-deps chromium
