@@ -75,7 +75,7 @@
     {
       "id": "operation-move",
       "narration": "The operation is a move. Observer offers a closed list of operations rather than a free text box, because a contract has to be built from meanings the system can actually check. The keyboard selects it directly.",
-      "pauseAfterMs": 11800,
+      "pauseAfterMs": 14100,
       "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "m" }
     },
     {
