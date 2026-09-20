@@ -74,15 +74,15 @@
     },
     {
       "id": "operation-move",
-      "narration": "The operation is a move. Observer offers a closed list of operations rather than a free text box, because a contract has to be built from meanings the system can actually check.",
+      "narration": "The operation is a move. Observer offers a closed list of operations rather than a free text box, because a contract has to be built from meanings the system can actually check. The keyboard selects it directly.",
       "pauseAfterMs": 11800,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "ArrowDown" }
+      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "m" }
     },
     {
       "id": "operation-move-2",
-      "narration": "The dropdown is stepped with the keyboard. Inspect comes first, so a second press lands on move.",
+      "narration": "The selected operation is committed before the direction-specific controls appear.",
       "pauseAfterMs": 6400,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "ArrowDown" }
+      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "Enter" }
     },
     {
       "id": "operation-move-commit",
