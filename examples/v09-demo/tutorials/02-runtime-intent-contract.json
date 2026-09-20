@@ -104,6 +104,12 @@
       "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "key": "r" }
     },
     {
+      "id": "category-requested-commit",
+      "narration": "The requested category is committed before the candidate meaning is saved.",
+      "pauseAfterMs": 6600,
+      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "key": "Enter" }
+    },
+    {
       "id": "set-candidate-move",
       "narration": "Setting the candidate meaning. A candidate is a proposal: it is recorded, but nobody has stood behind it yet.",
       "pauseAfterMs": 7300,
