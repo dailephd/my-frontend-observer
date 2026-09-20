@@ -1,5 +1,7 @@
 # Workflows
 
+Cross-repository composition is centralized in [my-dev-kit's ecosystem guide](https://github.com/dailephd/my-dev-kit/blob/main/docs/ECOSYSTEM_DEVELOPMENT_WORKFLOWS.md), especially the [command-surface compatibility map](https://github.com/dailephd/my-dev-kit/blob/main/docs/ECOSYSTEM_DEVELOPMENT_WORKFLOWS.md#915-command-surface-compatibility-map). That map covers static-to-runtime correlation, Lab tutorial/reference handoffs, Orchestrator consumption, and combinations that are deliberately not direct artifact pipes.
+
 ## Project and coding-agent workflow
 
 ```text
