@@ -101,7 +101,7 @@
       "id": "category-requested",
       "narration": "The category says what kind of change this is. Requested means somebody asked for it, as opposed to it being a side effect, or something that must not move at all.",
       "pauseAfterMs": 10900,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "key": "ArrowDown" }
+      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "key": "r" }
     },
     {
       "id": "set-candidate-move",
