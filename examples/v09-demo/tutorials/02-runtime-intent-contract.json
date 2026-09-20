@@ -98,6 +98,12 @@
       "callout": { "text": "The arrow points left. The requested direction is right.", "placement": "auto" }
     },
     {
+      "id": "direction-right-commit",
+      "narration": "The direction is committed before the intent is saved.",
+      "pauseAfterMs": 6600,
+      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Move direction" }, "key": "Enter" }
+    },
+    {
       "id": "category-requested",
       "narration": "The category says what kind of change this is. The first option is requested: somebody asked for it, as opposed to it being a side effect, or something that must not move at all.",
       "pauseAfterMs": 10900,
