@@ -87,7 +87,7 @@
     {
       "id": "operation-move-commit",
       "narration": "Committing that choice so the direction control reflects the selected operation on every platform.",
-      "pauseAfterMs": 6200,
+      "pauseAfterMs": 6600,
       "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "Enter" }
     },
     {
