@@ -110,6 +110,14 @@ The repository-owned deterministic demo and its four tutorial scenarios
 `@dailephd/my-dev-kit-lab@0.4.9` tool) passed final cross-platform readiness
 with the release. They are release support and documentation, not product
 behavior, and they are not shipped in the npm package.
+
+v0.9.1 is the next planned maintenance patch. It hardens the PWA server-down
+hard acceptance test so the gate is reproducible from a fresh browser profile
+and fresh test-owned state rather than inheriting service-worker/cache state
+from earlier tests or earlier runs. This is currently a test-isolation
+correction, not a demonstrated production PWA defect. The frozen concrete plan
+is `docs/plans/v0.9.1-implementation-plan.md`.
+
 v0.10 remains future and unimplemented and completes the visual human-LLM
 workflow on top of the v0.9 annotation model and v0.8.1 high-level acceptance
 surface.
@@ -167,6 +175,12 @@ Repository-local authorities and navigation:
   gates, and validation expectations for v0.9. It is planning authority only;
   the v0.9 implementation state is recorded in CURRENT_STATE.md and the
   `reports/v0.9-*.md` reports.
+- [plans/v0.9.1-implementation-plan.md](plans/v0.9.1-implementation-plan.md)
+  freezes the bounded maintenance plan for independent PWA hard-gate
+  reproduction, fresh browser-profile ownership, explicit service-worker/cache
+  precondition proof, and isolated-gate validation. It does not authorize a
+  production PWA change unless the corrected experiment demonstrates a real
+  product defect.
 - [reports/v0.9-architecture-retrieval.md](reports/v0.9-architecture-retrieval.md)
   preserves the bounded current-source retrieval that grounded the v0.9 plan.
 

@@ -1,7 +1,11 @@
 # Roadmap
 
 v0.9 status: released as v0.9.0 and published to npm as
-`@dailephd/my-frontend-observer@0.9.0`. v0.10 remains future work.
+`@dailephd/my-frontend-observer@0.9.0`. v0.9.1 is the next bounded
+maintenance patch: planning is frozen, implementation has not started, and it
+targets the PWA hard-gate test-isolation defect discovered after the v0.9.0
+release. No production PWA regression has been demonstrated. v0.10 remains
+future work.
 
 This is a version-level specification, not an implementation checklist.
 Concrete steps and sequencing are designed only when a version begins, after
@@ -889,6 +893,55 @@ seven implementation prompts, and batch gates live in
 `docs/plans/v0.9-implementation-plan.md`. That plan must be derivable from the
 version-level decisions above plus current repository inspection; this roadmap
 intentionally does not duplicate batch-by-batch instructions.
+
+## v0.9.1 — PWA Hard-Gate Isolation and Reproducible Security Acceptance
+
+Current status: planned. The concrete implementation plan is frozen in
+`docs/plans/v0.9.1-implementation-plan.md`; implementation has not started.
+This patch is maintenance work over the released v0.9.0 codebase and does not
+change the v0.9 product capability model.
+
+Objective/problem: make the PWA server-down hard acceptance proof genuinely
+self-contained. The released test in `tests/browser/pwaHardening.test.ts`
+passes in the normal full-file/full-suite order but fails when selected alone
+because it can inherit service-worker/cache state from earlier tests and from a
+fixed persistent Chromium profile. That is a test-isolation defect. It is not
+evidence that the released PWA serves stale evidence or otherwise violates the
+runtime safety contract.
+
+Required capabilities: the hard gate must create and own fresh disposable
+evidence state, a fresh viewer server, a fresh persistent Chromium profile, a
+fresh BrowserContext, and its page; independently establish service-worker
+registration and activation; prove that the current page is controlled by the
+worker; prove the application shell needed for offline reload is precached;
+prove `/api/` evidence responses are absent from Cache Storage; prove live
+evidence is visible before shutdown; prove the server/network is actually
+unavailable after shutdown; reload from the precached shell; then prove an
+explicit unavailable state is shown and previously fetched evidence is absent.
+All owned resources must be cleaned up even on failure.
+
+Constraints and contracts: the hard/security acceptance experiment must not
+depend on another `it()`, test order, a previously warmed Cache Storage, or a
+profile retained under `.my-dev-kit-workflow`. Tests explicitly designated
+`HARD GATE`, `SECURITY GATE`, or `ACCEPTANCE GATE` must be independently
+runnable from fresh state. The dedicated isolated hard-gate command and the
+normal full browser/security suites must exercise the same product behavior.
+
+Exclusions: no production PWA/service-worker semantic change is authorized
+merely to make the test green; no new user-facing feature, evidence schema,
+CLI command, package dependency, tutorial behavior, or v0.10 capability belongs
+in this patch. If the corrected clean-state experiment exposes a genuine
+runtime defect, implementation must stop and reclassify the work as a product
+defect before changing production behavior.
+
+Acceptance: the PWA hard gate passes when run by itself from a fresh process and
+fresh temporary profile, passes in the complete `pwaHardening.test.ts` file,
+and passes in the normal browser/security validation chain. The test must prove
+its own service-worker control, shell-cache, API-cache-exclusion, network-down,
+and stale-evidence-absence prerequisites rather than infer them from another
+test. Temporary browser profiles and evidence roots must be removed after both
+success and failure. Release-readiness validation must preserve the v0.9.0
+product/package behavior while proving the stronger test-isolation invariant.
 
 ## v0.10 — Full Visual Human–LLM Frontend Change Workflow
 

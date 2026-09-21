@@ -38,6 +38,25 @@ first; it is kept out of `npm test` because it launches a real browser and
 is slower. Exact counts drift as the suite grows - run the commands above
 for the current numbers rather than trusting this document.
 
+## Hard/security/acceptance gate isolation
+
+Tests explicitly designated `HARD GATE`, `SECURITY GATE`, or
+`ACCEPTANCE GATE` must be independently reproducible. A passing full suite is
+not sufficient evidence if the gate itself only succeeds because another test
+ran first or because a prior run left browser/cache/filesystem state behind.
+
+For browser-based gates, the gate must own or explicitly establish every
+precondition material to its claim. That includes disposable evidence state,
+servers, browser profiles/contexts, service-worker control, relevant cache
+state, and cleanup. Fixed persistent profiles must not be used as hidden
+fixtures for a hard acceptance claim.
+
+The v0.9.1 maintenance plan applies this rule to the PWA server-down safety
+proof in `tests/browser/pwaHardening.test.ts`. The hard gate must pass when
+selected alone from a fresh temporary profile and must also continue to pass in
+the complete browser and security suites. See
+`docs/plans/v0.9.1-implementation-plan.md`.
+
 ROADMAP v0.1 and Project Milestone 1 require browser-level validation once the
 observation capability is planned and implemented. Static checks must not later
 be substituted for that required browser evidence. `npm run test:browser` is
