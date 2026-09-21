@@ -1,6 +1,6 @@
 # Current State
 
-v0.9.0 is released and published as `@dailephd/my-frontend-observer@0.9.0`.
+v0.9.1 is released and published as `@dailephd/my-frontend-observer@0.9.1`.
 v0.9 (Human Visual Annotation and Design-Intent Capture) adds structured visual
 annotation to the project-aware viewer. It passed integrated real-Chromium
 acceptance and final exact-candidate pre-release readiness on Windows, Linux
@@ -12,8 +12,10 @@ repository also holds a deterministic demo and four tutorial scenarios for
 v0.9, recorded by the external `@dailephd/my-dev-kit-lab@0.4.9` tool. See
 "v0.9 status" below.
 
-The project is published at package version `0.9.0` (roadmap v0.9, Human
-Visual Annotation and Design-Intent Capture; observation schema `1.2.0`;
+The project is published at package version `0.9.1` (roadmap v0.9.1, PWA
+Hard-Gate Isolation and Reproducible Security Acceptance; the preceding v0.9
+release was Human Visual Annotation and Design-Intent Capture; observation
+schema `1.2.0`;
 comparison schema `1.0.0`; frontend contract schema `1.0.0`; evaluation
 artifact schema `1.0.0`; bounded-agent-context schema `1.0.0`;
 external-reference schema `1.0.0`; visual annotation schema `1.0.0`). v0.9.0
@@ -24,8 +26,8 @@ state.
 
 ## v0.9.1 maintenance status
 
-Status: implementation complete, unreleased. The package version remains
-`0.9.0`. No production code changed.
+Status: released and published as `@dailephd/my-frontend-observer@0.9.1`.
+No production code changed.
 
 Result of the implementation:
 
@@ -59,7 +61,7 @@ Result of the implementation:
 Evidence: `docs/reports/v0.9.1-batch1-pwa-hard-gate-isolation.md` and
 `docs/reports/v0.9.1-batch2-hard-gate-validation-integration.md`.
 
-The planning background follows.
+The historical planning background follows.
 
 A post-release test-isolation defect has been identified in
 `tests/browser/pwaHardening.test.ts`. The PWA server-down test labeled
@@ -79,13 +81,13 @@ current after the server is unavailable. No production PWA code change is
 authorized unless a corrected fresh-state hard-gate experiment first
 demonstrates a real runtime failure.
 
-The next bounded maintenance target is v0.9.1. Its frozen implementation plan is
-`docs/plans/v0.9.1-implementation-plan.md`. The patch will make the hard gate
-own fresh disposable evidence/server/browser-profile state, explicitly prove
-service-worker control and shell/API cache preconditions, explicitly prove the
-server is unavailable before the offline reload, and add an isolated execution
-gate so the same test must pass by itself as well as inside the full browser and
-security suites. That implementation is now complete, as recorded above.
+The completed v0.9.1 maintenance patch was governed by the frozen implementation
+plan `docs/plans/v0.9.1-implementation-plan.md`. It made the hard gate own fresh
+disposable evidence/server/browser-profile state, explicitly prove service-worker
+control and shell/API cache preconditions, explicitly prove the server is
+unavailable before the offline reload, and add an isolated execution gate so the
+same test passes by itself as well as inside the full browser and security
+suites.
 
 v0.8 (Interactive Local Observation Viewer) is fully implemented, tested,
 formally cross-platform/security validated, and released. All eight v0.8

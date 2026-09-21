@@ -783,7 +783,7 @@ the annotation workflow. The rest of this section describes the inspection
 surface, which is unchanged.
 
 **Current status: viewer behavior is released as package
-`@dailephd/my-frontend-observer@0.9.0`.** Starts one
+`@dailephd/my-frontend-observer@0.9.1`.** Starts one
 loopback-only Node viewer server and serves the same React + TypeScript +
 Vite application to a normal browser or an installed Progressive Web App.
 `--root` is used as a bounded, read-only evidence-discovery root: the server

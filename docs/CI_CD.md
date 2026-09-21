@@ -1,6 +1,6 @@
 # CI/CD
 
-CI interprets `check` as PASS `0`, FAIL `1`, REVIEW_REQUIRED `2`, or BLOCKED `3`. The released package is `@dailephd/my-frontend-observer@0.9.0`; its CLI remains `my-frontend-observer`. Packed readiness installs one exact tarball and runs `runPackedViewerSmoke.mjs` as the single project/viewer smoke owner for `init`, `capture`, bounded `check --json` REVIEW_REQUIRED and unchanged-contract FAIL-to-PASS, alias-aware project `view`, and viewer security. `runPackedObservationSmoke.mjs` remains the lower-level legacy observation smoke.
+CI interprets `check` as PASS `0`, FAIL `1`, REVIEW_REQUIRED `2`, or BLOCKED `3`. The released package is `@dailephd/my-frontend-observer@0.9.1`; its CLI remains `my-frontend-observer`. Packed readiness installs one exact tarball and runs `runPackedViewerSmoke.mjs` as the single project/viewer smoke owner for `init`, `capture`, bounded `check --json` REVIEW_REQUIRED and unchanged-contract FAIL-to-PASS, alias-aware project `view`, and viewer security. `runPackedObservationSmoke.mjs` remains the lower-level legacy observation smoke.
 
 ## Gate isolation invariant
 
@@ -11,7 +11,7 @@ state without relying on earlier test order, a previously warmed service-worker
 cache, a persistent browser profile from an earlier run, or another test's
 server/evidence setup.
 
-v0.9.1 (implemented, unreleased) applies this rule to the PWA server-down
+v0.9.1 applies this rule to the PWA server-down
 hard gate. `npm run test:pwa-hard-gate` runs that gate by itself. It is a
 separate required proof in addition to the normal full-file execution in
 `npm run test:browser` and `npm run test:security`.
@@ -20,8 +20,8 @@ separate required proof in addition to the normal full-file execution in
 `candidate` job in `.github/workflows/pre-release-readiness.yml` already runs
 `npm run test:security`, so release-readiness candidate validation receives
 the isolated gate automatically. The workflow YAML did not need to change. The
-released v0.9.0 suite still has the old test-isolation weakness in this gate.
-No production PWA regression was found.
+released v0.9.1 suite contains the corrected isolated gate. No production PWA
+regression was found.
 
 A GitHub Actions pre-release readiness workflow exists at
 `.github/workflows/pre-release-readiness.yml` (triggered manually via
