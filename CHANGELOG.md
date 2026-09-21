@@ -48,6 +48,8 @@ each remain separate, explicit steps.
 - Added viewer discovery of visual annotations, a source-resolving annotation
   view route, and a verified, script-blocking overlay media role.
 - Evidence discovery now skips writer temporary `.tmp-*` directories.
+- Fixed viewer shutdown stalling while a browser or service worker held a
+  connection open. Closing the viewer now also ends active connections.
 - Added an integrated real-Chromium acceptance suite and a packed installed
   v0.9 annotation smoke to the cross-platform pre-release readiness workflow.
 - The repository gained a deterministic demo and four tutorials under

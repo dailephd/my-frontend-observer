@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createServer } from 'node:http';
+import { connect } from 'node:net';
 import { startViewer, defaultViewerAssetsRoot } from '../../src/viewerServer/viewerService.js';
 import { DEFAULT_VIEWER_PORT, VIEWER_HOST, isValidViewerPort } from '../../src/viewerServer/port.js';
 
@@ -223,6 +224,35 @@ describe('startViewer - clean shutdown', () => {
     const second = await startViewer({ root, port: boundPort, assetsRoot });
     expect(second.ok).toBe(true);
     if (second.ok) cleanupClosers.push(second.close);
+  });
+
+  it('close() completes promptly even while a client holds an active connection open', async () => {
+    // A browser or service worker can hold a connection mid-request when the
+    // viewer shuts down. `server.close()` alone waits for such connections, so
+    // close() could stall for as long as the client kept it open.
+    const { assetsRoot } = await makeFixtureAssetsRoot();
+    const root = await makeEvidenceRoot();
+    const viewer = await startViewer({ root, port: 0, assetsRoot });
+    if (!viewer.ok) throw new Error('expected server to start');
+
+    const socket = connect(viewer.port, VIEWER_HOST);
+    await new Promise<void>((resolveConnect, rejectConnect) => {
+      socket.once('connect', resolveConnect);
+      socket.once('error', rejectConnect);
+    });
+    socket.on('error', () => {});
+    // An unfinished request keeps the connection active rather than idle.
+    socket.write(`GET / HTTP/1.1\r\nHost: ${VIEWER_HOST}:${viewer.port}\r\n`);
+
+    try {
+      const outcome = await Promise.race([
+        viewer.close().then(() => 'closed' as const),
+        new Promise<'stalled'>((resolveStall) => setTimeout(() => resolveStall('stalled'), 3_000)),
+      ]);
+      expect(outcome).toBe('closed');
+    } finally {
+      socket.destroy();
+    }
   });
 });
 

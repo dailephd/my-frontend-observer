@@ -176,6 +176,10 @@ export async function startViewer(options: StartViewerOptions): Promise<StartVie
     close: () =>
       new Promise<void>((resolvePromise, reject) => {
         server.close((err) => (err ? reject(err) : resolvePromise()));
+        // `server.close()` only stops new connections and waits for existing
+        // ones. A browser or service worker holding a connection open would
+        // otherwise stall shutdown for as long as it kept that connection.
+        server.closeAllConnections();
       }),
   };
 }
