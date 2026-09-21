@@ -1742,6 +1742,11 @@ implementation details live in
 `docs/plans/v0.9.1-implementation-plan.md`; the Milestone 9 product capability
 design below remains unchanged.
 
+Status: the maintenance invariant is implemented for the PWA hard gate, which
+now passes alone through `npm run test:pwa-hard-gate` and inside the full
+browser and security suites. No genuine product failure was found. Release of
+v0.9.1 is pending.
+
 ### Objective
 
 Add visual human intent to the already working Milestone 7 coding-agent/reference workflow through the Milestone 8 viewer.

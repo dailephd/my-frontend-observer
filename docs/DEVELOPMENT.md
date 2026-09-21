@@ -51,11 +51,22 @@ servers, browser profiles/contexts, service-worker control, relevant cache
 state, and cleanup. Fixed persistent profiles must not be used as hidden
 fixtures for a hard acceptance claim.
 
-The v0.9.1 maintenance plan applies this rule to the PWA server-down safety
-proof in `tests/browser/pwaHardening.test.ts`. The hard gate must pass when
-selected alone from a fresh temporary profile and must also continue to pass in
-the complete browser and security suites. See
-`docs/plans/v0.9.1-implementation-plan.md`.
+v0.9.1 applies this rule to the PWA server-down safety proof in
+`tests/browser/pwaHardening.test.ts`. The hard gate owns its evidence root,
+viewer server, temporary Chromium profile, and context. It must pass when
+selected alone and must also continue to pass in the complete browser and
+security suites.
+
+Run the gate by itself with:
+
+```powershell
+npm run test:pwa-hard-gate
+```
+
+Run this command when working on PWA, service-worker, viewer-server, or
+security behavior. It must pass on its own, not only after other tests have
+run. `npm run test:security` also runs it after the rest of the security
+suite. See `docs/plans/v0.9.1-implementation-plan.md`.
 
 ROADMAP v0.1 and Project Milestone 1 require browser-level validation once the
 observation capability is planned and implemented. Static checks must not later

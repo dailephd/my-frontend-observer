@@ -11,13 +11,17 @@ state without relying on earlier test order, a previously warmed service-worker
 cache, a persistent browser profile from an earlier run, or another test's
 server/evidence setup.
 
-The v0.9.1 maintenance target applies this rule to the PWA server-down hard
-gate. Its dedicated isolated execution is a separate required proof in addition
-to the normal `npm run test:browser` and `npm run test:security` chains.
-The exact implementation and release-readiness integration are frozen in
-`docs/plans/v0.9.1-implementation-plan.md`. Until that patch is implemented,
-the released v0.9.0 suite has a known test-isolation weakness in this specific
-gate; no production PWA regression has been demonstrated.
+v0.9.1 (implemented, unreleased) applies this rule to the PWA server-down
+hard gate. `npm run test:pwa-hard-gate` runs that gate by itself. It is a
+separate required proof in addition to the normal full-file execution in
+`npm run test:browser` and `npm run test:security`.
+
+`npm run test:security` now ends with `npm run test:pwa-hard-gate`. The
+`candidate` job in `.github/workflows/pre-release-readiness.yml` already runs
+`npm run test:security`, so release-readiness candidate validation receives
+the isolated gate automatically. The workflow YAML did not need to change. The
+released v0.9.0 suite still has the old test-isolation weakness in this gate.
+No production PWA regression was found.
 
 A GitHub Actions pre-release readiness workflow exists at
 `.github/workflows/pre-release-readiness.yml` (triggered manually via

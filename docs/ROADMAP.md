@@ -2,9 +2,8 @@
 
 v0.9 status: released as v0.9.0 and published to npm as
 `@dailephd/my-frontend-observer@0.9.0`. v0.9.1 is the next bounded
-maintenance patch: planning is frozen, implementation has not started, and it
-targets the PWA hard-gate test-isolation defect discovered after the v0.9.0
-release. No production PWA regression has been demonstrated. v0.10 remains
+maintenance patch: it is implemented and unreleased, and it corrects the PWA
+hard-gate test-isolation defect discovered after the v0.9.0 release. No production PWA regression has been demonstrated. v0.10 remains
 future work.
 
 This is a version-level specification, not an implementation checklist.
@@ -896,8 +895,8 @@ intentionally does not duplicate batch-by-batch instructions.
 
 ## v0.9.1 — PWA Hard-Gate Isolation and Reproducible Security Acceptance
 
-Current status: planned. The concrete implementation plan is frozen in
-`docs/plans/v0.9.1-implementation-plan.md`; implementation has not started.
+Current status: implemented, unreleased. The concrete implementation plan is
+frozen in `docs/plans/v0.9.1-implementation-plan.md`.
 This patch is maintenance work over the released v0.9.0 codebase and does not
 change the v0.9 product capability model.
 
