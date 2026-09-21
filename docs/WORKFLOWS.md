@@ -32,10 +32,10 @@ install dependencies (npm install; npx playwright install chromium)
 → validate documentation (npm run check:docs)
 ```
 
-## Current observation workflow (supported in 0.8.1)
+## Current observation workflow (supported in 0.9.0)
 
 The real `observe` workflow remains supported in the current published
-`my-frontend-observer@0.8.1` package. Its browser-observation behavior was
+`my-frontend-observer@0.9.0` package. Its browser-observation behavior was
 established in earlier releases; later project/viewer releases compose it
 rather than replacing it. It accepts target configuration through either of
 two input paths, plus one optional runtime scroll scenario:
@@ -85,10 +85,10 @@ temporary consumer directory outside the repository, on Windows, Linux, and
 macOS (`scripts/ci/runPackedObservationSmoke.mjs`) - the same workflow,
 independent of the source checkout.
 
-## Current comparison workflow (supported in 0.8.1)
+## Current comparison workflow (supported in 0.9.0)
 
 **Current status: shipped originally as part of
-`my-frontend-observer@0.4.0` and remains supported in `0.8.1`.** This is a
+`my-frontend-observer@0.4.0` and remains supported in `0.9.0`.** This is a
 separate workflow from the observation workflow above - it consumes two
 already-persisted observation artifacts rather than producing one, and it
 never launches a browser:
@@ -134,10 +134,10 @@ fixture (`scripts/dev/builtCliCompareSmoke.mjs`), and packed-tarball
 validation of the installed `compare` command
 (`scripts/ci/runPackedObservationSmoke.mjs` - see `docs/CI_CD.md`).
 
-## Current frontend contract workflow (supported in 0.8.1)
+## Current frontend contract workflow (supported in 0.9.0)
 
 This text/config-driven workflow shipped in `0.5.0` and remains supported in
-`0.8.1`. It is layered downstream of the two workflows above - it does not
+`0.9.0`. It is layered downstream of the two workflows above - it does not
 replace them. The complete v0.7 coding-agent workflow (the external-reference
 evidence foundation and end-to-end correction loop) is layered on top of
 it - see "Current external-reference foundation workflow" and "Current
@@ -562,11 +562,134 @@ started with. See `docs/COMMANDS.md#view` for the full flag reference and
 `docs/ARCHITECTURE.md` "v0.8 Batch 1" through "v0.8 Batch 8" for the
 implementation record.
 
-## Future workflows (v0.9–v0.10)
+## Current visual annotation workflow (released in 0.9.0)
 
-The still-future sequence on top of the v0.7/v0.8 foundation above preserves
-the current engines and lets later graphical interfaces consume rather than
-invent the reference model:
+v0.9 visual annotation is released in `@dailephd/my-frontend-observer@0.9.0`.
+Authoring works only in the
+project-aware viewer (`my-frontend-observer view` inside an initialized
+project). `view --root <root>` inspects the same evidence read-only.
+
+### Runtime visual flow
+
+```text
+project-aware view
+→ select a runtime observation
+→ draw a point, rectangle, line, arrow, or note (runtime CSS pixels)
+→ explicitly associate a runtime target or canonical runtime relationship
+→ choose candidate intent (inspect, move, resize, remove, or preserve)
+→ explicitly confirm the intent
+→ save an immutable VisualAnnotationArtifact
+→ select confirmed supported intent (move, resize, or preserve)
+→ promote into a normal canonical PerChangeContract
+→ optionally, explicitly activate that contract for project check
+→ existing check and the existing contract evaluator produce the verdict
+```
+
+Notes and `inspect` intent stay informational. A free mark with no explicit
+association never becomes a target association or a contract clause.
+Confirmed `remove` intent is saved but cannot be promoted, because the current
+contract vocabulary has no target-absent primitive. The promotion categories
+are the existing requested, expected-dependent, protected, and preserved
+categories. `unexpected` stays evaluator-derived.
+
+### Reference visual flow
+
+```text
+project-aware view
+→ select an imported or approved external reference
+→ draw marks (reference-image pixels)
+→ explicitly associate a reference region or canonical region relationship
+→ choose a candidate region create or refine, or a candidate reference
+  requirement (region-property, region-relationship, or region-measurement)
+→ explicitly confirm the intent
+→ save an immutable VisualAnnotationArtifact
+→ select confirmed materializable items
+→ materialize a new imported external-reference revision that supersedes the
+  source reference
+→ explicit approval stays separate (the existing approve-reference command)
+```
+
+Informational and asset-sensitive intent is never materialized. The source
+reference and its image are never changed. The new revision reuses the exact
+source image bytes, keeps the source regions, requirements, applicability, and
+label, and is never approved automatically. Project reference acceptance is
+not changed.
+
+### Revisions and missing sources
+
+Editing a saved annotation and saving again creates a child revision that
+supersedes its parent. Saving another child from a stale parent fails with a
+conflict and keeps the draft. If a saved annotation's source evidence
+disappears, the annotation stays inspectable and its source is reported as
+`unavailable`. No replacement source is guessed.
+
+v0.10 correction orchestration (automatic coding-agent runs, rerender loops,
+and automatic approvals) is not implemented.
+
+## Developer tutorial-generation workflow (v0.9 demo, not a product command)
+
+This is a contributor workflow for producing the v0.9 tutorial videos. It is
+not part of the product, and Observer has no `tutorial` command.
+
+```text
+Observer demo and scenario (examples/v09-demo/)
+        ↓
+generate TutorialTargetContractV1 (generate-tutorial-target.mjs)
+        ↓
+my-dev-kit-lab tutorial validate
+        ↓
+my-dev-kit-lab tutorial run
+        ↓
+disposable target (prepared through canonical Observer commands)
+        ↓
+WebM + screenshots + SRT/VTT + Markdown + manifest
+```
+
+Ownership boundary:
+
+1. Observer owns the demo application, the four scenario files, the
+   target-contract generator, and the prepare command. Prepare builds each
+   disposable project only through the canonical Observer CLI: `init`,
+   `capture baseline`, `approve-baseline`, `save-change-contract`,
+   `import-reference`, and `approve-reference`, as the scenario needs.
+2. `@dailephd/my-dev-kit-lab@0.4.9` owns everything tutorial-specific: scenario
+   validation, process lifecycle, the browser session, the cursor, callouts,
+   video recording, subtitles, Markdown, and the tutorial manifest. It is an
+   external tool run through `npx`, not an Observer dependency.
+3. The tutorial drives the ordinary project-aware viewer through real pointer,
+   keyboard and select input. Native `<select>` values are chosen with the
+   lab's `select-option` action, which names the HTML option value, so no step
+   depends on how a platform steps a dropdown. Correctness is proved by reading
+   the canonical evidence the run wrote into the disposable target, not by the
+   video.
+
+Steps:
+
+```powershell
+npm run build
+node examples/v09-demo/scripts/generate-tutorial-target.mjs `
+  --scenario observer-v09-runtime-contract `
+  --out .my-dev-kit-workflow/adhoc/target-contract.json
+npx --yes @dailephd/my-dev-kit-lab@0.4.9 tutorial validate `
+  --scenario examples/v09-demo/tutorials/02-runtime-intent-contract.json `
+  --target-contract .my-dev-kit-workflow/adhoc/target-contract.json --json
+npx --yes @dailephd/my-dev-kit-lab@0.4.9 tutorial run `
+  --scenario examples/v09-demo/tutorials/02-runtime-intent-contract.json `
+  --target-contract .my-dev-kit-workflow/adhoc/target-contract.json `
+  --out <run directory outside the repository> --json
+```
+
+Generate the contract immediately before each run, because its loopback ports
+are only known to be free when they are chosen. Send `--out` outside the
+repository. The run result's `status` must be `passed` and its
+`cleanupErrors` must be empty. The demo and scenarios are not in the npm
+package. See `examples/v09-demo/README.md` for details and maintenance notes.
+
+## Visual workflow progression (v0.9 implemented, v0.10 future)
+
+The sequence on top of the v0.7/v0.8 foundation above preserves the current
+engines and lets graphical interfaces consume rather than invent the reference
+model. v0.9 is released as `0.9.0`. v0.10 is still future:
 
 ```text
 stable targets and bounded runtime behavior
@@ -584,6 +707,7 @@ stable targets and bounded runtime behavior
 → v0.8 interactive viewer with reference/candidate inspection (released as
   package version `0.8.0` - see "Current interactive viewer workflow" above)
 → v0.9 structured visual annotation on runtime screenshots and references
+  (released as `0.9.0` - see "Current visual annotation workflow" above)
 → v0.10 full visual human–LLM workflow with both actual-frontend-driven and
   reference-driven entry modes
 ```
@@ -633,12 +757,14 @@ The v0.7 coding-agent workflow and reference foundation are released as
 part of this repository and work without the v0.8 viewer or v0.9
 annotation system. v0.8, released as `0.8.0`, consumes the v0.7
 reference/evaluation model exactly as required - it does not create a second
-UI-only one (see "Current interactive viewer workflow" above). v0.9 remains
-future and must preserve the same constraint when implemented.
+UI-only one (see "Current interactive viewer workflow" above). v0.9,
+released as `0.9.0`, preserves the same constraint: promotion and
+materialization go through the existing canonical contract and
+external-reference services.
 
-## v0.8.1 release workflow
+## Current release workflow
 
-The published package is `@dailephd/my-frontend-observer@0.8.1`; install it
+The published package is `@dailephd/my-frontend-observer@0.9.0`; install it
 with npm and use the `my-frontend-observer` CLI. The ordinary workflow is
 `init`, `capture baseline`, `check baseline`, then `view`. Existing sections
 below retain the historical low-level and viewer workflows for compatibility.

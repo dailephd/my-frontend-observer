@@ -1,0 +1,244 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "observer-v09-reference-materialization",
+  "title": "Materializing confirmed design intent into a new revision",
+  "description": "Turning selected confirmed reference intent into a new imported reference revision, while the approved original stays exactly as it was.",
+  "targetId": "my-frontend-observer-v09-demo",
+  "browser": { "viewport": { "width": 1440, "height": 900 } },
+  "steps": [
+    {
+      "id": "open-viewer",
+      "narration": "The previous tutorial recorded design intent against an approved reference. This one is about what happens when that intent becomes a reference in its own right, and about everything the system deliberately refuses to do on your behalf along the way.",
+      "pauseAfterMs": 16700,
+      "action": { "type": "goto", "path": "/", "waitUntil": "load" },
+      "assertions": [
+        { "type": "element-visible", "locator": { "kind": "role", "role": "button", "name": "external-reference-approved" }, "timeoutMs": 20000 }
+      ]
+    },
+    {
+      "id": "open-reference",
+      "narration": "Opening the approved source reference. Everything that follows is authored against this image, and this image is never edited.",
+      "pauseAfterMs": 8400,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "external-reference-approved" }, "timeoutMs": 20000 },
+      "screenshot": { "id": "source-reference" },
+      "assertions": [
+        { "type": "element-visible", "locator": { "kind": "test-id", "testId": "reference-annotation-surface" }, "timeoutMs": 20000 },
+        { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__candidates" }, "name": "data-source-regions", "expected": "7" }
+      ]
+    },
+
+    {
+      "id": "create-mode",
+      "narration": "First a new region, as before.",
+      "pauseAfterMs": 2000,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Rectangle mode" } }
+    },
+    {
+      "id": "create-draw",
+      "narration": "Drawn around the band below the cards.",
+      "pauseAfterMs": 2600,
+      "action": { "type": "pointer-drag", "locator": { "kind": "test-id", "testId": "reference-annotation-surface" }, "from": { "x": 0.3, "y": 0.42 }, "to": { "x": 0.62, "y": 0.56 }, "coordinateSpace": "fraction" }
+    },
+    { "id": "create-name", "narration": "Named promo-band.", "pauseAfterMs": 1200, "action": { "type": "fill", "locator": { "kind": "role", "role": "textbox", "name": "Proposed region ID" }, "value": "promo-band" } },
+    { "id": "create-region", "narration": "Proposed as a new region.", "pauseAfterMs": 1700, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Create candidate region" } } },
+    {
+      "id": "create-confirm",
+      "narration": "And confirmed.",
+      "pauseAfterMs": 1200,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Confirm reference intent" } },
+      "assertions": [
+        { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__candidates" }, "name": "data-candidate-creates", "expected": "1" }
+      ]
+    },
+
+    { "id": "refine-select-mode", "narration": "Next a correction to a region that already exists.", "pauseAfterMs": 3400, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Select mode" } } },
+    { "id": "refine-select-region", "narration": "The sidebar is chosen explicitly as the region being refined.", "pauseAfterMs": 4100, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Select reference region sidebar" } } },
+    { "id": "refine-mode", "narration": "Rectangle mode again.", "pauseAfterMs": 1400, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Rectangle mode" } } },
+    {
+      "id": "refine-draw",
+      "narration": "The shape the sidebar should have.",
+      "pauseAfterMs": 2300,
+      "action": { "type": "pointer-drag", "locator": { "kind": "test-id", "testId": "reference-annotation-surface" }, "from": { "x": 0.02, "y": 0.15 }, "to": { "x": 0.26, "y": 0.9 }, "coordinateSpace": "fraction" }
+    },
+    { "id": "refine-apply", "narration": "Bound to the sidebar on purpose.", "pauseAfterMs": 2200, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Refine selected region sidebar" } } },
+    {
+      "id": "refine-confirm",
+      "narration": "Confirmed.",
+      "pauseAfterMs": 1200,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Confirm reference intent" } },
+      "assertions": [
+        { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__candidates" }, "name": "data-candidate-refinements", "expected": "1" }
+      ]
+    },
+
+    { "id": "req-a-mode", "narration": "Then two requirements, so there is something to choose between later.", "pauseAfterMs": 4600, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Rectangle mode" } } },
+    {
+      "id": "req-a-draw",
+      "narration": "The first is about the hero.",
+      "pauseAfterMs": 1900,
+      "action": { "type": "pointer-drag", "locator": { "kind": "test-id", "testId": "reference-annotation-surface" }, "from": { "x": 0.34, "y": 0.16 }, "to": { "x": 0.9, "y": 0.36 }, "coordinateSpace": "fraction" }
+    },
+    {
+      "id": "req-a-cat",
+      "narration": "The category is protected, the third option.",
+      "pauseAfterMs": 3000,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Requirement category" }, "value": "protected" }
+    },
+    {
+      "id": "req-a-subject",
+      "narration": "A property of a single region.",
+      "pauseAfterMs": 2000,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Requirement subject" }, "value": "region-property" }
+    },
+    {
+      "id": "req-a-region",
+      "narration": "Choosing the region: the hero.",
+      "pauseAfterMs": 2000,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "value": "hero" }
+    },
+    {
+      "id": "req-a-prop",
+      "narration": "Choosing the property: width.",
+      "pauseAfterMs": 2000,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Region property" }, "value": "width" }
+    },
+    {
+      "id": "req-a-tol",
+      "narration": "With a tolerance. Exact would allow no difference at all, so this one is measured in reference pixels.",
+      "pauseAfterMs": 6800,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Tolerance" }, "value": "absolute-reference-px" }
+    },
+    { "id": "req-a-amount", "narration": "Four.", "pauseAfterMs": 1200, "action": { "type": "fill", "locator": { "kind": "role", "role": "spinbutton", "name": "Tolerance amount" }, "value": "4" } },
+    { "id": "req-a-set", "narration": "Set as a candidate.", "pauseAfterMs": 1300, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Set candidate requirement" } } },
+    { "id": "req-a-confirm", "narration": "And confirmed.", "pauseAfterMs": 1200, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Confirm reference intent" } } },
+
+    { "id": "req-b-mode", "narration": "The second requirement is about the footer.", "pauseAfterMs": 2900, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Rectangle mode" } } },
+    {
+      "id": "req-b-draw",
+      "narration": "Marked at the bottom of the design.",
+      "pauseAfterMs": 2400,
+      "action": { "type": "pointer-drag", "locator": { "kind": "test-id", "testId": "reference-annotation-surface" }, "from": { "x": 0.34, "y": 0.91 }, "to": { "x": 0.9, "y": 0.99 }, "coordinateSpace": "fraction" }
+    },
+    {
+      "id": "req-b-cat",
+      "narration": "Preserved rather than protected.",
+      "pauseAfterMs": 2200,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Requirement category" }, "value": "preserved" }
+    },
+    {
+      "id": "req-b-region",
+      "narration": "This requirement is about the footer.",
+      "pauseAfterMs": 2500,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "value": "footer" }
+    },
+    {
+      "id": "req-b-prop",
+      "narration": "The property is height.",
+      "pauseAfterMs": 1600,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Region property" }, "value": "height" }
+    },
+    { "id": "req-b-amount", "narration": "The tolerance is still measured in reference pixels. Eight of them for the footer's height.", "pauseAfterMs": 6100, "action": { "type": "fill", "locator": { "kind": "role", "role": "spinbutton", "name": "Tolerance amount" }, "value": "8" } },
+    {
+      "id": "req-b-set",
+      "narration": "Set as a candidate.",
+      "pauseAfterMs": 1300,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Set candidate requirement" } },
+      "assertions": [
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-candidate-intent='true']" }, "expected": "\"region\": \"footer\"" },
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-candidate-intent='true']" }, "expected": "\"property\": \"height\"" }
+      ]
+    },
+    {
+      "id": "req-b-confirm",
+      "narration": "Confirmed, just as genuinely as the first one.",
+      "pauseAfterMs": 3100,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Confirm reference intent" } },
+      "screenshot": { "id": "four-confirmed" }
+    },
+
+    {
+      "id": "materialize-blocked",
+      "narration": "Four confirmed items, and nothing has been materialized. Confirmation says you mean it. It does not say where it should go, and the panel will not even offer to act until the annotation is on disk.",
+      "pauseAfterMs": 13200,
+      "action": { "type": "hover", "locator": { "kind": "css", "selector": "[data-materialization-blocked='true']" } },
+      "callout": { "text": "Confirming intent does not materialize it.", "placement": "auto" },
+      "screenshot": { "id": "confirmed-not-materialized" },
+      "assertions": [
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-materialization-blocked='true']" }, "expected": "Save the annotation before materializing" }
+      ]
+    },
+    {
+      "id": "save",
+      "narration": "Saving writes the four confirmed items as immutable evidence.",
+      "pauseAfterMs": 4100,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Save annotation" } },
+      "assertions": [
+        { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__draft-summary" }, "name": "data-draft-dirty", "expected": "false", "timeoutMs": 15000 }
+      ]
+    },
+    {
+      "id": "show-warning",
+      "narration": "Now the panel offers to act, and it says up front exactly what acting will and will not do.",
+      "pauseAfterMs": 6100,
+      "action": { "type": "wait-for", "locator": { "kind": "css", "selector": ".annotation-panel__materialization .annotation-panel__proposal-list" }, "state": "visible", "timeoutMs": 15000 },
+      "screenshot": { "id": "materialization-list" },
+      "assertions": [
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-materialization-warning='true']" }, "expected": "The current reference remains unchanged" },
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-materialization-warning='true']" }, "expected": "not approved automatically" }
+      ]
+    },
+    {
+      "id": "select-create",
+      "narration": "Selecting the new region.",
+      "pauseAfterMs": 1700,
+      "action": { "type": "click", "locator": { "kind": "text", "text": "region create promo-band" } }
+    },
+    {
+      "id": "select-refine",
+      "narration": "And the sidebar correction.",
+      "pauseAfterMs": 1800,
+      "action": { "type": "click", "locator": { "kind": "text", "text": "region refine sidebar" } }
+    },
+    {
+      "id": "select-req-a",
+      "narration": "And the hero width requirement. The footer requirement is deliberately left unselected. It is confirmed, it is correct, and it is simply not part of this revision. Selection is where you decide what this particular revision is about.",
+      "pauseAfterMs": 15600,
+      "action": { "type": "click", "locator": { "kind": "text", "text": "requirement {\"category\":\"protected\"" } },
+      "callout": { "text": "Only selected confirmed items enter the new revision.", "placement": "auto" },
+      "screenshot": { "id": "three-of-four-selected" }
+    },
+    {
+      "id": "materialize",
+      "narration": "Materializing writes a brand new reference revision containing the three selected items.",
+      "pauseAfterMs": 5900,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Materialize selected into new reference revision" } },
+      "assertions": [
+        { "type": "attribute-equals", "locator": { "kind": "css", "selector": "[data-materialized-lifecycle]" }, "name": "data-materialized-lifecycle", "expected": "imported", "timeoutMs": 20000 }
+      ]
+    },
+    {
+      "id": "inspect-result",
+      "narration": "Read the result carefully, because it is the whole point of this tutorial. The new reference is imported, not approved. It supersedes the one it came from, and that source reference is untouched on disk. Its image is the original image, not a picture with your annotations burned into it, because the marks were how you decided, not what you decided.",
+      "pauseAfterMs": 23400,
+      "action": { "type": "hover", "locator": { "kind": "css", "selector": "[data-materialized-lifecycle]" } },
+      "callout": { "text": "Imported is not approved. Materializing is not approving.", "placement": "auto" },
+      "screenshot": { "id": "materialized" },
+      "assertions": [
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-materialized-lifecycle]" }, "expected": "Lifecycle: imported" },
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-materialized-lifecycle]" }, "expected": "Approval required: yes" },
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-materialized-lifecycle]" }, "expected": "Supersedes:" },
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-materialized-lifecycle]" }, "expected": "Requirements: 1" }
+      ]
+    },
+    {
+      "id": "explain-no-auto-switch",
+      "narration": "One last thing worth noticing: the viewer did not jump to the new revision. Creating something and adopting it are separate decisions too, and quietly moving you onto an unapproved reference would make the approval step meaningless. The new revision is waiting in the evidence list for whenever somebody decides to approve it.",
+      "pauseAfterMs": 21800,
+      "action": { "type": "hover", "locator": { "kind": "test-id", "testId": "reference-annotation-surface" } },
+      "screenshot": { "id": "source-still-open" },
+      "assertions": [
+        { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__candidates" }, "name": "data-source-regions", "expected": "7" }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { screenPointToSvgSource } from '../svg/sourceCoordinates.js';
 
 export const ZOOM_MIN = 1;
 export const ZOOM_MAX = 8;
@@ -89,14 +90,7 @@ export function useZoomPan(frameWidth: number, frameHeight: number, controlled?:
 
   function screenToSource(clientX: number, clientY: number): { x: number; y: number } | undefined {
     const svg = svgRef.current;
-    if (!svg) return undefined;
-    const ctm = svg.getScreenCTM();
-    if (!ctm) return undefined;
-    const point = svg.createSVGPoint();
-    point.x = clientX;
-    point.y = clientY;
-    const transformed = point.matrixTransform(ctm.inverse());
-    return { x: transformed.x, y: transformed.y };
+    return svg ? screenPointToSvgSource(svg, clientX, clientY) : undefined;
   }
 
   // A plain click (pointerdown+pointerup with no real movement) must never be treated as a pan, or it

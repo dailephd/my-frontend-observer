@@ -134,4 +134,15 @@ describe('viewer PWA build output', () => {
     const precacheEntries = precacheMatch?.[1] ?? '';
     expect(precacheEntries).not.toContain('/api/context');
   });
+
+  it('v0.9 Batch 6: the reference materialization POST route is covered by the /api/ denylist, not separately cached', async () => {
+    const swSource = await readFile(path.join(viewerDist, 'sw.js'), 'utf8');
+    const registerRouteCalls = swSource.match(/registerRoute\(/g) ?? [];
+    expect(registerRouteCalls.length).toBe(1);
+    expect(swSource).toMatch(/denylist:\s*\[\s*\/\^\\\/api\\\/\/\s*]/);
+    const precacheMatch = /precacheAndRoute\(\[(.*?)],\{}\)/.exec(swSource);
+    const precacheEntries = precacheMatch?.[1] ?? '';
+    expect(precacheEntries).not.toContain('/api/annotations');
+    expect(precacheEntries).not.toContain('materialize-reference');
+  });
 });

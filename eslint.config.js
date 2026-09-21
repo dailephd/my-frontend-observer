@@ -8,6 +8,20 @@ export default tseslint.config(
     ignores: ['dist/**', 'node_modules/**', '.my-dev-kit/**', '.my-dev-kit-orchestrator/**', '.my-dev-kit-workflow/**', '.my-dev-kit-context/**', 'observations/**'],
   },
   {
+    // v0.9 demo foundation: the only browser-executed script in this
+    // repository that is not built by Vite. It is a classic <script> in the
+    // examples/v09-demo application, so it runs in a page and needs the two
+    // DOM globals it actually touches.
+    files: ['examples/v09-demo/app/**/*.js'],
+    languageOptions: {
+      sourceType: 'script',
+      globals: {
+        document: 'readonly',
+        window: 'readonly',
+      },
+    },
+  },
+  {
     files: ['**/*.mjs'],
     languageOptions: {
       globals: {

@@ -1,8 +1,7 @@
 # Roadmap
 
-v0.8.1 status: released as v0.8.1 and published to npm as
-`@dailephd/my-frontend-observer@0.8.1`. v0.9 version-start planning is frozen
-but implementation has not started. v0.10 remains future work.
+v0.9 status: released as v0.9.0 and published to npm as
+`@dailephd/my-frontend-observer@0.9.0`. v0.10 remains future work.
 
 This is a version-level specification, not an implementation checklist.
 Concrete steps and sequencing are designed only when a version begins, after
@@ -484,8 +483,14 @@ existing low-level commands must remain backward compatible.
 
 ## v0.9 — Human Visual Annotation and Design-Intent Capture
 
-Current status: version-start architecture is frozen; implementation has not
-started. The source-grounding report is
+Current status: released as `v0.9.0` and published to npm as
+`@dailephd/my-frontend-observer@0.9.0`, after final exact-candidate
+cross-platform readiness on Windows, Linux and macOS. The release includes
+repository-owned deterministic demo and tutorial acceptance infrastructure
+under `examples/v09-demo/`. That infrastructure is release support and
+documentation. It is not a new annotation evidence family or v0.10 behavior,
+and it is not shipped in the npm package. The per-prompt implementation reports and the integrated acceptance
+report live under `docs/reports/v0.9-*.md`. The source-grounding report is
 `docs/reports/v0.9-architecture-retrieval.md`, and the concrete file-level,
 test-level, and seven-prompt implementation plan is
 `docs/plans/v0.9-implementation-plan.md`. The version-level decisions below are

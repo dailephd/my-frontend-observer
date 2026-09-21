@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { ObservationArtifact, LayoutRelationshipGraph, TargetGeometry } from '../types/observation.js';
 import type { OrderedTarget } from '../observation/targetOrder.js';
 import type { ZoomPanBinding } from '../hooks/useZoomPan.js';
@@ -37,6 +38,10 @@ export function TargetOverlaySvg({
   toggles,
   highlightNames,
   zoomPan,
+  annotationLayer,
+  targetsInteractive = true,
+  interactionClassName,
+  surfaceTestId,
 }: {
   artifact: ObservationArtifact;
   screenshotUrl: string;
@@ -49,6 +54,22 @@ export function TargetOverlaySvg({
   highlightNames?: ReadonlySet<string> | undefined;
   /** Batch 6 additive, optional: hands rendering-only zoom/pan state to this leaf component (viewBox override, svg ref for `getScreenCTM`, pointer handlers). Omitted entirely preserves Batch 3's exact default (fitted, non-interactive-pan) rendering. */
   zoomPan?: ZoomPanBinding | undefined;
+  /** v0.9 Batch 3 additive, optional: source-native annotation content (an `AnnotationLayer` `<g>`) rendered last, above targets, inside this same SVG and viewBox. */
+  annotationLayer?: ReactNode;
+  /** v0.9 Batch 3 additive, optional: when false, target rectangles ignore pointer input (pan/drawing modes) while keeping keyboard selection. Defaults to true. */
+  targetsInteractive?: boolean;
+  /** v0.9 Batch 3 additive, optional: extra root class for the active interaction mode. */
+  interactionClassName?: string | undefined;
+  /**
+   * v0.9 tutorial integration additive, optional: a stable `data-testid` for
+   * this SVG as an *interaction surface*, so locator-anchored pointer
+   * gestures bind to a declared automation contract rather than to a
+   * presentation class name. Rendering and every event handler are
+   * unchanged. Optional because this component is also rendered twice
+   * side-by-side in the comparison workspace, where a single shared test id
+   * would be ambiguous; only the annotation-capable workspace supplies one.
+   */
+  surfaceTestId?: string | undefined;
 }) {
   const { width, height } = artifact.requestConfig.viewport;
 
@@ -60,12 +81,13 @@ export function TargetOverlaySvg({
 
   return (
     <svg
-      className={`target-overlay-svg${zoomPan?.isPannable ? ' target-overlay-svg--pannable' : ''}`}
+      className={`target-overlay-svg${zoomPan?.isPannable ? ' target-overlay-svg--pannable' : ''}${interactionClassName === undefined ? '' : ` ${interactionClassName}`}`}
       viewBox={zoomPan?.viewBox ?? `0 0 ${width} ${height}`}
       role="img"
       aria-label={`Observation viewport, ${width} by ${height} CSS pixels`}
       preserveAspectRatio="xMidYMid meet"
       ref={zoomPan?.svgRef}
+      {...(surfaceTestId === undefined ? {} : { 'data-testid': surfaceTestId })}
       {...(zoomPan?.pointerHandlers ?? {})}
     >
       <image href={screenshotUrl} x={0} y={0} width={width} height={height} preserveAspectRatio="none" />
@@ -102,7 +124,7 @@ export function TargetOverlaySvg({
             return (
               <g key={t.name} data-target-name={t.name}>
                 <rect
-                  className={`target-overlay-svg__rect${isSelected ? ' target-overlay-svg__rect--selected' : ''}${isHighlighted ? ' target-overlay-svg__rect--highlighted' : ''}`}
+                  className={`target-overlay-svg__rect${isSelected ? ' target-overlay-svg__rect--selected' : ''}${isHighlighted ? ' target-overlay-svg__rect--highlighted' : ''}${targetsInteractive ? '' : ' target-overlay-svg__rect--inert'}`}
                   data-target-name={t.name}
                   x={g.x}
                   y={g.y}
@@ -130,6 +152,8 @@ export function TargetOverlaySvg({
             );
           })
         : null}
+
+      {annotationLayer}
     </svg>
   );
 }

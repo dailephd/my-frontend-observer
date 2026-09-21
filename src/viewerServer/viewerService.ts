@@ -1,5 +1,5 @@
-import { stat } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { realpath, stat } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Server } from 'node:http';
 import { createViewerServer } from './httpServer.js';
@@ -7,6 +7,9 @@ import { DEFAULT_VIEWER_PORT, VIEWER_HOST, isValidViewerPort } from './port.js';
 import type { Diagnostic } from '../domain/diagnostics.js';
 import { DIAGNOSTIC_SEVERITY } from '../domain/diagnostics.js';
 import type { ContextSessionState } from './context.js';
+import { createViewerAuthoringToken } from './authoringSecurity.js';
+import type { ViewerAuthoringSession } from './authoringSecurity.js';
+import { loadProjectViewerState } from '../application/projectWorkflowService.js';
 
 function diagnostic(code: 'viewer-root-invalid' | 'viewer-port-unavailable', message: string): Diagnostic {
   return { code, severity: DIAGNOSTIC_SEVERITY[code], message };
@@ -51,6 +54,14 @@ export interface StartViewerOptions {
   context?: ContextSessionState;
   /** Ephemeral project-workflow display metadata keyed by exact POSIX evidence-relative directory. */
   aliasMetadata?: ViewerAliasMetadata;
+  /**
+   * v0.9 Batch 2: the initialized project root for a project-aware viewer.
+   * When absent the viewer is strictly read-only. When present, the project
+   * configuration and managed state must load normally and `root` must be
+   * exactly that project's managed evidence root, or the viewer does not
+   * start. Authoring is never inferred from `root` alone.
+   */
+  authoringProjectRoot?: string;
 }
 
 export interface ViewerAliasMetadata {
@@ -98,6 +109,21 @@ export async function startViewer(options: StartViewerOptions): Promise<StartVie
     return { ok: false, diagnostics };
   }
 
+  let authoring: ViewerAuthoringSession | undefined;
+  if (options.authoringProjectRoot !== undefined) {
+    const projectState = await loadProjectViewerState(options.authoringProjectRoot);
+    if (!projectState.ok) {
+      diagnostics.push(diagnostic('viewer-root-invalid', `annotation authoring requires a valid initialized project (${projectState.code}): ${projectState.message}`));
+      return { ok: false, diagnostics };
+    }
+    if (!(await isSameDirectory(options.root, projectState.root))) {
+      diagnostics.push(diagnostic('viewer-root-invalid', 'annotation authoring requires the viewer root to be exactly the project\'s managed evidence root'));
+      return { ok: false, diagnostics };
+    }
+    // expectedHost/expectedOrigin are filled in once the listener has its actual port; until then they match nothing.
+    authoring = { projectRoot: projectState.projectRoot, token: createViewerAuthoringToken(), expectedHost: '', expectedOrigin: '' };
+  }
+
   const assetsRoot = options.assetsRoot ?? defaultViewerAssetsRoot();
   const server: Server = createViewerServer({
     assetsRoot,
@@ -106,6 +132,7 @@ export async function startViewer(options: StartViewerOptions): Promise<StartVie
       bindingDeclarations: options.bindingDeclarations ?? [],
       context: options.context ?? { status: 'none' },
       aliasMetadata: options.aliasMetadata ?? { observationAliasesByRelativeDir: {} },
+      ...(authoring === undefined ? {} : { authoring }),
     },
   });
 
@@ -135,6 +162,10 @@ export async function startViewer(options: StartViewerOptions): Promise<StartVie
 
   const address = server.address();
   const actualPort = address !== null && typeof address === 'object' ? address.port : requestedPort;
+  if (authoring !== undefined) {
+    authoring.expectedHost = `${VIEWER_HOST}:${actualPort}`;
+    authoring.expectedOrigin = `http://${VIEWER_HOST}:${actualPort}`;
+  }
 
   return {
     ok: true,
@@ -145,6 +176,20 @@ export async function startViewer(options: StartViewerOptions): Promise<StartVie
     close: () =>
       new Promise<void>((resolvePromise, reject) => {
         server.close((err) => (err ? reject(err) : resolvePromise()));
+        // `server.close()` only stops new connections and waits for existing
+        // ones. A browser or service worker holding a connection open would
+        // otherwise stall shutdown for as long as it kept that connection.
+        server.closeAllConnections();
       }),
   };
+}
+
+/** Resolved-path equality, falling back to real-path equality (drive-letter casing, symlinked parents). */
+async function isSameDirectory(a: string, b: string): Promise<boolean> {
+  if (resolve(a) === resolve(b)) return true;
+  try {
+    return (await realpath(a)) === (await realpath(b));
+  } catch {
+    return false;
+  }
 }

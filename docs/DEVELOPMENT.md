@@ -1,7 +1,8 @@
 # Development
 
-The released v0.8.1 workflow is published as
-`@dailephd/my-frontend-observer@0.8.1` (CLI `my-frontend-observer`).
+The released v0.9.0 package is published as
+`@dailephd/my-frontend-observer@0.9.0` (CLI `my-frontend-observer`). It keeps
+the v0.8.1 project workflow and adds structured visual annotation.
 
 The v0.8.1 workflow is exercised through unit and real-Chromium tests. Project fixtures use `init`, `capture baseline`, and `check`; coding-agent consumers use bounded `check --json`. `tests/browser/projectCheckWorkflow.test.ts` covers REVIEW_REQUIRED, contract FAIL-to-PASS, reference FAIL/PASS/BLOCKED, incomparable BLOCKED, current history, and contained acceptance paths. `scripts/ci/runPackedViewerSmoke.mjs` is the single installed-package viewer/project-workflow smoke owner: it repeats REVIEW_REQUIRED and unchanged-contract FAIL-to-PASS before alias-aware viewer proof. Run the full unit, browser, security, build, documentation, and packed-consumer validations before release readiness.
 
@@ -187,7 +188,11 @@ This starts a real, loopback-only server serving the actual built PWA. As of
 v0.8 (all eight implementation batches), it reads `--root` only for bounded,
 read-only evidence discovery through the existing canonical
 readers/classifiers - it never writes to `--root` or modifies any artifact
-under it.
+under it. The v0.9 annotation authoring surface (implemented, not yet
+released) is available only from the project-aware `node dist/cli.js view`
+inside an initialized project, never from `--root`. Its end-to-end browser
+proof is `tests/browser/v09IntegratedAcceptance.test.ts`, and its packed
+installed proof is `scripts/ci/runPackedV09AnnotationSmoke.mjs`.
 
 Unlike `scripts/ci/runPackedObservationSmoke.mjs`, none of these five dev
 smokes is wired into any CI workflow or is a release gate - they are

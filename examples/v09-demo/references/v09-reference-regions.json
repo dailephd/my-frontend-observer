@@ -1,0 +1,67 @@
+{
+  "regions": [
+    {
+      "id": "header",
+      "rectangle": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 64
+      }
+    },
+    {
+      "id": "hero",
+      "rectangle": {
+        "x": 497,
+        "y": 153,
+        "width": 802,
+        "height": 180
+      }
+    },
+    {
+      "id": "sidebar",
+      "rectangle": {
+        "x": 20,
+        "y": 132,
+        "width": 320,
+        "height": 676
+      }
+    },
+    {
+      "id": "content",
+      "rectangle": {
+        "x": 396,
+        "y": 132,
+        "width": 1024,
+        "height": 676
+      }
+    },
+    {
+      "id": "cta",
+      "rectangle": {
+        "x": 417,
+        "y": 543,
+        "width": 982,
+        "height": 72
+      }
+    },
+    {
+      "id": "asset",
+      "rectangle": {
+        "x": 417,
+        "y": 635,
+        "width": 982,
+        "height": 120
+      }
+    },
+    {
+      "id": "footer",
+      "rectangle": {
+        "x": 0,
+        "y": 828,
+        "width": 1440,
+        "height": 72
+      }
+    }
+  ]
+}

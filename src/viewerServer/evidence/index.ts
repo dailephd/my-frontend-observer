@@ -5,9 +5,11 @@ import { classifyManifest } from './classify.js';
 import type { ClassifiedRecord } from './classify.js';
 import { buildMetadataRecord, buildArtifactDetail } from './projection.js';
 import type { EvidenceArtifactDetail, EvidenceMetadataRecord } from './projection.js';
-import { decodeArtifactHandle } from './handles.js';
+import { decodeArtifactHandle, encodeArtifactHandle } from './handles.js';
 import { resolveContainedDir } from './pathSafety.js';
 import { MAX_INDEX_RECORDS } from './limits.js';
+import type { ObservationArtifact } from '../../domain/schema.js';
+import type { ExternalReferenceArtifact } from '../../domain/externalReference.js';
 
 export interface EvidenceIndexResult {
   records: EvidenceMetadataRecord[];
@@ -94,4 +96,58 @@ export async function findImportedReferenceDir(root: string, referenceId: string
     }
   }
   return undefined;
+}
+
+export interface ObservationIdentityMatch {
+  handle: string;
+  artifact: ObservationArtifact;
+  absoluteDir: string;
+}
+
+export interface ExternalReferenceIdentityMatch {
+  handle: string;
+  artifact: ExternalReferenceArtifact;
+  family: 'external-reference-imported' | 'external-reference-approved';
+  absoluteDir: string;
+}
+
+/**
+ * v0.9 Batch 2: bounded exact-identity lookup of one supported observation by
+ * `observationId` plus `requestId` (both required - never a logical-id-only,
+ * alias, folder-name, or filename match). Uses the same bounded
+ * discovery/classification as the index. Returns `undefined` when no
+ * currently supported observation matches, and also when more than one does:
+ * an ambiguous identity is never resolved by silently picking one.
+ */
+export async function findObservationByIdentity(root: string, observationId: string, requestId: string): Promise<ObservationIdentityMatch | undefined> {
+  const discovery = await discoverManifests(root);
+  const matches: ObservationIdentityMatch[] = [];
+  for (const manifest of discovery.manifests.slice(0, MAX_INDEX_RECORDS)) {
+    const classified = await classifyManifest(manifest.absolutePath);
+    if (classified.supportState !== 'supported' || classified.family !== 'observation') continue;
+    if (classified.artifact.observationId === observationId && classified.artifact.requestId === requestId) {
+      matches.push({ handle: encodeArtifactHandle('observation', manifest.relativeDir), artifact: classified.artifact, absoluteDir: manifest.absoluteDir });
+    }
+  }
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
+/**
+ * v0.9 Batch 2: bounded exact-identity lookup of one supported imported or
+ * approved external reference by `referenceId` plus `referenceRequestId`.
+ * Same bounded, never-guess, ambiguity-is-unresolved discipline as
+ * `findObservationByIdentity`.
+ */
+export async function findExternalReferenceByIdentity(root: string, referenceId: string, referenceRequestId: string): Promise<ExternalReferenceIdentityMatch | undefined> {
+  const discovery = await discoverManifests(root);
+  const matches: ExternalReferenceIdentityMatch[] = [];
+  for (const manifest of discovery.manifests.slice(0, MAX_INDEX_RECORDS)) {
+    const classified = await classifyManifest(manifest.absolutePath);
+    if (classified.supportState !== 'supported') continue;
+    if (classified.family !== 'external-reference-imported' && classified.family !== 'external-reference-approved') continue;
+    if (classified.artifact.referenceId === referenceId && classified.artifact.referenceRequestId === referenceRequestId) {
+      matches.push({ handle: encodeArtifactHandle(classified.family, manifest.relativeDir), artifact: classified.artifact, family: classified.family, absoluteDir: manifest.absoluteDir });
+    }
+  }
+  return matches.length === 1 ? matches[0] : undefined;
 }

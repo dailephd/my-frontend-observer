@@ -553,3 +553,48 @@ export type {
   ReviewReferenceCorrectionAttemptResult,
 } from './domain/referenceCorrectionWorkflow.js';
 export { REFERENCE_CORRECTION_OVERALL_STATES, prepareReferenceCorrection, reviewReferenceCorrectionAttempt } from './domain/referenceCorrectionWorkflow.js';
+
+export type {
+  VisualAnnotationArtifact,
+  VisualAnnotationSource,
+  VisualAnnotationMark,
+  VisualAnnotationItem,
+  VisualAnnotationIntent,
+  VisualAnnotationInterpretation,
+  RuntimeAnnotationAssociation,
+  ReferenceAnnotationAssociation,
+  VisualAnnotationValidationResult,
+} from './domain/visualAnnotation.js';
+export {
+  VISUAL_ANNOTATION_ARTIFACT_KIND,
+  VISUAL_ANNOTATION_SCHEMA_VERSION,
+  MAX_VISUAL_ANNOTATION_ITEMS,
+  MAX_VISUAL_ANNOTATION_NOTE_LENGTH,
+  VISUAL_ANNOTATION_OVERLAY_PATH,
+  isValidVisualAnnotationContent,
+  isValidVisualAnnotationArtifact,
+  renderVisualAnnotationOverlaySvg,
+} from './domain/visualAnnotation.js';
+
+export { buildVisualAnnotationRequestIdentity, buildVisualAnnotationInstanceIdentity } from './domain/visualAnnotationIdentity.js';
+
+export type { PersistedVisualAnnotationResult, WriteVisualAnnotationArtifactOptions } from './artifacts/visualAnnotationArtifactWriter.js';
+export {
+  VISUAL_ANNOTATION_MANIFEST_FILENAME,
+  VISUAL_ANNOTATION_OVERLAY_FILENAME,
+  computeVisualAnnotationOverlaySha256,
+  writeVisualAnnotationArtifact,
+} from './artifacts/visualAnnotationArtifactWriter.js';
+
+export type { ReadVisualAnnotationArtifactResult } from './artifacts/visualAnnotationArtifactReader.js';
+export { readVisualAnnotationArtifact } from './artifacts/visualAnnotationArtifactReader.js';
+
+export type { PersistVisualAnnotationOptions, ApplicationPersistVisualAnnotationResult } from './application/visualAnnotationPersistenceService.js';
+export { persistVisualAnnotation } from './application/visualAnnotationPersistenceService.js';
+
+export type {
+  MaterializeVisualAnnotationReferenceOptions,
+  MaterializeVisualAnnotationReferenceResult,
+  MaterializeVisualAnnotationReferenceFailureCode,
+} from './application/visualAnnotationReferenceMaterializationService.js';
+export { materializeVisualAnnotationReference } from './application/visualAnnotationReferenceMaterializationService.js';

@@ -1,6 +1,6 @@
 # my-frontend-observer
 
-## Common project workflow (v0.8.1)
+## Common project workflow (v0.9.0)
 
 ```powershell
 my-frontend-observer init --url http://127.0.0.1:3000 --target app=#app
@@ -17,7 +17,9 @@ my-frontend-observer view
 `1`, `2`, or `3` for `PASS`, `FAIL`, `REVIEW_REQUIRED`, or `BLOCKED`.
 Canonical hashes remain available in viewer details and persisted provenance,
 but are not normal workflow command inputs. The existing low-level commands
-remain supported. v0.8.1 is the current published release.
+remain supported. v0.9.0 is the current published release.
+
+v0.9.0 adds the structured visual annotation workflow described below.
 
 `my-frontend-observer` is the local-first rendered browser/runtime evidence
 producer in the my-dev-kit ecosystem. Its durable product purpose is defined
@@ -26,8 +28,9 @@ composition is documented in the [my-dev-kit ecosystem guide](https://github.com
 
 ## Current status
 
-`v0.8.1`, Project Workflow CLI and Human-Readable Evidence Aliases, is the
-current published release. It builds on `v0.8.0`, Interactive Local Observation
+`v0.9.0`, Human Visual Annotation and Design-Intent Capture, is the current
+published release. It builds on `v0.8.1`, Project Workflow CLI and
+Human-Readable Evidence Aliases, `v0.8.0`, Interactive Local Observation
 Viewer, and `v0.7.0`, End-to-End Coding-Agent Frontend Change
 Review, `v0.6.0`, Bounded Agent Context and Native my-dev-kit Ecosystem
 Integration, and `v0.5.0`, Executable Frontend Contracts and Explicit Change
@@ -211,6 +214,102 @@ my-frontend-observer view --root observations --port 4319 --no-open
 
 (From a source checkout, use `node dist/cli.js view ...` instead.)
 
+### Visual annotation (v0.9.0)
+
+v0.9.0 adds structured visual annotation to the project-aware viewer. The
+model rests on a few deliberate separations:
+
+- Drawing is evidence, not meaning. A mark on its own says nothing about what
+  should change.
+- Association is explicit. You choose what a mark is about.
+- Confirmation is explicit. A candidate meaning is only a proposal until you
+  confirm it.
+- Promotion and materialization are selected actions. Nothing is promoted or
+  materialized just because it was confirmed.
+- Promotion does not activate a contract, and materialization does not approve
+  a reference. Those remain separate, explicit decisions.
+
+The capabilities:
+
+- **Runtime screenshot annotation**: draw points, rectangles, lines, arrows,
+  and notes on an observation screenshot. Geometry is stored in runtime CSS
+  pixels.
+- **External-reference annotation**: draw the same marks on an imported or
+  approved design reference. Geometry is stored in reference-image pixels.
+- **Explicit association**: a mark is linked to a runtime target, a runtime
+  relationship, a reference region, or a reference relationship only when you
+  choose it. Drawing over something never creates an association.
+- **Candidate and confirmed intent**: you choose a structured intent (for
+  example "move header right" or "create region hero"), review the exact
+  candidate structure, and confirm it explicitly. Editing a confirmed item
+  withdraws the confirmation.
+- **Immutable saves**: each save writes a new `VisualAnnotationArtifact`
+  (schema `1.0.0`). A revision supersedes its parent and never rewrites it.
+- **Runtime contract promotion**: selected confirmed runtime intent can be
+  promoted into a normal per-change frontend contract. Activating that
+  contract for `check` is a separate explicit choice.
+- **Reference materialization**: selected confirmed reference regions and
+  requirements can be materialized into a new imported external-reference
+  revision that supersedes the source. The source reference is never changed,
+  and the new revision is not approved automatically.
+
+Authoring is available only in the project-aware viewer:
+
+```powershell
+# Project-aware: annotation authoring enabled for this project.
+my-frontend-observer view
+
+# Standalone: always read-only, even for annotation evidence.
+my-frontend-observer view --root .frontend-observer/evidence
+```
+
+There is no separate annotation command. Observer still never edits target
+source, never approves a baseline or reference on its own, and never adds a
+new PASS/FAIL rule for annotations. The existing contract and reference
+evaluators remain the only source of verdicts. See
+[docs/WORKFLOWS.md](docs/WORKFLOWS.md) and
+[docs/SECURITY.md](docs/SECURITY.md) for the full workflow and the local write
+boundary.
+
+## Demo and tutorials
+
+Explaining annotation, contracts, and references against a real application is
+hard, because a real application changes for reasons unrelated to the lesson.
+The repository therefore keeps a small deterministic demo application in
+[examples/v09-demo/](examples/v09-demo/README.md). Every region is named and
+every state difference is deliberate, so the same state always renders the
+same geometry at the canonical 1440x900 viewport.
+
+Four v0.9 tutorial scenarios live in `examples/v09-demo/tutorials/`. They are
+recorded by the external tool `@dailephd/my-dev-kit-lab@0.4.9`, which drives
+the real Observer viewer in Chromium against a disposable project built from
+the demo. Observer itself has no tutorial command and does not depend on the
+lab.
+
+A contributor builds Observer, generates a per-run target contract, then
+validates and runs a scenario:
+
+```powershell
+npm run build
+node examples/v09-demo/scripts/generate-tutorial-target.mjs `
+  --scenario observer-v09-annotation-basics `
+  --out .my-dev-kit-workflow/adhoc/target-contract.json
+npx --yes @dailephd/my-dev-kit-lab@0.4.9 tutorial validate `
+  --scenario examples/v09-demo/tutorials/01-annotation-basics.json `
+  --target-contract .my-dev-kit-workflow/adhoc/target-contract.json --json
+npx --yes @dailephd/my-dev-kit-lab@0.4.9 tutorial run `
+  --scenario examples/v09-demo/tutorials/01-annotation-basics.json `
+  --target-contract .my-dev-kit-workflow/adhoc/target-contract.json `
+  --out <an output directory you choose outside the repository> --json
+```
+
+A run writes a WebM video, screenshots, SRT and VTT subtitles, a Markdown
+tutorial, and a manifest into the output directory you choose. None of that is
+committed. The demo and tutorial sources are repository examples only. They
+are not included in the npm package. See
+[examples/v09-demo/README.md](examples/v09-demo/README.md) for the full
+contributor workflow.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
@@ -248,8 +347,8 @@ Planning authorities:
   intent and responsibility boundaries.
 - [Project Milestones](docs/PROJECT_MILESTONES.md): complete ordered capability
   design and cross-milestone rules.
-- [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.8.1 are
-  released; v0.9+ remain future.
+- [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.9.0 are
+  released; v0.10 remains future.
 - [Current State](docs/CURRENT_STATE.md): retained scaffold and release state.
 
 No sibling ecosystem repository is a runtime dependency of the retained

@@ -2,6 +2,63 @@
 
 ## [Unreleased]
 
+## 0.9.0 - 2026-09-21
+
+v0.9, Human Visual Annotation and Design-Intent Capture. Structured visual
+annotation through the existing viewer. Drawing is evidence, not meaning:
+association, confirmation, promotion, materialization, activation and approval
+each remain separate, explicit steps.
+
+- Added the `VisualAnnotationArtifact` evidence family (schema `1.0.0`) with
+  deterministic identity, an atomic writer, a canonical reader, a persistence
+  service, and a derived annotation overlay SVG. Every save is an immutable
+  revision with stale-parent conflict detection.
+- Added runtime observation annotation in runtime CSS pixels and external
+  reference annotation in reference-image pixels, with five mark kinds (point,
+  rectangle, line, arrow and note), Select and Pan modes, zoom, and keyboard
+  selection.
+- Added explicit associations in each source domain: a runtime target, a
+  runtime relationship, or a reference region. Where a mark is drawn never
+  decides what it is about.
+- Added candidate and confirmed interpretation. Changing a confirmed meaning
+  withdraws its confirmation.
+- Added runtime operations `inspect`, `move`, `resize`, `remove` and
+  `preserve`, and authored categories `requested`, `expected-dependent`,
+  `protected` and `preserved`. `unexpected` is concluded by comparison, never
+  authored.
+- Added promotion of selected confirmed runtime `move`, `resize` and
+  `preserve` intent into a canonical per-change frontend contract. Promotion
+  does not activate the contract; project activation is a separate, optional,
+  explicit choice. Confirmed `remove` intent stays non-promotable because the
+  contract vocabulary has no target-absent primitive, and `inspect` is never a
+  clause.
+- Added reference-region create and refine intent, and property, relationship
+  and measurement reference requirements.
+- Added materialization of selected confirmed reference intent into a new
+  imported external-reference revision that supersedes its source. The source
+  reference is never modified, and the new revision is not approved
+  automatically.
+- Added a project-aware local authoring boundary: a 32-byte in-memory session
+  capability, strict Host and Origin checks, JSON-only bounded request bodies,
+  and one serialized write queue. `view --root` stays read-only.
+- Added three authoring routes: `POST /api/annotations`,
+  `POST /api/annotations/:handle/promote-contract`, and
+  `POST /api/annotations/:handle/materialize-reference`. The viewer protocol
+  is now `1.3.0`.
+- Added viewer discovery of visual annotations, a source-resolving annotation
+  view route, and a verified, script-blocking overlay media role.
+- Evidence discovery now skips writer temporary `.tmp-*` directories.
+- Fixed viewer shutdown stalling while a browser or service worker held a
+  connection open. Closing the viewer now also ends active connections.
+- Added an integrated real-Chromium acceptance suite and a packed installed
+  v0.9 annotation smoke to the cross-platform pre-release readiness workflow.
+- The repository gained a deterministic demo and four tutorials under
+  `examples/v09-demo/`, proved end to end with the external tool
+  `@dailephd/my-dev-kit-lab@0.4.9`. The demo is repository material only: it is
+  not in the npm package, and my-dev-kit-lab is not an Observer dependency.
+- Final pre-release readiness passed on Windows, Linux and macOS against one
+  exact candidate package, including all four tutorials.
+
 ## 0.8.1 - 2026-09-15
 
 Project workflow release for `my-frontend-observer`.

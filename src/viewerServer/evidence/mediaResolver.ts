@@ -1,12 +1,13 @@
-import { lstat } from 'node:fs/promises';
+import { lstat, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { classifyManifest } from './classify.js';
 import { decodeArtifactHandle } from './handles.js';
 import { findImportedReferenceDir } from './index.js';
 import { resolveContainedDir, resolveContainedFile } from './pathSafety.js';
 import type { ExternalReferenceImageFormat } from '../../domain/externalReferenceImage.js';
+import { renderVisualAnnotationOverlaySvg } from '../../domain/visualAnnotation.js';
 
-export type MediaRole = 'screenshot' | 'image' | 'source-image';
+export type MediaRole = 'screenshot' | 'image' | 'source-image' | 'annotation-overlay';
 
 const IMAGE_FORMAT_MIME: Record<ExternalReferenceImageFormat, string> = {
   png: 'image/png',
@@ -17,7 +18,7 @@ const IMAGE_FORMAT_MIME: Record<ExternalReferenceImageFormat, string> = {
 export type MediaResolution = { ok: true; absolutePath: string; mimeType: string } | { ok: false; reason: string };
 
 function isMediaRole(value: string): value is MediaRole {
-  return value === 'screenshot' || value === 'image' || value === 'source-image';
+  return value === 'screenshot' || value === 'image' || value === 'source-image' || value === 'annotation-overlay';
 }
 
 /**
@@ -57,6 +58,28 @@ export async function resolveMedia(root: string, artifactHandle: string, role: s
     const resolved = resolveContainedFile(dir, image.path);
     if (resolved === undefined) return { ok: false, reason: 'image reference is not a safe bare filename' };
     return checkExists(resolved, IMAGE_FORMAT_MIME[image.format]);
+  }
+
+  if (role === 'annotation-overlay') {
+    if (classified.family !== 'visual-annotation') return { ok: false, reason: 'annotation-overlay is only defined for visual-annotation evidence' };
+    const { artifact } = classified;
+    // Only the manifest's own owned overlay reference is ever resolved - never a browser-supplied filename.
+    const resolved = resolveContainedFile(dir, artifact.overlay.path);
+    if (resolved === undefined) return { ok: false, reason: 'annotation overlay reference is not a safe bare filename' };
+    const exists = await checkExists(resolved, 'image/svg+xml');
+    if (!exists.ok) return exists;
+    // Defense in depth: the canonical reader already verified overlay.sha256, but only an overlay byte-identical to the
+    // canonical renderer's output for this artifact is ever served, so no hand-edited SVG (with a matching digest) can
+    // reach the browser from the viewer origin.
+    try {
+      const bytes = await readFile(resolved, 'utf8');
+      if (bytes !== renderVisualAnnotationOverlaySvg(artifact.source, artifact.items)) {
+        return { ok: false, reason: 'annotation overlay does not match the canonical rendering of its manifest' };
+      }
+    } catch {
+      return { ok: false, reason: 'media file not found on disk' };
+    }
+    return exists;
   }
 
   // role === 'source-image': only defined for an approved external reference, resolved through the imported

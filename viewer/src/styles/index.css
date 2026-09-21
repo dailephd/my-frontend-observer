@@ -997,3 +997,353 @@ body {
   cursor: pointer;
   font-size: 0.68rem;
 }
+
+/* --- v0.9 Batch 3: runtime annotation authoring --- */
+
+.annotation-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.annotation-toolbar .zoom-controls {
+  margin-bottom: 0;
+}
+
+.annotation-toolbar__modes {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.annotation-toolbar__mode,
+.annotation-panel__actions button,
+.annotation-panel__association-actions button,
+.annotation-panel__saved-item {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.annotation-toolbar__mode--active {
+  border-color: var(--accent);
+  background: rgba(56, 189, 248, 0.2);
+}
+
+.annotation-panel__actions button:disabled,
+.annotation-panel__association-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.annotation-toolbar__note {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.annotation-toolbar__note input {
+  width: 12rem;
+  font: inherit;
+}
+
+.annotation-toolbar__read-only,
+.annotation-panel__read-only {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.annotation-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-bottom: 0.6rem;
+  margin-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.annotation-panel h3,
+.annotation-panel h4 {
+  margin: 0.2rem 0;
+}
+
+.annotation-panel__saved-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.annotation-panel__saved-item {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+}
+
+.annotation-panel__saved-item--active {
+  border-color: #4ade80;
+}
+
+.annotation-panel__saved-id {
+  font-family: ui-monospace, monospace;
+  word-break: break-all;
+}
+
+.annotation-panel__saved-meta,
+.annotation-panel__parent,
+.annotation-panel__interpretation {
+  color: var(--text-dim);
+  margin: 0;
+  word-break: break-all;
+}
+
+.annotation-panel__actions,
+.annotation-panel__association-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.annotation-panel__association-actions label,
+.annotation-panel__note-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: 100%;
+}
+
+.annotation-panel__note-editor textarea {
+  min-height: 3rem;
+  font: inherit;
+}
+
+.annotation-panel__status--success {
+  color: #4ade80;
+}
+
+.annotation-panel__error {
+  color: #fca5a5;
+  margin: 0;
+}
+
+.target-overlay-svg__rect--inert {
+  pointer-events: none;
+}
+
+.target-overlay-svg--mode-point,
+.target-overlay-svg--mode-rectangle,
+.target-overlay-svg--mode-line,
+.target-overlay-svg--mode-arrow,
+.target-overlay-svg--mode-note {
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.target-overlay-svg--mode-pan {
+  touch-action: none;
+}
+
+.annotation-layer .annotation-layer__mark {
+  pointer-events: none;
+}
+
+.annotation-layer--selectable .annotation-layer__mark {
+  pointer-events: visiblePainted;
+  cursor: move;
+}
+
+.annotation-layer__mark:focus-visible {
+  outline: 2px solid #facc15;
+}
+
+.annotation-layer__shape {
+  fill: none;
+  stroke: #f472b6;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.annotation-layer__shape--area {
+  fill: rgba(244, 114, 182, 0.12);
+}
+
+.annotation-layer__shape--filled {
+  fill: #f472b6;
+}
+
+.annotation-layer__note-text {
+  fill: #fdf2f8;
+  font-size: 14px;
+  paint-order: stroke;
+  stroke: #500724;
+  stroke-width: 3px;
+}
+
+.annotation-layer__mark--selected .annotation-layer__shape {
+  stroke: #facc15;
+}
+
+.annotation-layer__mark--selected .annotation-layer__shape--filled {
+  fill: #facc15;
+}
+
+.annotation-layer__mark--preview .annotation-layer__shape {
+  stroke-dasharray: 6 4;
+  opacity: 0.8;
+}
+
+/* --- v0.9 Batch 4: external-reference annotation authoring --- */
+
+/* The reference workspace is a fixed-height scrolling flex column: its rows must keep their natural height, or the
+   panes row shrinks and the details/annotation panel is painted over the lower part of the reference image. */
+.reference-workspace > * {
+  flex-shrink: 0;
+}
+
+.reference-pane .annotation-toolbar {
+  margin-bottom: 0.3rem;
+}
+
+.annotation-panel__group {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.3rem 0.4rem;
+  margin: 0;
+}
+
+.annotation-panel__group legend {
+  color: var(--text-dim);
+  padding: 0 0.2rem;
+}
+
+.annotation-panel__requirement-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: flex-end;
+}
+
+.annotation-panel__requirement-form label,
+.annotation-panel__association-actions label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.annotation-panel__requirement-form button {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.annotation-panel__requirement-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.annotation-panel__hint {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.annotation-panel__intent {
+  margin: 0;
+  padding: 0.3rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.annotation-panel__proposal-list {
+  margin: 0;
+  padding-left: 1rem;
+  word-break: break-all;
+}
+
+.candidate-region-preview {
+  pointer-events: none;
+}
+
+.candidate-region-preview__rect {
+  fill: none;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.candidate-region-preview__rect--create {
+  stroke: #34d399;
+  stroke-dasharray: 8 4;
+  fill: rgba(52, 211, 153, 0.1);
+}
+
+.candidate-region-preview__rect--refine-original {
+  stroke: #94a3b8;
+  stroke-dasharray: 2 3;
+}
+
+.candidate-region-preview__rect--refine-candidate {
+  stroke: #fb923c;
+  stroke-dasharray: 8 4;
+  fill: rgba(251, 146, 60, 0.1);
+}
+
+.candidate-region-preview__label {
+  fill: #ecfdf5;
+  font-size: 11px;
+  paint-order: stroke;
+  stroke: #022c22;
+  stroke-width: 3px;
+}
+
+/* --- v0.9 Batch 5: runtime intent confirmation and contract promotion --- */
+
+.annotation-panel__promotion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.4rem;
+}
+
+.annotation-panel__promotion button,
+.annotation-panel__group > button {
+  align-self: flex-start;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.annotation-panel__promotion button:disabled,
+.annotation-panel__group > button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.annotation-panel__promotion-status {
+  margin: 0.3rem 0;
+  color: var(--text-dim);
+}
+
+/* v0.9 Batch 6: reference materialization result lines */
+.annotation-panel__materialization .annotation-panel__status p {
+  margin: 0;
+}

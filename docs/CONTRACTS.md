@@ -490,7 +490,7 @@ blockers; on the canonical worktree, `npm run typecheck`, `npm run lint`,
 `npm test` (627 tests), `npm run test:browser` (120 tests), `npm run
 test:security`, `npm run build`, and `npm run check:docs` all pass.
 
-## v0.7 external visual-reference contract direction (released as `0.7.0`; v0.8 viewer released as `0.8.0`; v0.9-v0.10 still future)
+## v0.7 external visual-reference contract direction (released as `0.7.0`; v0.8 viewer released as `0.8.0`; v0.9 released as `0.9.0`; v0.10 still future)
 
 External visual-reference support is released as package version `0.7.0`
 (see "v0.7 Prompt 1" through "v0.7 Prompt 8" below for the exact contract).
@@ -498,8 +498,9 @@ The exact public type names, artifact kinds, schema versions, persistence
 layout, and command/programmatic entry points were designed during v0.7
 implementation from current repository precedent, following the constraints
 below. v0.8 (released as package version `0.8.0` - see
-`docs/CURRENT_STATE.md`) has preserved them; v0.9-v0.10 remain future and
-must continue to preserve them.
+`docs/CURRENT_STATE.md`) has preserved them. v0.9 (implemented, not yet
+released) preserves them too. v0.10 remains future and must continue to
+preserve them.
 
 **Distinct evidence domain**: an external reference is desired-design evidence,
 not an `ObservationArtifact` and not the "before" side of a v0.4
@@ -569,11 +570,80 @@ The v0.8 viewer, released as package version `0.8.0`, consumes this v0.7
 reference/evaluation contract exactly as required - it creates no UI-only
 reference model (see `docs/ARCHITECTURE.md` "v0.8 Batch 5"/"v0.8 Batch 6"
 and `docs/reports/v0.8-reference-candidate-inspection-batch5.md`). v0.9
-annotations may originate
-from runtime screenshots or external references but must preserve which source
-identity/coordinate system they belong to and feed the same canonical contract
-semantics. v0.10 combines both entry modes into the full correction/approval
-workflow.
+annotations (released in `0.9.0`) originate from runtime
+screenshots or external references, preserve which source identity and
+coordinate system they belong to, and feed the same canonical contract and
+reference semantics - see "v0.9 visual annotation contract" below. v0.10
+combines both entry modes into the full correction/approval workflow.
+
+## v0.9 visual annotation contract (released in 0.9.0)
+
+v0.9 is released as `@dailephd/my-frontend-observer@0.9.0`.
+
+**Artifact**: `VisualAnnotationArtifact`, artifact kind
+`my-frontend-observer/visual-annotation`, schema version `1.0.0`. It stores one
+exact canonical source (a runtime observation, or an imported or approved
+external reference), the source coordinate space (runtime CSS pixels or
+reference-image pixels), and bounded structured items. Each item has a stable
+`annotationItemId`, one mark (point, rectangle, line, arrow, or note), an
+optional explicit association, and an interpretation. A revision sets
+`supersedesAnnotationId` and never rewrites its parent. The overlay SVG is
+derived from the artifact and verified before it is served.
+
+**An annotation is not a contract.** Saving an annotation never creates a
+contract clause, a reference requirement, or a PASS/FAIL rule. Marks and
+visible pixels are evidence. Overlap between a mark and a target or region is
+not ownership and never creates an association.
+
+**Interpretation states**: `uninterpreted`, `candidate`, and `confirmed`.
+Confirmation is explicit and records `confirmedAt`. Editing the mark,
+association, or intent of a confirmed item withdraws the confirmation.
+
+**Runtime intent to contract**:
+
+- Only selected, confirmed, supported runtime intent is promoted. Promotion
+  creates one normal canonical `PerChangeContract` through the existing
+  contract persistence service.
+- Supported mappings use the existing `ContractPrimitive` vocabulary only.
+  `move` maps to `property-increases`/`property-decreases` on `x` or `y`.
+  `resize` maps to `property-increases`/`property-decreases` on `width` or
+  `height`. `preserve` maps to `property-unchanged-within-tolerance` for a
+  target property, or to `relationship-unchanged` for an explicitly associated
+  canonical relationship.
+- Categories are the canonical `requested`, `expected-dependent` (with a
+  required `required` or `permitted` mode), `protected`, and `preserved`.
+  `unexpected` is never authored; it stays evaluator-derived.
+- `remove` can be confirmed and saved, but it is not promotable in v0.9. The
+  contract vocabulary has no target-absent primitive, and no approximate
+  clause is fabricated.
+- `inspect` intent and notes are informational and never promoted.
+- Each clause's `supportingEvidence` records the annotation source and item
+  paths. Promotion never activates the contract unless explicitly requested,
+  and it never approves a baseline.
+
+**Reference intent to a new reference revision**:
+
+- Only selected, confirmed `reference-region` (`create` or `refine`) and
+  `reference-requirement` items are materialized. `inspect` and
+  `asset-sensitive` intent stay informational.
+- The result is a new imported `ExternalReferenceArtifact`, created through the
+  existing canonical import service. It supersedes the selected source
+  reference (the approved reference id when the source is approved) and has
+  lifecycle `imported`. It is never approved automatically.
+- Source regions keep their order. A refine replaces the rectangle of an
+  existing source region and keeps its id. Creates are appended in selection
+  order. Duplicate creates, duplicate refines, and create-then-refine in one
+  request are rejected.
+- Source requirements stay first with identical recomputed ids. Selected
+  requirements are appended in selection order and validated against the final
+  regions. A selected relationship requirement must still hold for the final
+  geometry. Measurement requirements store only the subject and tolerance.
+- Applicability, label, and the exact source image bytes are preserved. The
+  source reference is never modified, and project reference acceptance is not
+  changed.
+
+Existing contract, reference relationship, adequacy, and fidelity evaluators
+remain the only source of verdicts. v0.9 adds no annotation evaluator.
 
 ## Approved v0.1 design inputs
 

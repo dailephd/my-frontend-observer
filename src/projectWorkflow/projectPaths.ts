@@ -27,3 +27,30 @@ export function projectObservationsRoot(projectRoot: string): string {
 export function observationOutputLocation(alias: string): string {
   return `${PROJECT_STATE_DIRECTORY}/evidence/observations/${alias}`;
 }
+
+export function projectAnnotationsRoot(projectRoot: string): string {
+  return path.join(projectEvidenceRoot(projectRoot), 'annotations');
+}
+
+/** Portable project-relative output location for visual-annotation artifacts. Created lazily by the annotation writer. */
+export function annotationOutputLocation(): string {
+  return `${PROJECT_STATE_DIRECTORY}/evidence/annotations`;
+}
+
+export function projectContractsRoot(projectRoot: string): string {
+  return path.join(projectEvidenceRoot(projectRoot), 'contracts');
+}
+
+/** Portable project-relative output location for annotation-promoted change contracts. Created lazily by the contract writer. */
+export function contractOutputLocation(): string {
+  return `${PROJECT_STATE_DIRECTORY}/evidence/contracts`;
+}
+
+export function projectReferencesRoot(projectRoot: string): string {
+  return path.join(projectEvidenceRoot(projectRoot), 'references');
+}
+
+/** Portable project-relative output location for annotation-materialized external-reference revisions. Created lazily by the reference writer. */
+export function referenceOutputLocation(): string {
+  return `${PROJECT_STATE_DIRECTORY}/evidence/references`;
+}

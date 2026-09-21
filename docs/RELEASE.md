@@ -1,24 +1,29 @@
 # Release
 
-`v0.8.1` (Project Workflow CLI and Human-Readable Evidence Aliases) is
-released and published to npm as `@dailephd/my-frontend-observer`. The
-release includes the managed project workflow, bounded check interface,
-alias-aware viewer, cross-platform validation, and MIT license.
+`v0.9.0` (Human Visual Annotation and Design-Intent Capture) is released and
+published to npm as `@dailephd/my-frontend-observer`. The release adds
+structured visual annotation of runtime observations and external references
+to the project-aware viewer, selected promotion of confirmed runtime intent
+into canonical change contracts, and selected materialization of confirmed
+reference intent into new imported reference revisions, with final
+Windows/Linux/macOS readiness and the MIT license.
 
 The CLI remains `my-frontend-observer`; package identity and product identity
 are intentionally distinct. Canonical artifact schemas remain versioned
 independently from the npm package version.
 
 Observation, comparison, frontend contract, evaluation artifact,
-bounded-agent-context, external-reference, and package version all remain
-separate: package version is `0.7.0`; observation schema is `1.2.0`,
-comparison schema is `1.0.0`, frontend contract schema is `1.0.0`,
+bounded-agent-context, external-reference, visual annotation, and package
+version all remain separate: package version is `0.9.0`; observation schema is
+`1.2.0`, comparison schema is `1.0.0`, frontend contract schema is `1.0.0`,
 evaluation artifact schema is `1.0.0`, bounded-agent-context schema is
-`1.0.0`, and external-reference schema is `1.0.0` - none of which changes
-automatically with the package version, and none of which was bumped by
-the v0.7 work.
+`1.0.0`, external-reference schema is `1.0.0`, and visual annotation schema is
+`1.0.0` - none of which changes automatically with the package version. v0.9
+introduced the visual annotation schema and bumped no existing schema.
 
-Prior releases: `v0.6.0` (Bounded Agent Context and Native my-dev-kit
+Prior releases: `v0.8.1` (Project Workflow CLI and Human-Readable Evidence
+Aliases), `v0.8.0` (Interactive Local Observation Viewer), `v0.7.0` (End-to-End
+Coding-Agent Frontend Change Review), `v0.6.0` (Bounded Agent Context and Native my-dev-kit
 Ecosystem Integration), `v0.5.0` (Executable Frontend Contracts and
 Explicit Change Scope), `v0.4.0` (Layout Relationships, Dependency
 Evidence, and Before/After Comparison), `v0.3.0` (Runtime Scrolling,

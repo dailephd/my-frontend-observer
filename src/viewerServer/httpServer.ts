@@ -10,11 +10,28 @@ import { getComparisonView } from './evidence/comparisonView.js';
 import { getEvaluationView } from './evidence/evaluationView.js';
 import { getReferenceView, getReferenceCandidateView, getReferenceBindings, getReferenceFidelity } from './evidence/referenceView.js';
 import { resolveContextSources } from './evidence/contextSourceView.js';
+import { getAnnotationView } from './evidence/annotationView.js';
+import { checkAuthoringRequestHeaders, isExpectedAuthoringHost, readBoundedAuthoringBody } from './authoringSecurity.js';
+import type { ViewerAuthoringSession } from './authoringSecurity.js';
+import { parseSaveAnnotationRequest, saveAnnotationFromViewer } from './annotationAuthoring.js';
+import type { SaveAnnotationFailureReason } from './annotationAuthoring.js';
+import { parsePromoteAnnotationContractRequest, promoteAnnotationContractFromViewer } from './annotationContractPromotion.js';
+import type { PromoteAnnotationContractFailureReason } from './annotationContractPromotion.js';
+import { materializeAnnotationReferenceFromViewer, parseMaterializeAnnotationReferenceRequest } from './annotationReferenceMaterialization.js';
+import type { MaterializeAnnotationReferenceFailureReason } from './annotationReferenceMaterialization.js';
 import type { ContextSessionState } from './context.js';
 import type { ViewerAliasMetadata } from './viewerService.js';
 
-/** Batch 1 viewer protocol identity: the shape of GET /api/status. Bumped independently of package/schema versions if the status contract itself changes. */
-export const VIEWER_PROTOCOL_VERSION = '1.0.0';
+/**
+ * Viewer protocol identity, reported by GET /api/status and bumped
+ * independently of package/schema versions. 1.1.0 (v0.9 Batch 2) adds the
+ * visual-annotation family, annotation metadata, the annotation-overlay media
+ * role, GET /api/annotations/:handle/view, GET /api/authoring/session, and
+ * POST /api/annotations. 1.2.0 (v0.9 Batch 5) adds
+ * POST /api/annotations/:handle/promote-contract and its response contract.
+ * 1.3.0 (v0.9 Batch 6) adds POST /api/annotations/:handle/materialize-reference.
+ */
+export const VIEWER_PROTOCOL_VERSION = '1.3.0';
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -65,6 +82,8 @@ export interface ViewerServerState {
   /** v0.8 Batch 7: explicit, session-only bounded-agent-context state loaded once at CLI startup from an optional `--context-file`. Defaults to `{status:'none'}` - see `context.ts`. */
   context: ContextSessionState;
   aliasMetadata?: ViewerAliasMetadata;
+  /** v0.9 Batch 2: present only for a validated project-aware viewer session. Absent means the server is strictly read-only. */
+  authoring?: ViewerAuthoringSession;
 }
 
 export interface CreateViewerServerOptions {
@@ -90,7 +109,7 @@ export function createViewerServer(options: CreateViewerServerOptions): Server {
 
 async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRoot: string, state: ViewerServerState): Promise<void> {
   const method = req.method ?? 'GET';
-  if (method !== 'GET' && method !== 'HEAD') {
+  if (method !== 'GET' && method !== 'HEAD' && method !== 'POST') {
     res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'GET, HEAD' });
     res.end('method not allowed');
     return;
@@ -102,6 +121,42 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
   } catch {
     res.writeHead(400, { 'content-type': 'text/plain; charset=utf-8' });
     res.end('bad request');
+    return;
+  }
+
+  // v0.9 Batch 2/5/6: POST exists for exactly three authoring routes. Every other path keeps the read-only GET/HEAD method set.
+  if (pathname === ANNOTATION_SAVE_PATH) {
+    if (method !== 'POST') {
+      res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' });
+      res.end('method not allowed');
+      return;
+    }
+    await handleAnnotationSave(req, res, state);
+    return;
+  }
+  const promoteMatch = ANNOTATION_PROMOTE_CONTRACT_PATH.exec(pathname);
+  if (promoteMatch) {
+    if (method !== 'POST') {
+      res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' });
+      res.end('method not allowed');
+      return;
+    }
+    await handleAnnotationContractPromotion(req, res, state, promoteMatch[1] as string);
+    return;
+  }
+  const materializeMatch = ANNOTATION_MATERIALIZE_REFERENCE_PATH.exec(pathname);
+  if (materializeMatch) {
+    if (method !== 'POST') {
+      res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' });
+      res.end('method not allowed');
+      return;
+    }
+    await handleAnnotationReferenceMaterialization(req, res, state, materializeMatch[1] as string);
+    return;
+  }
+  if (method === 'POST') {
+    res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'GET, HEAD' });
+    res.end('method not allowed');
     return;
   }
 
@@ -330,6 +385,40 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
     return;
   }
 
+  if (pathname === '/api/authoring/session') {
+    const session = state.authoring;
+    if (session === undefined) {
+      writeJsonBody(res, method, 200, { ok: true, enabled: false });
+      return;
+    }
+    // Defense in depth against DNS rebinding: the capability is only handed out on the exact expected loopback Host.
+    if (!isExpectedAuthoringHost(req, session)) {
+      writeJsonError(res, method, 403, 'authoring session is only available on the viewer origin');
+      return;
+    }
+    writeJsonBody(res, method, 200, { ok: true, enabled: true, token: session.token });
+    return;
+  }
+
+  const annotationViewMatch = /^\/api\/annotations\/([^/]+)\/view$/.exec(pathname);
+  if (annotationViewMatch) {
+    const handle = decodeURIComponentSafe(annotationViewMatch[1] as string);
+    if (handle === undefined) {
+      writeJsonError(res, method, 400, 'malformed annotation handle');
+      return;
+    }
+    const result = await getAnnotationView(state.root, handle);
+    if (!result.ok) {
+      const status = result.reason === 'unknown-handle' ? 404 : 409;
+      const error =
+        result.reason === 'unknown-handle' ? 'unknown viewer artifact handle' : result.reason === 'not-an-annotation' ? 'view is only defined for visual-annotation evidence' : 'annotation is not currently loadable';
+      writeJsonBody(res, method, status, { ok: false, error });
+      return;
+    }
+    writeJsonBody(res, method, 200, { ok: true, annotation: result.annotation, source: result.source });
+    return;
+  }
+
   if (pathname === '/api/context') {
     if (state.context.status === 'none') {
       writeJsonBody(res, method, 200, { ok: true, status: 'none' });
@@ -371,6 +460,208 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
   }
 }
 
+const ANNOTATION_SAVE_PATH = '/api/annotations';
+const ANNOTATION_PROMOTE_CONTRACT_PATH = /^\/api\/annotations\/([^/]+)\/promote-contract$/;
+
+const ANNOTATION_MATERIALIZE_REFERENCE_PATH = /^\/api\/annotations\/([^/]+)\/materialize-reference$/;
+
+const MATERIALIZE_FAILURE_STATUS: Record<MaterializeAnnotationReferenceFailureReason, number> = {
+  'unknown-annotation-handle': 404,
+  'not-an-annotation': 409,
+  'runtime-annotation': 409,
+  'source-unavailable': 404,
+  'source-image-unavailable': 404,
+  'image-read-failure': 500,
+  'invalid-source': 409,
+  'source-mismatch': 409,
+  'invalid-selection': 422,
+  'invalid-materialized-reference': 422,
+  'persistence-failure': 500,
+};
+
+const PROMOTE_FAILURE_STATUS: Record<PromoteAnnotationContractFailureReason, number> = {
+  'unknown-annotation-handle': 404,
+  'not-an-annotation': 409,
+  'reference-annotation': 409,
+  'source-unavailable': 404,
+  'project-config-invalid': 409,
+  'configured-baseline-invalid': 409,
+  'invalid-annotation': 409,
+  'unsupported-source': 409,
+  'source-mismatch': 409,
+  'invalid-selection': 422,
+  'persistence-failed': 500,
+};
+
+const SAVE_FAILURE_STATUS: Record<SaveAnnotationFailureReason, number> = {
+  'unknown-source-handle': 404,
+  'source-not-loadable': 409,
+  'source-not-annotatable': 409,
+  'unknown-parent-handle': 404,
+  'parent-not-annotation': 409,
+  'parent-source-mismatch': 409,
+  'parent-has-child': 409,
+  'revision-lineage-unverifiable': 409,
+  'invalid-annotation': 422,
+  'persistence-failed': 500,
+};
+
+/**
+ * POST /api/annotations. Order: authoring enabled, then Host/Origin/token/
+ * content-type/content-encoding, then bounded body, JSON, closed request
+ * shape, and finally the canonical save use case. Responses never include
+ * filesystem paths, the project root, the session token, or stack traces, and
+ * nothing here logs request bodies or tokens.
+ */
+async function handleAnnotationSave(req: IncomingMessage, res: ServerResponse, state: ViewerServerState): Promise<void> {
+  const authoring = await readAuthoringJsonRequest(req, res, state);
+  if (authoring === undefined) return;
+  const { session, parsed } = authoring;
+
+  const request = parseSaveAnnotationRequest(parsed);
+  if (!request.ok) {
+    writeJsonError(res, 'POST', 400, request.error);
+    return;
+  }
+
+  try {
+    const saved = await saveAnnotationFromViewer(state.root, session, request.request);
+    if (!saved.ok) {
+      writeJsonError(res, 'POST', SAVE_FAILURE_STATUS[saved.reason], saved.error);
+      return;
+    }
+    writeJsonBody(res, 'POST', 201, { ok: true, annotationId: saved.annotationId, annotationRequestId: saved.annotationRequestId, handle: saved.handle });
+  } catch {
+    writeJsonError(res, 'POST', 500, 'the annotation could not be saved');
+  }
+}
+
+/**
+ * The one shared authoring POST gate (v0.9 Batch 2, reused unchanged by Batch
+ * 5): authoring enabled, then Host/Origin/token/content-type/content-encoding,
+ * then the bounded body and JSON parsing. Returns undefined when it has
+ * already written the rejection response.
+ */
+async function readAuthoringJsonRequest(req: IncomingMessage, res: ServerResponse, state: ViewerServerState): Promise<{ session: ViewerAuthoringSession; parsed: unknown } | undefined> {
+  const session = state.authoring;
+  if (session === undefined) {
+    rejectAuthoringRequest(res, 403, 'annotation authoring is not enabled for this viewer session');
+    return undefined;
+  }
+
+  const headerCheck = checkAuthoringRequestHeaders(req, session);
+  if (!headerCheck.ok) {
+    rejectAuthoringRequest(res, headerCheck.status, headerCheck.error);
+    return undefined;
+  }
+
+  const body = await readBoundedAuthoringBody(req);
+  if (!body.ok) {
+    rejectAuthoringRequest(res, body.status, body.error);
+    return undefined;
+  }
+
+  try {
+    return { session, parsed: JSON.parse(body.body.toString('utf8')) as unknown };
+  } catch {
+    writeJsonError(res, 'POST', 400, 'request body is not valid JSON');
+    return undefined;
+  }
+}
+
+/**
+ * POST /api/annotations/:handle/promote-contract (v0.9 Batch 5). Same shared
+ * authoring gate as the save route, then a closed request shape, then the one
+ * canonical promotion use case. The route itself never builds clauses or
+ * contract identity and never returns filesystem paths.
+ */
+async function handleAnnotationContractPromotion(req: IncomingMessage, res: ServerResponse, state: ViewerServerState, encodedHandle: string): Promise<void> {
+  const authoring = await readAuthoringJsonRequest(req, res, state);
+  if (authoring === undefined) return;
+  const { session, parsed } = authoring;
+
+  const handle = decodeURIComponentSafe(encodedHandle);
+  if (handle === undefined) {
+    writeJsonError(res, 'POST', 400, 'malformed annotation handle');
+    return;
+  }
+
+  const request = parsePromoteAnnotationContractRequest(parsed);
+  if (!request.ok) {
+    writeJsonError(res, 'POST', 400, request.error);
+    return;
+  }
+
+  try {
+    const promoted = await promoteAnnotationContractFromViewer(state.root, session, handle, request.request);
+    if (!promoted.ok) {
+      writeJsonError(res, 'POST', PROMOTE_FAILURE_STATUS[promoted.reason], promoted.error);
+      return;
+    }
+    writeJsonBody(res, 'POST', 201, {
+      ok: true,
+      contractId: promoted.contractId,
+      contractRequestId: promoted.contractRequestId,
+      handle: promoted.handle,
+      clauseCount: promoted.clauseCount,
+      activation: promoted.activation,
+    });
+  } catch {
+    writeJsonError(res, 'POST', 500, 'the change contract could not be promoted');
+  }
+}
+
+/**
+ * POST /api/annotations/:handle/materialize-reference (v0.9 Batch 6). Same
+ * shared authoring gate, a closed `{ itemIds }` body, then the one canonical
+ * materialization use case. The route never composes regions, requirements,
+ * or reference identity and never returns filesystem paths.
+ */
+async function handleAnnotationReferenceMaterialization(req: IncomingMessage, res: ServerResponse, state: ViewerServerState, encodedHandle: string): Promise<void> {
+  const authoring = await readAuthoringJsonRequest(req, res, state);
+  if (authoring === undefined) return;
+  const { session, parsed } = authoring;
+
+  const handle = decodeURIComponentSafe(encodedHandle);
+  if (handle === undefined) {
+    writeJsonError(res, 'POST', 400, 'malformed annotation handle');
+    return;
+  }
+
+  const request = parseMaterializeAnnotationReferenceRequest(parsed);
+  if (!request.ok) {
+    writeJsonError(res, 'POST', 400, request.error);
+    return;
+  }
+
+  try {
+    const materialized = await materializeAnnotationReferenceFromViewer(state.root, session, handle, request.request);
+    if (!materialized.ok) {
+      writeJsonError(res, 'POST', MATERIALIZE_FAILURE_STATUS[materialized.reason], materialized.error);
+      return;
+    }
+    writeJsonBody(res, 'POST', 201, {
+      ok: true,
+      referenceId: materialized.referenceId,
+      referenceRequestId: materialized.referenceRequestId,
+      handle: materialized.handle,
+      lifecycle: 'imported',
+      supersedesReferenceId: materialized.supersedesReferenceId,
+      regionCount: materialized.regionCount,
+      requirementCount: materialized.requirementCount,
+      approvalRequired: true,
+    });
+  } catch {
+    writeJsonError(res, 'POST', 500, 'the reference revision could not be materialized');
+  }
+}
+
+/** Rejects before (or instead of) consuming the request body; `connection: close` stops the server from collecting any further body bytes. */
+function rejectAuthoringRequest(res: ServerResponse, status: number, error: string): void {
+  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', connection: 'close' });
+  res.end(JSON.stringify({ ok: false, error }));
+}
+
 function decodeURIComponentSafe(value: string): string | undefined {
   try {
     return decodeURIComponent(value);
@@ -397,7 +688,14 @@ async function streamFile(absolutePath: string, mimeType: string, res: ServerRes
     writeJsonError(res, method, 404, 'media file not found on disk');
     return;
   }
-  res.writeHead(200, { 'content-type': mimeType, 'content-length': size, 'cache-control': 'no-store' });
+  res.writeHead(200, {
+    'content-type': mimeType,
+    'content-length': size,
+    'cache-control': 'no-store',
+    // v0.9 Batch 2: an annotation overlay is image/svg+xml served from the viewer origin. Even if navigated to directly,
+    // it can never run script or load resources in that origin.
+    ...(mimeType === 'image/svg+xml' ? { 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox", 'x-content-type-options': 'nosniff' } : {}),
+  });
   if (method === 'HEAD') {
     res.end();
     return;

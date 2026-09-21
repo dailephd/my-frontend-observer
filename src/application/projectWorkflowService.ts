@@ -65,12 +65,51 @@ async function captureObservation(input: CaptureNamedObservationInput, allowRese
 export async function captureNamedObservation(input: CaptureNamedObservationInput): Promise<CaptureNamedObservationResult> { return captureObservation(input, false); }
 export async function captureCurrentObservation(projectRoot: string): Promise<CaptureNamedObservationResult> { return captureObservation({ projectRoot, alias: 'current', replace: true }, true); }
 
-export async function loadProjectViewerState(projectRoot: string): Promise<{ ok: true; root: string; aliases: Readonly<Record<string, string>> } | WorkflowFailure> {
+export async function loadProjectViewerState(projectRootInput: string): Promise<{ ok: true; projectRoot: string; root: string; aliases: Readonly<Record<string, string>> } | WorkflowFailure> {
+  const projectRoot = path.resolve(projectRootInput);
   const config = await readProjectConfig(projectConfigPath(projectRoot));
   if (!config.ok) return { ok: false, code: 'project-config-invalid', message: config.reason };
   const catalog = await readAliasCatalog(aliasCatalogPath(projectRoot));
   if (!catalog.ok) return { ok: false, code: 'project-catalog-invalid', message: catalog.reason };
   const aliases: Record<string, string> = {};
   for (const [alias, record] of Object.entries(catalog.catalog.observations)) aliases[record.relativeArtifactDir] = alias;
-  return { ok: true, root: projectEvidenceRoot(projectRoot), aliases };
+  return { ok: true, projectRoot, root: projectEvidenceRoot(projectRoot), aliases };
+}
+
+export type ActivateProjectChangeContractResult = { ok: true } | { ok: false; code: 'not-configured' | 'project-config-invalid' | 'project-state-write-failure'; reason: string };
+
+/**
+ * v0.9 Batch 5: explicitly activates an already-persisted change contract for
+ * project `check` by updating exactly `acceptance.contract.changeArtifact`.
+ * Allowed only when the project already configures `acceptance.contract`:
+ * the block is never created, the baseline artifact and every other field are
+ * carried over verbatim from the on-disk configuration, the full updated
+ * configuration is validated before writing, and the write is atomic.
+ */
+export async function activateProjectChangeContract(projectRootInput: string, changeArtifactPath: string): Promise<ActivateProjectChangeContractResult> {
+  const projectRoot = path.resolve(projectRootInput);
+  const configPath = projectConfigPath(projectRoot);
+  let raw: unknown;
+  try {
+    raw = JSON.parse(await readFile(configPath, 'utf8')) as unknown;
+  } catch (error) {
+    return { ok: false, code: 'project-config-invalid', reason: `project configuration could not be read: ${error instanceof Error ? error.message : String(error)}` };
+  }
+  const current = validateProjectConfig(raw);
+  if (!current.ok) return { ok: false, code: 'project-config-invalid', reason: current.reason };
+  if (current.config.acceptance?.contract === undefined) {
+    return { ok: false, code: 'not-configured', reason: 'Project contract acceptance is not configured; the new contract was persisted but is not active for check.' };
+  }
+
+  const rawConfig = raw as Record<string, unknown> & { acceptance: Record<string, unknown> & { contract: Record<string, unknown> } };
+  const updated = { ...rawConfig, acceptance: { ...rawConfig.acceptance, contract: { ...rawConfig.acceptance.contract, changeArtifact: changeArtifactPath } } };
+  const validated = validateProjectConfig(updated);
+  if (!validated.ok) return { ok: false, code: 'project-config-invalid', reason: `updated project configuration would be invalid: ${validated.reason}` };
+
+  try {
+    await atomicTextWrite(configPath, `${JSON.stringify(updated, null, 2)}\n`);
+  } catch (error) {
+    return { ok: false, code: 'project-state-write-failure', reason: `project configuration could not be written: ${error instanceof Error ? error.message : String(error)}` };
+  }
+  return { ok: true };
 }

@@ -1,8 +1,9 @@
 # Project Overview
 
-The repository contains the complete v0.8.1 source workflow (`init`, `capture`,
-`check`, project-aware `view`), released as
-`@dailephd/my-frontend-observer@0.8.1` under the MIT license.
+The repository contains the complete v0.9.0 release, published as
+`@dailephd/my-frontend-observer@0.9.0` under the MIT license. It adds
+structured visual annotation to the v0.8.1 project workflow (`init`,
+`capture`, `check`, project-aware `view`).
 
 `my-frontend-observer` is the rendered browser/runtime evidence producer in
 the my-dev-kit ecosystem. It addresses the gap between source-level evidence
@@ -29,12 +30,13 @@ v0.4, Layout Relationships, Dependency Evidence, and Before/After
 Comparison; v0.5, Executable Frontend Contracts and Explicit Change Scope;
 v0.6, Bounded Agent Context and Native my-dev-kit Ecosystem Integration;
 v0.7, End-to-End Coding-Agent Frontend Change Review; v0.8, Interactive
-Local Observation Viewer; and v0.8.1, Project Workflow CLI and Human-Readable
-Evidence Aliases, are released and published to npm. The current package
-version is `0.8.1` as `@dailephd/my-frontend-observer` (observation schema
-`1.2.0`, comparison schema `1.0.0`, frontend contract schema `1.0.0`,
-evaluation artifact schema `1.0.0`, bounded-agent-context schema `1.0.0`,
-external-reference schema `1.0.0`). The released package was validated as a
+Local Observation Viewer; v0.8.1, Project Workflow CLI and Human-Readable
+Evidence Aliases; and v0.9, Human Visual Annotation and Design-Intent Capture,
+are released and published to npm. The current package version is `0.9.0` as
+`@dailephd/my-frontend-observer` (observation schema `1.2.0`, comparison schema
+`1.0.0`, frontend contract schema `1.0.0`, evaluation artifact schema `1.0.0`,
+bounded-agent-context schema `1.0.0`, external-reference schema `1.0.0`,
+visual annotation schema `1.0.0`). The released package was validated as a
 packed npm tarball in a clean consumer environment across Windows, Linux, and
 macOS.
 
@@ -83,8 +85,8 @@ engines used by the CLI, never a second implementation of them. See
 and `docs/reports/v0.8-prerelease-readiness-cross-platform-security-code-rot.md`
 for the implementation and release evidence.
 
-The repository implementation now includes released v0.8.1, a project-workflow
-CLI usability patch published as `@dailephd/my-frontend-observer@0.8.1`. It does
+v0.8.1 was a project-workflow CLI usability patch published as
+`@dailephd/my-frontend-observer@0.8.1`. It does
 not introduce a new evidence model. It adds project configuration,
 human-readable aliases, managed project-local Observer state, and a small
 high-level `init` / `capture` / `check` / project-aware `view` workflow above
@@ -94,12 +96,20 @@ artifact identifiers during ordinary use. Existing low-level commands remain
 supported. The frozen plan is
 `docs/plans/v0.8.1-cli-usability-patch-plan.md`.
 
-v0.9 remains unimplemented, but its version-start architecture and concrete
-seven-prompt implementation sequence are now frozen in
+The latest published release is v0.9.0. v0.9 adds structured
+visual annotation to the project-aware viewer for both runtime observations and
+external references. People draw marks, explicitly associate them, and confirm
+structured intent. Selected confirmed runtime intent can become a normal
+per-change contract, and selected confirmed reference intent can become a new
+imported external-reference revision. The existing contract and reference
+evaluators stay authoritative. It followed the frozen plan in
 `docs/plans/v0.9-implementation-plan.md`, grounded by
-`docs/reports/v0.9-architecture-retrieval.md`. v0.9 adds structured visual
-annotation through the existing viewer for both runtime observations and
-external references while reusing the current contract/reference semantics.
+`docs/reports/v0.9-architecture-retrieval.md`.
+The repository-owned deterministic demo and its four tutorial scenarios
+(`examples/v09-demo/`, recorded by the external
+`@dailephd/my-dev-kit-lab@0.4.9` tool) passed final cross-platform readiness
+with the release. They are release support and documentation, not product
+behavior, and they are not shipped in the npm package.
 v0.10 remains future and unimplemented and completes the visual human-LLM
 workflow on top of the v0.9 annotation model and v0.8.1 high-level acceptance
 surface.
@@ -118,7 +128,7 @@ runtime observation and stable identity
 → interactive viewer with reference/candidate inspection (released as 0.8.0)
 → project workflow CLI + human-readable evidence aliases (released as 0.8.1)
 → structured visual annotation on runtime screenshots and external references
-  (planned v0.9; implementation plan frozen)
+  (released as 0.9.0)
 → full visual human-LLM workflow with actual-frontend-driven and
   reference-driven entry modes (planned v0.10)
 ```
@@ -154,8 +164,9 @@ Repository-local authorities and navigation:
   freezes the concrete implementation plan for the v0.8.1 patch.
 - [plans/v0.9-implementation-plan.md](plans/v0.9-implementation-plan.md)
   freezes the concrete implementation architecture, seven ordered batches,
-  gates, and validation expectations for v0.9; it does not claim v0.9 is
-  implemented.
+  gates, and validation expectations for v0.9. It is planning authority only;
+  the v0.9 implementation state is recorded in CURRENT_STATE.md and the
+  `reports/v0.9-*.md` reports.
 - [reports/v0.9-architecture-retrieval.md](reports/v0.9-architecture-retrieval.md)
   preserves the bounded current-source retrieval that grounded the v0.9 plan.
 

@@ -6,6 +6,7 @@ export type {
   PerChangeClause,
   FrontendContractClauseBase,
   ContractPrimitive,
+  ContractTolerance,
   AuthoredChangeScopeCategory,
   ExpectedDependentMode,
   ClauseEvaluationResult,

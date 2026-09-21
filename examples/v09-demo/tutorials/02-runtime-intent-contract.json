@@ -1,0 +1,559 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "observer-v09-runtime-contract",
+  "title": "From visual intent to an active change contract",
+  "description": "Giving marks explicit meaning, confirming it, promoting only what you chose, and separately deciding to make the result project policy.",
+  "targetId": "my-frontend-observer-v09-demo",
+  "browser": { "viewport": { "width": 1440, "height": 900 } },
+  "steps": [
+    {
+      "id": "open-viewer",
+      "narration": "The previous tutorial ended with marks saved as evidence. This one is about turning some of that evidence into a contract the project will actually check. Every step of that journey is a separate decision, and the viewer is built to keep them separate.",
+      "pauseAfterMs": 16800,
+      "action": { "type": "goto", "path": "/", "waitUntil": "load" },
+      "assertions": [
+        { "type": "element-visible", "locator": { "kind": "role", "role": "button", "name": "observation baseline" }, "timeoutMs": 20000 }
+      ]
+    },
+    {
+      "id": "select-baseline",
+      "narration": "Opening the captured baseline. This run starts from a fresh project, so nothing from the previous tutorial is carried over.",
+      "pauseAfterMs": 8200,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "observation baseline" }, "timeoutMs": 20000 },
+      "assertions": [
+        { "type": "element-visible", "locator": { "kind": "test-id", "testId": "runtime-annotation-surface" }, "timeoutMs": 20000 }
+      ]
+    },
+    {
+      "id": "quieten-relationships",
+      "narration": "Relationship lines off again, for legibility.",
+      "pauseAfterMs": 3000,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "checkbox", "name": "Relationships" } },
+      "screenshot": { "id": "start" }
+    },
+
+    {
+      "id": "arrow-mode",
+      "narration": "First, a request to move the hero banner. The natural way to say that is an arrow.",
+      "pauseAfterMs": 5500,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Arrow mode" } }
+    },
+    {
+      "id": "arrow-draw-left",
+      "narration": "Watch this arrow carefully, because it is drawn pointing left. That is deliberate.",
+      "pauseAfterMs": 5500,
+      "action": { "type": "pointer-drag", "locator": { "kind": "test-id", "testId": "runtime-annotation-surface" }, "from": { "x": 0.78, "y": 0.22 }, "to": { "x": 0.32, "y": 0.22 }, "coordinateSpace": "fraction" },
+      "screenshot": { "id": "arrow-points-left" }
+    },
+    {
+      "id": "select-mode-1",
+      "narration": "Switching to Select mode to give that arrow a meaning.",
+      "pauseAfterMs": 3600,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Select mode" } }
+    },
+    {
+      "id": "select-arrow",
+      "narration": "Selecting the arrow. Meaning is given to a mark after it exists, never while it is being drawn.",
+      "pauseAfterMs": 6400,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Arrow annotation" } }
+    },
+    {
+      "id": "choose-hero",
+      "narration": "As before, the subject is stated explicitly rather than inferred from what the arrow happens to cross.",
+      "pauseAfterMs": 6800,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "hero matched" } }
+    },
+    {
+      "id": "associate-hero",
+      "narration": "The arrow is now about the hero.",
+      "pauseAfterMs": 2200,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Associate target hero" } },
+      "assertions": [
+        { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__association" }, "name": "data-association-kind", "expected": "runtime-target" }
+      ]
+    },
+    {
+      "id": "operation-move",
+      "narration": "The operation is a move. Observer offers a closed list of operations rather than a free text box, because a contract has to be built from meanings the system can actually check.",
+      "pauseAfterMs": 11800,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "value": "move" }
+    },
+    {
+      "id": "direction-right",
+      "narration": "And here is the point of the left-pointing arrow: the direction chosen here is right. The drawing and the decision disagree on purpose.",
+      "pauseAfterMs": 9000,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Move direction" }, "value": "right" },
+      "callout": { "text": "The arrow points left. The requested direction is right.", "placement": "auto" }
+    },
+    {
+      "id": "category-requested",
+      "narration": "The category says what kind of change this is. The first option is requested: somebody asked for it, as opposed to it being a side effect, or something that must not move at all.",
+      "pauseAfterMs": 11900,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "value": "requested" },
+      "screenshot": { "id": "move-form-ready" }
+    },
+    {
+      "id": "set-candidate-move",
+      "narration": "Setting the candidate meaning. A candidate is a proposal: it is recorded, but nobody has stood behind it yet.",
+      "pauseAfterMs": 7300,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Set candidate intent" } },
+      "screenshot": { "id": "move-candidate" }
+    },
+    {
+      "id": "show-arrow-non-inference",
+      "narration": "Read the structured meaning: the x of hero increases. It follows the direction that was explicitly selected, not the direction the arrow was drawn in. Geometry is never quietly read as instruction, because a drawing is a gesture and a contract clause is a commitment, and confusing the two is how a tool starts inventing requirements nobody agreed to.",
+      "pauseAfterMs": 23400,
+      "action": { "type": "hover", "locator": { "kind": "css", "selector": "[data-runtime-intent='true']" } },
+      "screenshot": { "id": "arrow-non-inference" },
+      "assertions": [
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-runtime-intent='true']" }, "expected": "property-increases" },
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-runtime-intent='true']" }, "expected": "\"property\": \"x\"" },
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-runtime-intent='true']" }, "expected": "\"target\": \"hero\"" }
+      ]
+    },
+    {
+      "id": "candidate-not-promotable",
+      "narration": "It is still only a candidate, and the panel says so plainly: this cannot be promoted until somebody confirms it. Proposing a meaning and standing behind it are different acts.",
+      "pauseAfterMs": 11700,
+      "action": { "type": "hover", "locator": { "kind": "css", "selector": "[data-promotion-status='true']" } },
+      "assertions": [
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-promotion-status='true']" }, "expected": "requires explicit confirmation" }
+      ]
+    },
+    {
+      "id": "confirm-move",
+      "narration": "Confirming it. A person now explicitly stands behind this exact meaning.",
+      "pauseAfterMs": 4800,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Confirm runtime intent" } },
+      "assertions": [
+        { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__interpretation" }, "name": "data-interpretation-state", "expected": "confirmed" }
+      ]
+    },
+    {
+      "id": "retarget-to-content",
+      "narration": "Now watch what happens if the meaning is changed after confirmation. Re-pointing the same mark at the content region instead of the hero.",
+      "pauseAfterMs": 9200,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "content matched" } }
+    },
+    {
+      "id": "retarget-apply",
+      "narration": "The subject changes, and the confirmation is withdrawn automatically: the item drops back to candidate. Confirmation applies to one specific meaning, not permanently to the mark. If you change what you are saying, you have to stand behind the new version of it.",
+      "pauseAfterMs": 17400,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Associate target content" } },
+      "callout": { "text": "Change a confirmed meaning and the confirmation lapses.", "placement": "auto" },
+      "screenshot": { "id": "confirmation-withdrawn" },
+      "assertions": [
+        { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__interpretation" }, "name": "data-interpretation-state", "expected": "candidate" }
+      ]
+    },
+    {
+      "id": "restore-hero",
+      "narration": "Putting it back to the hero, which was the real intent.",
+      "pauseAfterMs": 3700,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "hero matched" } }
+    },
+    {
+      "id": "restore-hero-apply",
+      "narration": "The subject is the hero again.",
+      "pauseAfterMs": 2000,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Associate target hero" } }
+    },
+    {
+      "id": "reconfirm-move",
+      "narration": "And confirming again, deliberately.",
+      "pauseAfterMs": 2400,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Confirm runtime intent" } },
+      "assertions": [
+        { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__interpretation" }, "name": "data-interpretation-state", "expected": "confirmed" }
+      ]
+    },
+
+    {
+      "id": "rectangle-mode",
+      "narration": "Next, a resize. The sidebar is expected to grow when the navigation gains items, so this is a different kind of change entirely.",
+      "pauseAfterMs": 8600,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Rectangle mode" } }
+    },
+    {
+      "id": "rectangle-draw",
+      "narration": "A rectangle over the sidebar.",
+      "pauseAfterMs": 2000,
+      "action": { "type": "pointer-drag", "locator": { "kind": "test-id", "testId": "runtime-annotation-surface" }, "from": { "x": 0.03, "y": 0.2 }, "to": { "x": 0.17, "y": 0.8 }, "coordinateSpace": "fraction" }
+    },
+    {
+      "id": "select-mode-2",
+      "narration": "Back to Select mode.",
+      "pauseAfterMs": 1400,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Select mode" } }
+    },
+    {
+      "id": "select-rectangle",
+      "narration": "Selecting the rectangle.",
+      "pauseAfterMs": 1600,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Rectangle annotation" } }
+    },
+    {
+      "id": "choose-sidebar",
+      "narration": "Its subject is the sidebar.",
+      "pauseAfterMs": 1800,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "sidebar matched" } }
+    },
+    {
+      "id": "associate-sidebar",
+      "narration": "Bound explicitly, as always.",
+      "pauseAfterMs": 1900,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Associate target sidebar" } }
+    },
+    {
+      "id": "operation-resize",
+      "narration": "The operation this time is a resize.",
+      "pauseAfterMs": 2400,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "value": "resize" }
+    },
+    {
+      "id": "resize-wider",
+      "narration": "Wider.",
+      "pauseAfterMs": 1200,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Resize direction" }, "value": "wider" }
+    },
+    {
+      "id": "category-expected",
+      "narration": "The category is where this differs from the hero move. Nobody asked for the sidebar to grow. It is expected-dependent: a consequence that follows from the change that was requested. Naming it that way keeps a knock-on effect from being mistaken for a request, and from being flagged as a regression.",
+      "pauseAfterMs": 20000,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "value": "expected-dependent" }
+    },
+    {
+      "id": "mode-required",
+      "narration": "And required, meaning this consequence must happen. The alternative, permitted, would mean it is allowed but not demanded. That distinction decides whether its absence is a failure.",
+      "pauseAfterMs": 12100,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Intent expected-dependent mode" }, "value": "required" }
+    },
+    {
+      "id": "set-candidate-resize",
+      "narration": "Setting the candidate. The structured meaning is that the width of sidebar increases.",
+      "pauseAfterMs": 5700,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Set candidate intent" } },
+      "assertions": [
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-runtime-intent='true']" }, "expected": "\"property\": \"width\"" }
+      ]
+    },
+    {
+      "id": "confirm-resize",
+      "narration": "Confirmed, so this resize is now a meaning a person stands behind.",
+      "pauseAfterMs": 4400,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Confirm runtime intent" } },
+      "screenshot": { "id": "resize-confirmed" }
+    },
+
+    {
+      "id": "point-mode",
+      "narration": "Not every intent asks for a change. Some ask for something to stay exactly as it is.",
+      "pauseAfterMs": 5600,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Point mode" } }
+    },
+    {
+      "id": "point-place",
+      "narration": "A point on the footer.",
+      "pauseAfterMs": 1500,
+      "action": { "type": "pointer-click", "locator": { "kind": "test-id", "testId": "runtime-annotation-surface" }, "position": { "x": 0.5, "y": 0.955 }, "coordinateSpace": "fraction" }
+    },
+    {
+      "id": "select-mode-3",
+      "narration": "Selecting it.",
+      "pauseAfterMs": 1200,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Select mode" } }
+    },
+    {
+      "id": "select-point",
+      "narration": "The footer point.",
+      "pauseAfterMs": 1200,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Point annotation" } }
+    },
+    {
+      "id": "choose-footer",
+      "narration": "Its subject is the footer.",
+      "pauseAfterMs": 1800,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "footer matched" } }
+    },
+    {
+      "id": "associate-footer",
+      "narration": "Bound to the footer.",
+      "pauseAfterMs": 1400,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Associate target footer" } }
+    },
+    {
+      "id": "operation-preserve",
+      "narration": "The operation is preserve, the last in the list.",
+      "pauseAfterMs": 3200,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "value": "preserve" }
+    },
+    {
+      "id": "category-protected",
+      "narration": "This one is protected: it must not drift, and a change to it is a defect rather than a side effect.",
+      "pauseAfterMs": 6600,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "value": "protected" }
+    },
+    {
+      "id": "preserve-property",
+      "narration": "Preserving something means naming which property is preserved. Here it is the footer's vertical position.",
+      "pauseAfterMs": 7000,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Preserved property" }, "value": "y" }
+    },
+    {
+      "id": "tolerance",
+      "narration": "Preservation also needs a tolerance, because real rendering moves things by fractions of a pixel and a contract that forbids that would fail constantly for no reason. Exact would allow no drift at all, so this one uses an absolute pixel tolerance.",
+      "pauseAfterMs": 16500,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Contract tolerance" }, "value": "absolute-px" }
+    },
+    {
+      "id": "tolerance-amount",
+      "narration": "Two pixels of slack.",
+      "pauseAfterMs": 1400,
+      "action": { "type": "fill", "locator": { "kind": "role", "role": "spinbutton", "name": "Contract tolerance amount" }, "value": "2" }
+    },
+    {
+      "id": "set-candidate-preserve",
+      "narration": "The structured meaning is property-unchanged-within-tolerance: a different shape of clause from the increases used above, because holding something still is not the same claim as moving it.",
+      "pauseAfterMs": 12600,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Set candidate intent" } },
+      "assertions": [
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-runtime-intent='true']" }, "expected": "property-unchanged-within-tolerance" }
+      ]
+    },
+    {
+      "id": "confirm-preserve",
+      "narration": "Confirmed.",
+      "pauseAfterMs": 1200,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Confirm runtime intent" } },
+      "screenshot": { "id": "preserve-confirmed" }
+    },
+
+    {
+      "id": "line-mode",
+      "narration": "Some things worth preserving are not properties of one region at all, but the relationship between two of them.",
+      "pauseAfterMs": 7400,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Line mode" } }
+    },
+    {
+      "id": "line-draw",
+      "narration": "A line across the call-to-action band.",
+      "pauseAfterMs": 2600,
+      "action": { "type": "pointer-drag", "locator": { "kind": "test-id", "testId": "runtime-annotation-surface" }, "from": { "x": 0.25, "y": 0.61 }, "to": { "x": 0.8, "y": 0.67 }, "coordinateSpace": "fraction" }
+    },
+    {
+      "id": "select-mode-4",
+      "narration": "Selecting it.",
+      "pauseAfterMs": 1200,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Select mode" } }
+    },
+    {
+      "id": "select-line",
+      "narration": "The line.",
+      "pauseAfterMs": 1200,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Line annotation" } }
+    },
+    {
+      "id": "relationship-choose",
+      "narration": "Instead of a target, this one is bound to a relationship Observer actually derived from the captured geometry. The list is not free text: you can only preserve a relationship the evidence really contains. The first one is that the header and the navigation bar overlap horizontally, and that is the one chosen.",
+      "pauseAfterMs": 20700,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Canonical relationship to associate" }, "value": "pairwise:0" }
+    },
+    {
+      "id": "relationship-associate",
+      "narration": "Associating it. Notice that the line was drawn across the call-to-action band, yet it is now about the header and the navigation. Where a mark is drawn never decides what it is about. The association does.",
+      "pauseAfterMs": 13700,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Associate relationship" } },
+      "assertions": [
+        { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__association" }, "name": "data-association-kind", "expected": "runtime-relationship" },
+        { "type": "text-contains", "locator": { "kind": "css", "selector": ".annotation-panel__association" }, "expected": "horizontally-overlapping (header → navigation)" }
+      ],
+      "screenshot": { "id": "relationship-associated" }
+    },
+    {
+      "id": "rel-operation",
+      "narration": "Preserve again.",
+      "pauseAfterMs": 1200,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "value": "preserve" }
+    },
+    {
+      "id": "rel-category",
+      "narration": "The category here is preserved, the fourth of the four a person may author. There is deliberately no way to author an unexpected category here: unexpected is something Observer concludes when it compares runs, never something a person declares in advance.",
+      "pauseAfterMs": 17000,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "value": "preserved" }
+    },
+    {
+      "id": "set-candidate-relationship",
+      "narration": "The clause shape is relationship-unchanged, which is again structurally different from both of the earlier ones.",
+      "pauseAfterMs": 7500,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Set candidate intent" } },
+      "assertions": [
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-runtime-intent='true']" }, "expected": "relationship-unchanged" }
+      ]
+    },
+    {
+      "id": "confirm-relationship",
+      "narration": "Confirmed.",
+      "pauseAfterMs": 1200,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Confirm runtime intent" } },
+      "screenshot": { "id": "relationship-confirmed" }
+    },
+
+    {
+      "id": "note-remove-text",
+      "narration": "Now two intents that deliberately go nowhere. The first is a removal.",
+      "pauseAfterMs": 4600,
+      "action": { "type": "fill", "locator": { "kind": "role", "role": "textbox", "name": "Note text for new notes" }, "value": "Card two should go" }
+    },
+    { "id": "note-remove-mode", "narration": "Note mode.", "pauseAfterMs": 1200, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Note mode" } } },
+    {
+      "id": "note-remove-place",
+      "narration": "Anchored on the second card.",
+      "pauseAfterMs": 1900,
+      "action": { "type": "pointer-click", "locator": { "kind": "test-id", "testId": "runtime-annotation-surface" }, "position": { "x": 0.5, "y": 0.45 }, "coordinateSpace": "fraction" }
+    },
+    { "id": "select-mode-5", "narration": "Selecting it.", "pauseAfterMs": 1200, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Select mode" } } },
+    { "id": "select-remove-note", "narration": "The removal note.", "pauseAfterMs": 1200, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Note annotation: Card two should go" } } },
+    { "id": "choose-card2", "narration": "Its subject is the second card.", "pauseAfterMs": 2100, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "card2 matched" } } },
+    { "id": "associate-card2", "narration": "Bound to card2.", "pauseAfterMs": 1200, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Associate target card2" } } },
+    {
+      "id": "remove-op",
+      "narration": "Operation remove, the fourth option.",
+      "pauseAfterMs": 2400,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "value": "remove" }
+    },
+    {
+      "id": "remove-category",
+      "narration": "Requested: somebody really does want the card gone.",
+      "pauseAfterMs": 3400,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "value": "requested" }
+    },
+    {
+      "id": "set-candidate-remove",
+      "narration": "The candidate is accepted as a perfectly legitimate thing to record.",
+      "pauseAfterMs": 4600,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Set candidate intent" } }
+    },
+    {
+      "id": "confirm-remove",
+      "narration": "And it can be confirmed, because a person really does mean it.",
+      "pauseAfterMs": 4200,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Confirm runtime intent" } },
+      "assertions": [
+        { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__interpretation" }, "name": "data-interpretation-state", "expected": "confirmed" }
+      ]
+    },
+    {
+      "id": "remove-not-promotable",
+      "narration": "But the panel is candid about what happens next: confirmed, and still not promotable, because the current contract vocabulary has no primitive for a target being absent. Observer says so in plain words instead of inventing a clause that would look right and check nothing.",
+      "pauseAfterMs": 18200,
+      "action": { "type": "hover", "locator": { "kind": "css", "selector": "[data-promotion-status='true']" } },
+      "callout": { "text": "An honest gap, stated plainly, beats a fabricated contract clause.", "placement": "auto" },
+      "screenshot": { "id": "remove-not-promotable" },
+      "assertions": [
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-promotion-status='true']" }, "expected": "no target-absent primitive" }
+      ]
+    },
+
+    {
+      "id": "note-inspect-text",
+      "narration": "The second dead end is an observation rather than a request.",
+      "pauseAfterMs": 4000,
+      "action": { "type": "fill", "locator": { "kind": "role", "role": "textbox", "name": "Note text for new notes" }, "value": "Why is the call to action so wide" }
+    },
+    { "id": "note-inspect-mode", "narration": "Note mode again.", "pauseAfterMs": 1200, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Note mode" } } },
+    {
+      "id": "note-inspect-place",
+      "narration": "Placed near the illustration.",
+      "pauseAfterMs": 2000,
+      "action": { "type": "pointer-click", "locator": { "kind": "test-id", "testId": "runtime-annotation-surface" }, "position": { "x": 0.28, "y": 0.78 }, "coordinateSpace": "fraction" }
+    },
+    { "id": "select-mode-6", "narration": "Selecting it.", "pauseAfterMs": 1200, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Select mode" } } },
+    { "id": "select-inspect-note", "narration": "The question note.", "pauseAfterMs": 1200, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Note annotation: Why is the call to action so wide" } } },
+    {
+      "id": "inspect-op",
+      "narration": "Its operation is inspect: a question worth recording, not a demand.",
+      "pauseAfterMs": 4500,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "value": "inspect" }
+    },
+    {
+      "id": "set-candidate-inspect",
+      "narration": "Inspect needs no category, because it is not asking for anything.",
+      "pauseAfterMs": 4400,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Set candidate intent" } }
+    },
+    {
+      "id": "confirm-inspect",
+      "narration": "Confirming it says this really is a question the team wants kept with the evidence.",
+      "pauseAfterMs": 5600,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Confirm runtime intent" } }
+    },
+    {
+      "id": "inspect-not-promotable",
+      "narration": "And it too is informational for good: a question never becomes a rule. Keeping it alongside the contract intents is the point, because the record of what people wondered about is worth as much as the record of what they decided.",
+      "pauseAfterMs": 15200,
+      "action": { "type": "hover", "locator": { "kind": "css", "selector": "[data-promotion-status='true']" } },
+      "screenshot": { "id": "inspect-informational" },
+      "assertions": [
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-promotion-status='true']" }, "expected": "informational" }
+      ]
+    },
+
+    {
+      "id": "save-annotation",
+      "narration": "Saving writes all six items, confirmations and all, as one immutable annotation. Nothing can be promoted before this, because a contract has to point at evidence that actually exists on disk.",
+      "pauseAfterMs": 12800,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Save annotation" } },
+      "assertions": [
+        { "type": "attribute-equals", "locator": { "kind": "css", "selector": ".annotation-panel__draft-summary" }, "name": "data-draft-dirty", "expected": "false", "timeoutMs": 15000 }
+      ]
+    },
+    {
+      "id": "show-proposals",
+      "narration": "The promotion list now shows only the confirmed change intents that the contract vocabulary can express. The removal and the question are not offered, because offering them would be a lie about what can be checked.",
+      "pauseAfterMs": 14300,
+      "action": { "type": "wait-for", "locator": { "kind": "css", "selector": ".annotation-panel__proposal-list" }, "state": "visible", "timeoutMs": 15000 },
+      "screenshot": { "id": "promotion-list" }
+    },
+    {
+      "id": "select-move-for-promotion",
+      "narration": "Here is the step people most often expect to be automatic. Four intents are confirmed, and only two are selected: the hero move and the sidebar resize. Confirming something means you meant it. It does not mean it belongs in this particular contract.",
+      "pauseAfterMs": 16600,
+      "action": { "type": "click", "locator": { "kind": "text", "text": "move · requested · property-increases hero.x" } }
+    },
+    {
+      "id": "select-resize-for-promotion",
+      "narration": "Selecting the sidebar resize as well. The two preserve intents stay behind, not because they are wrong, but because this change is not about them.",
+      "pauseAfterMs": 9800,
+      "action": { "type": "click", "locator": { "kind": "text", "text": "resize · expected-dependent (required) · property-increases sidebar.width" } },
+      "callout": { "text": "Confirmed is not the same as included.", "placement": "auto" },
+      "screenshot": { "id": "selected-subset" }
+    },
+    {
+      "id": "activate-checkbox",
+      "narration": "And one last separate decision. Creating a contract and making it the project's active policy are different things, so activation is its own explicit checkbox rather than a consequence of promoting.",
+      "pauseAfterMs": 13200,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "checkbox", "name": "Activate this change contract for project check" } },
+      "callout": { "text": "Writing a contract and enforcing it are separate decisions.", "placement": "auto" }
+    },
+    {
+      "id": "promote",
+      "narration": "Promoting writes a canonical change contract containing exactly the two selected clauses, and activates it for this project's checks.",
+      "pauseAfterMs": 8900,
+      "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Promote selected to change contract" } },
+      "assertions": [
+        { "type": "attribute-equals", "locator": { "kind": "css", "selector": "[data-activation-state]" }, "name": "data-activation-state", "expected": "activated", "timeoutMs": 20000 }
+      ]
+    },
+    {
+      "id": "promotion-result",
+      "narration": "Two clauses, from six recorded items, four confirmations and two deliberate selections. Every narrowing along the way was a person's decision, and every one of them is still on disk if anybody later asks why the contract says what it says.",
+      "pauseAfterMs": 16000,
+      "action": { "type": "hover", "locator": { "kind": "css", "selector": "[data-activation-state]" } },
+      "screenshot": { "id": "promoted-and-activated" },
+      "assertions": [
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-activation-state]" }, "expected": "2 clauses" },
+        { "type": "text-contains", "locator": { "kind": "css", "selector": "[data-activation-state]" }, "expected": "Activation: activated" }
+      ]
+    }
+  ]
+}

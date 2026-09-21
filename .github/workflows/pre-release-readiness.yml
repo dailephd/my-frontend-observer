@@ -124,10 +124,60 @@ jobs:
         shell: bash
         run: node scripts/ci/runPackedViewerSmoke.mjs "${{ needs.candidate.outputs.tarball }}" --out viewer-smoke-summary.json
 
+      - name: Packed v0.9 annotation smoke (installed tarball only, real Chromium)
+        shell: bash
+        run: node scripts/ci/runPackedV09AnnotationSmoke.mjs "${{ needs.candidate.outputs.tarball }}" --out v09-annotation-smoke-summary.json
+
       - uses: actions/upload-artifact@v4
         with:
           name: smoke-summary-${{ matrix.os }}
           path: |
             smoke-summary.json
             viewer-smoke-summary.json
+            v09-annotation-smoke-summary.json
+          if-no-files-found: error
+
+  tutorial-readiness:
+    name: ${{ matrix.os }} Observer tutorial readiness
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Record resolved Node/npm versions
+        shell: bash
+        run: |
+          node --version
+          npm --version
+      - run: npm ci
+      - run: npm run build
+      - name: Install Observer Chromium
+        if: runner.os == 'Linux'
+        run: npx playwright install --with-deps chromium
+      - name: Install Observer Chromium
+        if: runner.os != 'Linux'
+        run: npx playwright install chromium
+      - name: Install exact lab Chromium
+        if: runner.os == 'Linux'
+        run: npx --yes playwright@1.60.0 install --with-deps chromium
+      - name: Install exact lab Chromium
+        if: runner.os != 'Linux'
+        run: npx --yes playwright@1.60.0 install chromium
+      - name: Run all four Observer tutorials from repository source
+        shell: bash
+        env:
+          RUNNER_TEMP: ${{ runner.temp }}
+        run: node scripts/run-v09-tutorial-readiness.mjs "$RUNNER_TEMP/my-frontend-observer-v09-tutorial-readiness"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tutorial-readiness-${{ matrix.os }}
+          path: ${{ runner.temp }}/my-frontend-observer-v09-tutorial-readiness
+          retention-days: 7
           if-no-files-found: error

@@ -1,6 +1,6 @@
 # CI/CD
 
-CI interprets `check` as PASS `0`, FAIL `1`, REVIEW_REQUIRED `2`, or BLOCKED `3`. The released package is `@dailephd/my-frontend-observer@0.8.1`; its CLI remains `my-frontend-observer`. Packed readiness installs one exact tarball and runs `runPackedViewerSmoke.mjs` as the single project/viewer smoke owner for `init`, `capture`, bounded `check --json` REVIEW_REQUIRED and unchanged-contract FAIL-to-PASS, alias-aware project `view`, and viewer security. `runPackedObservationSmoke.mjs` remains the lower-level legacy observation smoke.
+CI interprets `check` as PASS `0`, FAIL `1`, REVIEW_REQUIRED `2`, or BLOCKED `3`. The released package is `@dailephd/my-frontend-observer@0.9.0`; its CLI remains `my-frontend-observer`. Packed readiness installs one exact tarball and runs `runPackedViewerSmoke.mjs` as the single project/viewer smoke owner for `init`, `capture`, bounded `check --json` REVIEW_REQUIRED and unchanged-contract FAIL-to-PASS, alias-aware project `view`, and viewer security. `runPackedObservationSmoke.mjs` remains the lower-level legacy observation smoke.
 
 A GitHub Actions pre-release readiness workflow exists at
 `.github/workflows/pre-release-readiness.yml` (triggered manually via
@@ -248,3 +248,59 @@ evidence-root escape in the viewer's media route) both passed before this
 release - see
 `docs/reports/v0.8-prerelease-readiness-cross-platform-security-code-rot.md`
 for the complete readiness report.
+
+## v0.9 packaging implications (released in 0.9.0; final cross-platform readiness passed)
+
+v0.9 visual annotation is released as `@dailephd/my-frontend-observer@0.9.0`.
+Final exact-candidate readiness passed on Windows, Linux and macOS - see
+`docs/reports/v0.9-final-pre-release-readiness.md`.
+`.github/workflows/pre-release-readiness.yml` keeps the same exact-candidate
+structure:
+
+1. The `candidate` job runs once on Linux with Node 24. It runs every local
+   validation command, builds the package, creates one tarball with
+   `npm pack --json`, freezes its SHA-256, and uploads both.
+2. The `matrix-smoke` job runs on `windows-latest`, `ubuntu-latest`, and
+   `macos-latest` with Node 24. Each lane downloads that same tarball and
+   fails if its SHA-256 differs.
+3. Each lane installs the tarball into a clean consumer and runs three packed
+   smokes in real Chromium:
+   1. `scripts/ci/runPackedObservationSmoke.mjs` (observation and low-level
+      command behavior), writing `smoke-summary.json`;
+   2. `scripts/ci/runPackedViewerSmoke.mjs` (project workflow and
+      project-aware viewer inspection), writing `viewer-smoke-summary.json`;
+   3. `scripts/ci/runPackedV09AnnotationSmoke.mjs` (v0.9 annotation), writing
+      `v09-annotation-smoke-summary.json`.
+4. All three summaries are uploaded as the `smoke-summary-<os>` artifact.
+
+The v0.9 annotation smoke uses only the installed package. It checks that the
+compiled v0.9 owners and the built viewer are in the tarball, that the bare
+package specifier and Playwright resolve inside the consumer's own
+`node_modules`, and that the public v0.9 exports resolve. It then runs
+`init`, `capture baseline`, and `check baseline --json`, and starts the
+project-aware `view` (viewer protocol `1.3.0`, authoring enabled). In real
+Chromium it saves and reloads a runtime annotation, promotes confirmed move
+intent into a canonical change contract, imports a reference with the
+installed `import-reference`, annotates it, and materializes a confirmed
+region into a new imported revision. That revision must supersede the source,
+reuse its exact image bytes, and not be approved. Finally it starts a
+standalone `view --root` session and proves it is read-only. The summary never
+contains the authoring token, absolute project paths, or note text.
+
+The standalone read-only proof for v0.9 authoring lives in the v0.9
+annotation smoke. The project-aware inspection and project workflow proof
+lives in the packed viewer smoke.
+
+A separate `tutorial-readiness` job runs on the same three operating systems.
+It builds Observer from the repository source and runs
+`scripts/run-v09-tutorial-readiness.mjs`, which validates and runs the four
+`examples/v09-demo/tutorials/` scenarios through the external tool
+`@dailephd/my-dev-kit-lab@0.4.9`, then reads the evidence each run wrote back
+through the canonical Observer readers. It fails unless every scenario passes
+with empty `cleanupErrors`, the tracked demo source is unchanged, and the
+repository status is unchanged. The demo and the lab are repository release
+support only. Neither is in the npm package or an Observer dependency.
+
+The v0.9 matrix wiring has not yet run in GitHub Actions for this candidate.
+The local Windows run of all three smokes against one exact tarball is
+recorded in `docs/reports/v0.9-batch7-integrated-acceptance.md`.
