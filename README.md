@@ -25,7 +25,8 @@ published npm package is still `0.8.1`.
 
 `my-frontend-observer` is the local-first rendered browser/runtime evidence
 producer in the my-dev-kit ecosystem. Its durable product purpose is defined
-in [docs/PROJECT_DESCRIPTION.md](docs/PROJECT_DESCRIPTION.md).
+in [docs/PROJECT_DESCRIPTION.md](docs/PROJECT_DESCRIPTION.md). Whole-ecosystem
+composition is documented in the [my-dev-kit ecosystem guide](https://github.com/dailephd/my-dev-kit/blob/main/docs/ECOSYSTEM_DEVELOPMENT_WORKFLOWS.md), including the [command-surface compatibility map](https://github.com/dailephd/my-dev-kit/blob/main/docs/ECOSYSTEM_DEVELOPMENT_WORKFLOWS.md#915-command-surface-compatibility-map).
 
 ## Current status
 

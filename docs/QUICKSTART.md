@@ -1,28 +1,46 @@
 # Quickstart
 
+For complete coding-agent features, runtime-to-source repair, shared-component
+protection, and ecosystem failure feedback, use the single
+[ecosystem workflow guide in my-dev-kit](https://github.com/dailephd/my-dev-kit/blob/main/docs/ECOSYSTEM_DEVELOPMENT_WORKFLOWS.md).
+Observer owns the browser evidence and its canonical evaluations. Project tests
+own application actions and backend/frontend integration. Orchestrator owns
+native lifecycle when selected. Lab supplies applicable assurance separately.
+This repository does not maintain another ecosystem-guide copy.
+
 The common source workflow is:
 
 ```powershell
 node dist/cli.js init --url http://127.0.0.1:3000 --target app=#app
 node dist/cli.js capture baseline
 # make a frontend change
-node dist/cli.js check baseline
+node dist/cli.js check baseline --json
 node dist/cli.js view
 ```
 
-Use `check baseline --json` for a coding agent: on `FAIL`, use the returned
-bounded runtime evidence, correct source externally, and rerun until `PASS`.
-Observer never edits source. Canonical IDs remain available in details and
-provenance but are not required as ordinary command input.
+Use `check baseline --json` for a coding agent. It captures a new immutable
+candidate, compares it canonically, and evaluates configured acceptance. The
+result and exit status are `PASS`/0, `FAIL`/1, `REVIEW_REQUIRED`/2, or `BLOCKED`/3.
+Comparison alone returns `REVIEW_REQUIRED`, even when no differences are found.
+Configure the applicable contract and/or approved reference through the current
+project schema before expecting an acceptance PASS. See
+[COMMANDS.md](COMMANDS.md#v081-common-workflow) for the exact fields.
 
-Prerequisites are Node.js 24 or later and npm. For the published package:
+On a failure, preserve the bounded evidence, correct source externally, and
+recheck against the same baseline. Do not replace the baseline, relax protected
+requirements, or treat REVIEW_REQUIRED/BLOCKED as success. Observer never edits
+source. Canonical IDs remain available in details and provenance but are not
+required as ordinary project-command input.
+
+Prerequisites are Node.js 24 or later and npm. The package identity is:
 
 ```powershell
 npm install --save-dev @dailephd/my-frontend-observer
 npx playwright install chromium
 ```
 
-The installed CLI is still named `my-frontend-observer`.
+The installed CLI remains `my-frontend-observer`. Use the resolved local binary
+or `npx @dailephd/my-frontend-observer` and record its version. For source setup:
 
 ```powershell
 npm install
@@ -30,7 +48,7 @@ npx playwright install chromium
 npm run build
 ```
 
-Run a real observation against your own local frontend:
+The advanced observation workflow remains supported:
 
 ```powershell
 node dist/cli.js observe `
@@ -41,63 +59,32 @@ node dist/cli.js observe `
   --output observations
 ```
 
-This launches Chromium, captures a screenshot plus bounded page/target
-evidence, and writes one portable artifact under `observations/<observation-id>/`.
-See [COMMANDS.md](COMMANDS.md) for the full flag reference, including the
-`--targets-file` structured semantic-target input and the
-`--scroll-scenario-file` bounded runtime scroll scenario input.
+It launches Chromium, captures a screenshot plus bounded page/target evidence,
+and writes a portable artifact under `observations/<observation-id>/`.
+[COMMANDS.md](COMMANDS.md) documents structured `--targets-file` input, bounded
+`--scroll-scenario-file` actions, and declared `--state-file` identity. Declaring
+state does not log in, seed data, or execute a user journey. Establish required
+application state with the project's actual setup/browser test commands.
 
-Once you have two such artifacts, `node dist/cli.js compare --before
-<root> --after <root> --output comparisons` derives before/after evidence
-between them without launching a browser again - see
-[COMMANDS.md](COMMANDS.md#compare) for details.
+With two observations, `compare --before <root> --after <root> --output
+comparisons` derives before/after evidence without launching another browser.
+It can report incomparable evidence successfully, so inspect the semantic
+result rather than treat advanced-command exit 0 as acceptance.
 
-You can then approve a baseline, save a per-change contract, and evaluate a
-candidate change against them plus the observation/comparison evidence
-above - see [COMMANDS.md](COMMANDS.md#approve-baseline) for the exact flags
-and [WORKFLOWS.md](WORKFLOWS.md) for the full flow.
+`approve-baseline`, `save-change-contract`, and `evaluate-contract` expose the
+advanced frontend contract flow. A selected external image additionally uses
+`import-reference`, `approve-reference`, and `evaluate-reference-fidelity`.
+Reference requirements, applicability, explicit bindings, and protected behavior
+remain independent acceptance responsibilities. A raw image import does not
+approve a reference or prove every aesthetic requirement. See
+[CONTRACTS.md](CONTRACTS.md) and [WORKFLOWS.md](WORKFLOWS.md).
 
-If you also have an external design-reference image, `import-reference`/
-`approve-reference`/`evaluate-reference-fidelity` let you compare a
-candidate observation against it. These commands are released and supported
-in the current package; see [COMMANDS.md](COMMANDS.md) and
-[CONTRACTS.md](CONTRACTS.md) for the exact flags and contract.
+`my-frontend-observer view --no-open` starts the loopback-only viewer over managed
+project evidence. Use `view --root observations --no-open` for standalone roots.
+The viewer is inspect-only. Its `--bindings-file` and `--context-file` inputs do
+not create a second evaluator or automatic source-owner mapping.
 
-To inspect a project visually instead of opening raw artifact files,
-`my-frontend-observer view --no-open` starts a local,
-loopback-only viewer server (usable in a normal browser or as an installed
-PWA) over managed project evidence. For existing standalone evidence roots,
-use `my-frontend-observer view --root observations --no-open`. See
-[COMMANDS.md](COMMANDS.md#view) for the full
-flag reference, including `--bindings-file` and `--context-file`.
-
-### Visual annotation (v0.9, implemented, not yet released)
-
-The current repository state adds visual annotation to the project-aware
-viewer. It is not in a published release yet; the published package is
-`0.8.1`.
-
-```powershell
-node dist/cli.js view
-```
-
-1. Run the project-aware `view` (without `--root`) and open the printed URL.
-2. Select an observation or an external reference in the evidence list.
-3. Pick a drawing mode and draw a point, rectangle, line, arrow, or note.
-4. Explicitly associate the mark with a target, relationship, or region if it
-   is about one. Drawing over something never associates it.
-5. Choose a structured intent, review the candidate, and confirm it.
-6. Save the annotation. Each save is a new immutable revision.
-7. Optionally, select confirmed runtime intent and promote it to a change
-   contract, or select confirmed reference intent and materialize it into a
-   new reference revision.
-
-Activating a promoted contract for `check` is a separate explicit choice. A
-materialized reference stays `imported` until you approve it with the
-existing `approve-reference` command. `view --root <root>` is always
-read-only.
-
-To validate the repository itself instead:
+To validate this repository itself, rather than the target application:
 
 ```powershell
 npm run typecheck

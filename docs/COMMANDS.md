@@ -961,6 +961,19 @@ invalid `--port`, an invalid `--bindings-file`, an invalid `--context-file`
 normally), or a port already in use, prints structured diagnostics to
 stderr and exits nonzero without starting a server.
 
+## Cross-tool compatibility handoffs
+
+The canonical command-by-command composition map is [my-dev-kit ecosystem workflow section 9.15](https://github.com/dailephd/my-dev-kit/blob/main/docs/ECOSYSTEM_DEVELOPMENT_WORKFLOWS.md#915-command-surface-compatibility-map).
+
+Current supported boundaries:
+
+- my-dev-kit file/symbol evidence can be mapped by a small **programmatic adapter** into the plain caller-supplied static-candidate records accepted by `deriveRuntimeStaticCorrelations(...)` / `attachRuntimeStaticCorrelations(...)`. Raw my-dev-kit search, lookup, slice, or context JSON is not a direct Observer CLI input.
+- A produced Observer `BoundedAgentContextArtifact` can be inspected directly with `view --context-file <file>`. That option accepts only the Observer bounded-context schema, not a my-dev-kit context capsule.
+- Orchestrator has a direct programmatic consumer for the released Observer bounded-agent-context wire contract. Orchestrator does not launch Observer.
+- A selected Lab tutorial screenshot PNG can be passed to `import-reference`, then explicitly approved and bound like any other external image reference. The Lab tutorial manifest and behavioral assertions are not imported.
+- Lab report/gallery commands do not generically consume Observer evidence roots, and Observer commands do not consume Lab security/audit/experiment reports.
+- `check [baseline] --json` is the preferred compact final-candidate runtime result for an external coding-agent or Orchestrator report, but the downstream consumer must preserve `PASS`, `FAIL`, `REVIEW_REQUIRED`, and `BLOCKED` rather than collapse them to process success/failure.
+
 ## Foundation commands
 
 - `npm install` — install dependencies (includes the `playwright` runtime
