@@ -757,7 +757,7 @@ and exits nonzero.
 
 ## `view`
 
-**v0.9 visual annotation (implemented in the repository, not yet released).**
+**v0.9 visual annotation (released in `0.9.0`).**
 There is no separate annotation command. `view` is the annotation entry point:
 
 - `my-frontend-observer view` (inside an initialized project, without
@@ -782,8 +782,8 @@ and `POST /api/annotations/<handle>/materialize-reference`. See
 the annotation workflow. The rest of this section describes the inspection
 surface, which is unchanged.
 
-**Current status: v0.8.1 viewer behavior is released as package
-`@dailephd/my-frontend-observer@0.8.1`.** Starts one
+**Current status: viewer behavior is released as package
+`@dailephd/my-frontend-observer@0.9.0`.** Starts one
 loopback-only Node viewer server and serves the same React + TypeScript +
 Vite application to a normal browser or an installed Progressive Web App.
 `--root` is used as a bounded, read-only evidence-discovery root: the server

@@ -249,8 +249,8 @@ against, and it is the first release with the locator-anchored positional
 pointer actions (`pointer-click` and `pointer-drag`) that annotation drawing
 needs.
 
-Build Observer first. The tutorials run this checkout's unreleased v0.9
-implementation, not the published package:
+Build Observer first. The tutorials run this checkout's own build, not the
+published package:
 
 ```powershell
 npm run build

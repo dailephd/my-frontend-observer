@@ -490,7 +490,7 @@ blockers; on the canonical worktree, `npm run typecheck`, `npm run lint`,
 `npm test` (627 tests), `npm run test:browser` (120 tests), `npm run
 test:security`, `npm run build`, and `npm run check:docs` all pass.
 
-## v0.7 external visual-reference contract direction (released as `0.7.0`; v0.8 viewer released as `0.8.0`; v0.9 implemented, not yet released; v0.10 still future)
+## v0.7 external visual-reference contract direction (released as `0.7.0`; v0.8 viewer released as `0.8.0`; v0.9 released as `0.9.0`; v0.10 still future)
 
 External visual-reference support is released as package version `0.7.0`
 (see "v0.7 Prompt 1" through "v0.7 Prompt 8" below for the exact contract).
@@ -570,16 +570,15 @@ The v0.8 viewer, released as package version `0.8.0`, consumes this v0.7
 reference/evaluation contract exactly as required - it creates no UI-only
 reference model (see `docs/ARCHITECTURE.md` "v0.8 Batch 5"/"v0.8 Batch 6"
 and `docs/reports/v0.8-reference-candidate-inspection-batch5.md`). v0.9
-annotations (implemented, not yet released) originate from runtime
+annotations (released in `0.9.0`) originate from runtime
 screenshots or external references, preserve which source identity and
 coordinate system they belong to, and feed the same canonical contract and
 reference semantics - see "v0.9 visual annotation contract" below. v0.10
 combines both entry modes into the full correction/approval workflow.
 
-## v0.9 visual annotation contract (implemented, not yet released)
+## v0.9 visual annotation contract (released in 0.9.0)
 
-v0.9 is implemented in the repository and not released. The published package
-is still `0.8.1`.
+v0.9 is released as `@dailephd/my-frontend-observer@0.9.0`.
 
 **Artifact**: `VisualAnnotationArtifact`, artifact kind
 `my-frontend-observer/visual-annotation`, schema version `1.0.0`. It stores one

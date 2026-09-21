@@ -196,10 +196,10 @@ rejects any non-regular-file entry, closing that escape.
   explicit unavailable state, never previously-fetched evidence presented
   as current.
 
-## v0.9 local annotation write boundary (implemented, not yet released)
+## v0.9 local annotation write boundary (released in 0.9.0)
 
-v0.9 adds a narrow local write surface to the viewer. It is implemented in the
-repository and not yet released. It is a same-machine capability boundary for
+v0.9 adds a narrow local write surface to the viewer. It is released in
+`0.9.0`. It is a same-machine capability boundary for
 one local viewer session. It is not remote account authentication and does not
 protect against other software already running as the same user.
 
@@ -254,7 +254,7 @@ protect against other software already running as the same user.
 Certificate-failure-specific handling, permission-prompt-specific handling
 (Chromium's default deny-all applies; no permission is ever explicitly
 granted), and any non-loopback/remote browsing mode remain unimplemented and
-out of scope. `@dailephd/my-frontend-observer@0.8.1` is published to npm, and a
+out of scope. `@dailephd/my-frontend-observer@0.9.0` is published to npm, and a
 pre-release readiness CI workflow (Windows/Linux/macOS packed-candidate
 validation, now covering the v0.8 viewer alongside every earlier version's
 packed behavior) exists (see `docs/CI_CD.md`). The v0.7 external-reference/

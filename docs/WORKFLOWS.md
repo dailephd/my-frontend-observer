@@ -32,10 +32,10 @@ install dependencies (npm install; npx playwright install chromium)
 → validate documentation (npm run check:docs)
 ```
 
-## Current observation workflow (supported in 0.8.1)
+## Current observation workflow (supported in 0.9.0)
 
 The real `observe` workflow remains supported in the current published
-`my-frontend-observer@0.8.1` package. Its browser-observation behavior was
+`my-frontend-observer@0.9.0` package. Its browser-observation behavior was
 established in earlier releases; later project/viewer releases compose it
 rather than replacing it. It accepts target configuration through either of
 two input paths, plus one optional runtime scroll scenario:
@@ -85,10 +85,10 @@ temporary consumer directory outside the repository, on Windows, Linux, and
 macOS (`scripts/ci/runPackedObservationSmoke.mjs`) - the same workflow,
 independent of the source checkout.
 
-## Current comparison workflow (supported in 0.8.1)
+## Current comparison workflow (supported in 0.9.0)
 
 **Current status: shipped originally as part of
-`my-frontend-observer@0.4.0` and remains supported in `0.8.1`.** This is a
+`my-frontend-observer@0.4.0` and remains supported in `0.9.0`.** This is a
 separate workflow from the observation workflow above - it consumes two
 already-persisted observation artifacts rather than producing one, and it
 never launches a browser:
@@ -134,10 +134,10 @@ fixture (`scripts/dev/builtCliCompareSmoke.mjs`), and packed-tarball
 validation of the installed `compare` command
 (`scripts/ci/runPackedObservationSmoke.mjs` - see `docs/CI_CD.md`).
 
-## Current frontend contract workflow (supported in 0.8.1)
+## Current frontend contract workflow (supported in 0.9.0)
 
 This text/config-driven workflow shipped in `0.5.0` and remains supported in
-`0.8.1`. It is layered downstream of the two workflows above - it does not
+`0.9.0`. It is layered downstream of the two workflows above - it does not
 replace them. The complete v0.7 coding-agent workflow (the external-reference
 evidence foundation and end-to-end correction loop) is layered on top of
 it - see "Current external-reference foundation workflow" and "Current
@@ -562,10 +562,10 @@ started with. See `docs/COMMANDS.md#view` for the full flag reference and
 `docs/ARCHITECTURE.md` "v0.8 Batch 1" through "v0.8 Batch 8" for the
 implementation record.
 
-## Current visual annotation workflow (v0.9, implemented, not yet released)
+## Current visual annotation workflow (released in 0.9.0)
 
-v0.9 visual annotation is implemented in the repository. It is not released;
-the published package is still `0.8.1`. Authoring works only in the
+v0.9 visual annotation is released in `@dailephd/my-frontend-observer@0.9.0`.
+Authoring works only in the
 project-aware viewer (`my-frontend-observer view` inside an initialized
 project). `view --root <root>` inspects the same evidence read-only.
 
@@ -689,7 +689,7 @@ package. See `examples/v09-demo/README.md` for details and maintenance notes.
 
 The sequence on top of the v0.7/v0.8 foundation above preserves the current
 engines and lets graphical interfaces consume rather than invent the reference
-model. v0.9 is implemented but not yet released. v0.10 is still future:
+model. v0.9 is released as `0.9.0`. v0.10 is still future:
 
 ```text
 stable targets and bounded runtime behavior
@@ -707,8 +707,7 @@ stable targets and bounded runtime behavior
 → v0.8 interactive viewer with reference/candidate inspection (released as
   package version `0.8.0` - see "Current interactive viewer workflow" above)
 → v0.9 structured visual annotation on runtime screenshots and references
-  (implemented, not yet released - see "Current visual annotation workflow"
-  above)
+  (released as `0.9.0` - see "Current visual annotation workflow" above)
 → v0.10 full visual human–LLM workflow with both actual-frontend-driven and
   reference-driven entry modes
 ```
@@ -759,13 +758,13 @@ part of this repository and work without the v0.8 viewer or v0.9
 annotation system. v0.8, released as `0.8.0`, consumes the v0.7
 reference/evaluation model exactly as required - it does not create a second
 UI-only one (see "Current interactive viewer workflow" above). v0.9,
-implemented but not yet released, preserves the same constraint: promotion and
+released as `0.9.0`, preserves the same constraint: promotion and
 materialization go through the existing canonical contract and
 external-reference services.
 
-## v0.8.1 release workflow
+## Current release workflow
 
-The published package is `@dailephd/my-frontend-observer@0.8.1`; install it
+The published package is `@dailephd/my-frontend-observer@0.9.0`; install it
 with npm and use the `my-frontend-observer` CLI. The ordinary workflow is
 `init`, `capture baseline`, `check baseline`, then `view`. Existing sections
 below retain the historical low-level and viewer workflows for compatibility.

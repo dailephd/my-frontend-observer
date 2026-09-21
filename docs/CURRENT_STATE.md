@@ -1,27 +1,26 @@
 # Current State
 
-v0.8.1 is released and published as `@dailephd/my-frontend-observer@0.8.1`.
-Project aliases, `init`, `capture`, project-aware `view`, and `check`
-orchestration are implemented and MIT licensed.
-
-v0.9 (Human Visual Annotation and Design-Intent Capture) implementation is
-complete in this repository. All seven v0.9 implementation prompts passed,
-including integrated real-Chromium acceptance and a local packed
-installed-candidate smoke. v0.9 is not released: it is not published to npm,
-the package version is still `0.8.1`, and cross-platform pre-release readiness
-on the final candidate and release preparation are pending. The viewer
-protocol is `1.3.0` and the visual annotation schema is `1.0.0`. The
+v0.9.0 is released and published as `@dailephd/my-frontend-observer@0.9.0`.
+v0.9 (Human Visual Annotation and Design-Intent Capture) adds structured visual
+annotation to the project-aware viewer. It passed integrated real-Chromium
+acceptance and final exact-candidate pre-release readiness on Windows, Linux
+and macOS, including all four tutorials. The viewer protocol is `1.3.0` and the
+visual annotation schema is `1.0.0`. Project aliases, `init`, `capture`,
+project-aware `view`, and `check` orchestration from v0.8.1 remain implemented,
+and the package is MIT licensed. The
 repository also holds a deterministic demo and four tutorial scenarios for
 v0.9, recorded by the external `@dailephd/my-dev-kit-lab@0.4.9` tool. See
 "v0.9 status" below.
 
-The project is published at package version `0.8.1` (roadmap v0.8.1,
-Project Workflow CLI and Human-Readable Evidence Aliases; observation schema
-`1.2.0`; comparison schema `1.0.0`; frontend contract schema `1.0.0`;
-evaluation artifact schema `1.0.0`; bounded-agent-context schema `1.0.0`;
-external-reference schema `1.0.0`). v0.8.1 did not change any canonical
-evidence schema version; see "v0.8 status" below for the final, complete
-v0.8 viewer state.
+The project is published at package version `0.9.0` (roadmap v0.9, Human
+Visual Annotation and Design-Intent Capture; observation schema `1.2.0`;
+comparison schema `1.0.0`; frontend contract schema `1.0.0`; evaluation
+artifact schema `1.0.0`; bounded-agent-context schema `1.0.0`;
+external-reference schema `1.0.0`; visual annotation schema `1.0.0`). v0.9.0
+added the visual annotation schema and did not change any other canonical
+evidence schema version. v0.8.1 did not change any canonical evidence schema
+version either; see "v0.8 status" below for the final, complete v0.8 viewer
+state.
 
 v0.8 (Interactive Local Observation Viewer) is fully implemented, tested,
 formally cross-platform/security validated, and released. All eight v0.8
@@ -1011,11 +1010,11 @@ viewer surface both passed - see the readiness report above, including the
 one security finding it found and fixed (a symlinked-media evidence-root
 escape in the viewer's media route).
 
-## v0.9 status (Human Visual Annotation and Design-Intent Capture) - implementation complete, not released
+## v0.9 status (Human Visual Annotation and Design-Intent Capture) - released as 0.9.0
 
-v0.9 is implemented in this repository against the frozen plan
-`docs/plans/v0.9-implementation-plan.md`. It is not released. The published
-package is still `0.8.1`.
+v0.9 is implemented against the frozen plan
+`docs/plans/v0.9-implementation-plan.md` and released as
+`@dailephd/my-frontend-observer@0.9.0`.
 
 - **Prompt 1** (`docs/reports/v0.9-batch1-visual-annotation-foundation.md`)
   added the `VisualAnnotationArtifact` domain (schema `1.0.0`), structured
@@ -1055,7 +1054,7 @@ package is still `0.8.1`.
   annotation smoke (`scripts/ci/runPackedV09AnnotationSmoke.mjs`), its step in
   the pre-release readiness matrix, and this documentation reconciliation.
 
-Current versions: package `0.8.1`, viewer protocol `1.3.0`, visual annotation
+Current versions: package `0.9.0`, viewer protocol `1.3.0`, visual annotation
 schema `1.0.0`, frontend contract schema `1.0.0`, external-reference schema
 `1.0.0`. No other schema changed.
 
@@ -1094,8 +1093,15 @@ described below, so it is not readiness evidence for the final candidate.
   regenerated from clean targets with `@dailephd/my-dev-kit-lab@0.4.9`,
   structural and content acceptance, canonical evidence checks, and a full
   local regression. Scenario narration, reading pauses, and screenshot
-  requests were corrected in this stage. Human visual review of the videos is
-  pending.
+  requests were corrected in this stage. Human visual review of the videos
+  was completed and approved before release.
+- **Final pre-release readiness**
+  (`docs/reports/v0.9-final-pre-release-readiness.md`, with corrections in
+  `docs/reports/v0.9-final-readiness-corrections.md`): one exact candidate
+  package passed the packed observation, viewer and v0.9 annotation smokes and
+  all four tutorials on Windows, Linux and macOS, using
+  `@dailephd/my-dev-kit-lab@0.4.9` semantic `select-option` for native
+  selects.
 
 The four scenarios are annotation basics, runtime intent to an active change
 contract, reference authoring, and reference materialization. After each run
@@ -1123,13 +1129,13 @@ npm package.
   remains unimplemented by design (programmatic-only, library-level use is
   the current supported entry point) - see "v0.7 Prompt 8 status" above.
   The full graphical human-LLM workflow (v0.10) remains future and
-  unimplemented. Structured visual annotation (v0.9) is implemented but not
-  released - see "v0.9 status" above.
+  unimplemented. Structured visual annotation (v0.9) is implemented and
+  released as `0.9.0` - see "v0.9 status" above.
 
 ## Next target
 
-v0.1-v0.8 are implemented, validated, and released (`0.1.0`, `0.2.0`,
-`0.3.0`, `0.4.0`, `0.5.0`, `0.6.0`, `0.7.0`, `0.8.0`). v0.7 (End-to-End
+v0.1-v0.9 are implemented, validated, and released (`0.1.0`, `0.2.0`,
+`0.3.0`, `0.4.0`, `0.5.0`, `0.6.0`, `0.7.0`, `0.8.0`, `0.8.1`, `0.9.0`). v0.7 (End-to-End
 Coding-Agent Frontend Change Review) is fully implemented and released: the
 external-reference artifact foundation, explicit reference
 regions/relationships, selected design requirements/tolerance
@@ -1148,8 +1154,8 @@ for the completeness audit, and
 readiness validation that preceded this release.
 
 v0.8 (Interactive Local Observation Viewer) is fully implemented, tested,
-and released - see "v0.8 status" above. v0.8.1 is the current package
-release: `@dailephd/my-frontend-observer@0.8.1`. All
+and released - see "v0.8 status" above. v0.8.1 was released as
+`@dailephd/my-frontend-observer@0.8.1`. All
 eight implementation batches, the hardened documentation/implementation-
 completeness audit, and formal pre-release readiness (cross-platform and
 security validation) have passed - see `docs/ROADMAP.md` for v0.8's full
@@ -1159,10 +1165,7 @@ for the completeness audit, and
 `docs/reports/v0.8-prerelease-readiness-cross-platform-security-code-rot.md`
 for the cross-platform readiness validation that preceded this release.
 
-v0.9 (structured visual annotation) implementation is complete but not
-released - see "v0.9 status" above. The next step is human visual review of
-the four tutorial videos. After approval, rerun the exact-candidate
-Windows/Linux/macOS pre-release readiness workflow on the final commit,
-reconcile any cross-platform failures, then prepare the `0.9.0` release
-separately. v0.10
-(full graphical human-LLM workflow) remains future - see `docs/ROADMAP.md`.
+v0.9 (structured visual annotation) is released as
+`@dailephd/my-frontend-observer@0.9.0` - see "v0.9 status" above. The next
+target is v0.10 (full graphical human-LLM workflow), which remains future and
+unimplemented - see `docs/ROADMAP.md`.

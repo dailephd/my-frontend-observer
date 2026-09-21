@@ -21,7 +21,7 @@ the workflow result remain in memory/presentation.
 ## Current package architecture
 
 The current repository is one published TypeScript ESM package
-(`@dailephd/my-frontend-observer@0.8.1`). The CLI remains
+(`@dailephd/my-frontend-observer@0.9.0`). The CLI remains
 `my-frontend-observer`; the npm scope does not rename the product or artifact
 identities.
 
@@ -377,8 +377,8 @@ actual architecture, and `docs/CURRENT_STATE.md` for release state. It
 extends the existing v0.1-v0.6 evidence architecture rather than becoming a
 UI-only feature or a parallel visual-comparison stack. v0.8 (interactive
 viewer) is released as package version `0.8.0`. v0.9 (structured visual
-annotation) is implemented in the repository but not yet released - see "v0.9
-visual annotation architecture" below. v0.10 (full graphical human-LLM
+annotation) is released as package version `0.9.0` - see "v0.9 visual
+annotation architecture" below. v0.10 (full graphical human-LLM
 workflow) remains future and unimplemented. The constraints below applied to
 v0.9 and still apply to v0.10.
 
@@ -1082,9 +1082,9 @@ record.
   re-running the exact `grep -rn` audit from earlier batches - unchanged
   findings, no duplicate evidence engine exists.
 
-## v0.9 visual annotation architecture (implemented, not yet released)
+## v0.9 visual annotation architecture (released in 0.9.0)
 
-v0.9 is implemented in the repository and is not released. It adds one new
+v0.9 is released as package version `0.9.0`. It adds one new
 evidence family and a narrow local authoring path to the existing viewer. It
 adds no new evaluator, no second contract or reference model, and no new
 PASS/FAIL semantics.
