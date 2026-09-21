@@ -1,7 +1,8 @@
 # Release
 
-`v0.9.0` (Human Visual Annotation and Design-Intent Capture) is released and
-published to npm as `@dailephd/my-frontend-observer`. The release adds
+`v0.9.1` (PWA Hard-Gate Isolation and Reproducible Security Acceptance) is
+released and published to npm as `@dailephd/my-frontend-observer`. This
+maintenance release adds
 structured visual annotation of runtime observations and external references
 to the project-aware viewer, selected promotion of confirmed runtime intent
 into canonical change contracts, and selected materialization of confirmed
@@ -14,7 +15,7 @@ independently from the npm package version.
 
 Observation, comparison, frontend contract, evaluation artifact,
 bounded-agent-context, external-reference, visual annotation, and package
-version all remain separate: package version is `0.9.0`; observation schema is
+version all remain separate: package version is `0.9.1`; observation schema is
 `1.2.0`, comparison schema is `1.0.0`, frontend contract schema is `1.0.0`,
 evaluation artifact schema is `1.0.0`, bounded-agent-context schema is
 `1.0.0`, external-reference schema is `1.0.0`, and visual annotation schema is

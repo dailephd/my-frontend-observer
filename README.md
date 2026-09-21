@@ -1,6 +1,6 @@
 # my-frontend-observer
 
-## Common project workflow (v0.9.0)
+## Common project workflow (v0.9.1)
 
 ```powershell
 my-frontend-observer init --url http://127.0.0.1:3000 --target app=#app
@@ -17,9 +17,10 @@ my-frontend-observer view
 `1`, `2`, or `3` for `PASS`, `FAIL`, `REVIEW_REQUIRED`, or `BLOCKED`.
 Canonical hashes remain available in viewer details and persisted provenance,
 but are not normal workflow command inputs. The existing low-level commands
-remain supported. v0.9.0 is the current published release.
+remain supported. v0.9.1 is the current published release.
 
-v0.9.0 adds the structured visual annotation workflow described below.
+v0.9.1 is a maintenance release that hardens independent PWA security-gate
+validation without changing production PWA behavior.
 
 `my-frontend-observer` is the local-first rendered browser/runtime evidence
 producer in the my-dev-kit ecosystem. Its durable product purpose is defined
@@ -28,8 +29,9 @@ composition is documented in the [my-dev-kit ecosystem guide](https://github.com
 
 ## Current status
 
-`v0.9.0`, Human Visual Annotation and Design-Intent Capture, is the current
-published release. It builds on `v0.8.1`, Project Workflow CLI and
+`v0.9.1`, PWA Hard-Gate Isolation and Reproducible Security Acceptance, is the
+current published release. It preserves the `v0.9.0` Human Visual Annotation
+and Design-Intent Capture release and builds on `v0.8.1`, Project Workflow CLI and
 Human-Readable Evidence Aliases, `v0.8.0`, Interactive Local Observation
 Viewer, and `v0.7.0`, End-to-End Coding-Agent Frontend Change
 Review, `v0.6.0`, Bounded Agent Context and Native my-dev-kit Ecosystem
@@ -347,7 +349,7 @@ Planning authorities:
   intent and responsibility boundaries.
 - [Project Milestones](docs/PROJECT_MILESTONES.md): complete ordered capability
   design and cross-milestone rules.
-- [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.9.0 are
+- [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.9.1 are
   released; v0.10 remains future.
 - [Current State](docs/CURRENT_STATE.md): retained scaffold and release state.
 

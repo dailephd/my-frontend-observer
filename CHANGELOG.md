@@ -2,12 +2,22 @@
 
 ## [Unreleased]
 
-- Hardened the PWA server-down security acceptance test. It now establishes
-  service-worker control, shell-cache readiness, API-cache exclusion, and
-  server unavailability from fresh test-owned state. The hard gate passes on
-  its own and no longer relies on prior tests or a persistent Chromium profile.
-  Added `npm run test:pwa-hard-gate`, which `npm run test:security` now runs.
-  No production PWA behavior changed.
+Future development.
+
+## 0.9.1 - 2026-09-21
+
+Hardened PWA security-acceptance reproducibility as a maintenance release.
+
+- Hardened the PWA server-down HARD GATE from fresh test-owned state, removing
+  hidden dependence on prior test order and persistent Chromium profile state.
+- Corrected the false-ready service-worker predicate and separately proved
+  active registration and current-client control.
+- Proved shell-cache readiness, `/api/` exclusion from Cache Storage,
+  origin-server unavailability, offline shell reload, and stale-evidence
+  absence.
+- Added permanent `npm run test:pwa-hard-gate` and integrated it into
+  `npm run test:security`.
+- No production PWA behavior, schema, or dependency changed.
 
 ## 0.9.0 - 2026-09-21
 

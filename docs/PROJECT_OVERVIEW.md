@@ -1,8 +1,9 @@
 # Project Overview
 
-The repository contains the complete v0.9.0 release, published as
-`@dailephd/my-frontend-observer@0.9.0` under the MIT license. It adds
-structured visual annotation to the v0.8.1 project workflow (`init`,
+The repository contains the complete v0.9.1 release, published as
+`@dailephd/my-frontend-observer@0.9.1` under the MIT license. It hardens
+independent PWA security acceptance while preserving the structured visual
+annotation added to the v0.8.1 project workflow (`init`,
 `capture`, `check`, project-aware `view`).
 
 `my-frontend-observer` is the rendered browser/runtime evidence producer in
@@ -32,7 +33,7 @@ v0.6, Bounded Agent Context and Native my-dev-kit Ecosystem Integration;
 v0.7, End-to-End Coding-Agent Frontend Change Review; v0.8, Interactive
 Local Observation Viewer; v0.8.1, Project Workflow CLI and Human-Readable
 Evidence Aliases; and v0.9, Human Visual Annotation and Design-Intent Capture,
-are released and published to npm. The current package version is `0.9.0` as
+are released and published to npm. The current package version is `0.9.1` as
 `@dailephd/my-frontend-observer` (observation schema `1.2.0`, comparison schema
 `1.0.0`, frontend contract schema `1.0.0`, evaluation artifact schema `1.0.0`,
 bounded-agent-context schema `1.0.0`, external-reference schema `1.0.0`,
@@ -96,7 +97,7 @@ artifact identifiers during ordinary use. Existing low-level commands remain
 supported. The frozen plan is
 `docs/plans/v0.8.1-cli-usability-patch-plan.md`.
 
-The latest published release is v0.9.0. v0.9 adds structured
+The latest published release is v0.9.1. v0.9 added structured
 visual annotation to the project-aware viewer for both runtime observations and
 external references. People draw marks, explicitly associate them, and confirm
 structured intent. Selected confirmed runtime intent can become a normal
@@ -111,7 +112,7 @@ The repository-owned deterministic demo and its four tutorial scenarios
 with the release. They are release support and documentation, not product
 behavior, and they are not shipped in the npm package.
 
-v0.9.1 maintenance implementation is complete but unreleased. It hardens the
+The v0.9.1 maintenance release hardens the
 PWA server-down hard acceptance test so the gate is reproducible from a fresh
 browser profile and fresh test-owned state. PWA hard/security acceptance no
 longer depends on prior test order or persistent browser state, and
