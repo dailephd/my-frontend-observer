@@ -270,7 +270,7 @@ every state difference is deliberate, so the same state always renders the
 same geometry at the canonical 1440x900 viewport.
 
 Four v0.9 tutorial scenarios live in `examples/v09-demo/tutorials/`. They are
-recorded by the external tool `@dailephd/my-dev-kit-lab@0.4.8`, which drives
+recorded by the external tool `@dailephd/my-dev-kit-lab@0.4.9`, which drives
 the real Observer viewer in Chromium against a disposable project built from
 the demo. Observer itself has no tutorial command and does not depend on the
 lab.
@@ -283,10 +283,10 @@ npm run build
 node examples/v09-demo/scripts/generate-tutorial-target.mjs `
   --scenario observer-v09-annotation-basics `
   --out .my-dev-kit-workflow/adhoc/target-contract.json
-npx --yes @dailephd/my-dev-kit-lab@0.4.8 tutorial validate `
+npx --yes @dailephd/my-dev-kit-lab@0.4.9 tutorial validate `
   --scenario examples/v09-demo/tutorials/01-annotation-basics.json `
   --target-contract .my-dev-kit-workflow/adhoc/target-contract.json --json
-npx --yes @dailephd/my-dev-kit-lab@0.4.8 tutorial run `
+npx --yes @dailephd/my-dev-kit-lab@0.4.9 tutorial run `
   --scenario examples/v09-demo/tutorials/01-annotation-basics.json `
   --target-contract .my-dev-kit-workflow/adhoc/target-contract.json `
   --out <an output directory you choose outside the repository> --json

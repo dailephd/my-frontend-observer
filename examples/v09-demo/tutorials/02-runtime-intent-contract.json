@@ -74,58 +74,22 @@
     },
     {
       "id": "operation-move",
-      "narration": "The operation is a move. Observer offers a closed list of operations rather than a free text box, because a contract has to be built from meanings the system can actually check. The keyboard selects it directly.",
-      "pauseAfterMs": 14100,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "m" }
-    },
-    {
-      "id": "operation-move-2",
-      "narration": "The selected operation is committed before the direction-specific controls appear.",
-      "pauseAfterMs": 6400,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "Enter" }
-    },
-    {
-      "id": "operation-move-commit",
-      "narration": "Committing that choice so the direction control reflects the selected operation on every platform.",
-      "pauseAfterMs": 6600,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "Enter" }
+      "narration": "The operation is a move. Observer offers a closed list of operations rather than a free text box, because a contract has to be built from meanings the system can actually check.",
+      "pauseAfterMs": 11800,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "value": "move" }
     },
     {
       "id": "direction-right",
       "narration": "And here is the point of the left-pointing arrow: the direction chosen here is right. The drawing and the decision disagree on purpose.",
       "pauseAfterMs": 9000,
-      "action": { "type": "click", "locator": { "kind": "role", "role": "combobox", "name": "Move direction" } },
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Move direction" }, "value": "right" },
       "callout": { "text": "The arrow points left. The requested direction is right.", "placement": "auto" }
-    },
-    {
-      "id": "direction-right-select",
-      "narration": "Choosing right from the direction list.",
-      "pauseAfterMs": 6600,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Move direction" }, "key": "ArrowDown" }
-    },
-    {
-      "id": "direction-right-commit",
-      "narration": "The direction is committed before the intent is saved.",
-      "pauseAfterMs": 6600,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Move direction" }, "key": "Enter" }
     },
     {
       "id": "category-requested",
       "narration": "The category says what kind of change this is. The first option is requested: somebody asked for it, as opposed to it being a side effect, or something that must not move at all.",
-      "pauseAfterMs": 10900,
-      "action": { "type": "click", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" } }
-    },
-    {
-      "id": "category-requested-select",
-      "narration": "Choosing requested from the category list.",
-      "pauseAfterMs": 6600,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "key": "ArrowDown" }
-    },
-    {
-      "id": "category-requested-commit",
-      "narration": "The requested category is committed before the candidate meaning is saved.",
-      "pauseAfterMs": 6600,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "key": "Enter" },
+      "pauseAfterMs": 11900,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "value": "requested" },
       "screenshot": { "id": "move-form-ready" }
     },
     {
@@ -241,46 +205,28 @@
       "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Associate target sidebar" } }
     },
     {
-      "id": "operation-resize-1",
-      "narration": "The operation this time is a resize. The form started empty again, so the first press lands on inspect.",
-      "pauseAfterMs": 6900,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "ArrowDown" }
-    },
-    {
-      "id": "operation-resize-2",
-      "narration": "Then move.",
-      "pauseAfterMs": 1200,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "ArrowDown" }
-    },
-    {
-      "id": "operation-resize-3",
-      "narration": "Then resize.",
-      "pauseAfterMs": 1200,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "ArrowDown" }
+      "id": "operation-resize",
+      "narration": "The operation this time is a resize.",
+      "pauseAfterMs": 2400,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "value": "resize" }
     },
     {
       "id": "resize-wider",
       "narration": "Wider.",
       "pauseAfterMs": 1200,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Resize direction" }, "key": "ArrowDown" }
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Resize direction" }, "value": "wider" }
     },
     {
-      "id": "category-expected-1",
-      "narration": "The category is where this differs from the hero move. Nobody asked for the sidebar to grow.",
-      "pauseAfterMs": 6200,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "key": "ArrowDown" }
-    },
-    {
-      "id": "category-expected-2",
-      "narration": "It is expected-dependent: a consequence that follows from the change that was requested. Naming it that way keeps a knock-on effect from being mistaken for a request, and from being flagged as a regression.",
-      "pauseAfterMs": 13800,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "key": "ArrowDown" }
+      "id": "category-expected",
+      "narration": "The category is where this differs from the hero move. Nobody asked for the sidebar to grow. It is expected-dependent: a consequence that follows from the change that was requested. Naming it that way keeps a knock-on effect from being mistaken for a request, and from being flagged as a regression.",
+      "pauseAfterMs": 20000,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "value": "expected-dependent" }
     },
     {
       "id": "mode-required",
       "narration": "And required, meaning this consequence must happen. The alternative, permitted, would mean it is allowed but not demanded. That distinction decides whether its absence is a failure.",
       "pauseAfterMs": 12100,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Intent expected-dependent mode" }, "key": "ArrowDown" }
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Intent expected-dependent mode" }, "value": "required" }
     },
     {
       "id": "set-candidate-resize",
@@ -337,36 +283,28 @@
     },
     {
       "id": "operation-preserve",
-      "narration": "The operation is preserve, the last in the list. The first press lands on inspect.",
-      "pauseAfterMs": 5500,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "ArrowDown" }
+      "narration": "The operation is preserve, the last in the list.",
+      "pauseAfterMs": 3200,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "value": "preserve" }
     },
-    { "id": "operation-preserve-2", "narration": "Move.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "ArrowDown" } },
-    { "id": "operation-preserve-3", "narration": "Resize.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "ArrowDown" } },
-    { "id": "operation-preserve-4", "narration": "Remove.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "ArrowDown" } },
-    { "id": "operation-preserve-5", "narration": "Preserve.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "ArrowDown" } },
     {
-      "id": "category-protected-1",
-      "narration": "This one is protected: it must not drift, and a change to it is a defect rather than a side effect. The first press lands on requested.",
-      "pauseAfterMs": 9000,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "key": "ArrowDown" }
+      "id": "category-protected",
+      "narration": "This one is protected: it must not drift, and a change to it is a defect rather than a side effect.",
+      "pauseAfterMs": 6600,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "value": "protected" }
     },
-    { "id": "category-protected-2", "narration": "Expected-dependent.", "pauseAfterMs": 1300, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "key": "ArrowDown" } },
-    { "id": "category-protected-3", "narration": "Protected.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "key": "ArrowDown" } },
     {
-      "id": "preserve-property-1",
-      "narration": "Preserving something means naming which property is preserved. Here it is the footer's vertical position. The first press lands on x.",
-      "pauseAfterMs": 8900,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Preserved property" }, "key": "ArrowDown" }
+      "id": "preserve-property",
+      "narration": "Preserving something means naming which property is preserved. Here it is the footer's vertical position.",
+      "pauseAfterMs": 7000,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Preserved property" }, "value": "y" }
     },
-    { "id": "preserve-property-2", "narration": "Then y.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Preserved property" }, "key": "ArrowDown" } },
     {
-      "id": "tolerance-1",
-      "narration": "Preservation also needs a tolerance, because real rendering moves things by fractions of a pixel and a contract that forbids that would fail constantly for no reason. The first option, exact, allows no drift at all.",
-      "pauseAfterMs": 14400,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Contract tolerance" }, "key": "ArrowDown" }
+      "id": "tolerance",
+      "narration": "Preservation also needs a tolerance, because real rendering moves things by fractions of a pixel and a contract that forbids that would fail constantly for no reason. Exact would allow no drift at all, so this one uses an absolute pixel tolerance.",
+      "pauseAfterMs": 16500,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Contract tolerance" }, "value": "absolute-px" }
     },
-    { "id": "tolerance-2", "narration": "An absolute pixel tolerance.", "pauseAfterMs": 1900, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Contract tolerance" }, "key": "ArrowDown" } },
     {
       "id": "tolerance-amount",
       "narration": "Two pixels of slack.",
@@ -418,7 +356,7 @@
       "id": "relationship-choose",
       "narration": "Instead of a target, this one is bound to a relationship Observer actually derived from the captured geometry. The list is not free text: you can only preserve a relationship the evidence really contains. The first one is that the header and the navigation bar overlap horizontally, and that is the one chosen.",
       "pauseAfterMs": 20700,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Canonical relationship to associate" }, "key": "ArrowDown" }
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Canonical relationship to associate" }, "value": "pairwise:0" }
     },
     {
       "id": "relationship-associate",
@@ -431,20 +369,18 @@
       ],
       "screenshot": { "id": "relationship-associated" }
     },
-    { "id": "rel-operation-1", "narration": "Preserve again, stepped from the top of the list. Inspect.", "pauseAfterMs": 3900, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "ArrowDown" } },
-    { "id": "rel-operation-2", "narration": "Move.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "ArrowDown" } },
-    { "id": "rel-operation-3", "narration": "Resize.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "ArrowDown" } },
-    { "id": "rel-operation-4", "narration": "Remove.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "ArrowDown" } },
-    { "id": "rel-operation-5", "narration": "Preserve.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "ArrowDown" } },
     {
-      "id": "rel-category-1",
-      "narration": "The category here is preserved, the fourth of the four a person may author. Requested.",
-      "pauseAfterMs": 5800,
-      "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "key": "ArrowDown" }
+      "id": "rel-operation",
+      "narration": "Preserve again.",
+      "pauseAfterMs": 1200,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "value": "preserve" }
     },
-    { "id": "rel-category-2", "narration": "Expected-dependent.", "pauseAfterMs": 1300, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "key": "ArrowDown" } },
-    { "id": "rel-category-3", "narration": "Protected.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "key": "ArrowDown" } },
-    { "id": "rel-category-4", "narration": "Preserved. There is deliberately no way to author an unexpected category here: unexpected is something Observer concludes when it compares runs, never something a person declares in advance.", "pauseAfterMs": 12700, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "key": "ArrowDown" } },
+    {
+      "id": "rel-category",
+      "narration": "The category here is preserved, the fourth of the four a person may author. There is deliberately no way to author an unexpected category here: unexpected is something Observer concludes when it compares runs, never something a person declares in advance.",
+      "pauseAfterMs": 17000,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "value": "preserved" }
+    },
     {
       "id": "set-candidate-relationship",
       "narration": "The clause shape is relationship-unchanged, which is again structurally different from both of the earlier ones.",
@@ -479,11 +415,18 @@
     { "id": "select-remove-note", "narration": "The removal note.", "pauseAfterMs": 1200, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Note annotation: Card two should go" } } },
     { "id": "choose-card2", "narration": "Its subject is the second card.", "pauseAfterMs": 2100, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "card2 matched" } } },
     { "id": "associate-card2", "narration": "Bound to card2.", "pauseAfterMs": 1200, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Associate target card2" } } },
-    { "id": "remove-op-1", "narration": "Operation remove, the fourth option. Inspect.", "pauseAfterMs": 3000, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "ArrowDown" } },
-    { "id": "remove-op-2", "narration": "Move.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "ArrowDown" } },
-    { "id": "remove-op-3", "narration": "Resize.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "ArrowDown" } },
-    { "id": "remove-op-4", "narration": "Remove.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "ArrowDown" } },
-    { "id": "remove-category", "narration": "Requested: somebody really does want the card gone.", "pauseAfterMs": 3400, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "key": "ArrowDown" } },
+    {
+      "id": "remove-op",
+      "narration": "Operation remove, the fourth option.",
+      "pauseAfterMs": 2400,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "value": "remove" }
+    },
+    {
+      "id": "remove-category",
+      "narration": "Requested: somebody really does want the card gone.",
+      "pauseAfterMs": 3400,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Intent category" }, "value": "requested" }
+    },
     {
       "id": "set-candidate-remove",
       "narration": "The candidate is accepted as a perfectly legitimate thing to record.",
@@ -526,7 +469,12 @@
     },
     { "id": "select-mode-6", "narration": "Selecting it.", "pauseAfterMs": 1200, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Select mode" } } },
     { "id": "select-inspect-note", "narration": "The question note.", "pauseAfterMs": 1200, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Note annotation: Why is the call to action so wide" } } },
-    { "id": "inspect-op", "narration": "Its operation is inspect: a question worth recording, not a demand.", "pauseAfterMs": 4500, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "key": "ArrowDown" } },
+    {
+      "id": "inspect-op",
+      "narration": "Its operation is inspect: a question worth recording, not a demand.",
+      "pauseAfterMs": 4500,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Runtime intent operation" }, "value": "inspect" }
+    },
     {
       "id": "set-candidate-inspect",
       "narration": "Inspect needs no category, because it is not asking for anything.",

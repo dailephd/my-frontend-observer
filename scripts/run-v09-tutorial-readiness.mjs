@@ -5,18 +5,18 @@
 
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFile, readdir, writeFile, mkdir } from 'node:fs/promises';
+import { readdir, writeFile, mkdir } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { generateTutorialTargetContract } from '../examples/v09-demo/scripts/generate-tutorial-target.mjs';
-import { readExternalReferenceArtifact, readPerChangeContract, readPersistentBaselineContract, readVisualAnnotationArtifact } from '../dist/index.js';
+import { isApprovedExternalReferenceArtifact, isImportedExternalReferenceArtifact, readExternalReferenceArtifact, readPerChangeContract, readPersistentBaselineContract, readVisualAnnotationArtifact } from '../dist/index.js';
 
 const execFileAsync = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const labVersion = '0.4.8';
+const labVersion = '0.4.9';
 const scenarios = [
   ['observer-v09-annotation-basics', '01-annotation-basics'],
   ['observer-v09-runtime-contract', '02-runtime-intent-contract'],
@@ -26,11 +26,23 @@ const scenarios = [
 
 function fail(message) { throw new Error(message); }
 function npxCommand() { return process.platform === 'win32' ? 'npx.cmd' : 'npx'; }
-async function jsonFile(file) { return JSON.parse(await readFile(file, 'utf8')); }
 async function readArtifact(reader, file) {
   const result = await reader(file);
-  if (!result?.ok) fail(`canonical reader rejected ${file}`);
+  if (!result?.ok) fail(`canonical reader rejected ${file}: ${result?.reason ?? 'no reason reported'}`);
   return result.artifact;
+}
+/**
+ * The canonical frontend-contract readers return `contract`, not `artifact`,
+ * and each one validates exactly one contract class. Trying both is what
+ * decides the class, so nothing here parses raw JSON or re-implements a
+ * discriminator the canonical validators already own.
+ */
+async function readContract(file) {
+  const baseline = await readPersistentBaselineContract(file);
+  if (baseline.ok) return baseline.contract;
+  const change = await readPerChangeContract(file);
+  if (change.ok) return change.contract;
+  fail(`canonical contract readers rejected ${file}: baseline=${baseline.reason}; change=${change.reason}`);
 }
 async function filesNamed(dir, name) {
   const result = [];
@@ -41,7 +53,6 @@ async function filesNamed(dir, name) {
   }
   return result;
 }
-function sha256(bytes) { return createHash('sha256').update(bytes).digest('hex'); }
 function trackedDemoDigest() {
   const files = execFileSync('git', ['ls-files', 'examples/v09-demo'], { cwd: root, encoding: 'utf8' }).trim().split(/\r?\n/).filter(Boolean).sort();
   const hash = createHash('sha256');
@@ -72,12 +83,9 @@ async function validateArtifacts(result, scenarioPath) {
   const annotations = [];
   for (const file of annotationFiles) annotations.push(await readArtifact(readVisualAnnotationArtifact, file));
   const references = [];
-  for (const file of referenceFiles) references.push({ ...(await readArtifact(readExternalReferenceArtifact, file)), __file: file });
+  for (const file of referenceFiles) references.push(await readArtifact(readExternalReferenceArtifact, file));
   const contracts = [];
-  for (const file of contractFiles) {
-    const raw = await jsonFile(file);
-    contracts.push(raw.contractClass === 'baseline' ? await readArtifact(readPersistentBaselineContract, file) : await readArtifact(readPerChangeContract, file));
-  }
+  for (const file of contractFiles) contracts.push(await readContract(file));
   const id = result.scenarioId;
   if (id === 'observer-v09-annotation-basics') {
     if (annotations.length !== 2) fail(`${id}: expected original and revision annotations`);
@@ -91,16 +99,31 @@ async function validateArtifacts(result, scenarioPath) {
     if (!contracts.some((item) => item.contractClass === 'baseline' && item.baselineId === 'v09-tutorial-baseline')) fail(`${id}: baseline was not preserved`);
   } else if (id === 'observer-v09-reference-authoring') {
     const annotation = annotations.find((item) => item.source?.kind === 'external-reference');
-    const approved = references.find((item) => item.lifecycle === 'approved');
-    if (!annotation || annotation.items.length !== 7 || !approved || (approved.requirements?.length ?? 0) !== 0) fail(`${id}: reference authoring invariants failed`);
+    if (!annotation) fail(`${id}: no annotation was written against an external reference`);
+    if (annotation.items.length !== 7) fail(`${id}: expected 7 annotation items, found ${annotation.items.length}`);
+    const approved = references.find(isApprovedExternalReferenceArtifact);
+    if (!approved) fail(`${id}: no approved reference was found among ${references.length} references`);
+    // Authoring records requirements in the annotation. Materializing them onto
+    // a reference is scenario 4's separate, explicit decision.
+    const authored = approved.requirements?.length ?? 0;
+    if (authored !== 0) fail(`${id}: approved reference carried ${authored} requirements before materialization`);
   } else if (id === 'observer-v09-reference-materialization') {
-    const approved = references.find((item) => item.lifecycle === 'approved');
-    const imported = references.filter((item) => item.lifecycle === 'imported');
-    if (!approved || imported.length !== 1 || (approved.requirements?.length ?? 0) !== 0 || (imported[0].requirements?.length ?? 0) < 1) fail(`${id}: materialization lifecycle invariant failed`);
-    const imagePath = (reference) => reference.image?.path ? path.join(path.dirname(reference.__file ?? ''), reference.image.path) : undefined;
-    const sourceImage = imagePath(approved);
-    const revisionImage = imagePath(imported[0]);
-    if (sourceImage && revisionImage && sha256(readFileSync(sourceImage)) !== sha256(readFileSync(revisionImage))) fail(`${id}: source and materialized image digests differ`);
+    const approved = references.find(isApprovedExternalReferenceArtifact);
+    if (!approved) fail(`${id}: no approved source reference was found among ${references.length} references`);
+    const approvedRequirements = approved.requirements?.length ?? 0;
+    if (approvedRequirements !== 0) fail(`${id}: approved source reference carried ${approvedRequirements} requirements`);
+    const importedReferences = references.filter(isImportedExternalReferenceArtifact);
+    if (importedReferences.length === 0) fail(`${id}: no imported reference was found`);
+    // The materialized successor is the import that carries requirements; the
+    // reference the approval came from carries none.
+    const materialized = importedReferences.filter((item) => (item.requirements?.length ?? 0) >= 1);
+    if (materialized.length !== 1) fail(`${id}: expected exactly one materialized successor, found ${materialized.length}`);
+    // Materialization must reuse the approved image byte-for-byte. Both digests
+    // are canonical identity-bearing fields, so nothing is re-hashed here.
+    const sourceDigest = approved.sourceReference?.image?.sha256;
+    const materializedDigest = materialized[0].image?.sha256;
+    if (!sourceDigest || !materializedDigest) fail(`${id}: an image digest was missing (source=${sourceDigest}, materialized=${materializedDigest})`);
+    if (sourceDigest !== materializedDigest) fail(`${id}: source and materialized image digests differ (${sourceDigest} vs ${materializedDigest})`);
   }
   return { canonicalEvidence: true, annotationCount: annotations.length, referenceCount: references.length, contractCount: contracts.length };
 }

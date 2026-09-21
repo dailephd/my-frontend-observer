@@ -15,7 +15,7 @@ import {
 const repoRoot = path.resolve(__dirname, '../..');
 const workflowRoot = path.join(repoRoot, '.my-dev-kit-workflow', 'v0.9', 'tutorial-integration', 'tests', 'generator');
 
-/** Fields the released my-dev-kit-lab 0.4.8 target-contract validator would reject. */
+/** Fields the released my-dev-kit-lab 0.4.9 target-contract validator would reject. */
 const FORBIDDEN_EXECUTION_FIELDS = ['shell', 'commandString', 'script', 'javascript', 'eval', 'command'];
 const CONTRACT_KEYS = ['schemaVersion', 'id', 'prepare', 'processes', 'applicationUrl'];
 const PROCESS_KEYS = ['id', 'executable', 'args', 'cwd', 'env', 'readiness'];

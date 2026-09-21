@@ -78,17 +78,36 @@
       "pauseAfterMs": 1900,
       "action": { "type": "pointer-drag", "locator": { "kind": "test-id", "testId": "reference-annotation-surface" }, "from": { "x": 0.34, "y": 0.16 }, "to": { "x": 0.9, "y": 0.36 }, "coordinateSpace": "fraction" }
     },
-    { "id": "req-a-cat-1", "narration": "The category is protected, the third option. The first press lands on requested.", "pauseAfterMs": 5400, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement category" }, "key": "ArrowDown" } },
-    { "id": "req-a-cat-2", "narration": "Expected-dependent.", "pauseAfterMs": 1300, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement category" }, "key": "ArrowDown" } },
-    { "id": "req-a-cat-3", "narration": "Protected.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement category" }, "key": "ArrowDown" } },
-    { "id": "req-a-subject", "narration": "A property of a single region.", "pauseAfterMs": 2000, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement subject" }, "key": "ArrowDown" } },
-    { "id": "req-a-region-1", "narration": "Choosing the region. Header first.", "pauseAfterMs": 2300, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
-    { "id": "req-a-region-2", "narration": "The hero.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
-    { "id": "req-a-prop-1", "narration": "Choosing the property. X first.", "pauseAfterMs": 2100, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Region property" }, "key": "ArrowDown" } },
-    { "id": "req-a-prop-2", "narration": "Y.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Region property" }, "key": "ArrowDown" } },
-    { "id": "req-a-prop-3", "narration": "Width.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Region property" }, "key": "ArrowDown" } },
-    { "id": "req-a-tol-1", "narration": "With a tolerance. Exact comes first, and would allow no difference at all.", "pauseAfterMs": 5000, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Tolerance" }, "key": "ArrowDown" } },
-    { "id": "req-a-tol-2", "narration": "In reference pixels.", "pauseAfterMs": 1400, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Tolerance" }, "key": "ArrowDown" } },
+    {
+      "id": "req-a-cat",
+      "narration": "The category is protected, the third option.",
+      "pauseAfterMs": 3000,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Requirement category" }, "value": "protected" }
+    },
+    {
+      "id": "req-a-subject",
+      "narration": "A property of a single region.",
+      "pauseAfterMs": 2000,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Requirement subject" }, "value": "region-property" }
+    },
+    {
+      "id": "req-a-region",
+      "narration": "Choosing the region: the hero.",
+      "pauseAfterMs": 2000,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "value": "hero" }
+    },
+    {
+      "id": "req-a-prop",
+      "narration": "Choosing the property: width.",
+      "pauseAfterMs": 2000,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Region property" }, "value": "width" }
+    },
+    {
+      "id": "req-a-tol",
+      "narration": "With a tolerance. Exact would allow no difference at all, so this one is measured in reference pixels.",
+      "pauseAfterMs": 6800,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Tolerance" }, "value": "absolute-reference-px" }
+    },
     { "id": "req-a-amount", "narration": "Four.", "pauseAfterMs": 1200, "action": { "type": "fill", "locator": { "kind": "role", "role": "spinbutton", "name": "Tolerance amount" }, "value": "4" } },
     { "id": "req-a-set", "narration": "Set as a candidate.", "pauseAfterMs": 1300, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Set candidate requirement" } } },
     { "id": "req-a-confirm", "narration": "And confirmed.", "pauseAfterMs": 1200, "action": { "type": "click", "locator": { "kind": "role", "role": "button", "name": "Confirm reference intent" } } },
@@ -100,13 +119,24 @@
       "pauseAfterMs": 2400,
       "action": { "type": "pointer-drag", "locator": { "kind": "test-id", "testId": "reference-annotation-surface" }, "from": { "x": 0.34, "y": 0.91 }, "to": { "x": 0.9, "y": 0.99 }, "coordinateSpace": "fraction" }
     },
-    { "id": "req-b-cat", "narration": "Preserved rather than protected. This form keeps its values from the previous requirement, so one press from protected is enough.", "pauseAfterMs": 8600, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement category" }, "key": "ArrowDown" } },
-    { "id": "req-b-region-1", "narration": "The region field still holds hero from the first requirement, so the selection steps down from there. Sidebar.", "pauseAfterMs": 7400, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
-    { "id": "req-b-region-2", "narration": "Content.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
-    { "id": "req-b-region-3", "narration": "The call to action.", "pauseAfterMs": 1300, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
-    { "id": "req-b-region-4", "narration": "The illustration.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
-    { "id": "req-b-region-5", "narration": "The footer.", "pauseAfterMs": 1200, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "key": "ArrowDown" } },
-    { "id": "req-b-prop", "narration": "The property still holds width, so one press moves it to height.", "pauseAfterMs": 4300, "action": { "type": "press", "locator": { "kind": "role", "role": "combobox", "name": "Region property" }, "key": "ArrowDown" } },
+    {
+      "id": "req-b-cat",
+      "narration": "Preserved rather than protected.",
+      "pauseAfterMs": 2200,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Requirement category" }, "value": "preserved" }
+    },
+    {
+      "id": "req-b-region",
+      "narration": "This requirement is about the footer.",
+      "pauseAfterMs": 2500,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "value": "footer" }
+    },
+    {
+      "id": "req-b-prop",
+      "narration": "The property is height.",
+      "pauseAfterMs": 1600,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Region property" }, "value": "height" }
+    },
     { "id": "req-b-amount", "narration": "The tolerance is still measured in reference pixels. Eight of them for the footer's height.", "pauseAfterMs": 6100, "action": { "type": "fill", "locator": { "kind": "role", "role": "spinbutton", "name": "Tolerance amount" }, "value": "8" } },
     {
       "id": "req-b-set",

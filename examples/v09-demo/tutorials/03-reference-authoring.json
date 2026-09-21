@@ -378,158 +378,34 @@
       }
     },
     {
-      "id": "property-category-1",
-      "narration": "The category is protected: this width is not allowed to drift. The list starts at requested.",
-      "pauseAfterMs": 6200,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Requirement category"
-        },
-        "key": "ArrowDown"
-      }
-    },
-    {
-      "id": "property-category-2",
-      "narration": "Expected-dependent.",
-      "pauseAfterMs": 1300,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Requirement category"
-        },
-        "key": "ArrowDown"
-      }
-    },
-    {
-      "id": "property-category-3",
-      "narration": "Protected.",
-      "pauseAfterMs": 1200,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Requirement category"
-        },
-        "key": "ArrowDown"
-      }
+      "id": "property-category",
+      "narration": "The category is protected: this width is not allowed to drift.",
+      "pauseAfterMs": 4200,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Requirement category" }, "value": "protected" }
     },
     {
       "id": "property-subject",
       "narration": "There are three shapes a requirement can take. This one is about a property of a single region.",
       "pauseAfterMs": 6400,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Requirement subject"
-        },
-        "key": "ArrowDown"
-      }
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Requirement subject" }, "value": "region-property" }
     },
     {
-      "id": "property-region-1",
-      "narration": "Choosing which region. The first in the list is the header.",
-      "pauseAfterMs": 4000,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Requirement region"
-        },
-        "key": "ArrowDown"
-      }
+      "id": "property-region",
+      "narration": "Choosing which region. This requirement is about the hero.",
+      "pauseAfterMs": 3900,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" }, "value": "hero" }
     },
     {
-      "id": "property-region-2",
-      "narration": "The hero.",
-      "pauseAfterMs": 1200,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Requirement region"
-        },
-        "key": "ArrowDown"
-      }
+      "id": "property-prop",
+      "narration": "And which property: the hero's width.",
+      "pauseAfterMs": 2500,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Region property" }, "value": "width" }
     },
     {
-      "id": "property-prop-1",
-      "narration": "And which property. The first is x.",
-      "pauseAfterMs": 2400,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Region property"
-        },
-        "key": "ArrowDown"
-      }
-    },
-    {
-      "id": "property-prop-2",
-      "narration": "Then y.",
-      "pauseAfterMs": 1200,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Region property"
-        },
-        "key": "ArrowDown"
-      }
-    },
-    {
-      "id": "property-prop-3",
-      "narration": "Width.",
-      "pauseAfterMs": 1200,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Region property"
-        },
-        "key": "ArrowDown"
-      }
-    },
-    {
-      "id": "property-tolerance-1",
-      "narration": "A requirement without a tolerance is a trap, because no implementation ever matches a design to the exact pixel.",
-      "pauseAfterMs": 7500,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Tolerance"
-        },
-        "key": "ArrowDown"
-      }
-    },
-    {
-      "id": "property-tolerance-2",
-      "narration": "Measured in reference-image pixels, which is the only unit this image can honestly speak in.",
-      "pauseAfterMs": 6200,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Tolerance"
-        },
-        "key": "ArrowDown"
-      }
+      "id": "property-tolerance",
+      "narration": "A requirement without a tolerance is a trap, because no implementation ever matches a design to the exact pixel. This one is measured in reference-image pixels, which is the only unit this image can honestly speak in.",
+      "pauseAfterMs": 14500,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Tolerance" }, "value": "absolute-reference-px" }
     },
     {
       "id": "property-amount",
@@ -627,32 +503,16 @@
       }
     },
     {
-      "id": "relationship-subject-1",
+      "id": "relationship-subject",
       "narration": "The form still holds protected from the last requirement, which is right for this one too. Only the shape of the claim changes: a relationship between two regions rather than a property of one.",
       "pauseAfterMs": 12900,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Requirement subject"
-        },
-        "key": "ArrowDown"
-      }
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Requirement subject" }, "value": "region-relationship" }
     },
     {
       "id": "relationship-pick",
-      "narration": "The list is built from relationships Observer actually derived from this reference's own geometry. You cannot require a relationship the image does not contain, which stops a requirement from being wishful thinking. The first one is that the header and the hero overlap horizontally, meaning they share horizontal extent.",
+      "narration": "The list is built from relationships Observer actually derived from this reference’s own geometry. You cannot require a relationship the image does not contain, which stops a requirement from being wishful thinking. The first one is that the header and the hero overlap horizontally, meaning they share horizontal extent.",
       "pauseAfterMs": 21400,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Requirement relationship"
-        },
-        "key": "ArrowDown"
-      }
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Requirement relationship" }, "value": "0" }
     },
     {
       "id": "relationship-set",
@@ -736,144 +596,34 @@
       }
     },
     {
-      "id": "measurement-category-1",
+      "id": "measurement-category",
       "narration": "This one is preserved rather than protected: it should survive, but it is not a hard boundary.",
       "pauseAfterMs": 6300,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Requirement category"
-        },
-        "key": "ArrowDown"
-      }
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Requirement category" }, "value": "preserved" }
     },
     {
-      "id": "measurement-subject-1",
+      "id": "measurement-subject",
       "narration": "And the shape is a measurement between two regions.",
       "pauseAfterMs": 3400,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Requirement subject"
-        },
-        "key": "ArrowDown"
-      }
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Requirement subject" }, "value": "region-measurement" }
     },
     {
-      "id": "measurement-subject-region-1",
-      "narration": "The measurement starts from a subject region. This field was never used before, so it starts empty. Header first.",
-      "pauseAfterMs": 7600,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Subject region"
-        },
-        "key": "ArrowDown"
-      }
+      "id": "measurement-subject-region",
+      "narration": "The measurement starts from a subject region. Here that is the hero.",
+      "pauseAfterMs": 4600,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Subject region" }, "value": "hero" }
     },
     {
-      "id": "measurement-subject-region-2",
-      "narration": "The hero.",
-      "pauseAfterMs": 1200,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Subject region"
-        },
-        "key": "ArrowDown"
-      }
-    },
-    {
-      "id": "measurement-related-1",
-      "narration": "It runs to a related region, the call to action, further down the same list. Header.",
-      "pauseAfterMs": 5600,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Related region"
-        },
-        "key": "ArrowDown"
-      }
-    },
-    {
-      "id": "measurement-related-2",
-      "narration": "Hero.",
-      "pauseAfterMs": 1200,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Related region"
-        },
-        "key": "ArrowDown"
-      }
-    },
-    {
-      "id": "measurement-related-3",
-      "narration": "Sidebar.",
-      "pauseAfterMs": 1200,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Related region"
-        },
-        "key": "ArrowDown"
-      }
-    },
-    {
-      "id": "measurement-related-4",
-      "narration": "Content.",
-      "pauseAfterMs": 1200,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Related region"
-        },
-        "key": "ArrowDown"
-      }
-    },
-    {
-      "id": "measurement-related-5",
-      "narration": "The call to action.",
-      "pauseAfterMs": 1300,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Related region"
-        },
-        "key": "ArrowDown"
-      }
+      "id": "measurement-related",
+      "narration": "It runs to a related region: the call to action.",
+      "pauseAfterMs": 3200,
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Related region" }, "value": "cta" }
     },
     {
       "id": "measurement-kind",
       "narration": "And the measurement is the vertical gap between them.",
       "pauseAfterMs": 3600,
-      "action": {
-        "type": "press",
-        "locator": {
-          "kind": "role",
-          "role": "combobox",
-          "name": "Measurement"
-        },
-        "key": "ArrowDown"
-      }
+      "action": { "type": "select-option", "locator": { "kind": "role", "role": "combobox", "name": "Measurement" }, "value": "vertical-gap" }
     },
     {
       "id": "measurement-amount",

@@ -22,12 +22,12 @@ const EXPECTED_IDS = [
 ];
 
 /**
- * The released my-dev-kit-lab 0.4.8 vocabulary. These are asserted so a
+ * The released my-dev-kit-lab 0.4.9 vocabulary. These are asserted so a
  * scenario cannot quietly acquire an Observer-only extension; the lab's own
  * `tutorial validate` remains the authority and is run separately, and this
  * file deliberately does not reimplement it.
  */
-const LAB_ACTION_TYPES = new Set(['goto', 'click', 'fill', 'press', 'hover', 'drag', 'wait-for', 'pointer-click', 'pointer-drag']);
+const LAB_ACTION_TYPES = new Set(['goto', 'click', 'fill', 'press', 'hover', 'drag', 'select-option', 'wait-for', 'pointer-click', 'pointer-drag']);
 const LAB_LOCATOR_KINDS = new Set(['role', 'text', 'css', 'test-id']);
 const LAB_ASSERTION_TYPES = new Set([
   'element-visible',
@@ -157,6 +157,34 @@ describe('v0.9 tutorial scenarios - committed set', () => {
       }
     }
     expect(pointerActions).toBeGreaterThan(0);
+  });
+
+  it('chooses every native select value semantically, never by keyboard emulation', async () => {
+    // Clicking a native <select> open and stepping it with ArrowDown/Enter
+    // behaves differently on Windows, Linux and macOS, which is what broke the
+    // macOS tutorial job. `select-option` names the HTML option value instead,
+    // so the choice no longer depends on the platform's dropdown behaviour or
+    // on whatever value the form happened to retain. `press` stays legal for
+    // real keyboard interactions; only combobox surrogates are banned.
+    let selectOptions = 0;
+    for (const { file, value } of await loadScenarios()) {
+      for (const step of value.steps as Record<string, unknown>[]) {
+        const action = step.action as { type?: string; value?: unknown; locator?: { kind?: string; role?: string } } | undefined;
+        if (action === undefined) continue;
+        const where = `${file}/${String(step.id)}`;
+        const isCombobox = action.locator?.kind === 'role' && action.locator.role === 'combobox';
+        expect(action.type === 'press' && isCombobox, `${where} must not drive a native select by keypress`).toBe(false);
+        if (action.type !== 'select-option') continue;
+        selectOptions += 1;
+        // v0.4.9 supports `value` only - no label, index, or multi-select array.
+        expect(isCombobox, `${where} select-option locator`).toBe(true);
+        expect(typeof action.value === 'string' && action.value.length > 0, `${where} select-option value`).toBe(true);
+        for (const field of ['label', 'index', 'values']) {
+          expect(action, `${where} must not use ${field}`).not.toHaveProperty(field);
+        }
+      }
+    }
+    expect(selectOptions).toBeGreaterThan(0);
   });
 
   it('never drives drawing through the element-to-element drag action', async () => {

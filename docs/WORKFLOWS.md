@@ -650,13 +650,16 @@ Ownership boundary:
    disposable project only through the canonical Observer CLI: `init`,
    `capture baseline`, `approve-baseline`, `save-change-contract`,
    `import-reference`, and `approve-reference`, as the scenario needs.
-2. `@dailephd/my-dev-kit-lab@0.4.8` owns everything tutorial-specific: scenario
+2. `@dailephd/my-dev-kit-lab@0.4.9` owns everything tutorial-specific: scenario
    validation, process lifecycle, the browser session, the cursor, callouts,
    video recording, subtitles, Markdown, and the tutorial manifest. It is an
    external tool run through `npx`, not an Observer dependency.
-3. The tutorial drives the ordinary project-aware viewer through real pointer
-   and keyboard input. Correctness is proved by reading the canonical evidence
-   the run wrote into the disposable target, not by the video.
+3. The tutorial drives the ordinary project-aware viewer through real pointer,
+   keyboard and select input. Native `<select>` values are chosen with the
+   lab's `select-option` action, which names the HTML option value, so no step
+   depends on how a platform steps a dropdown. Correctness is proved by reading
+   the canonical evidence the run wrote into the disposable target, not by the
+   video.
 
 Steps:
 
@@ -665,10 +668,10 @@ npm run build
 node examples/v09-demo/scripts/generate-tutorial-target.mjs `
   --scenario observer-v09-runtime-contract `
   --out .my-dev-kit-workflow/adhoc/target-contract.json
-npx --yes @dailephd/my-dev-kit-lab@0.4.8 tutorial validate `
+npx --yes @dailephd/my-dev-kit-lab@0.4.9 tutorial validate `
   --scenario examples/v09-demo/tutorials/02-runtime-intent-contract.json `
   --target-contract .my-dev-kit-workflow/adhoc/target-contract.json --json
-npx --yes @dailephd/my-dev-kit-lab@0.4.8 tutorial run `
+npx --yes @dailephd/my-dev-kit-lab@0.4.9 tutorial run `
   --scenario examples/v09-demo/tutorials/02-runtime-intent-contract.json `
   --target-contract .my-dev-kit-workflow/adhoc/target-contract.json `
   --out <run directory outside the repository> --json

@@ -221,7 +221,7 @@ materialized target, never in this template.
 ## 7. The tutorials
 
 `tutorials/` holds four `TutorialScenarioV1` files for the released
-`@dailephd/my-dev-kit-lab@0.4.8` tutorial runtime. They drive the real Observer
+`@dailephd/my-dev-kit-lab@0.4.9` tutorial runtime. They drive the real Observer
 viewer against a disposable project built from this demo.
 
 ```text
@@ -241,7 +241,7 @@ The lab is an external tool, not an Observer dependency. Observer does not
 depend on it at build or run time, and `npm install` never fetches it.
 
 ```text
-@dailephd/my-dev-kit-lab@0.4.8
+@dailephd/my-dev-kit-lab@0.4.9
 ```
 
 Use exactly this version. It is the version the four scenarios were accepted
@@ -283,7 +283,7 @@ observer-v09-reference-materialization
 ### Validating
 
 ```powershell
-npx --yes @dailephd/my-dev-kit-lab@0.4.8 tutorial validate `
+npx --yes @dailephd/my-dev-kit-lab@0.4.9 tutorial validate `
   --scenario examples/v09-demo/tutorials/01-annotation-basics.json `
   --target-contract .my-dev-kit-workflow/v0.9/tutorial-integration/target-contract.json `
   --json
@@ -294,7 +294,7 @@ Validation is read-only: it starts no process and needs no browser.
 ### Running
 
 ```powershell
-npx --yes @dailephd/my-dev-kit-lab@0.4.8 tutorial run `
+npx --yes @dailephd/my-dev-kit-lab@0.4.9 tutorial run `
   --scenario examples/v09-demo/tutorials/01-annotation-basics.json `
   --target-contract .my-dev-kit-workflow/v0.9/tutorial-integration/target-contract.json `
   --out $env:TEMP\my-frontend-observer-tutorial-review\v0.9\01-annotation-basics `
@@ -361,25 +361,41 @@ canonical Observer command.
 
 ### Driving form controls
 
-The viewer uses native `<select>` elements, and the lab has no select action.
-The scenarios choose an option by focusing the control and pressing
-`ArrowDown`, which is ordinary keyboard use. The number of presses follows the
-order of the frozen vocabularies in `viewer/src/annotation/`. Two consequences
-are worth knowing before editing a scenario: adding an option to one of those
-vocabularies shifts the counts, and the reference requirement form keeps its
-previous values when another mark is selected, so later steps step from where
-the last one left off rather than from empty. The runtime intent form does the
-opposite and resets to empty for every mark.
+The viewer uses native `<select>` elements. Scenarios choose an option with the
+lab's `select-option` action, naming the HTML option value directly:
 
-Every select starts with an empty `Choose…` option, so from an empty form the
-first press lands on the first vocabulary entry. Region selects list the
-reference's own regions in import order (`header, hero, sidebar, content, cta,
-asset, footer`) followed by any region the draft proposes, such as
-`promo-band`. One press too many therefore selects a different, equally valid
-value rather than failing. That is why the scenarios assert the resulting
-structured intent (for example `"region": "footer"`) right after setting it.
-The per-step counts are listed in
-`docs/reports/v0.9-tutorial-end-to-end-acceptance.md`.
+```json
+{
+  "type": "select-option",
+  "locator": { "kind": "role", "role": "combobox", "name": "Requirement region" },
+  "value": "footer"
+}
+```
+
+`select-option` maps to Playwright's `Locator.selectOption({ value })` and
+verifies that exactly the requested value was selected. Released
+`@dailephd/my-dev-kit-lab@0.4.9` supports `value` only, so `label`, `index`,
+`values` and multi-select arrays are rejected by its validator.
+
+Because each step names the value it wants, two things that used to matter no
+longer do. Adding an option to a vocabulary in `viewer/src/annotation/` does not
+shift anything, and it makes no difference that the reference requirement form
+keeps its previous values when another mark is selected while the runtime intent
+form resets to empty for every mark. That retention is still real product
+behaviour; it simply has no bearing on how a scenario selects a value.
+
+The option values come from the frozen vocabularies in
+`viewer/src/annotation/` and, for region selects, from the reference's own
+regions in import order (`header, hero, sidebar, content, cta, asset, footer`)
+followed by any region the draft proposes, such as `promo-band`. Scenarios still
+assert the resulting structured intent (for example `"region": "footer"`) right
+after setting it.
+
+A tutorial that genuinely demonstrates keyboard input still uses `press`. What
+is not allowed is `press` against a `combobox` as a stand-in for choosing a
+select value: `tests/unit/v09TutorialScenarios.test.ts` fails if a scenario
+reintroduces that, because stepping a native dropdown with arrow keys behaves
+differently across Windows, Linux and macOS.
 
 ## 8. What lives where
 

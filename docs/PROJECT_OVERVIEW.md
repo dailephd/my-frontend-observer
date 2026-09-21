@@ -107,7 +107,7 @@ evaluators stay authoritative. It followed the frozen plan in
 `docs/reports/v0.9-architecture-retrieval.md`.
 The v0.9 product implementation is complete. The repository-owned
 deterministic demo and its four tutorial scenarios (`examples/v09-demo/`,
-recorded by the external `@dailephd/my-dev-kit-lab@0.4.8` tool) are also
+recorded by the external `@dailephd/my-dev-kit-lab@0.4.9` tool) are also
 complete and validated locally. They are release support and documentation,
 not product behavior, and they are not shipped in the npm package. Release is
 pending a fresh exact-candidate cross-platform readiness run on the final

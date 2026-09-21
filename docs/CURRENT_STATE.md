@@ -12,7 +12,7 @@ the package version is still `0.8.1`, and cross-platform pre-release readiness
 on the final candidate and release preparation are pending. The viewer
 protocol is `1.3.0` and the visual annotation schema is `1.0.0`. The
 repository also holds a deterministic demo and four tutorial scenarios for
-v0.9, recorded by the external `@dailephd/my-dev-kit-lab@0.4.8` tool. See
+v0.9, recorded by the external `@dailephd/my-dev-kit-lab@0.4.9` tool. See
 "v0.9 status" below.
 
 The project is published at package version `0.8.1` (roadmap v0.8.1,
@@ -1091,7 +1091,7 @@ described below, so it is not readiness evidence for the final candidate.
   drawing surfaces.
 - **End-to-end acceptance**
   (`docs/reports/v0.9-tutorial-end-to-end-acceptance.md`): all four tutorials
-  regenerated from clean targets with `@dailephd/my-dev-kit-lab@0.4.8`,
+  regenerated from clean targets with `@dailephd/my-dev-kit-lab@0.4.9`,
   structural and content acceptance, canonical evidence checks, and a full
   local regression. Scenario narration, reading pauses, and screenshot
   requests were corrected in this stage. Human visual review of the videos is

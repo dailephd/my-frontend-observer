@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Generates one `TutorialTargetContractV1` for a my-frontend-observer v0.9
-// tutorial run against the released `@dailephd/my-dev-kit-lab@0.4.8`.
+// tutorial run against the released `@dailephd/my-dev-kit-lab@0.4.9`.
 //
 // The contract is machine-specific: it carries absolute paths to this
 // checkout and two dynamically chosen loopback ports. It is therefore
@@ -28,7 +28,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const demoRoot = path.resolve(scriptDir, '..');
 const defaultObserverRoot = path.resolve(demoRoot, '..', '..');
 
-/** Released lab schema version for a target contract (my-dev-kit-lab 0.4.8). */
+/** Released lab schema version for a target contract (my-dev-kit-lab 0.4.9). */
 export const TARGET_CONTRACT_SCHEMA_VERSION = '1.0.0';
 
 /** One shared lab target identity for every Observer v0.9 tutorial. */
