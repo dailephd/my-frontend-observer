@@ -22,6 +22,34 @@ evidence schema version. v0.8.1 did not change any canonical evidence schema
 version either; see "v0.8 status" below for the final, complete v0.8 viewer
 state.
 
+## v0.9.1 maintenance planning
+
+A post-release test-isolation defect has been identified in
+`tests/browser/pwaHardening.test.ts`. The PWA server-down test labeled
+`HARD GATE` passes in the normal full-file/full-suite execution but fails
+when selected independently with Vitest `-t`. The current test shares a
+persistent Chromium context/profile with earlier tests, and its own setup proves
+that a service-worker registration is active without independently proving all
+of the state the server-down experiment needs: that the current page is
+controlled, that the application shell is actually precached, and that no
+historical profile/cache state was inherited.
+
+This is currently classified as a test-isolation defect, not a demonstrated
+production PWA regression. The released safety contract remains unchanged:
+application-shell caching may keep the viewer shell available while evidence
+and media remain server-backed, and stale evidence must never be presented as
+current after the server is unavailable. No production PWA code change is
+authorized unless a corrected fresh-state hard-gate experiment first
+demonstrates a real runtime failure.
+
+The next bounded maintenance target is v0.9.1. Its frozen implementation plan is
+`docs/plans/v0.9.1-implementation-plan.md`. The patch will make the hard gate
+own fresh disposable evidence/server/browser-profile state, explicitly prove
+service-worker control and shell/API cache preconditions, explicitly prove the
+server is unavailable before the offline reload, and add an isolated execution
+gate so the same test must pass by itself as well as inside the full browser and
+security suites. Implementation has not started.
+
 v0.8 (Interactive Local Observation Viewer) is fully implemented, tested,
 formally cross-platform/security validated, and released. All eight v0.8
 implementation batches, the hardened documentation/implementation-

@@ -2,6 +2,23 @@
 
 CI interprets `check` as PASS `0`, FAIL `1`, REVIEW_REQUIRED `2`, or BLOCKED `3`. The released package is `@dailephd/my-frontend-observer@0.9.0`; its CLI remains `my-frontend-observer`. Packed readiness installs one exact tarball and runs `runPackedViewerSmoke.mjs` as the single project/viewer smoke owner for `init`, `capture`, bounded `check --json` REVIEW_REQUIRED and unchanged-contract FAIL-to-PASS, alias-aware project `view`, and viewer security. `runPackedObservationSmoke.mjs` remains the lower-level legacy observation smoke.
 
+## Gate isolation invariant
+
+Cross-platform/full-suite success does not by itself prove that a security or
+acceptance gate is independent. Any test explicitly labeled `HARD GATE`,
+`SECURITY GATE`, or `ACCEPTANCE GATE` must also be able to run from fresh
+state without relying on earlier test order, a previously warmed service-worker
+cache, a persistent browser profile from an earlier run, or another test's
+server/evidence setup.
+
+The v0.9.1 maintenance target applies this rule to the PWA server-down hard
+gate. Its dedicated isolated execution is a separate required proof in addition
+to the normal `npm run test:browser` and `npm run test:security` chains.
+The exact implementation and release-readiness integration are frozen in
+`docs/plans/v0.9.1-implementation-plan.md`. Until that patch is implemented,
+the released v0.9.0 suite has a known test-isolation weakness in this specific
+gate; no production PWA regression has been demonstrated.
+
 A GitHub Actions pre-release readiness workflow exists at
 `.github/workflows/pre-release-readiness.yml` (triggered manually via
 `workflow_dispatch`, by pushing a `validation/**` or `release/**` branch, or

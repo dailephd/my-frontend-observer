@@ -1719,6 +1719,29 @@ Implementation status: implemented and released as `0.9.0`. The milestone
 design below is unchanged and remains the capability authority. Milestone 10
 remains future.
 
+### v0.9.1 maintenance acceptance note
+
+v0.9.1 is a bounded maintenance patch over Milestone 9 rather than a new
+capability milestone. A post-release PWA hard-gate test-isolation defect was
+found: the server-down safety test can pass only after earlier tests have
+prepared persistent service-worker/cache state. No production PWA regression has
+been demonstrated.
+
+The durable acceptance rule added by this maintenance patch is broader than the
+single PWA test: any test explicitly designated `HARD GATE`, `SECURITY GATE`,
+or `ACCEPTANCE GATE` must be able to establish its own prerequisites and pass
+when selected independently from fresh state. Such a gate must not rely on
+another test running first, a fixed browser profile, historical cache state, or
+test ordering. For browser gates, owned servers, evidence roots, browser
+profiles, contexts, and other state must be scoped and cleaned up explicitly.
+
+The v0.9.1 correction is test/validation work unless the corrected isolated
+experiment demonstrates a genuine product failure. In that case the work must
+stop and be reclassified before production semantics change. The concrete
+implementation details live in
+`docs/plans/v0.9.1-implementation-plan.md`; the Milestone 9 product capability
+design below remains unchanged.
+
 ### Objective
 
 Add visual human intent to the already working Milestone 7 coding-agent/reference workflow through the Milestone 8 viewer.
