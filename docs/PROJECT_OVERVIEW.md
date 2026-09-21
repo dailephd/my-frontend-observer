@@ -111,11 +111,13 @@ The repository-owned deterministic demo and its four tutorial scenarios
 with the release. They are release support and documentation, not product
 behavior, and they are not shipped in the npm package.
 
-v0.9.1 is the next planned maintenance patch. It hardens the PWA server-down
-hard acceptance test so the gate is reproducible from a fresh browser profile
-and fresh test-owned state rather than inheriting service-worker/cache state
-from earlier tests or earlier runs. This is currently a test-isolation
-correction, not a demonstrated production PWA defect. The frozen concrete plan
+v0.9.1 maintenance implementation is complete but unreleased. It hardens the
+PWA server-down hard acceptance test so the gate is reproducible from a fresh
+browser profile and fresh test-owned state. PWA hard/security acceptance no
+longer depends on prior test order or persistent browser state, and
+`npm run test:security` now also runs the gate by itself through
+`npm run test:pwa-hard-gate`. This was a test-isolation correction, not a
+production PWA defect. No production behavior changed. The frozen concrete plan
 is `docs/plans/v0.9.1-implementation-plan.md`.
 
 v0.10 remains future and unimplemented and completes the visual human-LLM

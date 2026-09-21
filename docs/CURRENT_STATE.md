@@ -22,7 +22,44 @@ evidence schema version. v0.8.1 did not change any canonical evidence schema
 version either; see "v0.8 status" below for the final, complete v0.8 viewer
 state.
 
-## v0.9.1 maintenance planning
+## v0.9.1 maintenance status
+
+Status: implementation complete, unreleased. The package version remains
+`0.9.0`. No production code changed.
+
+Result of the implementation:
+
+1. The original failure was reproduced. Selected alone, the hard gate failed at
+   the offline reload with `net::ERR_CONNECTION_REFUSED`.
+2. Root cause, part one: the old readiness check was
+   `registration?.active !== undefined`. While the worker was still installing,
+   `active` was `null` and the page had no controller. Because
+   `null !== undefined` is true, the check passed and the server was closed
+   before the worker controlled the page or finished precaching.
+3. Root cause, part two: the gate shared a server, evidence root, and a fixed
+   persistent Chromium profile with earlier tests. In normal file order those
+   tests had already activated a controlling worker, which hid the defect.
+4. The hard gate now owns a fresh evidence root, viewer server, temporary
+   persistent profile, and BrowserContext. No PWA test uses the fixed
+   `.my-dev-kit-workflow` profile any more.
+5. The gate proves service-worker activation (`registration.active !== null`)
+   and current-page control (`navigator.serviceWorker.controller !== null`)
+   as separate facts.
+6. It proves the app shell is in the Workbox precache and that no `/api/`
+   request is in Cache Storage.
+7. It proves the server is down with a direct Node-side request before the
+   offline reload.
+8. After the reload, the shell renders, the evidence list shows its explicit
+   unavailable state, and the previously visible evidence identity is absent.
+9. `npm run test:pwa-hard-gate` runs the gate alone. `npm run test:security`
+   now ends with it. It passes repeatedly, and the full PWA file, browser suite,
+   and security suite pass.
+10. Production PWA behavior is unchanged.
+
+Evidence: `docs/reports/v0.9.1-batch1-pwa-hard-gate-isolation.md` and
+`docs/reports/v0.9.1-batch2-hard-gate-validation-integration.md`.
+
+The planning background follows.
 
 A post-release test-isolation defect has been identified in
 `tests/browser/pwaHardening.test.ts`. The PWA server-down test labeled
@@ -48,7 +85,7 @@ own fresh disposable evidence/server/browser-profile state, explicitly prove
 service-worker control and shell/API cache preconditions, explicitly prove the
 server is unavailable before the offline reload, and add an isolated execution
 gate so the same test must pass by itself as well as inside the full browser and
-security suites. Implementation has not started.
+security suites. That implementation is now complete, as recorded above.
 
 v0.8 (Interactive Local Observation Viewer) is fully implemented, tested,
 formally cross-platform/security validated, and released. All eight v0.8
