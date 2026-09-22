@@ -21,6 +21,8 @@ import { materializeAnnotationReferenceFromViewer, parseMaterializeAnnotationRef
 import type { MaterializeAnnotationReferenceFailureReason } from './annotationReferenceMaterialization.js';
 import { createVisualChangeFromViewer, mutateVisualChangeFromViewer, parseCreateVisualChangeRequest, parseEmptyVisualChangeRequest } from './visualChangeAuthoring.js';
 import { getVisualChangeWorkflowView } from './evidence/visualChangeWorkflowView.js';
+import { parseStartRuntimeVisualChangeRequest, startRuntimeVisualChangeFromViewer } from './runtimeVisualChangeAuthoring.js';
+import type { StartRuntimeVisualChangeFailureReason } from './runtimeVisualChangeAuthoring.js';
 import type { ContextSessionState } from './context.js';
 import type { ViewerAliasMetadata } from './viewerService.js';
 
@@ -154,6 +156,11 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
     }
     await handleAnnotationContractPromotion(req, res, state, promoteMatch[1] as string);
     return;
+  }
+  const startVisualChangeMatch = ANNOTATION_START_VISUAL_CHANGE_PATH.exec(pathname);
+  if (startVisualChangeMatch) {
+    if (method !== 'POST') { res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' }); res.end('method not allowed'); return; }
+    await handleRuntimeVisualChangeStart(req, res, state, startVisualChangeMatch[1] as string); return;
   }
   const materializeMatch = ANNOTATION_MATERIALIZE_REFERENCE_PATH.exec(pathname);
   if (materializeMatch) {
@@ -482,6 +489,7 @@ const ANNOTATION_SAVE_PATH = '/api/annotations';
 const VISUAL_CHANGE_CREATE_PATH = '/api/visual-changes';
 const VISUAL_CHANGE_MUTATION_PATH = /^\/api\/visual-changes\/([^/]+)\/(activate|check|restore-acceptance)$/;
 const ANNOTATION_PROMOTE_CONTRACT_PATH = /^\/api\/annotations\/([^/]+)\/promote-contract$/;
+const ANNOTATION_START_VISUAL_CHANGE_PATH = /^\/api\/annotations\/([^/]+)\/start-visual-change$/;
 
 const ANNOTATION_MATERIALIZE_REFERENCE_PATH = /^\/api\/annotations\/([^/]+)\/materialize-reference$/;
 
@@ -511,6 +519,12 @@ const PROMOTE_FAILURE_STATUS: Record<PromoteAnnotationContractFailureReason, num
   'source-mismatch': 409,
   'invalid-selection': 422,
   'persistence-failed': 500,
+};
+const START_VISUAL_CHANGE_FAILURE_STATUS: Record<StartRuntimeVisualChangeFailureReason, number> = {
+  'unknown-annotation-handle': 404, 'source-unavailable': 404,
+  'not-an-annotation': 409, 'reference-annotation': 409, 'source-mismatch': 409, 'project-config-invalid': 409, 'contract-not-configured': 409, 'configured-baseline-invalid': 409, 'baseline-alias-missing': 409,
+  'invalid-selection': 422,
+  'contract-persistence-failed': 500, 'workflow-persistence-failed': 500,
 };
 
 const SAVE_FAILURE_STATUS: Record<SaveAnnotationFailureReason, number> = {
@@ -647,6 +661,17 @@ async function handleAnnotationContractPromotion(req: IncomingMessage, res: Serv
   } catch {
     writeJsonError(res, 'POST', 500, 'the change contract could not be promoted');
   }
+}
+
+async function handleRuntimeVisualChangeStart(req: IncomingMessage, res: ServerResponse, state: ViewerServerState, encodedHandle: string): Promise<void> {
+  const authoring = await readAuthoringJsonRequest(req, res, state); if (authoring === undefined) return;
+  const handle = decodeURIComponentSafe(encodedHandle); if (handle === undefined) { writeJsonError(res, 'POST', 400, 'malformed annotation handle'); return; }
+  const request = parseStartRuntimeVisualChangeRequest(authoring.parsed); if (!request.ok) { writeJsonError(res, 'POST', 400, request.error); return; }
+  try {
+    const result = await startRuntimeVisualChangeFromViewer(state.root, authoring.session, handle, request.request);
+    if (!result.ok) { writeJsonBody(res, 'POST', START_VISUAL_CHANGE_FAILURE_STATUS[result.reason], { ok: false, code: result.reason, error: result.error, ...(result.contractId === undefined ? {} : { contractId: result.contractId }), ...(result.contractRequestId === undefined ? {} : { contractRequestId: result.contractRequestId }) }); return; }
+    writeJsonBody(res, 'POST', 201, { ok: true, contractId: result.contractId, contractRequestId: result.contractRequestId, clauseCount: result.clauseCount, visualChangeRequestId: result.visualChangeRequestId, visualChangeWorkflowId: result.visualChangeWorkflowId });
+  } catch { writeJsonError(res, 'POST', 500, 'the visual change could not be created'); }
 }
 
 /**

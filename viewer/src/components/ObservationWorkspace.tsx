@@ -7,6 +7,7 @@ import { useAuthoringSession } from '../hooks/useAuthoringSession.js';
 import { useRuntimeAnnotations } from '../hooks/useRuntimeAnnotations.js';
 import { useRuntimeAnnotationDraft } from '../hooks/useRuntimeAnnotationDraft.js';
 import { useAnnotationContractPromotion } from '../hooks/useAnnotationContractPromotion.js';
+import { useRuntimeVisualChangeStart } from '../hooks/useRuntimeVisualChangeStart.js';
 import { useAnnotationPointerInteraction } from '../hooks/useAnnotationPointerInteraction.js';
 import type { AnnotationInteractionMode } from '../annotation/annotationGeometry.js';
 import { isDrawingMode } from '../annotation/annotationGeometry.js';
@@ -33,7 +34,7 @@ import { RuntimeAnnotationPanel } from './RuntimeAnnotationPanel.js';
  * persisted only through the Prompt 2 `POST /api/annotations` API. A
  * read-only viewer keeps full inspection with navigation-only modes.
  */
-export function ObservationWorkspace({ handle, artifact }: { handle: string; artifact: ObservationArtifact }) {
+export function ObservationWorkspace({ handle, artifact, onVisualChangeCreated }: { handle: string; artifact: ObservationArtifact; onVisualChangeCreated?: (workflowId: string) => void }) {
   const [selected, setSelected] = useState<string | undefined>(undefined);
   const [toggles, setToggles] = useState<OverlayToggles>({ geometry: true, labels: true, relationships: true });
   const relationships = useObservationRelationships(handle);
@@ -45,6 +46,7 @@ export function ObservationWorkspace({ handle, artifact }: { handle: string; art
   const draftApi = useRuntimeAnnotationDraft(handle);
   const { draft } = draftApi;
   const promotion = useAnnotationContractPromotion(draft.parentAnnotationHandle);
+  const visualChangeStart = useRuntimeVisualChangeStart(draft.parentAnnotationHandle);
   const [mode, setMode] = useState<AnnotationInteractionMode>('select');
   const [noteText, setNoteText] = useState('');
 
@@ -168,10 +170,12 @@ export function ObservationWorkspace({ handle, artifact }: { handle: string; art
               if (draft.selectedItemId !== undefined) draftApi.confirmItem(draft.selectedItemId);
             }}
             promotion={promotion.state}
+            visualChangeStart={visualChangeStart.state}
             onPromote={(itemIds, activateForCheck) => {
               if (session.state !== 'available') return;
               void promotion.promote(session.token, itemIds, activateForCheck);
             }}
+            onCreateVisualChange={(itemIds) => { if (session.state !== 'available') return; void visualChangeStart.start(session.token, itemIds).then((workflowId) => { if (workflowId !== undefined) onVisualChangeCreated?.(workflowId); }); }}
           />
           <ObservationInspector artifact={artifact} selectedTargetName={selected} relationships={relationships} />
         </div>

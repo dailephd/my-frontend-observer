@@ -1,18 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { AuthoringSessionState } from '../hooks/useAuthoringSession.js';
 import type { EvidenceIndexState, EvidenceMetadataRecord } from '../hooks/useEvidenceIndex.js';
 import { useVisualChangeView, type LinkedWorkflowEvidence, type VisualChangeAttempt } from '../hooks/useVisualChangeView.js';
 import { useVisualChangeActions } from '../hooks/useVisualChangeActions.js';
 
-interface Props { index: EvidenceIndexState; authoring: AuthoringSessionState; refresh: () => Promise<EvidenceIndexState>; onNavigate: (record: EvidenceMetadataRecord) => void }
+interface Props { index: EvidenceIndexState; authoring: AuthoringSessionState; refresh: () => Promise<EvidenceIndexState>; onNavigate: (record: EvidenceMetadataRecord) => void; requestedWorkflowId?: string; onRequestedWorkflowResolved?: () => void }
 function EvidenceLink({ label, evidence, records, onNavigate }: { label: string; evidence: LinkedWorkflowEvidence; records: EvidenceMetadataRecord[]; onNavigate: (record: EvidenceMetadataRecord) => void }) {
   if (evidence.status !== 'available' || evidence.handle === undefined) return <li>{label}: unavailable — {evidence.reason ?? 'exact linked evidence is unavailable'}</li>;
   const record = records.find((item) => item.handle === evidence.handle); return <li>{label}: {record === undefined ? 'available' : <button type="button" onClick={() => onNavigate(record)}>{evidence.family}</button>}</li>;
 }
-export function VisualChangeWorkspace({ index, authoring, refresh, onNavigate }: Props) {
+export function VisualChangeWorkspace({ index, authoring, refresh, onNavigate, requestedWorkflowId, onRequestedWorkflowResolved }: Props) {
   const records = index.state === 'available' ? index.records.filter((record) => record.family === 'visual-change-workflow') : [];
   const [selected, setSelected] = useState<EvidenceMetadataRecord>(); const [warning, setWarning] = useState<string>();
   const view = useVisualChangeView(selected?.handle); const actions = useVisualChangeActions(selected?.handle);
+  useEffect(() => {
+    if (requestedWorkflowId === undefined || index.state !== 'available') return;
+    const exact = index.records.find((record) => record.family === 'visual-change-workflow' && record.supportState === 'supported' && record.logicalId === requestedWorkflowId);
+    if (exact === undefined) setWarning('The new immutable workflow revision was not found after refresh.'); else { setWarning(undefined); setSelected(exact); }
+    onRequestedWorkflowResolved?.();
+  }, [requestedWorkflowId, index, onRequestedWorkflowResolved]);
   const availableView = view.state === 'available' ? view.view : undefined;
   async function mutate(action: 'activate'|'check'|'restore-acceptance') { if (authoring.state !== 'available') return; const id = await actions.run(action, authoring.token); if (id === undefined) return; const next = await refresh(); if (next.state !== 'available') { setWarning('The evidence index could not be refreshed after the operation.'); return; } const exact = next.records.find((record) => record.family === 'visual-change-workflow' && record.supportState === 'supported' && record.logicalId === id); if (exact === undefined) { setWarning('The new immutable workflow revision was not found after refresh.'); return; } setWarning(undefined); setSelected(exact); }
   const workflow = availableView?.workflow; const active = workflow?.activation !== undefined && workflow.activation.restoredAt === undefined;

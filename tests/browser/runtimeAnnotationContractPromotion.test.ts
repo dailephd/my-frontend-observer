@@ -5,7 +5,8 @@ import { readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
 import { startViewer, type StartViewerResult } from '../../src/viewerServer/viewerService.js';
-import { projectAnnotationsRoot, projectConfigPath, projectContractsRoot } from '../../src/projectWorkflow/projectPaths.js';
+import { aliasCatalogPath, projectAnnotationsRoot, projectConfigPath, projectContractsRoot, projectEvidenceRoot } from '../../src/projectWorkflow/projectPaths.js';
+import { ALIAS_CATALOG_SCHEMA_VERSION, writeAliasCatalog } from '../../src/projectWorkflow/aliasCatalog.js';
 import { loadProjectViewerState } from '../../src/application/projectWorkflowService.js';
 import { readPerChangeContract } from '../../src/artifacts/frontendContractArtifactReader.js';
 import { writePersistentBaselineContract } from '../../src/artifacts/frontendContractArtifactWriter.js';
@@ -446,4 +447,16 @@ describe('explicit project activation', () => {
     expect(await contractDirs(project)).toEqual([result.json.contractId]);
     expect(await readFile(projectConfigPath(project.projectRoot), 'utf8')).toBe(configBefore);
   });
+
+  it('ACCEPTANCE GATE: creates an inactive actual workflow from confirmed runtime intent and explicitly activates its immutable revision', async () => {
+    const project = await writeInitializedProject(resources); project.observation.requestId = 'd'.repeat(64); project.observation.observationId = `${'e'.repeat(64)}-${'f'.repeat(32)}`; await writeFile(path.join(project.observationRoot, 'manifest.json'), `${JSON.stringify(project.observation, null, 2)}\n`);
+    await writeAliasCatalog(aliasCatalogPath(project.projectRoot), { schemaVersion: ALIAS_CATALOG_SCHEMA_VERSION, observations: { runtime: { observationId: project.observation.observationId, requestId: project.observation.requestId, relativeArtifactDir: path.relative(projectEvidenceRoot(project.projectRoot), project.observationRoot).split(path.sep).join('/') } } });
+    const { baselineArtifact } = await configureAcceptance(project); const viewer = await projectViewer(project); const page = await newPage(); await page.goto(viewer.url); await page.locator('.evidence-list__item', { hasText: 'runtime' }).first().click(); await page.locator('.target-overlay-svg image').waitFor({ timeout: 10_000 }); await page.getByRole('button', { name: 'Rectangle mode' }).waitFor({ timeout: 10_000 });
+    const itemId = await confirmedMoveAndSave(page); const createButton = page.getByRole('button', { name: 'Create visual change' }); expect(await createButton.isDisabled()).toBe(true); await page.locator(`[data-promotion-item-id="${itemId}"] input[type="checkbox"]`).check();
+    const [createdResponse] = await Promise.all([page.waitForResponse((response) => new URL(response.url()).pathname.endsWith('/start-visual-change')), createButton.click()]); expect(createdResponse.status()).toBe(201); const created = (await createdResponse.json()) as { contractId: string; visualChangeRequestId: string; visualChangeWorkflowId: string };
+    await page.getByRole('heading', { name: 'Workflow summary' }).waitFor({ timeout: 10_000 }); const detail = page.locator('.visual-change-detail'); const text = await detail.textContent(); expect(text).toContain('actual-frontend'); expect(text).toContain(project.observation.observationId); expect(text).toContain(created.contractId); expect(text).toContain('not activated'); expect(text).toContain('No attempts recorded');
+    const before = JSON.parse(await readFile(projectConfigPath(project.projectRoot), 'utf8')) as { acceptance: { contract: { changeArtifact: string } } }; expect(before.acceptance.contract.changeArtifact).toBe('.frontend-observer/evidence/contracts/earlier');
+    const [activationResponse] = await Promise.all([page.waitForResponse((response) => new URL(response.url()).pathname.endsWith('/activate')), page.getByRole('button', { name: 'Activate' }).click()]); const activated = (await activationResponse.json()) as { visualChangeRequestId: string; visualChangeWorkflowId: string }; expect(activated.visualChangeRequestId).toBe(created.visualChangeRequestId); expect(activated.visualChangeWorkflowId).not.toBe(created.visualChangeWorkflowId); await expect.poll(async () => (await detail.textContent())?.includes('active')).toBe(true); expect(await detail.textContent()).toContain('No attempts recorded');
+    const after = JSON.parse(await readFile(projectConfigPath(project.projectRoot), 'utf8')) as { acceptance: { contract: { baselineArtifact: string; changeArtifact: string } } }; expect(after.acceptance.contract).toEqual({ baselineArtifact, changeArtifact: `.frontend-observer/evidence/contracts/${created.contractId}` });
+  }, 120_000);
 });

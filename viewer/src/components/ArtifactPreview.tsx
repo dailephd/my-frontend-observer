@@ -20,7 +20,7 @@ import { ReferenceWorkspace } from './ReferenceWorkspace.js';
  * an explicitly selected candidate). No other family has a visual workspace
  * yet - those still show the bounded raw-JSON preview.
  */
-export function ArtifactPreview({ selected, detail }: { selected: EvidenceMetadataRecord | undefined; detail: ArtifactDetailState }) {
+export function ArtifactPreview({ selected, detail, onVisualChangeCreated }: { selected: EvidenceMetadataRecord | undefined; detail: ArtifactDetailState; onVisualChangeCreated?: (workflowId: string) => void }) {
   if (selected === undefined) {
     return <p className="placeholder-note">Select evidence from the list to load it on demand.</p>;
   }
@@ -52,7 +52,7 @@ export function ArtifactPreview({ selected, detail }: { selected: EvidenceMetada
   }
 
   if (detail.family === 'observation') {
-    return <ObservationWorkspace handle={detail.handle} artifact={detail.artifact as ObservationArtifact} />;
+    return <ObservationWorkspace handle={detail.handle} artifact={detail.artifact as ObservationArtifact} {...(onVisualChangeCreated === undefined ? {} : { onVisualChangeCreated })} />;
   }
 
   if (detail.family === 'comparison') {

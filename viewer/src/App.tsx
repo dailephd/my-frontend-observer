@@ -23,6 +23,7 @@ export default function App() {
   const [selected, setSelected] = useState<EvidenceMetadataRecord | undefined>(undefined);
   const detail = useArtifactDetail(selected?.supportState === 'supported' ? selected.handle : undefined);
   const [viewMode, setViewMode] = useState<'evidence' | 'context' | 'visual-change'>('evidence');
+  const [requestedWorkflowId, setRequestedWorkflowId] = useState<string>();
 
   function navigateToRecord(record: EvidenceMetadataRecord): void {
     setSelected(record);
@@ -50,7 +51,7 @@ export default function App() {
 
       <StatusBanner status={status} />
 
-      {viewMode === 'visual-change' ? <div className="app-shell__body app-shell__body--visual-change"><main className="app-shell__workspace"><VisualChangeWorkspace index={index} authoring={authoring} refresh={index.refresh} onNavigate={navigateToRecord}/></main></div> : viewMode === 'context' ? (
+      {viewMode === 'visual-change' ? <div className="app-shell__body app-shell__body--visual-change"><main className="app-shell__workspace"><VisualChangeWorkspace index={index} authoring={authoring} refresh={index.refresh} onNavigate={navigateToRecord} {...(requestedWorkflowId === undefined ? {} : { requestedWorkflowId })} onRequestedWorkflowResolved={() => setRequestedWorkflowId(undefined)}/></main></div> : viewMode === 'context' ? (
         <div className="app-shell__body app-shell__body--context">
           <main className="app-shell__workspace app-shell__workspace--context" aria-label="Bounded agent context inspection">
             <ContextWorkspace index={index.state === 'available' ? index.records : []} onNavigate={navigateToRecord} />
@@ -63,7 +64,7 @@ export default function App() {
           </nav>
 
           <main className="app-shell__workspace" aria-label="Visual inspection workspace">
-            <ArtifactPreview selected={selected} detail={detail} />
+            <ArtifactPreview selected={selected} detail={detail} onVisualChangeCreated={(workflowId) => { void index.refresh().then(() => { setRequestedWorkflowId(workflowId); setViewMode('visual-change'); }); }} />
           </main>
 
           <aside className="app-shell__details" aria-label="Details and diagnostics">
