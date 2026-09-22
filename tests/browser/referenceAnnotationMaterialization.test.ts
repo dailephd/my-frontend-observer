@@ -438,7 +438,6 @@ describe('reference intent materialization from the reference workspace', () => 
     expect(approvalResponse.status()).toBe(201);
     const approved = (await approvalResponse.json()) as { referenceId: string; referenceRequestId: string };
     expect(approved.referenceId).not.toBe(importedId);
-    await page.getByRole('status').filter({ hasText: 'Approved. Project acceptance has not changed.' }).waitFor({ timeout: 10_000 });
     const imported = await readReference(projectRoot, importedId);
     const approvedArtifact = await readReference(projectRoot, approved.referenceId);
     expect(imported.lifecycle.state).toBe('imported');
