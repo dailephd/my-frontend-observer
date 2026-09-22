@@ -2,7 +2,7 @@
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -15,7 +15,7 @@ const portable=(root,value)=>path.relative(root,value).split(path.sep).join('/')
 async function main(){
   const args=process.argv.slice(2); const tarball=args[0]; const outAt=args.indexOf('--out'); const rootAt=args.indexOf('--consumer-root');
   if(!tarball||tarball.startsWith('--')||(outAt>=0&&!args[outAt+1])||(rootAt>=0&&!args[rootAt+1])) fail('usage: runPackedV010WorkflowSmoke.mjs <candidate-tarball> [--consumer-root <root>] --out <summary.json>');
-  const tarballPath=path.resolve(tarball); const work=rootAt>=0?path.resolve(args[rootAt+1]):await mkdtemp(path.join(tmpdir(),'mfo-v010-smoke-')); const consumer=path.join(work,'consumer'); const project=path.join(work,'project');
+  const tarballPath=path.resolve(tarball); const work=rootAt>=0?path.resolve(args[rootAt+1]):await realpath(await mkdtemp(path.join(tmpdir(),'mfo-v010-smoke-'))); const consumer=path.join(work,'consumer'); const project=path.join(work,'project');
   let server; let projectViewer; let standaloneViewer; let browser;
   try{
     await rm(work,{recursive:true,force:true,maxRetries:5,retryDelay:200}); await mkdir(consumer,{recursive:true}); await mkdir(project,{recursive:true});
