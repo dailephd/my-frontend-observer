@@ -19,6 +19,8 @@ import { parsePromoteAnnotationContractRequest, promoteAnnotationContractFromVie
 import type { PromoteAnnotationContractFailureReason } from './annotationContractPromotion.js';
 import { materializeAnnotationReferenceFromViewer, parseMaterializeAnnotationReferenceRequest } from './annotationReferenceMaterialization.js';
 import type { MaterializeAnnotationReferenceFailureReason } from './annotationReferenceMaterialization.js';
+import { createVisualChangeFromViewer, mutateVisualChangeFromViewer, parseCreateVisualChangeRequest, parseEmptyVisualChangeRequest } from './visualChangeAuthoring.js';
+import { getVisualChangeWorkflowView } from './evidence/visualChangeWorkflowView.js';
 import type { ContextSessionState } from './context.js';
 import type { ViewerAliasMetadata } from './viewerService.js';
 
@@ -133,6 +135,15 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
     }
     await handleAnnotationSave(req, res, state);
     return;
+  }
+  if (pathname === VISUAL_CHANGE_CREATE_PATH) {
+    if (method !== 'POST') { res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' }); res.end('method not allowed'); return; }
+    await handleVisualChangeCreate(req, res, state); return;
+  }
+  const visualMutation = VISUAL_CHANGE_MUTATION_PATH.exec(pathname);
+  if (visualMutation) {
+    if (method !== 'POST') { res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' }); res.end('method not allowed'); return; }
+    await handleVisualChangeMutation(req, res, state, visualMutation[1] as string, visualMutation[2] as 'activate'|'check'|'restore-acceptance'); return;
   }
   const promoteMatch = ANNOTATION_PROMOTE_CONTRACT_PATH.exec(pathname);
   if (promoteMatch) {
@@ -418,6 +429,13 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
     writeJsonBody(res, method, 200, { ok: true, annotation: result.annotation, source: result.source });
     return;
   }
+  const visualChangeViewMatch = /^\/api\/visual-changes\/([^/]+)\/view$/.exec(pathname);
+  if (visualChangeViewMatch) {
+    const handle = decodeURIComponentSafe(visualChangeViewMatch[1] as string); if (handle === undefined) { writeJsonError(res, method, 400, 'malformed workflow handle'); return; }
+    const result = await getVisualChangeWorkflowView(state.root, handle);
+    if (!result.ok) { const status = result.reason === 'unknown-handle' ? 404 : 409; writeJsonError(res, method, status, result.reason === 'unknown-handle' ? 'unknown viewer artifact handle' : 'workflow view is not currently available'); return; }
+    writeJsonBody(res, method, 200, { ok: true, view: result.view }); return;
+  }
 
   if (pathname === '/api/context') {
     if (state.context.status === 'none') {
@@ -461,6 +479,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
 }
 
 const ANNOTATION_SAVE_PATH = '/api/annotations';
+const VISUAL_CHANGE_CREATE_PATH = '/api/visual-changes';
+const VISUAL_CHANGE_MUTATION_PATH = /^\/api\/visual-changes\/([^/]+)\/(activate|check|restore-acceptance)$/;
 const ANNOTATION_PROMOTE_CONTRACT_PATH = /^\/api\/annotations\/([^/]+)\/promote-contract$/;
 
 const ANNOTATION_MATERIALIZE_REFERENCE_PATH = /^\/api\/annotations\/([^/]+)\/materialize-reference$/;
@@ -534,6 +554,24 @@ async function handleAnnotationSave(req: IncomingMessage, res: ServerResponse, s
   } catch {
     writeJsonError(res, 'POST', 500, 'the annotation could not be saved');
   }
+}
+
+async function handleVisualChangeCreate(req: IncomingMessage, res: ServerResponse, state: ViewerServerState): Promise<void> {
+  const authoring = await readAuthoringJsonRequest(req, res, state); if (authoring === undefined) return;
+  const parsed = parseCreateVisualChangeRequest(authoring.parsed); if (!parsed.ok) { writeJsonError(res, 'POST', 400, parsed.error); return; }
+  try { const result = await createVisualChangeFromViewer(authoring.session, parsed.scope); writeJsonBody(res, 'POST', result.status, result.body); }
+  catch { writeJsonError(res, 'POST', 500, 'visual-change workflow creation failed'); }
+}
+
+async function handleVisualChangeMutation(req: IncomingMessage, res: ServerResponse, state: ViewerServerState, encodedHandle: string, routeOperation: 'activate'|'check'|'restore-acceptance'): Promise<void> {
+  const authoring = await readAuthoringJsonRequest(req, res, state); if (authoring === undefined) return;
+  const parsed = parseEmptyVisualChangeRequest(authoring.parsed); if (!parsed.ok) { writeJsonError(res, 'POST', 400, parsed.error); return; }
+  const handle = decodeURIComponentSafe(encodedHandle); if (handle === undefined) { writeJsonError(res, 'POST', 400, 'malformed workflow handle'); return; }
+  try {
+    const result = await mutateVisualChangeFromViewer(state.root, authoring.session, handle, routeOperation === 'restore-acceptance' ? 'restore' : routeOperation);
+    if (!result.ok && 'error' in result) { writeJsonError(res, 'POST', result.status, result.error); return; }
+    writeJsonBody(res, 'POST', result.status, result.body);
+  } catch { writeJsonError(res, 'POST', 500, 'visual-change workflow operation failed'); }
 }
 
 /**

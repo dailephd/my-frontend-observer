@@ -10,6 +10,8 @@ Request identity hashes semantic scope only. It excludes timestamps and operatio
 
 The v0.10 Batch 2 application composition explicitly activates either the frozen per-change contract or the frozen approved reference and workflow-owned bindings in project acceptance. Activation and restoration preserve unrelated configuration, use compensating atomic writes across mutable project configuration and immutable workflow revisions, and refuse acceptance drift. A workflow check resolves an alias only when its catalog identity and artifact location exactly match the frozen baseline, then invokes the existing `checkProject` owner once. Only a canonical result containing both baseline and candidate summaries can append a pending attempt revision; the snapshot is a bounded direct projection of that result and does not repeat evaluation.
 
+The v0.10 Batch 3 Viewer exposes bounded workflow inspection at `GET /api/visual-changes/:handle/view` in both standalone and project-aware sessions. Create, activate, check, and restore POST operations are project-aware only, reuse the existing in-memory authoring capability and request guards, accept no filesystem paths, and delegate to the Batch 2 application service. Every new response is `no-store`. Successful immutable mutations return the exact new workflow ID so the Viewer can refresh and reselect that revision without guessing. The Viewer protocol remains `1.3.0`.
+
 ## Current contracts
 
 The observation artifact contract is published in the current
