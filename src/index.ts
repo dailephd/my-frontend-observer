@@ -601,6 +601,8 @@ export type { ReadVisualChangeWorkflowArtifactResult } from './artifacts/visualC
 export { readVisualChangeWorkflowArtifact } from './artifacts/visualChangeWorkflowArtifactReader.js';
 export type { PersistVisualChangeWorkflowOptions, ApplicationPersistVisualChangeWorkflowResult } from './application/visualChangeWorkflowPersistenceService.js';
 export { persistVisualChangeWorkflow } from './application/visualChangeWorkflowPersistenceService.js';
+export type { VisualChangeProjectWorkflowFailureCode, VisualChangeProjectWorkflowFailure, VisualChangeProjectWorkflowDependencies, CreateProjectVisualChangeWorkflowInput, CreateProjectVisualChangeWorkflowResult, ProjectVisualChangeMutationInput, VerifiedVisualChangeAcceptance, RunProjectVisualChangeCheckInput } from './application/visualChangeProjectWorkflowService.js';
+export { createProjectVisualChangeWorkflow, activateProjectVisualChangeWorkflow, restoreProjectVisualChangeWorkflowAcceptance, projectVisualChangeCheckSnapshot, runProjectVisualChangeCheck } from './application/visualChangeProjectWorkflowService.js';
 
 export type {
   MaterializeVisualAnnotationReferenceOptions,
