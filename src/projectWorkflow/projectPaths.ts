@@ -54,3 +54,12 @@ export function projectReferencesRoot(projectRoot: string): string {
 export function referenceOutputLocation(): string {
   return `${PROJECT_STATE_DIRECTORY}/evidence/references`;
 }
+
+export function projectVisualChangesRoot(projectRoot: string): string {
+  return path.join(projectEvidenceRoot(projectRoot), 'visual-changes');
+}
+
+/** Portable project-relative output location for immutable visual-change workflow artifacts. */
+export function visualChangeOutputLocation(): string {
+  return `${PROJECT_STATE_DIRECTORY}/evidence/visual-changes`;
+}

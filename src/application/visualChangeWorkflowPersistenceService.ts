@@ -1,0 +1,16 @@
+import type { Diagnostic } from '../domain/diagnostics.js';
+import { getProducerInfo } from '../domain/schema.js';
+import type { VisualChangeActivationRecord, VisualChangeAttemptRecord, VisualChangeGovernanceResults, VisualChangeScope, VisualChangeWorkflowArtifact } from '../domain/visualChangeWorkflow.js';
+import { VISUAL_CHANGE_WORKFLOW_ARTIFACT_KIND, VISUAL_CHANGE_WORKFLOW_SCHEMA_VERSION } from '../domain/visualChangeWorkflow.js';
+import { buildVisualChangeRequestIdentity, buildVisualChangeWorkflowInstanceIdentity } from '../domain/visualChangeWorkflowIdentity.js';
+import { computeVisualChangeBindingsSha256, serializeVisualChangeBindings, writeVisualChangeWorkflowArtifact, type WriteVisualChangeWorkflowArtifactOptions } from '../artifacts/visualChangeWorkflowArtifactWriter.js';
+export interface PersistVisualChangeWorkflowOptions { scope: VisualChangeScope; attempts?: VisualChangeAttemptRecord[]; supersedesVisualChangeWorkflowId?: string; activation?: VisualChangeActivationRecord; governanceResults?: VisualChangeGovernanceResults; outputLocation: string; cwd?: string; writerOptions?: Pick<WriteVisualChangeWorkflowArtifactOptions, 'beforeRename'>; createdAt?: string }
+export type ApplicationPersistVisualChangeWorkflowResult = { ok: true; visualChangeRequestId: string; visualChangeWorkflowId: string; artifactRoot: string; manifestPath: string; bindingsPath?: string } | { ok: false; diagnostics: Diagnostic[] };
+export async function persistVisualChangeWorkflow(options: PersistVisualChangeWorkflowOptions): Promise<ApplicationPersistVisualChangeWorkflowResult> {
+  const visualChangeRequestId = buildVisualChangeRequestIdentity(options.scope); const visualChangeWorkflowId = buildVisualChangeWorkflowInstanceIdentity(visualChangeRequestId);
+  const bindingContent = options.scope.entryMode === 'reference' ? serializeVisualChangeBindings(options.scope.bindings) : undefined;
+  const artifact: VisualChangeWorkflowArtifact = { artifactKind: VISUAL_CHANGE_WORKFLOW_ARTIFACT_KIND, schemaVersion: VISUAL_CHANGE_WORKFLOW_SCHEMA_VERSION, visualChangeRequestId, visualChangeWorkflowId, ...(options.supersedesVisualChangeWorkflowId === undefined ? {} : { supersedesVisualChangeWorkflowId: options.supersedesVisualChangeWorkflowId }), producer: getProducerInfo(), scope: options.scope, attempts: options.attempts ?? [], ...(bindingContent === undefined ? {} : { bindings: { path: 'bindings.json', sha256: computeVisualChangeBindingsSha256(bindingContent), declarationCount: options.scope.entryMode === 'reference' ? options.scope.bindings.length : 0 } }), ...(options.activation === undefined ? {} : { activation: options.activation }), ...(options.governanceResults === undefined ? {} : { governanceResults: options.governanceResults }), provenance: { createdAt: options.createdAt ?? new Date().toISOString() } };
+  const persisted = await writeVisualChangeWorkflowArtifact(artifact, options.outputLocation, { ...(options.cwd === undefined ? {} : { cwd: options.cwd }), ...options.writerOptions });
+  if (!persisted.ok) return persisted;
+  return { ok: true, visualChangeRequestId, visualChangeWorkflowId, artifactRoot: persisted.artifactRoot, manifestPath: persisted.manifestPath, ...(persisted.bindingsPath === undefined ? {} : { bindingsPath: persisted.bindingsPath }) };
+}

@@ -17,6 +17,9 @@ import { readExternalReferenceArtifact } from '../../artifacts/externalReference
 import { VISUAL_ANNOTATION_ARTIFACT_KIND, VISUAL_ANNOTATION_SCHEMA_VERSION } from '../../domain/visualAnnotation.js';
 import type { VisualAnnotationArtifact } from '../../domain/visualAnnotation.js';
 import { readVisualAnnotationArtifact } from '../../artifacts/visualAnnotationArtifactReader.js';
+import { VISUAL_CHANGE_WORKFLOW_ARTIFACT_KIND, VISUAL_CHANGE_WORKFLOW_SCHEMA_VERSION } from '../../domain/visualChangeWorkflow.js';
+import type { VisualChangeWorkflowArtifact } from '../../domain/visualChangeWorkflow.js';
+import { readVisualChangeWorkflowArtifact } from '../../artifacts/visualChangeWorkflowArtifactReader.js';
 import { MAX_MANIFEST_CANDIDATE_BYTES } from './limits.js';
 
 export type ArtifactFamily =
@@ -27,7 +30,8 @@ export type ArtifactFamily =
   | 'contract-evaluation'
   | 'external-reference-imported'
   | 'external-reference-approved'
-  | 'visual-annotation';
+  | 'visual-annotation'
+  | 'visual-change-workflow';
 
 /**
  * Honest, independent viewer-loading/support state - deliberately distinct
@@ -45,6 +49,7 @@ type FamilyArtifact = {
   'external-reference-imported': ExternalReferenceArtifact;
   'external-reference-approved': ExternalReferenceArtifact;
   'visual-annotation': VisualAnnotationArtifact;
+  'visual-change-workflow': VisualChangeWorkflowArtifact;
 };
 
 /** Per-family discriminated union (not a generically-indexed field) so switching on `family` correctly narrows `artifact`'s type. */
@@ -170,6 +175,13 @@ export async function classifyManifest(manifestPath: string): Promise<Classified
       const read = await readVisualAnnotationArtifact(manifestPath);
       if (!read.ok) return { supportState: 'invalid-structure', family: 'visual-annotation', reason: read.reason };
       return { supportState: 'supported', family: 'visual-annotation', artifact: read.artifact };
+    }
+
+    case VISUAL_CHANGE_WORKFLOW_ARTIFACT_KIND: {
+      if (version !== VISUAL_CHANGE_WORKFLOW_SCHEMA_VERSION) return { supportState: 'unsupported-version', family: 'visual-change-workflow', foundSchemaVersion: version ?? 'unknown', supportedSchemaVersion: VISUAL_CHANGE_WORKFLOW_SCHEMA_VERSION };
+      const read = await readVisualChangeWorkflowArtifact(manifestPath);
+      if (!read.ok) return { supportState: 'invalid-structure', family: 'visual-change-workflow', reason: read.reason };
+      return { supportState: 'supported', family: 'visual-change-workflow', artifact: read.artifact };
     }
 
     default:

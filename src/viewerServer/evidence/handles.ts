@@ -9,6 +9,7 @@ const FAMILY_SLUGS: Record<ArtifactFamily, string> = {
   'external-reference-imported': 'external-reference-imported',
   'external-reference-approved': 'external-reference-approved',
   'visual-annotation': 'visual-annotation',
+  'visual-change-workflow': 'visual-change-workflow',
 };
 
 const SLUG_TO_FAMILY: Record<string, ArtifactFamily> = Object.fromEntries(Object.entries(FAMILY_SLUGS).map(([family, slug]) => [slug, family as ArtifactFamily])) as Record<

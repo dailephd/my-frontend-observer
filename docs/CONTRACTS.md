@@ -1,5 +1,13 @@
 # Contracts
 
+## Visual-change workflow artifact (`1.0.0`, v0.10 Batch 1)
+
+`my-frontend-observer/visual-change-workflow` is the immutable Observer-owned history envelope for one frozen visual-change request. It records a deterministic `visualChangeRequestId`, a fresh `visualChangeWorkflowId`, optional forward-only `supersedesVisualChangeWorkflowId`, exact references to existing canonical evidence, zero to twenty bounded attempt records, optional activation/governance result references, producer metadata, and creation provenance.
+
+The two entry modes are exactly `actual-frontend` and `reference`. Reference mode stores validated explicit runtime binding declarations in canonical `bindings.json`; the manifest pins its SHA-256 and declaration count. Actual mode never writes that file. Project-relative evidence references must remain contained portable paths; source artifacts and media are referenced rather than copied.
+
+Request identity hashes semantic scope only. It excludes timestamps and operational storage locations. Workflow instance identity is fresh for every explicit persistence. Attempt identity is deterministic over the visual-change request ID and candidate observation ID. Human review state is exactly `pending`, `correction-requested`, `accepted`, or `abandoned`; this foundation validates structure but does not implement the later acceptance rule or execute checks.
+
 ## Current contracts
 
 The observation artifact contract is published in the current

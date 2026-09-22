@@ -534,7 +534,7 @@ export type { DiscoverProjectResult } from './projectWorkflow/projectDiscovery.j
 export { discoverFrontendObserverProject } from './projectWorkflow/projectDiscovery.js';
 export type { AliasCatalog, AliasCatalogReadResult, ObservationAliasRecord } from './projectWorkflow/aliasCatalog.js';
 export { ALIAS_CATALOG_SCHEMA_VERSION, readAliasCatalog, serializeAliasCatalog, validateAliasCatalog, writeAliasCatalog } from './projectWorkflow/aliasCatalog.js';
-export { projectConfigPath, projectStateRoot, aliasCatalogPath, projectEvidenceRoot, projectObservationsRoot, observationOutputLocation } from './projectWorkflow/projectPaths.js';
+export { projectConfigPath, projectStateRoot, aliasCatalogPath, projectEvidenceRoot, projectObservationsRoot, observationOutputLocation, projectVisualChangesRoot, visualChangeOutputLocation } from './projectWorkflow/projectPaths.js';
 export type { CaptureNamedObservationInput, CaptureNamedObservationResult, InitializeProjectInput, ProjectWorkflowErrorCode } from './application/projectWorkflowService.js';
 export { initializeFrontendObserverProject, captureNamedObservation, loadProjectViewerState } from './application/projectWorkflowService.js';
 export type { CheckWorkflowStatus, CheckWorkflowResult } from './projectWorkflow/checkResult.js';
@@ -591,6 +591,16 @@ export { readVisualAnnotationArtifact } from './artifacts/visualAnnotationArtifa
 
 export type { PersistVisualAnnotationOptions, ApplicationPersistVisualAnnotationResult } from './application/visualAnnotationPersistenceService.js';
 export { persistVisualAnnotation } from './application/visualAnnotationPersistenceService.js';
+
+export type { VisualChangeArtifactReference, VisualChangeObservationReference, VisualChangeContractReference, VisualChangeBaselineContractReference, VisualChangeActualScope, VisualChangeReferenceScope, VisualChangeScope, VisualChangeCheckSnapshot, VisualChangeAttemptRecord, VisualChangeAcceptanceSelection, VisualChangeActivationRecord, VisualChangeGovernanceResults, VisualChangeBindingsMetadata, VisualChangeWorkflowArtifact, VisualChangeWorkflowValidationResult, VisualChangeReviewState } from './domain/visualChangeWorkflow.js';
+export { VISUAL_CHANGE_WORKFLOW_ARTIFACT_KIND, VISUAL_CHANGE_WORKFLOW_SCHEMA_VERSION, MAX_VISUAL_CHANGE_ATTEMPTS, VISUAL_CHANGE_REVIEW_STATES, isValidVisualChangeWorkflowArtifact } from './domain/visualChangeWorkflow.js';
+export { canonicalVisualChangeJson, buildVisualChangeRequestIdentity, buildVisualChangeWorkflowInstanceIdentity, buildVisualChangeAttemptIdentity } from './domain/visualChangeWorkflowIdentity.js';
+export type { PersistedVisualChangeWorkflowResult, WriteVisualChangeWorkflowArtifactOptions } from './artifacts/visualChangeWorkflowArtifactWriter.js';
+export { VISUAL_CHANGE_WORKFLOW_MANIFEST_FILENAME, VISUAL_CHANGE_WORKFLOW_BINDINGS_FILENAME, computeVisualChangeBindingsSha256, serializeVisualChangeBindings, writeVisualChangeWorkflowArtifact } from './artifacts/visualChangeWorkflowArtifactWriter.js';
+export type { ReadVisualChangeWorkflowArtifactResult } from './artifacts/visualChangeWorkflowArtifactReader.js';
+export { readVisualChangeWorkflowArtifact } from './artifacts/visualChangeWorkflowArtifactReader.js';
+export type { PersistVisualChangeWorkflowOptions, ApplicationPersistVisualChangeWorkflowResult } from './application/visualChangeWorkflowPersistenceService.js';
+export { persistVisualChangeWorkflow } from './application/visualChangeWorkflowPersistenceService.js';
 
 export type {
   MaterializeVisualAnnotationReferenceOptions,
