@@ -394,7 +394,15 @@ describe('runtime intent to canonical change contract', () => {
 
 describe('explicit project activation', () => {
   async function configureAcceptance(project: ProjectFixture): Promise<{ baselineArtifact: string; baselineId: string; config: Record<string, unknown> }> {
-    const baseline = buildBaselineContract({ baselineId: 'browser-baseline-1' });
+    const baseline = buildBaselineContract({
+      baselineId: 'browser-baseline-1',
+      sourceObservation: {
+        observationId: project.observation.observationId,
+        requestId: project.observation.requestId,
+        producer: project.observation.producer,
+        observationSchemaVersion: project.observation.schemaVersion
+      }
+    });
     const written = await writePersistentBaselineContract(baseline, '.frontend-observer/evidence/baselines', { cwd: project.projectRoot });
     if (!written.ok) throw new Error('baseline write failed');
     const baselineArtifact = path.relative(project.projectRoot, written.artifactRoot).split(path.sep).join('/');
@@ -458,5 +466,12 @@ describe('explicit project activation', () => {
     const before = JSON.parse(await readFile(projectConfigPath(project.projectRoot), 'utf8')) as { acceptance: { contract: { changeArtifact: string } } }; expect(before.acceptance.contract.changeArtifact).toBe('.frontend-observer/evidence/contracts/earlier');
     const [activationResponse] = await Promise.all([page.waitForResponse((response) => new URL(response.url()).pathname.endsWith('/activate')), page.getByRole('button', { name: 'Activate' }).click()]); const activated = (await activationResponse.json()) as { visualChangeRequestId: string; visualChangeWorkflowId: string }; expect(activated.visualChangeRequestId).toBe(created.visualChangeRequestId); expect(activated.visualChangeWorkflowId).not.toBe(created.visualChangeWorkflowId); await expect.poll(async () => (await detail.textContent())?.includes('active')).toBe(true); expect(await detail.textContent()).toContain('No attempts recorded');
     const after = JSON.parse(await readFile(projectConfigPath(project.projectRoot), 'utf8')) as { acceptance: { contract: { baselineArtifact: string; changeArtifact: string } } }; expect(after.acceptance.contract).toEqual({ baselineArtifact, changeArtifact: `.frontend-observer/evidence/contracts/${created.contractId}` });
+    const activeManifest = path.join(project.projectRoot, '.frontend-observer', 'evidence', 'visual-changes', activated.visualChangeWorkflowId, 'manifest.json'); const activeBeforeHandoff = await readFile(activeManifest);
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: viewer.url });
+    const [handoffResponse] = await Promise.all([page.waitForResponse((response) => new URL(response.url()).pathname.endsWith('/prepare-handoff')), page.getByRole('button', { name: 'Prepare handoff' }).click()]); expect(handoffResponse.status(), await handoffResponse.text()).toBe(200); await page.locator('[data-handoff-ready="true"]').waitFor({ timeout: 10_000 }); const handoffSummary = await page.getByRole('region', { name: 'Coding-agent handoff' }).textContent(); expect(handoffSummary).toContain(activated.visualChangeWorkflowId); expect(handoffSummary).toContain(created.visualChangeRequestId); expect(handoffSummary).toContain('actual-frontend'); expect(handoffSummary).toContain('my-frontend-observer check runtime --json'); expect(handoffSummary).toContain('not included');
+    await page.getByRole('button', { name: 'Copy handoff' }).click(); await page.getByRole('status').filter({ hasText: 'Handoff copied.' }).waitFor(); const copied = await page.evaluate(() => navigator.clipboard.readText()); const copiedJson = JSON.parse(copied) as { visualChangeWorkflowId: string; expectedPostEditCheck: { baselineAlias: string }; boundedAgentContext: { contextId: string } }; expect(copiedJson.visualChangeWorkflowId).toBe(activated.visualChangeWorkflowId); expect(copiedJson.expectedPostEditCheck.baselineAlias).toBe('runtime'); expect(copiedJson.boundedAgentContext.contextId.length).toBeGreaterThan(0);
+    const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download handoff' }).click()]); expect(download.suggestedFilename()).toBe(`visual-change-handoff-${activated.visualChangeWorkflowId}.json`); const downloadedPath = await download.path(); if (downloadedPath === null) throw new Error('download path unavailable'); expect((await readFile(downloadedPath, 'utf8')).replace(/\r\n/g, '\n')).toBe(copied.replace(/\r\n/g, '\n'));
+    await page.evaluate(() => Object.defineProperty(navigator.clipboard, 'writeText', { configurable: true, value: async () => { throw new Error('denied'); } })); await page.getByRole('button', { name: 'Copy handoff' }).click(); await page.getByRole('alert').filter({ hasText: 'Clipboard copy failed.' }).waitFor();
+    expect(await readFile(activeManifest)).toEqual(activeBeforeHandoff); expect(await detail.textContent()).toContain('No attempts recorded'); expect(await detail.textContent()).toContain('Latest checknone');
   }, 120_000);
 });

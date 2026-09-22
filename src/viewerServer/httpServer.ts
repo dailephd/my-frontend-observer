@@ -25,6 +25,7 @@ import { parseStartRuntimeVisualChangeRequest, startRuntimeVisualChangeFromViewe
 import type { StartRuntimeVisualChangeFailureReason } from './runtimeVisualChangeAuthoring.js';
 import { approveReferenceFromViewer, parseApproveReferenceRequest } from './referenceApproval.js';
 import { parseStartReferenceVisualChangeRequest, startReferenceVisualChangeFromViewer } from './referenceVisualChangeAuthoring.js';
+import { parsePrepareVisualChangeHandoffRequest, prepareVisualChangeHandoffFromViewer } from './visualChangeHandoff.js';
 import type { ContextSessionState } from './context.js';
 import type { ViewerAliasMetadata } from './viewerService.js';
 
@@ -148,6 +149,11 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
   if (visualMutation) {
     if (method !== 'POST') { res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' }); res.end('method not allowed'); return; }
     await handleVisualChangeMutation(req, res, state, visualMutation[1] as string, visualMutation[2] as 'activate'|'check'|'restore-acceptance'); return;
+  }
+  const handoffMatch = VISUAL_CHANGE_HANDOFF_PATH.exec(pathname);
+  if (handoffMatch) {
+    if (method !== 'POST') { res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' }); res.end('method not allowed'); return; }
+    await handleVisualChangeHandoff(req, res, state, handoffMatch[1] as string); return;
   }
   const promoteMatch = ANNOTATION_PROMOTE_CONTRACT_PATH.exec(pathname);
   if (promoteMatch) {
@@ -500,6 +506,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
 const ANNOTATION_SAVE_PATH = '/api/annotations';
 const VISUAL_CHANGE_CREATE_PATH = '/api/visual-changes';
 const VISUAL_CHANGE_MUTATION_PATH = /^\/api\/visual-changes\/([^/]+)\/(activate|check|restore-acceptance)$/;
+const VISUAL_CHANGE_HANDOFF_PATH = /^\/api\/visual-changes\/([^/]+)\/prepare-handoff$/;
 const ANNOTATION_PROMOTE_CONTRACT_PATH = /^\/api\/annotations\/([^/]+)\/promote-contract$/;
 const ANNOTATION_START_VISUAL_CHANGE_PATH = /^\/api\/annotations\/([^/]+)\/start-visual-change$/;
 
@@ -600,6 +607,20 @@ async function handleVisualChangeMutation(req: IncomingMessage, res: ServerRespo
     if (!result.ok && 'error' in result) { writeJsonError(res, 'POST', result.status, result.error); return; }
     writeJsonBody(res, 'POST', result.status, result.body);
   } catch { writeJsonError(res, 'POST', 500, 'visual-change workflow operation failed'); }
+}
+
+async function handleVisualChangeHandoff(req: IncomingMessage, res: ServerResponse, state: ViewerServerState, encodedHandle: string): Promise<void> {
+  const authoring = await readAuthoringJsonRequest(req, res, state); if (authoring === undefined) return;
+  const parsed = parsePrepareVisualChangeHandoffRequest(authoring.parsed); if (!parsed.ok) { writeJsonError(res, 'POST', 400, parsed.error); return; }
+  const handle = decodeURIComponentSafe(encodedHandle); if (handle === undefined) { writeJsonError(res, 'POST', 400, 'malformed workflow handle'); return; }
+  try {
+    const result = await prepareVisualChangeHandoffFromViewer(state.root, authoring.session, state.context, handle, parsed.request);
+    if (!result.ok) {
+      const status = result.code === 'unknown-handle' ? 404 : result.code === 'wrong-family' || ['workflow-inactive','workflow-restored','acceptance-drift','baseline-drift','unsupported-context','context-mismatch'].includes(result.code) ? 409 : result.code === 'invalid-handoff' ? 500 : 422;
+      writeJsonBody(res, 'POST', status, { ok: false, code: result.code, error: result.error }); return;
+    }
+    writeJsonBody(res, 'POST', 200, { ok: true, handoff: result.handoff });
+  } catch { writeJsonError(res, 'POST', 500, 'visual-change handoff preparation failed'); }
 }
 
 /**

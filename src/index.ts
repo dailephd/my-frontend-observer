@@ -603,6 +603,11 @@ export type { PersistVisualChangeWorkflowOptions, ApplicationPersistVisualChange
 export { persistVisualChangeWorkflow } from './application/visualChangeWorkflowPersistenceService.js';
 export type { VisualChangeProjectWorkflowFailureCode, VisualChangeProjectWorkflowFailure, VisualChangeProjectWorkflowDependencies, CreateProjectVisualChangeWorkflowInput, CreateProjectVisualChangeWorkflowResult, ProjectVisualChangeMutationInput, VerifiedVisualChangeAcceptance, RunProjectVisualChangeCheckInput } from './application/visualChangeProjectWorkflowService.js';
 export { createProjectVisualChangeWorkflow, activateProjectVisualChangeWorkflow, restoreProjectVisualChangeWorkflowAcceptance, projectVisualChangeCheckSnapshot, runProjectVisualChangeCheck } from './application/visualChangeProjectWorkflowService.js';
+export type { VisualChangeAgentActualScope, VisualChangeAgentReferenceScope, VisualChangeAgentConfirmedScope, VisualChangeReferenceCorrectionTrace, VisualChangeExternalCoordination, VisualChangeAgentHandoff } from './domain/visualChangeAgentHandoff.js';
+export { VISUAL_CHANGE_AGENT_HANDOFF_KIND, VISUAL_CHANGE_AGENT_HANDOFF_VERSION, isValidVisualChangeAgentHandoff, isValidVisualChangeExternalCoordination, serializeVisualChangeAgentHandoff } from './domain/visualChangeAgentHandoff.js';
+export { serializeVisualChangeAgentHandoffCanonical } from './domain/visualChangeAgentHandoffSerialization.js';
+export type { PrepareVisualChangeAgentHandoffInput, PrepareVisualChangeAgentHandoffResult, PrepareVisualChangeAgentHandoffFailureCode } from './application/visualChangeAgentHandoffService.js';
+export { prepareVisualChangeAgentHandoff } from './application/visualChangeAgentHandoffService.js';
 
 export type {
   MaterializeVisualAnnotationReferenceOptions,

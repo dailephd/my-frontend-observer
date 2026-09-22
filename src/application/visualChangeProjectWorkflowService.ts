@@ -6,7 +6,7 @@ import { readExternalReferenceArtifact } from '../artifacts/externalReferenceArt
 import { readPerChangeContract, readPersistentBaselineContract } from '../artifacts/frontendContractArtifactReader.js';
 import { readVisualAnnotationArtifact } from '../artifacts/visualAnnotationArtifactReader.js';
 import { readVisualChangeWorkflowArtifact } from '../artifacts/visualChangeWorkflowArtifactReader.js';
-import type { VisualChangeAcceptanceSelection, VisualChangeAttemptRecord, VisualChangeCheckSnapshot, VisualChangeScope, VisualChangeWorkflowArtifact } from '../domain/visualChangeWorkflow.js';
+import type { VisualChangeAcceptanceSelection, VisualChangeActivationRecord, VisualChangeAttemptRecord, VisualChangeCheckSnapshot, VisualChangeScope, VisualChangeWorkflowArtifact } from '../domain/visualChangeWorkflow.js';
 import { MAX_VISUAL_CHANGE_ATTEMPTS } from '../domain/visualChangeWorkflow.js';
 import { buildVisualChangeAttemptIdentity } from '../domain/visualChangeWorkflowIdentity.js';
 import { readAliasCatalog } from '../projectWorkflow/aliasCatalog.js';
@@ -217,9 +217,12 @@ export function projectVisualChangeCheckSnapshot(result: CheckWorkflowResult & {
 }
 
 export interface RunProjectVisualChangeCheckInput extends ProjectVisualChangeMutationInput { coordination?: VisualChangeAttemptRecord['coordination']; referenceCorrectionAttemptId?: string }
-export async function runProjectVisualChangeCheck(input: RunProjectVisualChangeCheckInput) {
-  const projectRoot = path.resolve(input.projectRoot); const deps = dependencies(input.dependencies); const state = await readConfigState(projectRoot); if (!state.ok) return state;
-  const loaded = await loadWorkflow(projectRoot, input.workflowManifestPath); if (!loaded.ok) return loaded; const workflow = loaded.artifact;
+export interface ActiveVisualChangeWorkflowContext { projectRoot: string; workflow: VisualChangeWorkflowArtifact & { activation: VisualChangeActivationRecord }; workflowManifestPath: string; config: FrontendObserverProjectConfig; baselineAlias: string; verifiedContractIds: { baselineId?: string; changeId?: string } }
+
+/** One readiness owner for canonical check recording and on-demand handoff preparation. */
+export async function prepareActiveVisualChangeWorkflow(projectRootInput: string, workflowManifestPath: string): Promise<{ ok: true; context: ActiveVisualChangeWorkflowContext } | VisualChangeProjectWorkflowFailure> {
+  const projectRoot = path.resolve(projectRootInput); const state = await readConfigState(projectRoot); if (!state.ok) return state;
+  const loaded = await loadWorkflow(projectRoot, workflowManifestPath); if (!loaded.ok) return loaded; const workflow = loaded.artifact;
   if (workflow.activation === undefined) return failure('activation-not-configured', 'workflow has not been activated');
   if (workflow.activation.restoredAt !== undefined) return failure('activation-already-restored', 'workflow activation has been restored');
   if (!sameSelection(selection(state.config), workflow.activation.after)) return failure('acceptance-drift', 'current project acceptance differs from the activated workflow');
@@ -229,11 +232,16 @@ export async function runProjectVisualChangeCheck(input: RunProjectVisualChangeC
   if (workflow.scope.baselineContract !== undefined && ids.baselineId !== workflow.scope.baselineContract.baselineId) return failure('acceptance-drift', 'active baseline contract identity differs from frozen workflow scope');
   if (workflow.scope.entryMode === 'actual-frontend' && ids.changeId !== workflow.scope.changeContract.contractId) return failure('acceptance-drift', 'active change contract identity differs from frozen workflow scope');
   if (workflow.scope.entryMode === 'reference') {
-    const active = state.config.acceptance?.reference;
-    const expectedBindings = workflow.activation.after.bindingsFile;
+    const active = state.config.acceptance?.reference; const expectedBindings = workflow.activation.after.bindingsFile;
     if (active?.approvedArtifact !== workflow.scope.approvedReference.artifactPath || active.bindingsFile !== expectedBindings) return failure('acceptance-drift', 'active reference or bindings path differs from frozen workflow scope');
     const reread = await readVisualChangeWorkflowArtifact(loaded.manifestPath); if (!reread.ok) return failure('acceptance-drift', 'workflow-owned bindings no longer match frozen declarations');
   }
+  return { ok: true, context: { projectRoot, workflow: { ...workflow, activation: workflow.activation }, workflowManifestPath: loaded.manifestPath, config: state.config, baselineAlias: alias, verifiedContractIds: ids } };
+}
+
+export async function runProjectVisualChangeCheck(input: RunProjectVisualChangeCheckInput) {
+  const deps = dependencies(input.dependencies); const readiness = await prepareActiveVisualChangeWorkflow(input.projectRoot, input.workflowManifestPath); if (!readiness.ok) return readiness;
+  const { projectRoot, workflow, baselineAlias: alias, verifiedContractIds: ids } = readiness.context;
   const result = await deps.check(projectRoot, alias);
   if (result.baseline === undefined || result.candidate === undefined) return failure('candidate-not-produced', 'canonical check did not produce both baseline and candidate observations; no attempt was recorded', result);
   if (result.baseline.observationId !== workflow.scope.baselineObservation.observationId || result.baseline.requestId !== workflow.scope.baselineObservation.requestId) return failure('check-scope-mismatch', 'canonical check baseline identity differs from frozen workflow scope', result);
