@@ -1,6 +1,10 @@
 # Current State
 
 v0.9.1 is released and published as `@dailephd/my-frontend-observer@0.9.1`.
+
+v0.10 version-start planning is now frozen in
+`docs/plans/v0.10-implementation-plan.md`. No v0.10 production implementation
+has started, and the package remains `0.9.1`.
 v0.9 (Human Visual Annotation and Design-Intent Capture) adds structured visual
 annotation to the project-aware viewer. It passed integrated real-Chromium
 acceptance and final exact-candidate pre-release readiness on Windows, Linux
@@ -1234,5 +1238,7 @@ for the cross-platform readiness validation that preceded this release.
 
 v0.9 (structured visual annotation) is released as
 `@dailephd/my-frontend-observer@0.9.0` - see "v0.9 status" above. The next
-target is v0.10 (full graphical human-LLM workflow), which remains future and
-unimplemented - see `docs/ROADMAP.md`.
+target is v0.10 (full graphical human-LLM workflow). Its version-start
+architecture and batch plan are frozen in
+`docs/plans/v0.10-implementation-plan.md`; implementation has not started - see
+`docs/ROADMAP.md`.
