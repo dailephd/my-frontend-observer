@@ -25,6 +25,9 @@ import { AnnotationLayer } from './AnnotationLayer.js';
 import { CandidateRegionPreviewLayer } from './CandidateRegionPreviewLayer.js';
 import { ReferenceAnnotationPanel } from './ReferenceAnnotationPanel.js';
 import { useAnnotationReferenceMaterialization } from '../hooks/useAnnotationReferenceMaterialization.js';
+import { useReferenceApproval } from '../hooks/useReferenceApproval.js';
+import { useReferenceVisualChangeStart } from '../hooks/useReferenceVisualChangeStart.js';
+import type { WorkflowBinding } from '../hooks/useReferenceVisualChangeStart.js';
 
 function requirementSubjectRegionIds(subject: ExternalReferenceRequirement['subject']): string[] {
   return subject.kind === 'region-property' ? [subject.region] : [subject.subjectRegion, subject.relatedRegion];
@@ -61,7 +64,7 @@ const FITTED_ZOOM: ZoomPanState['scale'] = 1;
  * of this exact imported or approved reference; the view lock, candidate
  * pane, and explicit bindings are never used to transform, bind, or copy it.
  */
-export function ReferenceWorkspace({ handle, artifact }: { handle: string; artifact: ExternalReferenceArtifact }) {
+export function ReferenceWorkspace({ handle, artifact, onVisualChangeCreated, onReferenceApproved }: { handle: string; artifact: ExternalReferenceArtifact; onVisualChangeCreated?: (workflowId: string) => void; onReferenceApproved?: (referenceId: string) => void }) {
   const referenceView = useReferenceView(handle);
   const index = useEvidenceIndex();
 
@@ -158,6 +161,11 @@ export function ReferenceWorkspace({ handle, artifact }: { handle: string; artif
   const savedAnnotations = useReferenceAnnotations(handle, referenceFamily, artifact.referenceId);
   const annotationDraft = useReferenceAnnotationDraft(handle);
   const referenceMaterialization = useAnnotationReferenceMaterialization(annotationDraft.draft.parentAnnotationHandle);
+  const approval = useReferenceApproval(handle);
+  const [selectedIntentIds, setSelectedIntentIds] = useState<string[]>([]);
+  const [workflowBindings, setWorkflowBindings] = useState<WorkflowBinding[]>([]);
+  const visualChangeStart = useReferenceVisualChangeStart(handle, annotationDraft.draft.parentAnnotationHandle, candidateHandle);
+  useEffect(() => setWorkflowBindings([]), [handle, candidateHandle]);
   const [annotationMode, setAnnotationMode] = useState<AnnotationInteractionMode>('select');
   const [noteText, setNoteText] = useState('');
   const annotationInteraction = useAnnotationPointerInteraction({
@@ -339,6 +347,21 @@ export function ReferenceWorkspace({ handle, artifact }: { handle: string; artif
       </div>
 
       <div className="reference-workspace__details comparison-workspace__details">
+        {session.state === 'available' && imported ? (
+          <section aria-label="Reference approval">
+            <button type="button" disabled={approval.state.state === 'approving' || referenceMaterialization.state.state === 'materializing' || visualChangeStart.state.state === 'starting'} onClick={() => { void approval.approve(session.token).then((id) => { if (id !== undefined) onReferenceApproved?.(id); }); }}>Approve reference</button>
+            {approval.state.state === 'approved' ? <p role="status">Approved. Project acceptance has not changed.</p> : approval.state.state === 'failed' ? <p role="alert">{approval.state.message}</p> : null}
+          </section>
+        ) : null}
+        {session.state === 'available' && approved ? (
+          <section aria-label="Reference visual change authoring">
+            <h4>Workflow bindings</h4>
+            <button type="button" disabled={selectedRegionId === undefined || selectedTarget === undefined || workflowBindings.some((binding) => binding.referenceRegion.toLowerCase() === selectedRegionId.toLowerCase())} onClick={() => { if (selectedRegionId !== undefined && selectedTarget !== undefined) setWorkflowBindings((current) => [...current, { referenceRegion: selectedRegionId, runtimeTarget: selectedTarget }]); }}>Add workflow binding</button>
+            {workflowBindings.length === 0 ? <p className="placeholder-note">No workflow bindings authored.</p> : <ul>{workflowBindings.map((binding) => <li key={binding.referenceRegion}>{binding.referenceRegion} â†’ {binding.runtimeTarget} <button type="button" onClick={() => setWorkflowBindings((current) => current.filter((entry) => entry.referenceRegion !== binding.referenceRegion))}>Remove</button></li>)}</ul>}
+            <button type="button" disabled={annotationDraft.draft.parentAnnotationHandle === undefined || annotationDraft.draft.dirty || selectedIntentIds.length === 0 || candidateHandle === undefined || workflowBindings.length === 0 || visualChangeStart.state.state === 'starting' || referenceMaterialization.state.state === 'materializing'} onClick={() => { void visualChangeStart.start(session.token, selectedIntentIds, workflowBindings).then((id) => { if (id !== undefined) onVisualChangeCreated?.(id); }); }}>Create reference visual change</button>
+            {visualChangeStart.state.state === 'created' ? <div role="status"><p>Reference visual change created.</p><p>Reference: {visualChangeStart.state.referenceId}</p><p>Workflow: {visualChangeStart.state.visualChangeWorkflowId}</p><p>Bindings: {visualChangeStart.state.bindingCount}</p><p>Activation: not yet activated.</p></div> : visualChangeStart.state.state === 'failed' ? <p role="alert">{visualChangeStart.state.message}</p> : null}
+          </section>
+        ) : null}
         {candidateHandle !== undefined ? (
           <section>
             <h4>Reference/candidate compatibility</h4>
@@ -477,10 +500,12 @@ export function ReferenceWorkspace({ handle, artifact }: { handle: string; artif
               void annotationDraft.save(session.token, savedAnnotations.reload);
             }}
             materialization={referenceMaterialization.state}
+            materializationBlocked={approval.state.state === 'approving' || visualChangeStart.state.state === 'starting'}
             onMaterialize={(itemIds) => {
               if (session.state !== 'available') return;
               void referenceMaterialization.materialize(session.token, itemIds);
             }}
+            onIntentSelectionChange={setSelectedIntentIds}
           />
         </section>
 

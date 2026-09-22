@@ -23,6 +23,8 @@ import { createVisualChangeFromViewer, mutateVisualChangeFromViewer, parseCreate
 import { getVisualChangeWorkflowView } from './evidence/visualChangeWorkflowView.js';
 import { parseStartRuntimeVisualChangeRequest, startRuntimeVisualChangeFromViewer } from './runtimeVisualChangeAuthoring.js';
 import type { StartRuntimeVisualChangeFailureReason } from './runtimeVisualChangeAuthoring.js';
+import { approveReferenceFromViewer, parseApproveReferenceRequest } from './referenceApproval.js';
+import { parseStartReferenceVisualChangeRequest, startReferenceVisualChangeFromViewer } from './referenceVisualChangeAuthoring.js';
 import type { ContextSessionState } from './context.js';
 import type { ViewerAliasMetadata } from './viewerService.js';
 
@@ -171,6 +173,16 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
     }
     await handleAnnotationReferenceMaterialization(req, res, state, materializeMatch[1] as string);
     return;
+  }
+  const approveReferenceMatch = REFERENCE_APPROVE_PATH.exec(pathname);
+  if (approveReferenceMatch) {
+    if (method !== 'POST') { res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' }); res.end('method not allowed'); return; }
+    await handleReferenceApproval(req, res, state, approveReferenceMatch[1] as string); return;
+  }
+  const startReferenceMatch = REFERENCE_START_VISUAL_CHANGE_PATH.exec(pathname);
+  if (startReferenceMatch) {
+    if (method !== 'POST') { res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' }); res.end('method not allowed'); return; }
+    await handleReferenceVisualChangeStart(req, res, state, startReferenceMatch[1] as string); return;
   }
   if (method === 'POST') {
     res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'GET, HEAD' });
@@ -492,6 +504,8 @@ const ANNOTATION_PROMOTE_CONTRACT_PATH = /^\/api\/annotations\/([^/]+)\/promote-
 const ANNOTATION_START_VISUAL_CHANGE_PATH = /^\/api\/annotations\/([^/]+)\/start-visual-change$/;
 
 const ANNOTATION_MATERIALIZE_REFERENCE_PATH = /^\/api\/annotations\/([^/]+)\/materialize-reference$/;
+const REFERENCE_APPROVE_PATH = /^\/api\/references\/([^/]+)\/approve$/;
+const REFERENCE_START_VISUAL_CHANGE_PATH = /^\/api\/references\/([^/]+)\/start-visual-change$/;
 
 const MATERIALIZE_FAILURE_STATUS: Record<MaterializeAnnotationReferenceFailureReason, number> = {
   'unknown-annotation-handle': 404,
@@ -717,6 +731,28 @@ async function handleAnnotationReferenceMaterialization(req: IncomingMessage, re
   } catch {
     writeJsonError(res, 'POST', 500, 'the reference revision could not be materialized');
   }
+}
+
+async function handleReferenceApproval(req: IncomingMessage, res: ServerResponse, state: ViewerServerState, encodedHandle: string): Promise<void> {
+  const authoring = await readAuthoringJsonRequest(req, res, state); if (authoring === undefined) return;
+  const handle = decodeURIComponentSafe(encodedHandle); if (handle === undefined) { writeJsonError(res, 'POST', 400, 'malformed reference handle'); return; }
+  const parsed = parseApproveReferenceRequest(authoring.parsed); if (!parsed.ok) { writeJsonError(res, 'POST', 400, parsed.error); return; }
+  try {
+    const result = await approveReferenceFromViewer(state.root, authoring.session, handle);
+    if (!result.ok) { writeJsonError(res, 'POST', result.reason === 'unknown-handle' ? 404 : result.reason === 'approval-failed' ? 500 : 409, result.error); return; }
+    writeJsonBody(res, 'POST', 201, { ok: true, referenceId: result.referenceId, referenceRequestId: result.referenceRequestId, handle: result.handle, regionCount: result.regionCount, requirementCount: result.requirementCount, adequacy: result.adequacy });
+  } catch { writeJsonError(res, 'POST', 500, 'the reference could not be approved'); }
+}
+
+async function handleReferenceVisualChangeStart(req: IncomingMessage, res: ServerResponse, state: ViewerServerState, encodedHandle: string): Promise<void> {
+  const authoring = await readAuthoringJsonRequest(req, res, state); if (authoring === undefined) return;
+  const handle = decodeURIComponentSafe(encodedHandle); if (handle === undefined) { writeJsonError(res, 'POST', 400, 'malformed reference handle'); return; }
+  const parsed = parseStartReferenceVisualChangeRequest(authoring.parsed); if (!parsed.ok) { writeJsonError(res, 'POST', 400, parsed.error); return; }
+  try {
+    const result = await startReferenceVisualChangeFromViewer(state.root, authoring.session, handle, parsed.request);
+    if (!result.ok) { writeJsonBody(res, 'POST', result.reason === 'unknown-handle' || result.reason === 'baseline-invalid' ? 404 : result.reason.includes('invalid') || result.reason === 'intent-not-represented' || result.reason.startsWith('binding') ? 422 : 409, { ok: false, code: result.reason, error: result.error }); return; }
+    writeJsonBody(res, 'POST', 201, result);
+  } catch { writeJsonError(res, 'POST', 500, 'the reference visual change could not be created'); }
 }
 
 /** Rejects before (or instead of) consuming the request body; `connection: close` stops the server from collecting any further body bytes. */

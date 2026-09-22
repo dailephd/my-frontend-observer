@@ -64,7 +64,7 @@ export default function App() {
           </nav>
 
           <main className="app-shell__workspace" aria-label="Visual inspection workspace">
-            <ArtifactPreview selected={selected} detail={detail} onVisualChangeCreated={(workflowId) => { void index.refresh().then(() => { setRequestedWorkflowId(workflowId); setViewMode('visual-change'); }); }} />
+            <ArtifactPreview selected={selected} detail={detail} onVisualChangeCreated={(workflowId) => { void index.refresh().then(() => { setRequestedWorkflowId(workflowId); setViewMode('visual-change'); }); }} onReferenceApproved={(referenceId) => { void index.refresh().then((next) => { const exact = next.state === 'available' ? next.records.find((record) => record.family === 'external-reference-approved' && record.logicalId === referenceId) : undefined; if (exact !== undefined) setSelected(exact); }); }} />
           </main>
 
           <aside className="app-shell__details" aria-label="Details and diagnostics">
