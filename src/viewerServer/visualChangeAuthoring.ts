@@ -14,6 +14,7 @@ export const VISUAL_CHANGE_FAILURE_STATUS: Record<VisualChangeProjectWorkflowFai
   'check-scope-mismatch': 409, 'candidate-not-produced': 409, 'duplicate-attempt': 409, 'attempt-limit-reached': 409, 'project-config-invalid': 409,
   'workflow-invalid': 422, 'workflow-reference-invalid': 422,
   'project-config-write-failure': 500, 'workflow-persistence-failure': 500, 'partial-state-failure': 500,
+  'review-required': 409, 'workflow-accepted': 409, 'workflow-abandoned': 409,
 };
 
 export type ResolveVisualChangeTargetResult = { ok: true; workflowManifestPath: string } | { ok: false; status: 404 | 409; error: string };

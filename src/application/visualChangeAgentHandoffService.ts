@@ -10,9 +10,9 @@ import { prepareReferenceCorrection } from '../domain/referenceCorrectionWorkflo
 import type { VisualChangeAgentConfirmedScope, VisualChangeAgentHandoff, VisualChangeExternalCoordination, VisualChangeReferenceCorrectionTrace } from '../domain/visualChangeAgentHandoff.js';
 import { VISUAL_CHANGE_AGENT_HANDOFF_KIND, VISUAL_CHANGE_AGENT_HANDOFF_VERSION, isValidVisualChangeAgentHandoff } from '../domain/visualChangeAgentHandoff.js';
 import { resolveContainedAcceptancePath } from '../projectWorkflow/checkAcceptance.js';
-import { prepareActiveVisualChangeWorkflow } from './visualChangeProjectWorkflowService.js';
+import { prepareActiveVisualChangeWorkflow, readProjectVisualChangeCycle } from './visualChangeProjectWorkflowService.js';
 
-export type PrepareVisualChangeAgentHandoffFailureCode = 'workflow-invalid'|'workflow-inactive'|'workflow-restored'|'acceptance-drift'|'baseline-drift'|'evidence-unavailable'|'reference-not-evaluable'|'unsupported-context'|'context-mismatch'|'bounded-context-failed'|'invalid-handoff';
+export type PrepareVisualChangeAgentHandoffFailureCode = 'workflow-invalid'|'workflow-inactive'|'workflow-restored'|'acceptance-drift'|'baseline-drift'|'evidence-unavailable'|'reference-not-evaluable'|'unsupported-context'|'context-mismatch'|'bounded-context-failed'|'invalid-handoff'|'review-required'|'workflow-accepted'|'workflow-abandoned';
 export type PrepareVisualChangeAgentHandoffResult = { ok: true; handoff: VisualChangeAgentHandoff } | { ok: false; code: PrepareVisualChangeAgentHandoffFailureCode; reason: string };
 export interface PrepareVisualChangeAgentHandoffInput { projectRoot: string; workflowManifestPath: string; context: { status: 'none' } | { status: 'unsupported-version'; foundSchemaVersion: string } | { status: 'valid'; artifact: BoundedAgentContextArtifact }; generatedAt: string; producerVersion: string; coordination?: VisualChangeExternalCoordination }
 
@@ -26,6 +26,7 @@ function contextCoherent(context: BoundedAgentContextArtifact, scope: VisualChan
 }
 
 export async function prepareVisualChangeAgentHandoff(input: PrepareVisualChangeAgentHandoffInput): Promise<PrepareVisualChangeAgentHandoffResult> {
+  const preflight = await readProjectVisualChangeCycle(input.projectRoot, input.workflowManifestPath); if (!preflight.ok) return fail('workflow-invalid', preflight.reason); if (preflight.cycle === 'review-required') return fail('review-required', 'the latest attempt requires explicit human review before another handoff'); if (preflight.cycle === 'accepted') return fail('workflow-accepted', 'accepted workflow is terminal'); if (preflight.cycle === 'abandoned') return fail('workflow-abandoned', 'abandoned workflow is terminal');
   const ready = await prepareActiveVisualChangeWorkflow(input.projectRoot, input.workflowManifestPath);
   if (!ready.ok) {
     const mapping: Record<string, PrepareVisualChangeAgentHandoffFailureCode> = { 'activation-not-configured': 'workflow-inactive', 'activation-already-restored': 'workflow-restored', 'acceptance-drift': 'acceptance-drift', 'baseline-drift': 'baseline-drift', 'workflow-invalid': 'workflow-invalid', 'workflow-reference-invalid': 'evidence-unavailable' };

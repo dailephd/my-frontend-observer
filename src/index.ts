@@ -608,6 +608,10 @@ export { VISUAL_CHANGE_AGENT_HANDOFF_KIND, VISUAL_CHANGE_AGENT_HANDOFF_VERSION, 
 export { serializeVisualChangeAgentHandoffCanonical } from './domain/visualChangeAgentHandoffSerialization.js';
 export type { PrepareVisualChangeAgentHandoffInput, PrepareVisualChangeAgentHandoffResult, PrepareVisualChangeAgentHandoffFailureCode } from './application/visualChangeAgentHandoffService.js';
 export { prepareVisualChangeAgentHandoff } from './application/visualChangeAgentHandoffService.js';
+export { deriveVisualChangeCycleState } from './domain/visualChangeCycle.js';
+export type { VisualChangeCycleState } from './domain/visualChangeCycle.js';
+export { reviewVisualChangeWorkflow, recordVisualChangeGovernance } from './application/visualChangeReviewService.js';
+export type { VisualChangeReviewDecision, VisualChangeReviewResult, VisualChangeGovernanceInput, VisualChangeGovernanceResult } from './application/visualChangeReviewService.js';
 
 export type {
   MaterializeVisualAnnotationReferenceOptions,

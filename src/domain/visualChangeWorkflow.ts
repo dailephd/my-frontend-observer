@@ -78,6 +78,7 @@ export interface VisualChangeWorkflowArtifact {
   provenance: { createdAt: string };
 }
 
+
 export type VisualChangeWorkflowValidationResult = { valid: true } | { valid: false; reason: string };
 const ok: VisualChangeWorkflowValidationResult = { valid: true };
 const bad = (reason: string): VisualChangeWorkflowValidationResult => ({ valid: false, reason });

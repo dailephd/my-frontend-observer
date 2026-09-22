@@ -8,6 +8,8 @@ import { readVisualAnnotationArtifact } from '../artifacts/visualAnnotationArtif
 import { readVisualChangeWorkflowArtifact } from '../artifacts/visualChangeWorkflowArtifactReader.js';
 import type { VisualChangeAcceptanceSelection, VisualChangeActivationRecord, VisualChangeAttemptRecord, VisualChangeCheckSnapshot, VisualChangeScope, VisualChangeWorkflowArtifact } from '../domain/visualChangeWorkflow.js';
 import { MAX_VISUAL_CHANGE_ATTEMPTS } from '../domain/visualChangeWorkflow.js';
+import { deriveVisualChangeCycleState } from '../domain/visualChangeCycle.js';
+import { buildReferenceCorrectionAttemptIdentity, buildReferenceCorrectionReviewIdentity } from '../domain/referenceCorrectionIdentity.js';
 import { buildVisualChangeAttemptIdentity } from '../domain/visualChangeWorkflowIdentity.js';
 import { readAliasCatalog } from '../projectWorkflow/aliasCatalog.js';
 import type { CheckWorkflowResult } from '../projectWorkflow/checkResult.js';
@@ -23,7 +25,7 @@ export type VisualChangeProjectWorkflowFailureCode =
   | 'activation-not-configured' | 'activation-already-restored' | 'baseline-drift'
   | 'acceptance-drift' | 'check-scope-mismatch' | 'candidate-not-produced'
   | 'duplicate-attempt' | 'attempt-limit-reached' | 'project-config-write-failure'
-  | 'workflow-persistence-failure' | 'partial-state-failure';
+  | 'workflow-persistence-failure' | 'partial-state-failure' | 'review-required' | 'workflow-accepted' | 'workflow-abandoned';
 export interface VisualChangeProjectWorkflowFailure { ok: false; code: VisualChangeProjectWorkflowFailureCode; reason: string; check?: CheckWorkflowResult }
 
 type Persist = typeof persistVisualChangeWorkflow;
@@ -149,6 +151,9 @@ async function verifiedContractIds(projectRoot: string, config: FrontendObserver
 async function persistRevision(projectRoot: string, source: VisualChangeWorkflowArtifact, options: Omit<PersistVisualChangeWorkflowOptions, 'scope'|'outputLocation'|'cwd'|'supersedesVisualChangeWorkflowId'>, deps: VisualChangeProjectWorkflowDependencies) {
   return deps.persist({ scope: source.scope, attempts: source.attempts, ...(source.activation === undefined ? {} : { activation: source.activation }), ...(source.governanceResults === undefined ? {} : { governanceResults: source.governanceResults }), ...options, supersedesVisualChangeWorkflowId: source.visualChangeWorkflowId, outputLocation: visualChangeOutputLocation(), cwd: projectRoot });
 }
+export async function persistProjectVisualChangeWorkflowRevision(projectRoot: string, source: VisualChangeWorkflowArtifact, options: Omit<PersistVisualChangeWorkflowOptions, 'scope'|'outputLocation'|'cwd'|'supersedesVisualChangeWorkflowId'>) {
+  return persistRevision(path.resolve(projectRoot), source, options, defaults);
+}
 
 export interface ProjectVisualChangeMutationInput { projectRoot: string; workflowManifestPath: string; dependencies?: Partial<VisualChangeProjectWorkflowDependencies> }
 export async function activateProjectVisualChangeWorkflow(input: ProjectVisualChangeMutationInput) {
@@ -216,8 +221,9 @@ export function projectVisualChangeCheckSnapshot(result: CheckWorkflowResult & {
   };
 }
 
-export interface RunProjectVisualChangeCheckInput extends ProjectVisualChangeMutationInput { coordination?: VisualChangeAttemptRecord['coordination']; referenceCorrectionAttemptId?: string }
+export interface RunProjectVisualChangeCheckInput extends ProjectVisualChangeMutationInput { coordination?: VisualChangeAttemptRecord['coordination'] }
 export interface ActiveVisualChangeWorkflowContext { projectRoot: string; workflow: VisualChangeWorkflowArtifact & { activation: VisualChangeActivationRecord }; workflowManifestPath: string; config: FrontendObserverProjectConfig; baselineAlias: string; verifiedContractIds: { baselineId?: string; changeId?: string } }
+export async function readProjectVisualChangeCycle(projectRootInput: string, workflowManifestPath: string) { const loaded = await loadWorkflow(path.resolve(projectRootInput), workflowManifestPath); return loaded.ok ? { ok: true as const, workflow: loaded.artifact, cycle: deriveVisualChangeCycleState(loaded.artifact) } : loaded; }
 
 /** One readiness owner for canonical check recording and on-demand handoff preparation. */
 export async function prepareActiveVisualChangeWorkflow(projectRootInput: string, workflowManifestPath: string): Promise<{ ok: true; context: ActiveVisualChangeWorkflowContext } | VisualChangeProjectWorkflowFailure> {
@@ -240,7 +246,7 @@ export async function prepareActiveVisualChangeWorkflow(projectRootInput: string
 }
 
 export async function runProjectVisualChangeCheck(input: RunProjectVisualChangeCheckInput) {
-  const deps = dependencies(input.dependencies); const readiness = await prepareActiveVisualChangeWorkflow(input.projectRoot, input.workflowManifestPath); if (!readiness.ok) return readiness;
+  const deps = dependencies(input.dependencies); const preflight = await readProjectVisualChangeCycle(input.projectRoot, input.workflowManifestPath); if (!preflight.ok) return preflight; if (preflight.cycle === 'review-required') return failure('review-required', 'the latest attempt requires explicit human review before another check'); if (preflight.cycle === 'accepted') return failure('workflow-accepted', 'accepted workflow is terminal'); if (preflight.cycle === 'abandoned') return failure('workflow-abandoned', 'abandoned workflow is terminal'); const readiness = await prepareActiveVisualChangeWorkflow(input.projectRoot, input.workflowManifestPath); if (!readiness.ok) return readiness;
   const { projectRoot, workflow, baselineAlias: alias, verifiedContractIds: ids } = readiness.context;
   const result = await deps.check(projectRoot, alias);
   if (result.baseline === undefined || result.candidate === undefined) return failure('candidate-not-produced', 'canonical check did not produce both baseline and candidate observations; no attempt was recorded', result);
@@ -250,11 +256,20 @@ export async function runProjectVisualChangeCheck(input: RunProjectVisualChangeC
   const attemptId = buildVisualChangeAttemptIdentity(workflow.visualChangeRequestId, result.candidate.observationId);
   if (workflow.attempts.some((attempt) => attempt.visualChangeAttemptId === attemptId)) return failure('duplicate-attempt', 'this candidate observation is already recorded in workflow history', result);
   if (workflow.attempts.length >= MAX_VISUAL_CHANGE_ATTEMPTS) return failure('attempt-limit-reached', `workflow already contains ${MAX_VISUAL_CHANGE_ATTEMPTS} attempts`, result);
+  let referenceCorrectionAttemptId: string | undefined;
+  if (workflow.scope.entryMode === 'reference' && workflow.scope.baselineContract !== undefined && readiness.context.config.acceptance?.contract !== undefined) {
+    const baselineManifest = manifestAt(projectRoot, workflow.scope.baselineContract.artifactPath); const changeManifest = manifestAt(projectRoot, readiness.context.config.acceptance.contract.changeArtifact);
+    const baseline = baselineManifest === undefined ? undefined : await readPersistentBaselineContract(baselineManifest); const change = changeManifest === undefined ? undefined : await readPerChangeContract(changeManifest);
+    if (baseline?.ok && change?.ok && baseline.contract.sourceObservation.observationId === workflow.scope.baselineObservation.observationId) {
+      const reviewId = buildReferenceCorrectionReviewIdentity(workflow.scope.approvedReference.referenceRequestId, workflow.scope.baselineObservation.observationId, baseline.contract.baselineId, baseline.contract.clauses, change.contract.contractId, change.contract.clauses, workflow.scope.bindings);
+      referenceCorrectionAttemptId = buildReferenceCorrectionAttemptIdentity(reviewId, result.candidate.observationId);
+    }
+  }
   const attempt: VisualChangeAttemptRecord = {
     visualChangeAttemptId: attemptId, ...(workflow.attempts.length === 0 ? {} : { priorVisualChangeAttemptId: workflow.attempts[workflow.attempts.length - 1]!.visualChangeAttemptId }),
     candidateObservation: { artifactId: result.candidate.observationId, observationId: result.candidate.observationId, requestId: result.candidate.requestId, artifactPath: result.candidate.artifactPath },
     check: projectVisualChangeCheckSnapshot(result as CheckWorkflowResult & { baseline: NonNullable<CheckWorkflowResult['baseline']>; candidate: NonNullable<CheckWorkflowResult['candidate']> }, { ...(ids.baselineId === undefined ? {} : { activeBaselineContractId: ids.baselineId }), ...(ids.changeId === undefined ? {} : { activeChangeContractId: ids.changeId }) }),
-    ...(input.coordination === undefined ? {} : { coordination: input.coordination }), ...(input.referenceCorrectionAttemptId === undefined ? {} : { referenceCorrectionAttemptId: input.referenceCorrectionAttemptId }), review: { state: 'pending' }, recordedAt: deps.now(),
+    ...(input.coordination === undefined ? {} : { coordination: input.coordination }), ...(referenceCorrectionAttemptId === undefined ? {} : { referenceCorrectionAttemptId }), review: { state: 'pending' }, recordedAt: deps.now(),
   };
   const persisted = await deps.persist({ scope: workflow.scope, attempts: [...workflow.attempts, attempt], activation: workflow.activation, ...(workflow.governanceResults === undefined ? {} : { governanceResults: workflow.governanceResults }), supersedesVisualChangeWorkflowId: workflow.visualChangeWorkflowId, outputLocation: visualChangeOutputLocation(), cwd: projectRoot });
   return persisted.ok ? { ...persisted, check: result, attempt } : failure('workflow-persistence-failure', 'canonical check evidence exists, but visual-change attempt history was not updated', result);

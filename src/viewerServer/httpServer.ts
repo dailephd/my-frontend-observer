@@ -26,6 +26,7 @@ import type { StartRuntimeVisualChangeFailureReason } from './runtimeVisualChang
 import { approveReferenceFromViewer, parseApproveReferenceRequest } from './referenceApproval.js';
 import { parseStartReferenceVisualChangeRequest, startReferenceVisualChangeFromViewer } from './referenceVisualChangeAuthoring.js';
 import { parsePrepareVisualChangeHandoffRequest, prepareVisualChangeHandoffFromViewer } from './visualChangeHandoff.js';
+import { parseVisualChangeGovernanceRequest, parseVisualChangeReviewRequest, recordVisualChangeGovernanceFromViewer, reviewVisualChangeFromViewer } from './visualChangeReview.js';
 import type { ContextSessionState } from './context.js';
 import type { ViewerAliasMetadata } from './viewerService.js';
 
@@ -155,6 +156,10 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
     if (method !== 'POST') { res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' }); res.end('method not allowed'); return; }
     await handleVisualChangeHandoff(req, res, state, handoffMatch[1] as string); return;
   }
+  const reviewMatch = VISUAL_CHANGE_REVIEW_PATH.exec(pathname);
+  if (reviewMatch) { if (method !== 'POST') { res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' }); res.end('method not allowed'); return; } await handleVisualChangeReview(req, res, state, reviewMatch[1] as string); return; }
+  const governanceMatch = VISUAL_CHANGE_GOVERNANCE_PATH.exec(pathname);
+  if (governanceMatch) { if (method !== 'POST') { res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' }); res.end('method not allowed'); return; } await handleVisualChangeGovernance(req, res, state, governanceMatch[1] as string); return; }
   const promoteMatch = ANNOTATION_PROMOTE_CONTRACT_PATH.exec(pathname);
   if (promoteMatch) {
     if (method !== 'POST') {
@@ -507,6 +512,8 @@ const ANNOTATION_SAVE_PATH = '/api/annotations';
 const VISUAL_CHANGE_CREATE_PATH = '/api/visual-changes';
 const VISUAL_CHANGE_MUTATION_PATH = /^\/api\/visual-changes\/([^/]+)\/(activate|check|restore-acceptance)$/;
 const VISUAL_CHANGE_HANDOFF_PATH = /^\/api\/visual-changes\/([^/]+)\/prepare-handoff$/;
+const VISUAL_CHANGE_REVIEW_PATH = /^\/api\/visual-changes\/([^/]+)\/review$/;
+const VISUAL_CHANGE_GOVERNANCE_PATH = /^\/api\/visual-changes\/([^/]+)\/governance$/;
 const ANNOTATION_PROMOTE_CONTRACT_PATH = /^\/api\/annotations\/([^/]+)\/promote-contract$/;
 const ANNOTATION_START_VISUAL_CHANGE_PATH = /^\/api\/annotations\/([^/]+)\/start-visual-change$/;
 
@@ -616,11 +623,21 @@ async function handleVisualChangeHandoff(req: IncomingMessage, res: ServerRespon
   try {
     const result = await prepareVisualChangeHandoffFromViewer(state.root, authoring.session, state.context, handle, parsed.request);
     if (!result.ok) {
-      const status = result.code === 'unknown-handle' ? 404 : result.code === 'wrong-family' || ['workflow-inactive','workflow-restored','acceptance-drift','baseline-drift','unsupported-context','context-mismatch'].includes(result.code) ? 409 : result.code === 'invalid-handoff' ? 500 : 422;
+      const status = result.code === 'unknown-handle' ? 404 : result.code === 'wrong-family' || ['workflow-inactive','workflow-restored','acceptance-drift','baseline-drift','unsupported-context','context-mismatch','review-required','workflow-accepted','workflow-abandoned'].includes(result.code) ? 409 : result.code === 'invalid-handoff' ? 500 : 422;
       writeJsonBody(res, 'POST', status, { ok: false, code: result.code, error: result.error }); return;
     }
     writeJsonBody(res, 'POST', 200, { ok: true, handoff: result.handoff });
   } catch { writeJsonError(res, 'POST', 500, 'visual-change handoff preparation failed'); }
+}
+
+async function handleVisualChangeReview(req: IncomingMessage, res: ServerResponse, state: ViewerServerState, encodedHandle: string): Promise<void> {
+  const authoring = await readAuthoringJsonRequest(req, res, state); if (authoring === undefined) return; const parsed = parseVisualChangeReviewRequest(authoring.parsed); if (!parsed.ok) { writeJsonError(res, 'POST', 400, parsed.error); return; } const handle = decodeURIComponentSafe(encodedHandle); if (handle === undefined) { writeJsonError(res, 'POST', 400, 'malformed workflow handle'); return; }
+  try { const result = await reviewVisualChangeFromViewer(state.root, authoring.session, handle, parsed.decision); if (!result.ok) { if ('status' in result) writeJsonError(res, 'POST', result.status, result.error); else writeJsonBody(res, 'POST', result.code === 'persistence-failure' ? 500 : 409, { ok: false, code: result.code, error: result.reason }); return; } writeJsonBody(res, 'POST', 200, result); } catch { writeJsonError(res, 'POST', 500, 'visual-change review failed'); }
+}
+
+async function handleVisualChangeGovernance(req: IncomingMessage, res: ServerResponse, state: ViewerServerState, encodedHandle: string): Promise<void> {
+  const authoring = await readAuthoringJsonRequest(req, res, state); if (authoring === undefined) return; const parsed = parseVisualChangeGovernanceRequest(authoring.parsed); if (!parsed.ok) { writeJsonError(res, 'POST', 400, parsed.error); return; } const handle = decodeURIComponentSafe(encodedHandle); if (handle === undefined) { writeJsonError(res, 'POST', 400, 'malformed workflow handle'); return; }
+  try { const result = await recordVisualChangeGovernanceFromViewer(state.root, authoring.session, handle, parsed.request); if (!result.ok) { if ('status' in result) writeJsonError(res, 'POST', result.status, result.error); else writeJsonBody(res, 'POST', result.code === 'persistence-failure' ? 500 : 409, { ok: false, code: result.code, error: result.reason }); return; } writeJsonBody(res, 'POST', 200, result); } catch { writeJsonError(res, 'POST', 500, 'visual-change governance recording failed'); }
 }
 
 /**
