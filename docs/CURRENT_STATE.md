@@ -2,9 +2,17 @@
 
 v0.9.1 is released and published as `@dailephd/my-frontend-observer@0.9.1`.
 
-v0.10 version-start planning is now frozen in
-`docs/plans/v0.10-implementation-plan.md`. No v0.10 production implementation
-has started, and the package remains `0.9.1`.
+v0.10 implementation Batches 1-8 are complete on the feature branch. Local
+integrated real-Chromium acceptance and the installed-package workflow smoke
+passed against one exact pre-version-bump candidate. The source repository now
+implements actual-frontend and approved-reference visual entry, explicit
+activation, bounded coding-agent handoff, immutable check attempts,
+correction, human acceptance, and separately recorded governance results.
+
+The published npm package remains `0.9.1`; v0.10 is not released. Hardened
+documentation/implementation-completeness reconciliation, formal cross-platform
+and security pre-release readiness, release preparation, version bump, tag,
+and publication remain pending separate authorization.
 v0.9 (Human Visual Annotation and Design-Intent Capture) adds structured visual
 annotation to the project-aware viewer. It passed integrated real-Chromium
 acceptance and final exact-candidate pre-release readiness on Windows, Linux
@@ -1199,9 +1207,9 @@ npm package.
   implemented.) A CLI surface for Prompt 8's correction workflow specifically
   remains unimplemented by design (programmatic-only, library-level use is
   the current supported entry point) - see "v0.7 Prompt 8 status" above.
-  The full graphical human-LLM workflow (v0.10) remains future and
-  unimplemented. Structured visual annotation (v0.9) is implemented and
-  released as `0.9.0` - see "v0.9 status" above.
+  The full graphical human-LLM workflow (v0.10) is implemented on the feature
+  branch and remains unreleased. Structured visual annotation (v0.9) is
+  implemented and released as `0.9.0` - see "v0.9 status" above.
 
 ## Next target
 
@@ -1237,8 +1245,8 @@ for the completeness audit, and
 for the cross-platform readiness validation that preceded this release.
 
 v0.9 (structured visual annotation) is released as
-`@dailephd/my-frontend-observer@0.9.0` - see "v0.9 status" above. The next
-target is v0.10 (full graphical human-LLM workflow). Its version-start
-architecture and batch plan are frozen in
-`docs/plans/v0.10-implementation-plan.md`; implementation has not started - see
-`docs/ROADMAP.md`.
+`@dailephd/my-frontend-observer@0.9.0` - see "v0.9 status" above. v0.10's
+eight implementation batches are complete on the feature branch, while the
+published package remains `0.9.1`. The next action is the separate hardened
+documentation and implementation-completeness reconciliation, followed later
+by formal readiness and release preparation under separate authorization.

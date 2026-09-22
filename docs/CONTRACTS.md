@@ -14,6 +14,27 @@ The v0.10 Batch 3 Viewer exposes bounded workflow inspection at `GET /api/visual
 
 The v0.10 Batch 4 actual-frontend entry route promotes only explicitly selected, saved, confirmed, canonically promotable runtime intent without activating project acceptance. It freezes the exact resulting contract instance with the saved annotation, source observation, and configured persistent baseline contract through the Batch 2 workflow-creation owner. Repeated equivalent starts share `contractRequestId` while receiving fresh contract, visual-change request, and workflow instance identities. Activation remains a later explicit workflow action.
 
+Reference entry freezes only an exact approved reference, an annotation authored
+against that exact instance, an exact baseline observation, and explicitly
+authored valid bindings. Adequacy, compatibility, complete required-region
+coverage, and canonical binding evaluation fail closed. Imported references,
+inferred bindings, and session bindings are not executable workflow scope.
+
+`VisualChangeAgentHandoff` uses handoff kind
+`my-frontend-observer/visual-change-agent-handoff` and version `1.0.0`. It is a
+bounded non-artifact transfer contract and is never discovered or persisted as
+Observer evidence. It includes confirmed scope, Observer-owned bounded context,
+optional unchanged supplemental context, the exact post-edit check instruction,
+and optional non-authoritative orchestrator correlation.
+
+The current cycle is derived from the latest attempt. A pending attempt blocks
+another check or handoff until explicit correction, acceptance, or abandonment.
+Only the latest canonical PASS may be accepted. Review changes only the latest
+attempt's review object in a fresh workflow revision. Governance references may
+be recorded only after acceptance and only for already-persisted canonical
+approval results; they do not perform approval or change project configuration.
+No existing evidence schema changed for v0.10.
+
 ## Current contracts
 
 The observation artifact contract is published in the current
@@ -504,7 +525,7 @@ blockers; on the canonical worktree, `npm run typecheck`, `npm run lint`,
 `npm test` (627 tests), `npm run test:browser` (120 tests), `npm run
 test:security`, `npm run build`, and `npm run check:docs` all pass.
 
-## v0.7 external visual-reference contract direction (released as `0.7.0`; v0.8 viewer released as `0.8.0`; v0.9 released as `0.9.0`; v0.10 still future)
+## v0.7 external visual-reference contract direction (preserved through implemented, unreleased v0.10)
 
 External visual-reference support is released as package version `0.7.0`
 (see "v0.7 Prompt 1" through "v0.7 Prompt 8" below for the exact contract).
@@ -512,9 +533,8 @@ The exact public type names, artifact kinds, schema versions, persistence
 layout, and command/programmatic entry points were designed during v0.7
 implementation from current repository precedent, following the constraints
 below. v0.8 (released as package version `0.8.0` - see
-`docs/CURRENT_STATE.md`) has preserved them. v0.9 (implemented, not yet
-released) preserves them too. v0.10 remains future and must continue to
-preserve them.
+`docs/CURRENT_STATE.md`) has preserved them. v0.9 is released and preserves
+them. The implemented, unreleased v0.10 workflow preserves them too.
 
 **Distinct evidence domain**: an external reference is desired-design evidence,
 not an `ObservationArtifact` and not the "before" side of a v0.4

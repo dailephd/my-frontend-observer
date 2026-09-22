@@ -27,6 +27,15 @@ producer in the my-dev-kit ecosystem. Its durable product purpose is defined
 in [docs/PROJECT_DESCRIPTION.md](docs/PROJECT_DESCRIPTION.md). Whole-ecosystem
 composition is documented in the [my-dev-kit ecosystem guide](https://github.com/dailephd/my-dev-kit/blob/main/docs/ECOSYSTEM_DEVELOPMENT_WORKFLOWS.md), including the [command-surface compatibility map](https://github.com/dailephd/my-dev-kit/blob/main/docs/ECOSYSTEM_DEVELOPMENT_WORKFLOWS.md#915-command-surface-compatibility-map).
 
+v0.10 is implemented in this source repository but is not published. From a
+project-aware `view` session, a human can begin from an actual runtime capture
+or an approved reference, explicitly confirm structured visual intent, create
+and activate a frozen workflow, prepare a bounded handoff, let an external
+actor edit source, run the canonical `check <baseline> --json`, request another
+correction or accept the latest PASS, and optionally record separately created
+governance results. Observer never edits source, and acceptance never silently
+approves a baseline or reference.
+
 ## Current status
 
 `v0.9.1`, PWA Hard-Gate Isolation and Reproducible Security Acceptance, is the
@@ -350,7 +359,7 @@ Planning authorities:
 - [Project Milestones](docs/PROJECT_MILESTONES.md): complete ordered capability
   design and cross-milestone rules.
 - [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.9.1 are
-  released; v0.10 remains future.
+  released; v0.10 is implemented in the repository and remains unreleased.
 - [Current State](docs/CURRENT_STATE.md): retained scaffold and release state.
 
 No sibling ecosystem repository is a runtime dependency of the retained

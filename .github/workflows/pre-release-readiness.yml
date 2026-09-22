@@ -128,6 +128,10 @@ jobs:
         shell: bash
         run: node scripts/ci/runPackedV09AnnotationSmoke.mjs "${{ needs.candidate.outputs.tarball }}" --out v09-annotation-smoke-summary.json
 
+      - name: Packed v0.10 visual workflow smoke (installed tarball only, real Chromium)
+        shell: bash
+        run: node scripts/ci/runPackedV010WorkflowSmoke.mjs "${{ needs.candidate.outputs.tarball }}" --out v010-workflow-smoke-summary.json
+
       - uses: actions/upload-artifact@v4
         with:
           name: smoke-summary-${{ matrix.os }}
@@ -135,6 +139,7 @@ jobs:
             smoke-summary.json
             viewer-smoke-summary.json
             v09-annotation-smoke-summary.json
+            v010-workflow-smoke-summary.json
           if-no-files-found: error
 
   tutorial-readiness:

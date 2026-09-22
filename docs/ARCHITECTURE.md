@@ -1,5 +1,17 @@
 # Architecture
 
+## v0.10 visual workflow boundaries
+
+`VisualChangeWorkflowArtifact` (`1.0.0`) is the only new persisted v0.10
+family. It owns frozen scope, explicit activation/restoration, immutable
+attempt and review revisions, and optional references to governance results.
+The Viewer is the human workflow entry; `checkProject` remains the canonical
+evaluator. `VisualChangeAgentHandoff` (`1.0.0`) is a generated, non-persisted
+transfer contract. An external human or coding agent edits source. Optional
+orchestrator metadata is traceability only and Observer never imports or runs
+the orchestrator. Human acceptance is separate from baseline/reference
+governance and never rewrites prior workflow evidence.
+
 ## v0.8.1 project workflow
 
 Versioned project configuration (`1.0.0` compatibility plus current `1.1.0`
@@ -21,7 +33,7 @@ the workflow result remain in memory/presentation.
 ## Current package architecture
 
 The current repository is one published TypeScript ESM package
-(`@dailephd/my-frontend-observer@0.9.0`). The CLI remains
+(`@dailephd/my-frontend-observer@0.9.1`). The CLI remains
 `my-frontend-observer`; the npm scope does not rename the product or artifact
 identities.
 

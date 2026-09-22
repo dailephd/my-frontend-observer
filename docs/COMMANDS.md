@@ -1,5 +1,18 @@
 # Commands
 
+## v0.10 visual workflow operations
+
+v0.10 adds no CLI command. Project-aware `view` exposes the Visual changes
+workspace for actual/reference entry, explicit activation, bounded handoff,
+Run check, correction/review, acceptance, governance-result recording, and
+explicit restore. These are guarded local HTTP/UI actions backed by canonical
+application owners, not new command-line subcommands. Standalone `view --root`
+remains inspection-only.
+
+Every handoff names `check <baseline> --json` as the exact post-edit machine
+operation. It captures a fresh candidate and runs the existing canonical
+comparison, contract, and configured reference-fidelity owners.
+
 ## v0.8.1 common workflow
 
 `init --url <loopback-url> [--viewport WIDTHxHEIGHT] [--target id=selector ... | --targets-file file] [--default-baseline alias] [--replace]` creates schema-`1.1.0` project configuration; schema `1.0.0` remains readable and forbids `acceptance`. Schema `1.1.0` may add exactly:

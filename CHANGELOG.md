@@ -2,7 +2,12 @@
 
 ## [Unreleased]
 
-Future development.
+Implemented the unreleased v0.10 full visual human-LLM frontend-change
+workflow in the source repository: actual/reference visual entry, frozen and
+explicitly activated workflow scope, bounded external-agent handoff, immutable
+canonical check attempts, correction, PASS-only human acceptance, and separate
+governance-result recording. Added integrated Chromium acceptance and an
+installed-package v0.10 workflow smoke while preserving package version 0.9.1.
 
 ## 0.9.1 - 2026-09-21
 
