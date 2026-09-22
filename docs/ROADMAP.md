@@ -944,10 +944,10 @@ product/package behavior while proving the stronger test-isolation invariant.
 
 ## v0.10 — Full Visual Human–LLM Frontend Change Workflow
 
-Current status: implementation complete; unreleased. The next gates are
-hardened documentation/implementation-completeness reconciliation, formal
-pre-release readiness, release preparation, and publication only after
-explicit approval. The frozen implementation authority remains
+Current status: implementation complete and documentation-reconciled;
+unreleased. Formal pre-release readiness is next, followed by release
+preparation and publication only after explicit approval. The frozen
+implementation authority remains
 `docs/plans/v0.10-implementation-plan.md`.
 
 Objective/problem: complete the visual communication branch by combining the

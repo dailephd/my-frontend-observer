@@ -132,7 +132,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
     return;
   }
 
-  // v0.9 Batch 2/5/6: POST exists for exactly three authoring routes. Every other path keeps the read-only GET/HEAD method set.
+  // Project-aware POST routes are enumerated explicitly below. Every other path keeps the read-only GET/HEAD method set.
   if (pathname === ANNOTATION_SAVE_PATH) {
     if (method !== 'POST') {
       res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' });

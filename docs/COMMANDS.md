@@ -961,12 +961,13 @@ Options:
 - `--help` — show `view` usage.
 
 The server binds only to `127.0.0.1` (never `0.0.0.0`), serves only the
-built viewer application assets plus the bounded, read-only `/api/*`
+built viewer application assets plus bounded `/api/*`
 endpoints described above, and never exposes the supplied evidence root as a
 generic static directory or arbitrary filesystem path. With `--root` it
-accepts no write methods and writes nothing. Without `--root`, the only
-writes are the three v0.9 authoring routes above, which create new immutable
-artifacts and never modify existing ones. On success,
+accepts no write methods and writes nothing. Without `--root`, the guarded
+project-aware authoring routes create only new immutable artifacts and workflow
+revisions through canonical owners; they never edit target source or rewrite
+existing evidence. On success,
 prints the viewer URL and keeps running (serving the viewer) until
 interrupted. On invalid syntax, a missing/non-directory `--root`, an
 invalid `--port`, an invalid `--bindings-file`, an invalid `--context-file`

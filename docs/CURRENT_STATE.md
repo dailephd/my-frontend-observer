@@ -9,10 +9,11 @@ implements actual-frontend and approved-reference visual entry, explicit
 activation, bounded coding-agent handoff, immutable check attempts,
 correction, human acceptance, and separately recorded governance results.
 
-The published npm package remains `0.9.1`; v0.10 is not released. Hardened
-documentation/implementation-completeness reconciliation, formal cross-platform
-and security pre-release readiness, release preparation, version bump, tag,
-and publication remain pending separate authorization.
+The published npm package remains `0.9.1`; v0.10 is not released. The hardened
+documentation/implementation-completeness reconciliation is complete. Formal
+cross-platform and security pre-release readiness is the next separate stage;
+release preparation, version bump, tag, and publication remain pending separate
+authorization.
 v0.9 (Human Visual Annotation and Design-Intent Capture) adds structured visual
 annotation to the project-aware viewer. It passed integrated real-Chromium
 acceptance and final exact-candidate pre-release readiness on Windows, Linux
@@ -1246,7 +1247,8 @@ for the cross-platform readiness validation that preceded this release.
 
 v0.9 (structured visual annotation) is released as
 `@dailephd/my-frontend-observer@0.9.0` - see "v0.9 status" above. v0.10's
-eight implementation batches are complete on the feature branch, while the
-published package remains `0.9.1`. The next action is the separate hardened
-documentation and implementation-completeness reconciliation, followed later
-by formal readiness and release preparation under separate authorization.
+eight implementation batches and the hardened documentation/implementation-
+completeness reconciliation are complete on the feature branch, while the
+published package remains `0.9.1`. The next action is formal pre-release
+readiness with exact-candidate cross-platform and security validation. Release
+preparation remains a later, separately authorized stage.

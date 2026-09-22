@@ -219,10 +219,12 @@ protect against other software already running as the same user.
   `content-type: application/json`, identity `content-encoding` only, a
   256 KiB (`262144` byte) body limit, valid JSON, and a closed request shape
   with unknown fields rejected.
-- **Exactly three `POST` routes**: `POST /api/annotations`,
+- **Exactly three v0.9 `POST` routes**: v0.9 introduced
+  `POST /api/annotations`,
   `POST /api/annotations/:handle/promote-contract`, and
   `POST /api/annotations/:handle/materialize-reference`. `PUT`, `PATCH`, and
-  `DELETE` stay unsupported everywhere. Any other `POST` returns `405`.
+  `DELETE` stay unsupported everywhere. The implemented, unreleased v0.10
+  routes extend this same gate as described below.
 - **No permissive CORS**: no `Access-Control-Allow-*` headers are sent, so a
   page from any other origin cannot read the capability or send a JSON
   authoring request. A real-Chromium test proves this for all three routes.
@@ -248,6 +250,26 @@ protect against other software already running as the same user.
 - **Temporary directories**: evidence discovery skips writer temporary
   `.tmp-*` directories, so a partially written artifact is never presented as
   evidence.
+
+## v0.10 Visual Change authoring boundary (implemented, unreleased)
+
+v0.10 extends only the project-aware guarded `POST` surface. It adds explicit
+reference approval and actual/reference workflow creation, plus workflow
+activation, canonical check, restore, handoff preparation, human review, and
+recording of already-existing governance results. Every route reuses the same
+exact Host, Origin, memory-only capability token, JSON content type,
+compression rejection, body limit, closed request-shape, serialized-write,
+path-containment, and `no-store` controls. Standalone `view --root` remains
+read-only, and the service worker continues to cache no `/api/` response.
+
+The additional surface does not grant source-edit or external-process
+authority. Observer never edits target source, executes a coding agent, invokes
+my-dev-kit, or contacts/controls an orchestrator. Optional orchestrator fields
+are bounded traceability metadata only. Handoffs are generated in memory and
+are not a persisted evidence family. Review acceptance requires the latest
+canonical Observer check to be PASS; it cannot approve a baseline/reference or
+restore project acceptance. Governance recording can reference only a
+separately persisted canonical approval and does not perform that approval.
 
 ## Not yet addressed
 

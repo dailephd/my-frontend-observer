@@ -121,9 +121,10 @@ longer depends on prior test order or persistent browser state, and
 production PWA defect. No production behavior changed. The frozen concrete plan
 is `docs/plans/v0.9.1-implementation-plan.md`.
 
-v0.10 remains future and unimplemented and completes the visual human-LLM
-workflow on top of the v0.9 annotation model and v0.8.1 high-level acceptance
-surface.
+v0.10 is implemented and documentation-reconciled on the feature branch but
+remains unreleased. It completes the visual human-LLM workflow on top of the
+v0.9 annotation model and v0.8.1 high-level acceptance surface. Formal
+exact-candidate cross-platform and security pre-release readiness is next.
 
 The revised dependency path reaches practical coding-agent use before graphical
 interaction and keeps later visual work on the same canonical evidence system:
@@ -141,7 +142,8 @@ runtime observation and stable identity
 → structured visual annotation on runtime screenshots and external references
   (released as 0.9.0)
 → full visual human-LLM workflow with actual-frontend-driven and
-  reference-driven entry modes (planned v0.10)
+  reference-driven entry modes (implemented, documentation-reconciled,
+  unreleased v0.10)
 ```
 
 The implemented reference model is not a second observer or a
@@ -184,6 +186,9 @@ Repository-local authorities and navigation:
   precondition proof, and isolated-gate validation. It does not authorize a
   production PWA change unless the corrected experiment demonstrates a real
   product defect.
+- [plans/v0.10-implementation-plan.md](plans/v0.10-implementation-plan.md)
+  is the frozen planning authority for the completed v0.10 implementation;
+  current evidence and reconciliation are recorded in the v0.10 reports.
 - [reports/v0.9-architecture-retrieval.md](reports/v0.9-architecture-retrieval.md)
   preserves the bounded current-source retrieval that grounded the v0.9 plan.
 

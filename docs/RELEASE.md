@@ -2,9 +2,10 @@
 
 The unreleased v0.10 implementation candidate must pass the installed-package
 `runPackedV010WorkflowSmoke.mjs` alongside the existing packed smokes during a
-later formal readiness workflow. Batch 8 implementation completion does not
-prepare or authorize a release; version bump, cross-platform readiness, tag,
-and publication remain separate explicitly authorized stages.
+later formal readiness workflow. Implementation and hardened documentation/
+completeness reconciliation are complete, but they do not prepare or authorize
+a release; version bump, cross-platform readiness, tag, and publication remain
+separate explicitly authorized stages.
 
 `v0.9.1` (PWA Hard-Gate Isolation and Reproducible Security Acceptance) is
 released and published to npm as `@dailephd/my-frontend-observer`. This

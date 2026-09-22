@@ -381,7 +381,7 @@ lab code in this repository - those remain separate sibling-repository
 responsibilities per the Milestone 6 ownership split in
 `docs/PROJECT_MILESTONES.md`.
 
-## v0.7 (released as `0.7.0`), v0.8 (released as `0.8.0`), and planned v0.9–v0.10 reference-evidence architecture constraints
+## v0.7-v0.10 reference-evidence architecture constraints
 
 The external visual-reference capability (v0.7) is released as package
 version `0.7.0` - see "v0.7 Prompt 1" through "v0.7 Prompt 8" below for the
@@ -390,9 +390,9 @@ extends the existing v0.1-v0.6 evidence architecture rather than becoming a
 UI-only feature or a parallel visual-comparison stack. v0.8 (interactive
 viewer) is released as package version `0.8.0`. v0.9 (structured visual
 annotation) is released as package version `0.9.0` - see "v0.9 visual
-annotation architecture" below. v0.10 (full graphical human-LLM
-workflow) remains future and unimplemented. The constraints below applied to
-v0.9 and still apply to v0.10.
+annotation architecture" below. v0.10 (full graphical human-LLM workflow) is
+implemented and documentation-reconciled but remains unreleased. The
+constraints below apply to both v0.9 and v0.10.
 
 The evidence domains remain distinct:
 

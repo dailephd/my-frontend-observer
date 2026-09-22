@@ -152,13 +152,15 @@ Starts one Node HTTP server bound only to 127.0.0.1, serving the built
 React + TypeScript + Vite viewer application (and its PWA manifest/service
 worker) plus its local evidence API. With --root the session is read-only
 and never writes to the supplied evidence root. Without --root the
-project-aware session also enables local visual-annotation authoring: the
-viewer page may save immutable annotations, promote selected confirmed
-runtime intent into a change contract, and materialize selected confirmed
-reference intent into a new imported reference revision, all inside the
-project's managed evidence root. The server never edits target source,
-never approves baselines or references, never exposes the evidence root as
-a generic static directory, and never launches a browser observation. The
+project-aware session also enables local visual-annotation and Visual Change
+authoring: the viewer may create immutable annotations/contracts/references,
+explicitly approve an imported reference, create/activate/check a frozen
+workflow, prepare a non-persisted handoff, review attempts, and record already
+completed governance results. All writes stay inside managed project evidence
+and use canonical application owners. The server never edits target source,
+never automatically approves a baseline/reference or restores acceptance,
+never exposes the evidence root as a generic static directory, never launches a browser observation,
+and never launches a coding agent or orchestrator. The
 process keeps running (serving the viewer) until interrupted. On success,
 prints the viewer URL and exits only when the server stops. On invalid
 syntax, a missing/non-directory --root, an invalid --port, or a port

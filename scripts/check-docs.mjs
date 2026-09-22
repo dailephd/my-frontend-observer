@@ -37,4 +37,28 @@ if (!changelog.includes('[Unreleased]')) {
   throw new Error('CHANGELOG.md must contain an "[Unreleased]" section once unreleased implementation work exists in the repository.');
 }
 
+// Durable v0.10 reconciliation guards. These intentionally test status and
+// contract markers rather than exact prose so ordinary documentation editing
+// does not become coupled to this script.
+const currentState = await readFile('docs/CURRENT_STATE.md', 'utf8');
+const projectOverview = await readFile('docs/PROJECT_OVERVIEW.md', 'utf8');
+const architecture = await readFile('docs/ARCHITECTURE.md', 'utf8');
+const contracts = await readFile('docs/CONTRACTS.md', 'utf8');
+const readme = await readFile('README.md', 'utf8');
+const currentDocs = [currentState, projectOverview, architecture, readme].join('\n');
+if (/v0\.10[^\n]*(?:remains|is|still)[^\n]*(?:future|unimplemented)|v0\.10[^\n]*implementation has not started/i.test(currentDocs)) {
+  throw new Error('Current documentation must not describe the completed v0.10 implementation as future or unimplemented.');
+}
+if (!/v0\.10[\s\S]{0,240}implementation[\s\S]{0,120}complete/i.test(currentState)
+  || !/documentation[\s\S]{0,80}reconcil/i.test(currentState)
+  || !/pre-release readiness[\s\S]{0,120}(?:next|not yet|pending)/i.test(currentState)) {
+  throw new Error('CURRENT_STATE.md must distinguish complete v0.10 implementation/reconciliation from pending pre-release readiness.');
+}
+if (!/v0\.10[\s\S]{0,180}implementation complete[\s\S]{0,100}documentation-reconciled/i.test(roadmap)) {
+  throw new Error('ROADMAP.md must record v0.10 as implementation complete and documentation-reconciled.');
+}
+if (!contracts.includes('my-frontend-observer/visual-change-workflow') || !contracts.includes('my-frontend-observer/visual-change-agent-handoff')) {
+  throw new Error('CONTRACTS.md must retain the canonical v0.10 workflow and handoff contract markers.');
+}
+
 console.log(`Documentation check passed (${required.length} required files).`);
