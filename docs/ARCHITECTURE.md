@@ -33,7 +33,7 @@ the workflow result remain in memory/presentation.
 ## Current package architecture
 
 The current repository is one published TypeScript ESM package
-(`@dailephd/my-frontend-observer@0.9.1`). The CLI remains
+(`@dailephd/my-frontend-observer@0.10.0`). The CLI remains
 `my-frontend-observer`; the npm scope does not rename the product or artifact
 identities.
 
@@ -391,8 +391,8 @@ UI-only feature or a parallel visual-comparison stack. v0.8 (interactive
 viewer) is released as package version `0.8.0`. v0.9 (structured visual
 annotation) is released as package version `0.9.0` - see "v0.9 visual
 annotation architecture" below. v0.10 (full graphical human-LLM workflow) is
-implemented and documentation-reconciled but remains unreleased. The
-constraints below apply to both v0.9 and v0.10.
+released as package version `0.10.0`. The constraints below apply to both
+v0.9 and v0.10.
 
 The evidence domains remain distinct:
 
@@ -461,7 +461,7 @@ requested/expected-dependent/protected/preserved reuse, and the non-mutating
 Chromium/correlation boundaries all remain as constrained here. v0.8 (see
 "v0.8 Batch 1" through "v0.8 Batch 8" below) applied them unchanged, and so
 does the implemented v0.9 annotation layer. They continue to apply unchanged
-to the still-future v0.10 work.
+to the released v0.10 workflow.
 
 The exact public artifact names, schema versions, persistence layout, supported
 image formats, coordinate model, requirement/tolerance primitives, and fidelity
