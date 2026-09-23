@@ -41,6 +41,11 @@ export interface EvidenceMetadataRecord {
   annotationSourceKind?: 'runtime-observation' | 'external-reference';
   annotationItemCount?: number;
   annotationConfirmedItemCount?: number;
+  visualChangeRequestId?: string;
+  visualChangeEntryMode?: 'actual-frontend' | 'reference';
+  visualChangeAttemptCount?: number;
+  latestVisualChangeCheckStatus?: string;
+  latestVisualChangeReviewState?: string;
 }
 
 /** Ephemeral, non-persisted wrapper around one already-validated domain artifact, for the on-demand full-artifact API. Not a new evidence schema - selects/wraps existing canonical fields only. */
@@ -221,6 +226,26 @@ export async function buildMetadataRecord(classified: ClassifiedRecord, relative
         annotationConfirmedItemCount: artifact.items.filter((item) => item.interpretation.state === 'confirmed').length,
         media: [{ role: 'annotation-overlay', available, ...(available ? {} : { reason: 'annotation overlay file not found on disk' }) }],
         relatedIds,
+      };
+    }
+
+    case 'visual-change-workflow': {
+      const latest = artifact.attempts.at(-1);
+      return {
+        ...base,
+        logicalId: artifact.visualChangeWorkflowId,
+        schemaVersion: artifact.schemaVersion,
+        producerVersion: artifact.producer.version,
+        visualChangeRequestId: artifact.visualChangeRequestId,
+        visualChangeEntryMode: artifact.scope.entryMode,
+        visualChangeAttemptCount: artifact.attempts.length,
+        ...(latest === undefined ? {} : { latestVisualChangeCheckStatus: latest.check.status, latestVisualChangeReviewState: latest.review.state }),
+        relatedIds: {
+          baselineObservationId: artifact.scope.baselineObservation.observationId,
+          annotationId: artifact.scope.annotationId,
+          ...(artifact.scope.entryMode === 'reference' ? { selectedReferenceId: artifact.scope.approvedReference.referenceId } : {}),
+          ...(artifact.supersedesVisualChangeWorkflowId === undefined ? {} : { supersedesVisualChangeWorkflowId: artifact.supersedesVisualChangeWorkflowId }),
+        },
       };
     }
   }

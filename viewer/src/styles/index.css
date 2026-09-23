@@ -87,6 +87,17 @@ body {
   min-height: 0;
 }
 
+.app-shell__body--visual-change { display: block; }
+.visual-change-workspace { display: grid; grid-template-columns: minmax(220px, 28%) 1fr; gap: 1rem; }
+.visual-change-list, .attempt-timeline { padding-left: 1.25rem; }
+.visual-change-list button { width: 100%; text-align: left; padding: .5rem; margin-bottom: .35rem; }
+.visual-change-list button[aria-pressed='true'] { border-color: var(--accent); }
+.visual-change-detail dl { display: grid; grid-template-columns: minmax(10rem, 14rem) 1fr; gap: .3rem 1rem; }
+.visual-change-detail dd { margin: 0; overflow-wrap: anywhere; }
+.visual-change-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+.visual-change-actions button { padding: .45rem .7rem; }
+.attempt-timeline > li { border: 1px solid var(--border); border-radius: 6px; padding: .75rem; margin-bottom: .75rem; }
+
 .app-shell__nav,
 .app-shell__workspace,
 .app-shell__details {

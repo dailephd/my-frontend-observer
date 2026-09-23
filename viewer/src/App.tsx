@@ -8,6 +8,8 @@ import { InstallButton } from './components/InstallButton.js';
 import { EvidenceList } from './components/EvidenceList.js';
 import { ArtifactPreview } from './components/ArtifactPreview.js';
 import { ContextWorkspace } from './components/ContextWorkspace.js';
+import { VisualChangeWorkspace } from './components/VisualChangeWorkspace.js';
+import { useAuthoringSession } from './hooks/useAuthoringSession.js';
 
 /**
  * Batch 1 established the shell/session foundation. Batch 2 adds the
@@ -17,9 +19,11 @@ import { ContextWorkspace } from './components/ContextWorkspace.js';
 export default function App() {
   const status = useViewerStatus();
   const index = useEvidenceIndex();
+  const authoring = useAuthoringSession();
   const [selected, setSelected] = useState<EvidenceMetadataRecord | undefined>(undefined);
   const detail = useArtifactDetail(selected?.supportState === 'supported' ? selected.handle : undefined);
-  const [viewMode, setViewMode] = useState<'evidence' | 'context'>('evidence');
+  const [viewMode, setViewMode] = useState<'evidence' | 'context' | 'visual-change'>('evidence');
+  const [requestedWorkflowId, setRequestedWorkflowId] = useState<string>();
 
   function navigateToRecord(record: EvidenceMetadataRecord): void {
     setSelected(record);
@@ -40,13 +44,14 @@ export default function App() {
           <button type="button" aria-pressed={viewMode === 'context'} onClick={() => setViewMode('context')}>
             Bounded context
           </button>
+          <button type="button" aria-pressed={viewMode === 'visual-change'} onClick={() => setViewMode('visual-change')}>Visual changes</button>
         </nav>
         <InstallButton />
       </header>
 
       <StatusBanner status={status} />
 
-      {viewMode === 'context' ? (
+      {viewMode === 'visual-change' ? <div className="app-shell__body app-shell__body--visual-change"><main className="app-shell__workspace"><VisualChangeWorkspace index={index} authoring={authoring} refresh={index.refresh} onNavigate={navigateToRecord} {...(requestedWorkflowId === undefined ? {} : { requestedWorkflowId })} onRequestedWorkflowResolved={() => setRequestedWorkflowId(undefined)}/></main></div> : viewMode === 'context' ? (
         <div className="app-shell__body app-shell__body--context">
           <main className="app-shell__workspace app-shell__workspace--context" aria-label="Bounded agent context inspection">
             <ContextWorkspace index={index.state === 'available' ? index.records : []} onNavigate={navigateToRecord} />
@@ -59,7 +64,7 @@ export default function App() {
           </nav>
 
           <main className="app-shell__workspace" aria-label="Visual inspection workspace">
-            <ArtifactPreview selected={selected} detail={detail} />
+            <ArtifactPreview selected={selected} detail={detail} onVisualChangeCreated={(workflowId) => { void index.refresh().then(() => { setRequestedWorkflowId(workflowId); setViewMode('visual-change'); }); }} onReferenceApproved={(referenceId) => { void index.refresh().then((next) => { const exact = next.state === 'available' ? next.records.find((record) => record.family === 'external-reference-approved' && record.logicalId === referenceId) : undefined; if (exact !== undefined) setSelected(exact); }); }} />
           </main>
 
           <aside className="app-shell__details" aria-label="Details and diagnostics">

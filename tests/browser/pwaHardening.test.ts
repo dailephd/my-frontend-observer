@@ -181,11 +181,17 @@ describe('PWA server-down safety - self-contained hard-gate experiment', () => {
       const page = await context.newPage();
       await page.goto(server.url);
 
-      // 1. Registration is ready with an active worker for this viewer origin.
-      const registrationState = await page.evaluate(async () => {
-        const registration = await navigator.serviceWorker.ready;
-        return { active: registration.active !== null, scope: registration.scope };
+      // 1. Prove the built Viewer initiated registration and reached an active
+      // worker through bounded observable state. Chromium on some Windows hosts
+      // can leave `navigator.serviceWorker.ready` pending even after the exact
+      // registration is active; registration state is the safety fact needed
+      // here, while client control remains a separate assertion below.
+      const readRegistrationState = () => page.evaluate(async () => {
+        const registration = await navigator.serviceWorker.getRegistration();
+        return { active: registration != null && registration.active !== null, scope: registration?.scope ?? null };
       });
+      await expect.poll(readRegistrationState, { timeout: 10_000 }).toEqual({ active: true, scope: `${origin}/` });
+      const registrationState = await readRegistrationState();
       expect(registrationState.active).toBe(true);
       expect(registrationState.scope).toBe(`${origin}/`);
 

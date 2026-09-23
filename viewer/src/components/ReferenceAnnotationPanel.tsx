@@ -76,11 +76,15 @@ function materializationItemLabel(item: VisualAnnotationItem): string {
 function ReferenceMaterializationSection({
   draft,
   materialization,
+  mutationBlocked,
   onMaterialize,
+  onSelectionChange,
 }: {
   draft: AnnotationDraft;
   materialization: ReferenceMaterializationState;
+  mutationBlocked: boolean;
   onMaterialize: (itemIds: string[]) => void;
+  onSelectionChange: (itemIds: string[]) => void;
 }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   useEffect(() => {
@@ -96,7 +100,8 @@ function ReferenceMaterializationSection({
   const listItems = draft.items.filter(isReferenceMaterializationListItem);
   const materializableIds = new Set(listItems.filter((item) => referenceMaterializationStatus(item).materializable).map((item) => item.annotationItemId));
   const effectiveSelection = selectedIds.filter((id) => materializableIds.has(id));
-  const canMaterialize = saved && effectiveSelection.length > 0 && materialization.state !== 'materializing';
+  useEffect(() => onSelectionChange(effectiveSelection), [effectiveSelection.join('|'), onSelectionChange]);
+  const canMaterialize = saved && effectiveSelection.length > 0 && materialization.state !== 'materializing' && !mutationBlocked;
 
   return (
     <div className="annotation-panel__promotion annotation-panel__materialization">
@@ -196,7 +201,9 @@ export function ReferenceAnnotationPanel({
   onCancelChanges,
   onSave,
   materialization,
+  materializationBlocked,
   onMaterialize,
+  onIntentSelectionChange,
 }: {
   session: AuthoringSessionState;
   saved: SourceAnnotationsState;
@@ -213,7 +220,9 @@ export function ReferenceAnnotationPanel({
   onSave: () => void;
   /** v0.9 Batch 6: materialization state for the currently loaded saved annotation. */
   materialization: ReferenceMaterializationState;
+  materializationBlocked: boolean;
   onMaterialize: (itemIds: string[]) => void;
+  onIntentSelectionChange: (itemIds: string[]) => void;
 }) {
   const [associationRelationshipIndex, setAssociationRelationshipIndex] = useState('');
   const [proposedRegionId, setProposedRegionId] = useState('');
@@ -588,7 +597,7 @@ export function ReferenceAnnotationPanel({
         </div>
       )}
 
-      {editable ? <ReferenceMaterializationSection draft={draft} materialization={materialization} onMaterialize={onMaterialize} /> : null}
+      {editable ? <ReferenceMaterializationSection draft={draft} materialization={materialization} mutationBlocked={materializationBlocked} onMaterialize={onMaterialize} onSelectionChange={onIntentSelectionChange} /> : null}
     </section>
   );
 }

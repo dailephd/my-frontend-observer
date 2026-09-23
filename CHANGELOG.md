@@ -2,7 +2,15 @@
 
 ## [Unreleased]
 
-Future development.
+## 0.10.0 - 2026-09-23
+
+Shipped the full Visual Change workflow in the project-aware Viewer. People
+can start from an actual frontend or approved reference, confirm and explicitly
+activate scope, and prepare a bounded coding-agent handoff. Immutable check
+attempts support correction; human acceptance requires the latest canonical
+check to PASS, while governance remains separate. Installed-package and Viewer
+support are included. Security and PWA boundaries remain intact: Observer does
+not edit source or grant automatic approval.
 
 ## 0.9.1 - 2026-09-21
 

@@ -5,10 +5,13 @@ import { readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
 import { startViewer, type StartViewerOptions, type StartViewerResult } from '../../src/viewerServer/viewerService.js';
-import { projectConfigPath, projectEvidenceRoot, projectReferencesRoot } from '../../src/projectWorkflow/projectPaths.js';
+import { aliasCatalogPath, projectConfigPath, projectEvidenceRoot, projectReferencesRoot } from '../../src/projectWorkflow/projectPaths.js';
 import { initializeFrontendObserverProject } from '../../src/application/projectWorkflowService.js';
 import { readExternalReferenceArtifact } from '../../src/artifacts/externalReferenceArtifactReader.js';
 import type { ExternalReferenceArtifact } from '../../src/domain/externalReference.js';
+import type { ObservationArtifact } from '../../src/domain/schema.js';
+import { ALIAS_CATALOG_SCHEMA_VERSION, writeAliasCatalog } from '../../src/projectWorkflow/aliasCatalog.js';
+import { writeObservationArtifact } from '../../src/artifacts/artifactWriter.js';
 import { writeReferenceCandidateFixture } from '../support/evidenceFixtures.js';
 import { TestResources } from '../support/annotationAuthoringFixtures.js';
 
@@ -54,15 +57,25 @@ async function candidateProject(options: { configureReferenceAcceptance?: boolea
   if (!initialized.ok) throw new Error(initialized.message);
   const root = projectEvidenceRoot(projectRoot);
   const fixture = await writeReferenceCandidateFixture(root);
+  let baseline: { observationId: string; artifactRoot: string } | undefined;
   if (options.configureReferenceAcceptance === true) {
     const config = JSON.parse(await readFile(projectConfigPath(projectRoot), 'utf8')) as Record<string, unknown>;
     const approvedArtifact = path.relative(projectRoot, fixture.approvedRoot).split(path.sep).join('/');
     await writeFile(projectConfigPath(projectRoot), `${JSON.stringify({ ...config, schemaVersion: '1.1.0', acceptance: { reference: { approvedArtifact } } }, null, 2)}\n`);
+    const observation = JSON.parse(await readFile(path.join(fixture.compatibleCandidateRoot, 'manifest.json'), 'utf8')) as ObservationArtifact;
+    const requestId = 'a'.repeat(64);
+    const observationId = `${requestId}-${'b'.repeat(32)}`;
+    if (observation.screenshot.state !== 'available') throw new Error('expected compatible baseline screenshot');
+    const screenshotBytes = await readFile(path.join(fixture.compatibleCandidateRoot, observation.screenshot.value.path));
+    const written = await writeObservationArtifact({ ...observation, requestId, observationId }, screenshotBytes, { cwd: root });
+    if (!written.ok) throw new Error('expected project baseline observation write to succeed');
+    baseline = { observationId, artifactRoot: written.artifactRoot };
+    await writeAliasCatalog(aliasCatalogPath(projectRoot), { schemaVersion: ALIAS_CATALOG_SCHEMA_VERSION, observations: { baseline: { observationId, requestId, relativeArtifactDir: path.relative(root, written.artifactRoot).split(path.sep).join('/') } } });
   }
   const result = await startViewer({ root, authoringProjectRoot: projectRoot, port: 0, assetsRoot: viewerDist } satisfies StartViewerOptions);
   if (!result.ok) throw new Error(`viewer failed to start: ${JSON.stringify(result.diagnostics)}`);
   openViewers.push(result);
-  return { projectRoot, root, fixture, viewer: result };
+  return { projectRoot, root, fixture, baseline, viewer: result };
 }
 
 async function newPage(): Promise<Page> {
@@ -389,4 +402,116 @@ describe('reference intent materialization from the reference workspace', () => 
     expect(forced).toEqual([422, 422, 422]);
     expect(await referenceDirs(projectRoot)).toEqual(dirsBefore);
   });
+
+  it('MATERIALIZATION + APPROVAL PROOF: keeps import and approval explicit, immutable, superseding, and acceptance-neutral', async () => {
+    const { viewer, projectRoot, fixture } = await candidateProject({ configureReferenceAcceptance: true });
+    const configBefore = await readFile(projectConfigPath(projectRoot));
+    const sourceBefore = await snapshotDirs([fixture.importedRoot, fixture.approvedRoot]);
+    const page = await newPage();
+    await openReference(page, viewer.url, 'external-reference-approved');
+    const sidebar = page.locator('rect[data-region-id="sidebar"]').first();
+    await sidebar.click();
+    await setMode(page, 'Rectangle');
+    await dragSource(page, { x: 0, y: 60 }, { x: 120, y: 300 });
+    await button(page, 'Refine selected region sidebar');
+    await confirmIntent(page);
+    const itemId = await selectedItemId(page);
+    await save(page);
+    const result = await materialize(page, [itemId]);
+    expect(result.status).toBe(201);
+    expect(result.json.lifecycle).toBe('imported');
+    const importedId = result.json.referenceId as string;
+    const importedRoot = path.join(projectReferencesRoot(projectRoot), importedId);
+    const importedBefore = await snapshotDirs([importedRoot]);
+    expect((await readReference(projectRoot, importedId)).supersedesReferenceId).toBe(fixture.approvedReferenceId);
+    expect((await readFile(projectConfigPath(projectRoot))).equals(configBefore)).toBe(true);
+    expect(await snapshotDirs([fixture.importedRoot, fixture.approvedRoot])).toEqual(sourceBefore);
+
+    await page.reload();
+    const importedItem = page.locator('.evidence-list__item--supported', { hasText: importedId });
+    await importedItem.waitFor({ timeout: 10_000 });
+    await importedItem.click();
+    const [approvalResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname.endsWith('/approve') && response.request().method() === 'POST'),
+      page.getByRole('button', { name: 'Approve reference' }).click(),
+    ]);
+    expect(approvalResponse.status()).toBe(201);
+    const approved = (await approvalResponse.json()) as { referenceId: string; referenceRequestId: string };
+    expect(approved.referenceId).not.toBe(importedId);
+    const imported = await readReference(projectRoot, importedId);
+    const approvedArtifact = await readReference(projectRoot, approved.referenceId);
+    expect(imported.lifecycle.state).toBe('imported');
+    expect(approvedArtifact.lifecycle.state).toBe('approved');
+    expect(approved.referenceRequestId).toBe(imported.referenceRequestId);
+    expect(approvedArtifact.supersedesReferenceId).toBe(fixture.approvedReferenceId);
+    expect(await snapshotDirs([importedRoot])).toEqual(importedBefore);
+    expect(await snapshotDirs([fixture.importedRoot, fixture.approvedRoot])).toEqual(sourceBefore);
+    expect((await readFile(projectConfigPath(projectRoot))).equals(configBefore)).toBe(true);
+    await page.locator('.evidence-list__item--selected', { hasText: approved.referenceId }).waitFor();
+  });
+
+  it('ACCEPTANCE GATE: creates and explicitly activates an exact reference-mode workflow without running a check', async () => {
+    const { viewer, projectRoot, fixture, baseline } = await candidateProject({ configureReferenceAcceptance: true });
+    const page = await newPage();
+    await openReference(page, viewer.url, 'external-reference-approved');
+
+    const intentRegion = page.locator('rect[data-region-id="sidebar"]').first();
+    await intentRegion.click();
+    await setMode(page, 'Rectangle');
+    await dragSource(page, { x: 0, y: 60 }, { x: 120, y: 300 });
+    await button(page, 'Refine selected region sidebar');
+    await confirmIntent(page);
+    const itemId = await selectedItemId(page);
+    const saved = await save(page);
+    await page.locator(`[data-materialization-item-id="${itemId}"] input[type="checkbox"]`).check();
+
+    if (baseline === undefined) throw new Error('expected a project baseline');
+    await page.locator('#reference-candidate-select').selectOption({ label: baseline.observationId });
+    await page.locator('rect[data-target-name="sidebar"]').first().click();
+    await page.getByRole('button', { name: 'Add workflow binding' }).click();
+    const header = page.locator('rect[data-region-id="header"]').first();
+    await header.focus();
+    await header.press('Enter');
+    await expect.poll(() => header.getAttribute('aria-pressed')).toBe('true');
+    await page.locator('rect[data-target-name="header"]').first().click();
+    await page.getByRole('button', { name: 'Add workflow binding' }).click();
+    const bindingSection = page.getByRole('region', { name: 'Reference visual change authoring' });
+    await bindingSection.locator('li', { hasText: /header.*header/ }).waitFor();
+    await bindingSection.locator('li', { hasText: /sidebar.*sidebar/ }).waitFor();
+
+    const configBefore = await readFile(projectConfigPath(projectRoot));
+    const [createdResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname.endsWith('/start-visual-change') && response.request().method() === 'POST'),
+      page.getByRole('button', { name: 'Create reference visual change' }).click(),
+    ]);
+    expect(createdResponse.status()).toBe(201);
+    const created = (await createdResponse.json()) as { visualChangeRequestId: string; visualChangeWorkflowId: string; referenceId: string; bindingCount: number };
+    expect(created.referenceId).toBe(fixture.approvedReferenceId);
+    expect(created.bindingCount).toBe(2);
+    await page.getByRole('heading', { name: 'Visual changes' }).waitFor({ timeout: 10_000 });
+    await page.locator('dd', { hasText: 'reference' }).waitFor();
+    await page.locator('dd', { hasText: saved.annotationId }).waitFor();
+    await page.locator('dd', { hasText: fixture.approvedReferenceId }).waitFor();
+    await page.locator('dd', { hasText: baseline.observationId }).waitFor();
+    await page.getByText('No attempts recorded.').waitFor();
+    await page.locator('dd', { hasText: 'not activated' }).waitFor();
+    expect((await readFile(projectConfigPath(projectRoot))).equals(configBefore)).toBe(true);
+
+    const [activationResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname.endsWith('/activate') && response.request().method() === 'POST'),
+      page.getByRole('button', { name: 'Activate' }).click(),
+    ]);
+    expect(activationResponse.status()).toBe(200);
+    const activated = (await activationResponse.json()) as { visualChangeWorkflowId: string };
+    expect(activated.visualChangeWorkflowId).not.toBe(created.visualChangeWorkflowId);
+    await page.locator('dd', { hasText: activated.visualChangeWorkflowId }).waitFor();
+    await page.getByText(created.visualChangeRequestId, { exact: true }).waitFor();
+    await page.getByText('No attempts recorded.').waitFor();
+    await page.locator('dd', { hasText: 'none' }).first().waitFor();
+    const config = JSON.parse(await readFile(projectConfigPath(projectRoot), 'utf8')) as { acceptance: { reference: { approvedArtifact: string; bindingsFile?: string } } };
+    expect(config.acceptance.reference.approvedArtifact).toBe(path.relative(projectRoot, fixture.approvedRoot).split(path.sep).join('/'));
+    const activatedManifest = JSON.parse(await readFile(path.join(projectRoot, '.frontend-observer', 'evidence', 'visual-changes', activated.visualChangeWorkflowId, 'manifest.json'), 'utf8')) as { activation: { after: { bindingsFile: string } } };
+    expect(config.acceptance.reference.bindingsFile).toBe(activatedManifest.activation.after.bindingsFile);
+    expect(config.acceptance.reference.bindingsFile).toMatch(/bindings\.json$/);
+  }, 60_000);
 });

@@ -7,6 +7,7 @@ import type { RuntimeAnnotationDraft } from '../hooks/useRuntimeAnnotationDraft.
 import { ANNOTATION_NOTE_MAX_LENGTH } from '../annotation/annotationGeometry.js';
 import { AnnotationSessionNotice, DraftLifecycleSection, SavedAnnotationList } from './AnnotationPanelSections.js';
 import type { ContractPromotionState } from '../hooks/useAnnotationContractPromotion.js';
+import type { RuntimeVisualChangeStartState } from '../hooks/useRuntimeVisualChangeStart.js';
 import {
   CONTRACT_TOLERANCE_KINDS,
   EMPTY_RUNTIME_INTENT_FORM,
@@ -173,10 +174,14 @@ function RuntimeContractPromotionSection({
   draft,
   promotion,
   onPromote,
+  visualChangeStart,
+  onCreateVisualChange,
 }: {
   draft: RuntimeAnnotationDraft;
   promotion: ContractPromotionState;
   onPromote: (itemIds: string[], activateForCheck: boolean) => void;
+  visualChangeStart: RuntimeVisualChangeStartState;
+  onCreateVisualChange: (itemIds: string[]) => void;
 }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activate, setActivate] = useState(false);
@@ -194,7 +199,8 @@ function RuntimeContractPromotionSection({
   const changeItems = draft.items.filter((item) => item.interpretation.state === 'confirmed' && item.interpretation.intent.kind === 'change');
   const promotableIds = new Set(changeItems.filter((item) => runtimePromotionStatus(item).promotable).map((item) => item.annotationItemId));
   const effectiveSelection = selectedIds.filter((id) => promotableIds.has(id));
-  const canPromote = saved && effectiveSelection.length > 0 && promotion.state !== 'promoting';
+  const mutationPending = promotion.state === 'promoting' || visualChangeStart.state === 'starting';
+  const canPromote = saved && effectiveSelection.length > 0 && !mutationPending;
 
   return (
     <div className="annotation-panel__promotion">
@@ -240,6 +246,7 @@ function RuntimeContractPromotionSection({
       <button type="button" disabled={!canPromote} onClick={() => onPromote(effectiveSelection, activate)}>
         Promote selected to change contract
       </button>
+      <button type="button" disabled={!canPromote} onClick={() => onCreateVisualChange(effectiveSelection)}>{visualChangeStart.state === 'starting' ? 'Creating visual change…' : 'Create visual change'}</button>
       {promotion.state === 'promoting' ? (
         <p className="annotation-panel__status" role="status">
           Promoting…
@@ -262,6 +269,8 @@ function RuntimeContractPromotionSection({
           {promotion.message}
         </p>
       ) : null}
+      {visualChangeStart.state === 'created' ? <p className="annotation-panel__status annotation-panel__status--success" role="status">Visual change created. Contract: {visualChangeStart.contractId}. Workflow: {visualChangeStart.visualChangeWorkflowId}. Activation: not yet activated.</p> : null}
+      {visualChangeStart.state === 'failed' ? <p className="annotation-panel__error" role="alert">{visualChangeStart.message}</p> : null}
     </div>
   );
 }
@@ -329,6 +338,8 @@ export function RuntimeAnnotationPanel({
   onConfirmSelected,
   promotion,
   onPromote,
+  visualChangeStart,
+  onCreateVisualChange,
 }: {
   session: AuthoringSessionState;
   saved: RuntimeAnnotationsState;
@@ -346,6 +357,8 @@ export function RuntimeAnnotationPanel({
   /** v0.9 Batch 5: promotion state for the currently loaded saved annotation. */
   promotion: ContractPromotionState;
   onPromote: (itemIds: string[], activateForCheck: boolean) => void;
+  visualChangeStart: RuntimeVisualChangeStartState;
+  onCreateVisualChange: (itemIds: string[]) => void;
 }) {
   const [relationshipKey, setRelationshipKey] = useState('');
   const editable = session.state === 'available';
@@ -457,7 +470,7 @@ export function RuntimeAnnotationPanel({
         </div>
       )}
 
-      {editable ? <RuntimeContractPromotionSection draft={draft} promotion={promotion} onPromote={onPromote} /> : null}
+      {editable ? <RuntimeContractPromotionSection draft={draft} promotion={promotion} onPromote={onPromote} visualChangeStart={visualChangeStart} onCreateVisualChange={onCreateVisualChange} /> : null}
     </section>
   );
 }

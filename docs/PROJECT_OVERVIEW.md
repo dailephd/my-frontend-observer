@@ -1,10 +1,8 @@
 # Project Overview
 
-The repository contains the complete v0.9.1 release, published as
-`@dailephd/my-frontend-observer@0.9.1` under the MIT license. It hardens
-independent PWA security acceptance while preserving the structured visual
-annotation added to the v0.8.1 project workflow (`init`,
-`capture`, `check`, project-aware `view`).
+The repository contains the v0.10.0 release of
+`@dailephd/my-frontend-observer` under the MIT license. It completes the Visual
+Change workflow on the project workflow (`init`, `capture`, `check`, Viewer).
 
 `my-frontend-observer` is the rendered browser/runtime evidence producer in
 the my-dev-kit ecosystem. It addresses the gap between source-level evidence
@@ -32,14 +30,15 @@ Comparison; v0.5, Executable Frontend Contracts and Explicit Change Scope;
 v0.6, Bounded Agent Context and Native my-dev-kit Ecosystem Integration;
 v0.7, End-to-End Coding-Agent Frontend Change Review; v0.8, Interactive
 Local Observation Viewer; v0.8.1, Project Workflow CLI and Human-Readable
-Evidence Aliases; and v0.9, Human Visual Annotation and Design-Intent Capture,
-are released and published to npm. The current package version is `0.9.1` as
+Evidence Aliases; v0.9, Human Visual Annotation and Design-Intent Capture; and
+v0.10.0, Full Visual Human–LLM Frontend Change Workflow, are released and
+published to npm. The current package version is `0.10.0` as
 `@dailephd/my-frontend-observer` (observation schema `1.2.0`, comparison schema
 `1.0.0`, frontend contract schema `1.0.0`, evaluation artifact schema `1.0.0`,
 bounded-agent-context schema `1.0.0`, external-reference schema `1.0.0`,
-visual annotation schema `1.0.0`). The released package was validated as a
-packed npm tarball in a clean consumer environment across Windows, Linux, and
-macOS.
+visual annotation schema `1.0.0`, visual-change workflow schema `1.0.0`,
+handoff `1.0.0`; Viewer protocol `1.3.0`). Exact-candidate readiness passed
+on Windows, Linux, and macOS.
 
 The released low-level command surface remains artifact-oriented: a real
 `observe` command launches Chromium, enforces loopback-only safety, captures
@@ -97,7 +96,7 @@ artifact identifiers during ordinary use. Existing low-level commands remain
 supported. The frozen plan is
 `docs/plans/v0.8.1-cli-usability-patch-plan.md`.
 
-The latest published release is v0.9.1. v0.9 added structured
+v0.9 added structured
 visual annotation to the project-aware viewer for both runtime observations and
 external references. People draw marks, explicitly associate them, and confirm
 structured intent. Selected confirmed runtime intent can become a normal
@@ -112,7 +111,7 @@ The repository-owned deterministic demo and its four tutorial scenarios
 with the release. They are release support and documentation, not product
 behavior, and they are not shipped in the npm package.
 
-The v0.9.1 maintenance release hardens the
+The v0.9.1 maintenance release hardened the
 PWA server-down hard acceptance test so the gate is reproducible from a fresh
 browser profile and fresh test-owned state. PWA hard/security acceptance no
 longer depends on prior test order or persistent browser state, and
@@ -121,9 +120,11 @@ longer depends on prior test order or persistent browser state, and
 production PWA defect. No production behavior changed. The frozen concrete plan
 is `docs/plans/v0.9.1-implementation-plan.md`.
 
-v0.10 remains future and unimplemented and completes the visual human-LLM
-workflow on top of the v0.9 annotation model and v0.8.1 high-level acceptance
-surface.
+v0.10.0 completes the Visual Change workflow on top of the v0.9 annotation
+model and v0.8.1 high-level acceptance surface. It supports actual-frontend
+and approved-reference entry, explicit activation, bounded coding-agent
+handoff, immutable correction history, PASS-only human acceptance, and
+separate governance. Installed-package and Viewer support are included.
 
 The revised dependency path reaches practical coding-agent use before graphical
 interaction and keeps later visual work on the same canonical evidence system:
@@ -141,7 +142,8 @@ runtime observation and stable identity
 → structured visual annotation on runtime screenshots and external references
   (released as 0.9.0)
 → full visual human-LLM workflow with actual-frontend-driven and
-  reference-driven entry modes (planned v0.10)
+  reference-driven entry modes (implemented, documentation-reconciled,
+  unreleased v0.10)
 ```
 
 The implemented reference model is not a second observer or a
@@ -184,6 +186,9 @@ Repository-local authorities and navigation:
   precondition proof, and isolated-gate validation. It does not authorize a
   production PWA change unless the corrected experiment demonstrates a real
   product defect.
+- [plans/v0.10-implementation-plan.md](plans/v0.10-implementation-plan.md)
+  is the frozen planning authority for the completed v0.10 implementation;
+  current evidence and reconciliation are recorded in the v0.10 reports.
 - [reports/v0.9-architecture-retrieval.md](reports/v0.9-architecture-retrieval.md)
   preserves the bounded current-source retrieval that grounded the v0.9 plan.
 

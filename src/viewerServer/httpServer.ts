@@ -19,6 +19,14 @@ import { parsePromoteAnnotationContractRequest, promoteAnnotationContractFromVie
 import type { PromoteAnnotationContractFailureReason } from './annotationContractPromotion.js';
 import { materializeAnnotationReferenceFromViewer, parseMaterializeAnnotationReferenceRequest } from './annotationReferenceMaterialization.js';
 import type { MaterializeAnnotationReferenceFailureReason } from './annotationReferenceMaterialization.js';
+import { createVisualChangeFromViewer, mutateVisualChangeFromViewer, parseCreateVisualChangeRequest, parseEmptyVisualChangeRequest } from './visualChangeAuthoring.js';
+import { getVisualChangeWorkflowView } from './evidence/visualChangeWorkflowView.js';
+import { parseStartRuntimeVisualChangeRequest, startRuntimeVisualChangeFromViewer } from './runtimeVisualChangeAuthoring.js';
+import type { StartRuntimeVisualChangeFailureReason } from './runtimeVisualChangeAuthoring.js';
+import { approveReferenceFromViewer, parseApproveReferenceRequest } from './referenceApproval.js';
+import { parseStartReferenceVisualChangeRequest, startReferenceVisualChangeFromViewer } from './referenceVisualChangeAuthoring.js';
+import { parsePrepareVisualChangeHandoffRequest, prepareVisualChangeHandoffFromViewer } from './visualChangeHandoff.js';
+import { parseVisualChangeGovernanceRequest, parseVisualChangeReviewRequest, recordVisualChangeGovernanceFromViewer, reviewVisualChangeFromViewer } from './visualChangeReview.js';
 import type { ContextSessionState } from './context.js';
 import type { ViewerAliasMetadata } from './viewerService.js';
 
@@ -124,7 +132,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
     return;
   }
 
-  // v0.9 Batch 2/5/6: POST exists for exactly three authoring routes. Every other path keeps the read-only GET/HEAD method set.
+  // Project-aware POST routes are enumerated explicitly below. Every other path keeps the read-only GET/HEAD method set.
   if (pathname === ANNOTATION_SAVE_PATH) {
     if (method !== 'POST') {
       res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' });
@@ -134,6 +142,24 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
     await handleAnnotationSave(req, res, state);
     return;
   }
+  if (pathname === VISUAL_CHANGE_CREATE_PATH) {
+    if (method !== 'POST') { res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' }); res.end('method not allowed'); return; }
+    await handleVisualChangeCreate(req, res, state); return;
+  }
+  const visualMutation = VISUAL_CHANGE_MUTATION_PATH.exec(pathname);
+  if (visualMutation) {
+    if (method !== 'POST') { res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' }); res.end('method not allowed'); return; }
+    await handleVisualChangeMutation(req, res, state, visualMutation[1] as string, visualMutation[2] as 'activate'|'check'|'restore-acceptance'); return;
+  }
+  const handoffMatch = VISUAL_CHANGE_HANDOFF_PATH.exec(pathname);
+  if (handoffMatch) {
+    if (method !== 'POST') { res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' }); res.end('method not allowed'); return; }
+    await handleVisualChangeHandoff(req, res, state, handoffMatch[1] as string); return;
+  }
+  const reviewMatch = VISUAL_CHANGE_REVIEW_PATH.exec(pathname);
+  if (reviewMatch) { if (method !== 'POST') { res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' }); res.end('method not allowed'); return; } await handleVisualChangeReview(req, res, state, reviewMatch[1] as string); return; }
+  const governanceMatch = VISUAL_CHANGE_GOVERNANCE_PATH.exec(pathname);
+  if (governanceMatch) { if (method !== 'POST') { res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' }); res.end('method not allowed'); return; } await handleVisualChangeGovernance(req, res, state, governanceMatch[1] as string); return; }
   const promoteMatch = ANNOTATION_PROMOTE_CONTRACT_PATH.exec(pathname);
   if (promoteMatch) {
     if (method !== 'POST') {
@@ -144,6 +170,11 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
     await handleAnnotationContractPromotion(req, res, state, promoteMatch[1] as string);
     return;
   }
+  const startVisualChangeMatch = ANNOTATION_START_VISUAL_CHANGE_PATH.exec(pathname);
+  if (startVisualChangeMatch) {
+    if (method !== 'POST') { res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' }); res.end('method not allowed'); return; }
+    await handleRuntimeVisualChangeStart(req, res, state, startVisualChangeMatch[1] as string); return;
+  }
   const materializeMatch = ANNOTATION_MATERIALIZE_REFERENCE_PATH.exec(pathname);
   if (materializeMatch) {
     if (method !== 'POST') {
@@ -153,6 +184,16 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
     }
     await handleAnnotationReferenceMaterialization(req, res, state, materializeMatch[1] as string);
     return;
+  }
+  const approveReferenceMatch = REFERENCE_APPROVE_PATH.exec(pathname);
+  if (approveReferenceMatch) {
+    if (method !== 'POST') { res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' }); res.end('method not allowed'); return; }
+    await handleReferenceApproval(req, res, state, approveReferenceMatch[1] as string); return;
+  }
+  const startReferenceMatch = REFERENCE_START_VISUAL_CHANGE_PATH.exec(pathname);
+  if (startReferenceMatch) {
+    if (method !== 'POST') { res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'POST' }); res.end('method not allowed'); return; }
+    await handleReferenceVisualChangeStart(req, res, state, startReferenceMatch[1] as string); return;
   }
   if (method === 'POST') {
     res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'GET, HEAD' });
@@ -418,6 +459,13 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
     writeJsonBody(res, method, 200, { ok: true, annotation: result.annotation, source: result.source });
     return;
   }
+  const visualChangeViewMatch = /^\/api\/visual-changes\/([^/]+)\/view$/.exec(pathname);
+  if (visualChangeViewMatch) {
+    const handle = decodeURIComponentSafe(visualChangeViewMatch[1] as string); if (handle === undefined) { writeJsonError(res, method, 400, 'malformed workflow handle'); return; }
+    const result = await getVisualChangeWorkflowView(state.root, handle);
+    if (!result.ok) { const status = result.reason === 'unknown-handle' ? 404 : 409; writeJsonError(res, method, status, result.reason === 'unknown-handle' ? 'unknown viewer artifact handle' : 'workflow view is not currently available'); return; }
+    writeJsonBody(res, method, 200, { ok: true, view: result.view }); return;
+  }
 
   if (pathname === '/api/context') {
     if (state.context.status === 'none') {
@@ -461,9 +509,17 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse, assetsRo
 }
 
 const ANNOTATION_SAVE_PATH = '/api/annotations';
+const VISUAL_CHANGE_CREATE_PATH = '/api/visual-changes';
+const VISUAL_CHANGE_MUTATION_PATH = /^\/api\/visual-changes\/([^/]+)\/(activate|check|restore-acceptance)$/;
+const VISUAL_CHANGE_HANDOFF_PATH = /^\/api\/visual-changes\/([^/]+)\/prepare-handoff$/;
+const VISUAL_CHANGE_REVIEW_PATH = /^\/api\/visual-changes\/([^/]+)\/review$/;
+const VISUAL_CHANGE_GOVERNANCE_PATH = /^\/api\/visual-changes\/([^/]+)\/governance$/;
 const ANNOTATION_PROMOTE_CONTRACT_PATH = /^\/api\/annotations\/([^/]+)\/promote-contract$/;
+const ANNOTATION_START_VISUAL_CHANGE_PATH = /^\/api\/annotations\/([^/]+)\/start-visual-change$/;
 
 const ANNOTATION_MATERIALIZE_REFERENCE_PATH = /^\/api\/annotations\/([^/]+)\/materialize-reference$/;
+const REFERENCE_APPROVE_PATH = /^\/api\/references\/([^/]+)\/approve$/;
+const REFERENCE_START_VISUAL_CHANGE_PATH = /^\/api\/references\/([^/]+)\/start-visual-change$/;
 
 const MATERIALIZE_FAILURE_STATUS: Record<MaterializeAnnotationReferenceFailureReason, number> = {
   'unknown-annotation-handle': 404,
@@ -491,6 +547,12 @@ const PROMOTE_FAILURE_STATUS: Record<PromoteAnnotationContractFailureReason, num
   'source-mismatch': 409,
   'invalid-selection': 422,
   'persistence-failed': 500,
+};
+const START_VISUAL_CHANGE_FAILURE_STATUS: Record<StartRuntimeVisualChangeFailureReason, number> = {
+  'unknown-annotation-handle': 404, 'source-unavailable': 404,
+  'not-an-annotation': 409, 'reference-annotation': 409, 'source-mismatch': 409, 'project-config-invalid': 409, 'contract-not-configured': 409, 'configured-baseline-invalid': 409, 'baseline-alias-missing': 409,
+  'invalid-selection': 422,
+  'contract-persistence-failed': 500, 'workflow-persistence-failed': 500,
 };
 
 const SAVE_FAILURE_STATUS: Record<SaveAnnotationFailureReason, number> = {
@@ -534,6 +596,48 @@ async function handleAnnotationSave(req: IncomingMessage, res: ServerResponse, s
   } catch {
     writeJsonError(res, 'POST', 500, 'the annotation could not be saved');
   }
+}
+
+async function handleVisualChangeCreate(req: IncomingMessage, res: ServerResponse, state: ViewerServerState): Promise<void> {
+  const authoring = await readAuthoringJsonRequest(req, res, state); if (authoring === undefined) return;
+  const parsed = parseCreateVisualChangeRequest(authoring.parsed); if (!parsed.ok) { writeJsonError(res, 'POST', 400, parsed.error); return; }
+  try { const result = await createVisualChangeFromViewer(authoring.session, parsed.scope); writeJsonBody(res, 'POST', result.status, result.body); }
+  catch { writeJsonError(res, 'POST', 500, 'visual-change workflow creation failed'); }
+}
+
+async function handleVisualChangeMutation(req: IncomingMessage, res: ServerResponse, state: ViewerServerState, encodedHandle: string, routeOperation: 'activate'|'check'|'restore-acceptance'): Promise<void> {
+  const authoring = await readAuthoringJsonRequest(req, res, state); if (authoring === undefined) return;
+  const parsed = parseEmptyVisualChangeRequest(authoring.parsed); if (!parsed.ok) { writeJsonError(res, 'POST', 400, parsed.error); return; }
+  const handle = decodeURIComponentSafe(encodedHandle); if (handle === undefined) { writeJsonError(res, 'POST', 400, 'malformed workflow handle'); return; }
+  try {
+    const result = await mutateVisualChangeFromViewer(state.root, authoring.session, handle, routeOperation === 'restore-acceptance' ? 'restore' : routeOperation);
+    if (!result.ok && 'error' in result) { writeJsonError(res, 'POST', result.status, result.error); return; }
+    writeJsonBody(res, 'POST', result.status, result.body);
+  } catch { writeJsonError(res, 'POST', 500, 'visual-change workflow operation failed'); }
+}
+
+async function handleVisualChangeHandoff(req: IncomingMessage, res: ServerResponse, state: ViewerServerState, encodedHandle: string): Promise<void> {
+  const authoring = await readAuthoringJsonRequest(req, res, state); if (authoring === undefined) return;
+  const parsed = parsePrepareVisualChangeHandoffRequest(authoring.parsed); if (!parsed.ok) { writeJsonError(res, 'POST', 400, parsed.error); return; }
+  const handle = decodeURIComponentSafe(encodedHandle); if (handle === undefined) { writeJsonError(res, 'POST', 400, 'malformed workflow handle'); return; }
+  try {
+    const result = await prepareVisualChangeHandoffFromViewer(state.root, authoring.session, state.context, handle, parsed.request);
+    if (!result.ok) {
+      const status = result.code === 'unknown-handle' ? 404 : result.code === 'wrong-family' || ['workflow-inactive','workflow-restored','acceptance-drift','baseline-drift','unsupported-context','context-mismatch','review-required','workflow-accepted','workflow-abandoned'].includes(result.code) ? 409 : result.code === 'invalid-handoff' ? 500 : 422;
+      writeJsonBody(res, 'POST', status, { ok: false, code: result.code, error: result.error }); return;
+    }
+    writeJsonBody(res, 'POST', 200, { ok: true, handoff: result.handoff });
+  } catch { writeJsonError(res, 'POST', 500, 'visual-change handoff preparation failed'); }
+}
+
+async function handleVisualChangeReview(req: IncomingMessage, res: ServerResponse, state: ViewerServerState, encodedHandle: string): Promise<void> {
+  const authoring = await readAuthoringJsonRequest(req, res, state); if (authoring === undefined) return; const parsed = parseVisualChangeReviewRequest(authoring.parsed); if (!parsed.ok) { writeJsonError(res, 'POST', 400, parsed.error); return; } const handle = decodeURIComponentSafe(encodedHandle); if (handle === undefined) { writeJsonError(res, 'POST', 400, 'malformed workflow handle'); return; }
+  try { const result = await reviewVisualChangeFromViewer(state.root, authoring.session, handle, parsed.decision); if (!result.ok) { if ('status' in result) writeJsonError(res, 'POST', result.status, result.error); else writeJsonBody(res, 'POST', result.code === 'persistence-failure' ? 500 : 409, { ok: false, code: result.code, error: result.reason }); return; } writeJsonBody(res, 'POST', 200, result); } catch { writeJsonError(res, 'POST', 500, 'visual-change review failed'); }
+}
+
+async function handleVisualChangeGovernance(req: IncomingMessage, res: ServerResponse, state: ViewerServerState, encodedHandle: string): Promise<void> {
+  const authoring = await readAuthoringJsonRequest(req, res, state); if (authoring === undefined) return; const parsed = parseVisualChangeGovernanceRequest(authoring.parsed); if (!parsed.ok) { writeJsonError(res, 'POST', 400, parsed.error); return; } const handle = decodeURIComponentSafe(encodedHandle); if (handle === undefined) { writeJsonError(res, 'POST', 400, 'malformed workflow handle'); return; }
+  try { const result = await recordVisualChangeGovernanceFromViewer(state.root, authoring.session, handle, parsed.request); if (!result.ok) { if ('status' in result) writeJsonError(res, 'POST', result.status, result.error); else writeJsonBody(res, 'POST', result.code === 'persistence-failure' ? 500 : 409, { ok: false, code: result.code, error: result.reason }); return; } writeJsonBody(res, 'POST', 200, result); } catch { writeJsonError(res, 'POST', 500, 'visual-change governance recording failed'); }
 }
 
 /**
@@ -611,6 +715,17 @@ async function handleAnnotationContractPromotion(req: IncomingMessage, res: Serv
   }
 }
 
+async function handleRuntimeVisualChangeStart(req: IncomingMessage, res: ServerResponse, state: ViewerServerState, encodedHandle: string): Promise<void> {
+  const authoring = await readAuthoringJsonRequest(req, res, state); if (authoring === undefined) return;
+  const handle = decodeURIComponentSafe(encodedHandle); if (handle === undefined) { writeJsonError(res, 'POST', 400, 'malformed annotation handle'); return; }
+  const request = parseStartRuntimeVisualChangeRequest(authoring.parsed); if (!request.ok) { writeJsonError(res, 'POST', 400, request.error); return; }
+  try {
+    const result = await startRuntimeVisualChangeFromViewer(state.root, authoring.session, handle, request.request);
+    if (!result.ok) { writeJsonBody(res, 'POST', START_VISUAL_CHANGE_FAILURE_STATUS[result.reason], { ok: false, code: result.reason, error: result.error, ...(result.contractId === undefined ? {} : { contractId: result.contractId }), ...(result.contractRequestId === undefined ? {} : { contractRequestId: result.contractRequestId }) }); return; }
+    writeJsonBody(res, 'POST', 201, { ok: true, contractId: result.contractId, contractRequestId: result.contractRequestId, clauseCount: result.clauseCount, visualChangeRequestId: result.visualChangeRequestId, visualChangeWorkflowId: result.visualChangeWorkflowId });
+  } catch { writeJsonError(res, 'POST', 500, 'the visual change could not be created'); }
+}
+
 /**
  * POST /api/annotations/:handle/materialize-reference (v0.9 Batch 6). Same
  * shared authoring gate, a closed `{ itemIds }` body, then the one canonical
@@ -654,6 +769,28 @@ async function handleAnnotationReferenceMaterialization(req: IncomingMessage, re
   } catch {
     writeJsonError(res, 'POST', 500, 'the reference revision could not be materialized');
   }
+}
+
+async function handleReferenceApproval(req: IncomingMessage, res: ServerResponse, state: ViewerServerState, encodedHandle: string): Promise<void> {
+  const authoring = await readAuthoringJsonRequest(req, res, state); if (authoring === undefined) return;
+  const handle = decodeURIComponentSafe(encodedHandle); if (handle === undefined) { writeJsonError(res, 'POST', 400, 'malformed reference handle'); return; }
+  const parsed = parseApproveReferenceRequest(authoring.parsed); if (!parsed.ok) { writeJsonError(res, 'POST', 400, parsed.error); return; }
+  try {
+    const result = await approveReferenceFromViewer(state.root, authoring.session, handle);
+    if (!result.ok) { writeJsonError(res, 'POST', result.reason === 'unknown-handle' ? 404 : result.reason === 'approval-failed' ? 500 : 409, result.error); return; }
+    writeJsonBody(res, 'POST', 201, { ok: true, referenceId: result.referenceId, referenceRequestId: result.referenceRequestId, handle: result.handle, regionCount: result.regionCount, requirementCount: result.requirementCount, adequacy: result.adequacy });
+  } catch { writeJsonError(res, 'POST', 500, 'the reference could not be approved'); }
+}
+
+async function handleReferenceVisualChangeStart(req: IncomingMessage, res: ServerResponse, state: ViewerServerState, encodedHandle: string): Promise<void> {
+  const authoring = await readAuthoringJsonRequest(req, res, state); if (authoring === undefined) return;
+  const handle = decodeURIComponentSafe(encodedHandle); if (handle === undefined) { writeJsonError(res, 'POST', 400, 'malformed reference handle'); return; }
+  const parsed = parseStartReferenceVisualChangeRequest(authoring.parsed); if (!parsed.ok) { writeJsonError(res, 'POST', 400, parsed.error); return; }
+  try {
+    const result = await startReferenceVisualChangeFromViewer(state.root, authoring.session, handle, parsed.request);
+    if (!result.ok) { writeJsonBody(res, 'POST', result.reason === 'unknown-handle' || result.reason === 'baseline-invalid' ? 404 : result.reason.includes('invalid') || result.reason === 'intent-not-represented' || result.reason.startsWith('binding') ? 422 : 409, { ok: false, code: result.reason, error: result.error }); return; }
+    writeJsonBody(res, 'POST', 201, result);
+  } catch { writeJsonError(res, 'POST', 500, 'the reference visual change could not be created'); }
 }
 
 /** Rejects before (or instead of) consuming the request body; `connection: close` stops the server from collecting any further body bytes. */

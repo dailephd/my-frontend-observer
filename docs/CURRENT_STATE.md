@@ -1,10 +1,18 @@
 # Current State
 
-v0.9.1 is released and published as `@dailephd/my-frontend-observer@0.9.1`.
+v0.10.0 is the current release of `@dailephd/my-frontend-observer`.
+Formal Windows, Linux, and macOS exact-candidate readiness, security checks,
+and PWA gates passed before release. The package version is `0.10.0`.
 
-v0.10 version-start planning is now frozen in
-`docs/plans/v0.10-implementation-plan.md`. No v0.10 production implementation
-has started, and the package remains `0.9.1`.
+The full Visual Change workflow supports actual-frontend and approved-reference
+entry, structured intent, explicit activation, bounded coding-agent handoff,
+immutable check attempts and correction, PASS-only human acceptance, and
+separate governance. The Viewer discovers installed-package workflow evidence.
+Observer never edits source or performs automatic approval. Schemas remain
+independently versioned: observation `1.2.0`, comparison `1.0.0`, frontend
+contract `1.0.0`, evaluation `1.0.0`, bounded-agent-context `1.0.0`,
+external-reference `1.0.0`, visual annotation `1.0.0`, visual-change workflow
+`1.0.0`, handoff `1.0.0`; Viewer protocol remains `1.3.0`.
 v0.9 (Human Visual Annotation and Design-Intent Capture) adds structured visual
 annotation to the project-aware viewer. It passed integrated real-Chromium
 acceptance and final exact-candidate pre-release readiness on Windows, Linux
@@ -1199,14 +1207,15 @@ npm package.
   implemented.) A CLI surface for Prompt 8's correction workflow specifically
   remains unimplemented by design (programmatic-only, library-level use is
   the current supported entry point) - see "v0.7 Prompt 8 status" above.
-  The full graphical human-LLM workflow (v0.10) remains future and
-  unimplemented. Structured visual annotation (v0.9) is implemented and
-  released as `0.9.0` - see "v0.9 status" above.
+  The full graphical human-LLM workflow is released as `0.10.0`. Structured
+  visual annotation (v0.9) is
+  implemented and released as `0.9.0` - see "v0.9 status" above.
 
 ## Next target
 
-v0.1-v0.9 are implemented, validated, and released (`0.1.0`, `0.2.0`,
-`0.3.0`, `0.4.0`, `0.5.0`, `0.6.0`, `0.7.0`, `0.8.0`, `0.8.1`, `0.9.0`). v0.7 (End-to-End
+v0.1-v0.10 are implemented, validated, and released (`0.1.0`, `0.2.0`,
+`0.3.0`, `0.4.0`, `0.5.0`, `0.6.0`, `0.7.0`, `0.8.0`, `0.8.1`, `0.9.0`,
+`0.9.1`, `0.10.0`). v0.7 (End-to-End
 Coding-Agent Frontend Change Review) is fully implemented and released: the
 external-reference artifact foundation, explicit reference
 regions/relationships, selected design requirements/tolerance
@@ -1237,8 +1246,7 @@ for the completeness audit, and
 for the cross-platform readiness validation that preceded this release.
 
 v0.9 (structured visual annotation) is released as
-`@dailephd/my-frontend-observer@0.9.0` - see "v0.9 status" above. The next
-target is v0.10 (full graphical human-LLM workflow). Its version-start
-architecture and batch plan are frozen in
-`docs/plans/v0.10-implementation-plan.md`; implementation has not started - see
-`docs/ROADMAP.md`.
+`@dailephd/my-frontend-observer@0.9.0` - see "v0.9 status" above. v0.10.0 is
+the current release. Its formal exact-candidate readiness passed on Windows,
+Linux, and macOS, including installed-package, security, and PWA gates. See
+`docs/reports/v0.10-release-preparation.md` for release-preparation evidence.

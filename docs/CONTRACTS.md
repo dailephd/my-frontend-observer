@@ -1,5 +1,40 @@
 # Contracts
 
+## Visual-change workflow artifact (`1.0.0`, v0.10 Batch 1)
+
+`my-frontend-observer/visual-change-workflow` is the immutable Observer-owned history envelope for one frozen visual-change request. It records a deterministic `visualChangeRequestId`, a fresh `visualChangeWorkflowId`, optional forward-only `supersedesVisualChangeWorkflowId`, exact references to existing canonical evidence, zero to twenty bounded attempt records, optional activation/governance result references, producer metadata, and creation provenance.
+
+The two entry modes are exactly `actual-frontend` and `reference`. Reference mode stores validated explicit runtime binding declarations in canonical `bindings.json`; the manifest pins its SHA-256 and declaration count. Actual mode never writes that file. Project-relative evidence references must remain contained portable paths; source artifacts and media are referenced rather than copied.
+
+Request identity hashes semantic scope only. It excludes timestamps and operational storage locations. Workflow instance identity is fresh for every explicit persistence. Attempt identity is deterministic over the visual-change request ID and candidate observation ID. Human review state is exactly `pending`, `correction-requested`, `accepted`, or `abandoned`; this foundation validates structure but does not implement the later acceptance rule or execute checks.
+
+The v0.10 Batch 2 application composition explicitly activates either the frozen per-change contract or the frozen approved reference and workflow-owned bindings in project acceptance. Activation and restoration preserve unrelated configuration, use compensating atomic writes across mutable project configuration and immutable workflow revisions, and refuse acceptance drift. A workflow check resolves an alias only when its catalog identity and artifact location exactly match the frozen baseline, then invokes the existing `checkProject` owner once. Only a canonical result containing both baseline and candidate summaries can append a pending attempt revision; the snapshot is a bounded direct projection of that result and does not repeat evaluation.
+
+The v0.10 Batch 3 Viewer exposes bounded workflow inspection at `GET /api/visual-changes/:handle/view` in both standalone and project-aware sessions. Create, activate, check, and restore POST operations are project-aware only, reuse the existing in-memory authoring capability and request guards, accept no filesystem paths, and delegate to the Batch 2 application service. Every new response is `no-store`. Successful immutable mutations return the exact new workflow ID so the Viewer can refresh and reselect that revision without guessing. The Viewer protocol remains `1.3.0`.
+
+The v0.10 Batch 4 actual-frontend entry route promotes only explicitly selected, saved, confirmed, canonically promotable runtime intent without activating project acceptance. It freezes the exact resulting contract instance with the saved annotation, source observation, and configured persistent baseline contract through the Batch 2 workflow-creation owner. Repeated equivalent starts share `contractRequestId` while receiving fresh contract, visual-change request, and workflow instance identities. Activation remains a later explicit workflow action.
+
+Reference entry freezes only an exact approved reference, an annotation authored
+against that exact instance, an exact baseline observation, and explicitly
+authored valid bindings. Adequacy, compatibility, complete required-region
+coverage, and canonical binding evaluation fail closed. Imported references,
+inferred bindings, and session bindings are not executable workflow scope.
+
+`VisualChangeAgentHandoff` uses handoff kind
+`my-frontend-observer/visual-change-agent-handoff` and version `1.0.0`. It is a
+bounded non-artifact transfer contract and is never discovered or persisted as
+Observer evidence. It includes confirmed scope, Observer-owned bounded context,
+optional unchanged supplemental context, the exact post-edit check instruction,
+and optional non-authoritative orchestrator correlation.
+
+The current cycle is derived from the latest attempt. A pending attempt blocks
+another check or handoff until explicit correction, acceptance, or abandonment.
+Only the latest canonical PASS may be accepted. Review changes only the latest
+attempt's review object in a fresh workflow revision. Governance references may
+be recorded only after acceptance and only for already-persisted canonical
+approval results; they do not perform approval or change project configuration.
+No existing evidence schema changed for v0.10.
+
 ## Current contracts
 
 The observation artifact contract is published in the current
@@ -490,7 +525,7 @@ blockers; on the canonical worktree, `npm run typecheck`, `npm run lint`,
 `npm test` (627 tests), `npm run test:browser` (120 tests), `npm run
 test:security`, `npm run build`, and `npm run check:docs` all pass.
 
-## v0.7 external visual-reference contract direction (released as `0.7.0`; v0.8 viewer released as `0.8.0`; v0.9 released as `0.9.0`; v0.10 still future)
+## v0.7 external visual-reference contract direction (preserved through implemented, unreleased v0.10)
 
 External visual-reference support is released as package version `0.7.0`
 (see "v0.7 Prompt 1" through "v0.7 Prompt 8" below for the exact contract).
@@ -498,9 +533,8 @@ The exact public type names, artifact kinds, schema versions, persistence
 layout, and command/programmatic entry points were designed during v0.7
 implementation from current repository precedent, following the constraints
 below. v0.8 (released as package version `0.8.0` - see
-`docs/CURRENT_STATE.md`) has preserved them. v0.9 (implemented, not yet
-released) preserves them too. v0.10 remains future and must continue to
-preserve them.
+`docs/CURRENT_STATE.md`) has preserved them. v0.9 is released and preserves
+them. The implemented, unreleased v0.10 workflow preserves them too.
 
 **Distinct evidence domain**: an external reference is desired-design evidence,
 not an `ObservationArtifact` and not the "before" side of a v0.4

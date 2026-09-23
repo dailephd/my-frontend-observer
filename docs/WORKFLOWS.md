@@ -685,11 +685,37 @@ repository. The run result's `status` must be `passed` and its
 `cleanupErrors` must be empty. The demo and scenarios are not in the npm
 package. See `examples/v09-demo/README.md` for details and maintenance notes.
 
-## Visual workflow progression (v0.9 implemented, v0.10 future)
+## Complete v0.10 visual-change workflow (implemented, unreleased)
 
 The sequence on top of the v0.7/v0.8 foundation above preserves the current
 engines and lets graphical interfaces consume rather than invent the reference
-model. v0.9 is released as `0.9.0`. v0.10 is still future:
+model. v0.9 is released as `0.9.0`; v0.10 is implemented in the repository
+and remains unreleased.
+
+Actual-frontend entry starts in project-aware `view`: open a runtime
+observation, draw and explicitly associate a mark, author and confirm runtime
+intent, save it, select confirmed intent, and create an inactive visual-change
+workflow. Reference entry opens one exact approved reference, saves confirmed
+reference intent against that instance, selects an exact baseline observation,
+authors explicit region-to-runtime bindings, and creates an inactive reference
+workflow.
+
+Both modes then share the same human-controlled loop:
+
+```text
+explicit Activate
+-> Prepare handoff
+-> external actor edits source outside Observer
+-> Run check (the canonical check <baseline> --json operation)
+-> immutable pending attempt
+-> Request correction, Accept latest PASS, or Abandon
+-> optional governance recording only after a separate canonical approval
+-> optional explicit Restore acceptance
+```
+
+The controlling invariants are `DRAW != DECIDE`, `CONFIRM !=
+PROMOTE/MATERIALIZE`, `PROMOTE/MATERIALIZE != ACTIVATE`, `PASS != ACCEPT`, and
+`ACCEPT != GOVERNANCE`.
 
 ```text
 stable targets and bounded runtime behavior

@@ -1,5 +1,18 @@
 # Commands
 
+## v0.10 visual workflow operations
+
+v0.10 adds no CLI command. Project-aware `view` exposes the Visual changes
+workspace for actual/reference entry, explicit activation, bounded handoff,
+Run check, correction/review, acceptance, governance-result recording, and
+explicit restore. These are guarded local HTTP/UI actions backed by canonical
+application owners, not new command-line subcommands. Standalone `view --root`
+remains inspection-only.
+
+Every handoff names `check <baseline> --json` as the exact post-edit machine
+operation. It captures a fresh candidate and runs the existing canonical
+comparison, contract, and configured reference-fidelity owners.
+
 ## v0.8.1 common workflow
 
 `init --url <loopback-url> [--viewport WIDTHxHEIGHT] [--target id=selector ... | --targets-file file] [--default-baseline alias] [--replace]` creates schema-`1.1.0` project configuration; schema `1.0.0` remains readable and forbids `acceptance`. Schema `1.1.0` may add exactly:
@@ -948,12 +961,13 @@ Options:
 - `--help` — show `view` usage.
 
 The server binds only to `127.0.0.1` (never `0.0.0.0`), serves only the
-built viewer application assets plus the bounded, read-only `/api/*`
+built viewer application assets plus bounded `/api/*`
 endpoints described above, and never exposes the supplied evidence root as a
 generic static directory or arbitrary filesystem path. With `--root` it
-accepts no write methods and writes nothing. Without `--root`, the only
-writes are the three v0.9 authoring routes above, which create new immutable
-artifacts and never modify existing ones. On success,
+accepts no write methods and writes nothing. Without `--root`, the guarded
+project-aware authoring routes create only new immutable artifacts and workflow
+revisions through canonical owners; they never edit target source or rewrite
+existing evidence. On success,
 prints the viewer URL and keeps running (serving the viewer) until
 interrupted. On invalid syntax, a missing/non-directory `--root`, an
 invalid `--port`, an invalid `--bindings-file`, an invalid `--context-file`
