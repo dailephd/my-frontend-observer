@@ -525,7 +525,7 @@ blockers; on the canonical worktree, `npm run typecheck`, `npm run lint`,
 `npm test` (627 tests), `npm run test:browser` (120 tests), `npm run
 test:security`, `npm run build`, and `npm run check:docs` all pass.
 
-## v0.7 external visual-reference contract direction (preserved through implemented, unreleased v0.10)
+## v0.7 external visual-reference contract direction (preserved through released v0.10)
 
 External visual-reference support is released as package version `0.7.0`
 (see "v0.7 Prompt 1" through "v0.7 Prompt 8" below for the exact contract).
@@ -534,7 +534,7 @@ layout, and command/programmatic entry points were designed during v0.7
 implementation from current repository precedent, following the constraints
 below. v0.8 (released as package version `0.8.0` - see
 `docs/CURRENT_STATE.md`) has preserved them. v0.9 is released and preserves
-them. The implemented, unreleased v0.10 workflow preserves them too.
+them. The released v0.10 workflow preserves them too.
 
 **Distinct evidence domain**: an external reference is desired-design evidence,
 not an `ObservationArtifact` and not the "before" side of a v0.4
