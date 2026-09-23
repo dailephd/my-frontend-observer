@@ -1,6 +1,6 @@
 # my-frontend-observer
 
-## Common project workflow (v0.9.1)
+## Common project workflow (v0.10.0)
 
 ```powershell
 my-frontend-observer init --url http://127.0.0.1:3000 --target app=#app
@@ -17,19 +17,17 @@ my-frontend-observer view
 `1`, `2`, or `3` for `PASS`, `FAIL`, `REVIEW_REQUIRED`, or `BLOCKED`.
 Canonical hashes remain available in viewer details and persisted provenance,
 but are not normal workflow command inputs. The existing low-level commands
-remain supported. v0.9.1 is the current published release.
+remain supported. v0.10.0 is the current release.
 
-v0.9.1 is a maintenance release that hardens independent PWA security-gate
-validation without changing production PWA behavior.
+v0.10.0 completes the Visual Change workflow described below.
 
 `my-frontend-observer` is the local-first rendered browser/runtime evidence
 producer in the my-dev-kit ecosystem. Its durable product purpose is defined
 in [docs/PROJECT_DESCRIPTION.md](docs/PROJECT_DESCRIPTION.md). Whole-ecosystem
 composition is documented in the [my-dev-kit ecosystem guide](https://github.com/dailephd/my-dev-kit/blob/main/docs/ECOSYSTEM_DEVELOPMENT_WORKFLOWS.md), including the [command-surface compatibility map](https://github.com/dailephd/my-dev-kit/blob/main/docs/ECOSYSTEM_DEVELOPMENT_WORKFLOWS.md#915-command-surface-compatibility-map).
 
-v0.10 is implemented and documentation-reconciled in this source repository
-but is not published. From a
-project-aware `view` session, a human can begin from an actual runtime capture
+From a project-aware `view` session, a human can begin from an actual runtime
+capture
 or an approved reference, explicitly confirm structured visual intent, create
 and activate a frozen workflow, prepare a bounded handoff, let an external
 actor edit source, run the canonical `check <baseline> --json`, request another
@@ -39,9 +37,9 @@ approves a baseline or reference.
 
 ## Current status
 
-`v0.9.1`, PWA Hard-Gate Isolation and Reproducible Security Acceptance, is the
-current published release. It preserves the `v0.9.0` Human Visual Annotation
-and Design-Intent Capture release and builds on `v0.8.1`, Project Workflow CLI and
+`v0.10.0`, Full Visual Human–LLM Frontend Change Workflow, is the current
+release. It preserves the `v0.9.1` PWA hard-gate isolation and the `v0.9.0`
+Human Visual Annotation and Design-Intent Capture releases and builds on `v0.8.1`, Project Workflow CLI and
 Human-Readable Evidence Aliases, `v0.8.0`, Interactive Local Observation
 Viewer, and `v0.7.0`, End-to-End Coding-Agent Frontend Change
 Review, `v0.6.0`, Bounded Agent Context and Native my-dev-kit Ecosystem
@@ -359,9 +357,8 @@ Planning authorities:
   intent and responsibility boundaries.
 - [Project Milestones](docs/PROJECT_MILESTONES.md): complete ordered capability
   design and cross-milestone rules.
-- [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.9.1 are
-  released; v0.10 is implemented and documentation-reconciled in the
-  repository and remains unreleased.
+- [ROADMAP](docs/ROADMAP.md): version-level requirements; v0.1-v0.10 are
+  released.
 - [Current State](docs/CURRENT_STATE.md): retained scaffold and release state.
 
 No sibling ecosystem repository is a runtime dependency of the retained

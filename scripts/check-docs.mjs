@@ -27,14 +27,13 @@ if (pkgLock.packages?.['']?.version !== pkg.version) {
   throw new Error(`package-lock.json packages[''].version (${pkgLock.packages?.['']?.version}) must match package.json version (${pkg.version}).`);
 }
 
-// Guards the "unreleased implementation, released package metadata" drift
-// this audit found repeated across README/PROJECT_OVERVIEW/WORKFLOWS/
-// CONTRACTS/SECURITY: once a version's implementation is documented as
-// complete-but-unreleased, CHANGELOG.md must carry a place for it rather
-// than silently omitting unreleased work from release history.
+// Keep a forward-looking section and a dated entry for the current release.
 const changelog = await readFile('CHANGELOG.md', 'utf8');
 if (!changelog.includes('[Unreleased]')) {
-  throw new Error('CHANGELOG.md must contain an "[Unreleased]" section once unreleased implementation work exists in the repository.');
+  throw new Error('CHANGELOG.md must retain an "[Unreleased]" section for future work.');
+}
+if (!/^## 0\.10\.0 - 2026-09-23$/m.test(changelog)) {
+  throw new Error('CHANGELOG.md must contain the dated v0.10.0 release section.');
 }
 
 // Durable v0.10 reconciliation guards. These intentionally test status and
@@ -49,13 +48,14 @@ const currentDocs = [currentState, projectOverview, architecture, readme].join('
 if (/v0\.10[^\n]*(?:remains|is|still)[^\n]*(?:future|unimplemented)|v0\.10[^\n]*implementation has not started/i.test(currentDocs)) {
   throw new Error('Current documentation must not describe the completed v0.10 implementation as future or unimplemented.');
 }
-if (!/v0\.10[\s\S]{0,240}implementation[\s\S]{0,120}complete/i.test(currentState)
-  || !/documentation[\s\S]{0,80}reconcil/i.test(currentState)
-  || !/pre-release readiness[\s\S]{0,120}(?:next|not yet|pending)/i.test(currentState)) {
-  throw new Error('CURRENT_STATE.md must distinguish complete v0.10 implementation/reconciliation from pending pre-release readiness.');
+if (!/v0\.10\.0 is the current release/i.test(currentState)
+  || !/package version is `0\.10\.0`/i.test(currentState)
+  || !/readiness[\s\S]{0,100}passed/i.test(currentState)
+  || !/Viewer protocol remains `1\.3\.0`/i.test(currentState)) {
+  throw new Error('CURRENT_STATE.md must record the current v0.10.0 release, passed readiness, package, and Viewer protocol.');
 }
-if (!/v0\.10[\s\S]{0,180}implementation complete[\s\S]{0,100}documentation-reconciled/i.test(roadmap)) {
-  throw new Error('ROADMAP.md must record v0.10 as implementation complete and documentation-reconciled.');
+if (!/Current status: released as `0\.10\.0`/i.test(roadmap)) {
+  throw new Error('ROADMAP.md must record v0.10 as released at the version level.');
 }
 if (!contracts.includes('my-frontend-observer/visual-change-workflow') || !contracts.includes('my-frontend-observer/visual-change-agent-handoff')) {
   throw new Error('CONTRACTS.md must retain the canonical v0.10 workflow and handoff contract markers.');

@@ -80,14 +80,13 @@ approve a reference or prove every aesthetic requirement. See
 [CONTRACTS.md](CONTRACTS.md) and [WORKFLOWS.md](WORKFLOWS.md).
 
 `my-frontend-observer view --no-open` starts the loopback-only viewer over managed
-project evidence. In the implemented, unreleased v0.10 source repository, that
-project-aware Viewer also owns the explicit Visual Change workflow: visual
-entry, activation, handoff, check, review/correction, acceptance, and separate
+project evidence. The v0.10.0 project-aware Viewer also owns the explicit
+Visual Change workflow: visual entry, activation, handoff, check,
+review/correction, acceptance, and separate
 governance-result recording. Use `view --root observations --no-open` for
 standalone roots; that mode remains inspect-only. The `--bindings-file` and
 `--context-file` inputs do not create a second evaluator or automatic
-source-owner mapping. The published npm package is still 0.9.1, so this v0.10
-surface is not yet an installable published release.
+source-owner mapping. The installed package includes the Visual Change surface.
 
 To validate this repository itself, rather than the target application:
 

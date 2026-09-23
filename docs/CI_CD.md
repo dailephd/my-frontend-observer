@@ -1,6 +1,6 @@
 # CI/CD
 
-CI interprets `check` as PASS `0`, FAIL `1`, REVIEW_REQUIRED `2`, or BLOCKED `3`. The released package is `@dailephd/my-frontend-observer@0.9.1`; its CLI remains `my-frontend-observer`. Packed readiness installs one exact tarball and runs `runPackedViewerSmoke.mjs` as the single project/viewer smoke owner for `init`, `capture`, bounded `check --json` REVIEW_REQUIRED and unchanged-contract FAIL-to-PASS, alias-aware project `view`, and viewer security. `runPackedObservationSmoke.mjs` remains the lower-level legacy observation smoke.
+CI interprets `check` as PASS `0`, FAIL `1`, REVIEW_REQUIRED `2`, or BLOCKED `3`. The current package is `@dailephd/my-frontend-observer@0.10.0`; its CLI remains `my-frontend-observer`. Packed readiness installs one exact tarball and runs `runPackedViewerSmoke.mjs` as the single project/viewer smoke owner for `init`, `capture`, bounded `check --json` REVIEW_REQUIRED and unchanged-contract FAIL-to-PASS, alias-aware project `view`, and viewer security. `runPackedObservationSmoke.mjs` remains the lower-level legacy observation smoke.
 
 The same matrix now also runs `runPackedV010WorkflowSmoke.mjs`. It installs the
 same SHA-verified candidate into a clean consumer and exercises installed
@@ -8,8 +8,10 @@ actual/reference workflow creation, activation, handoff, immutable correction
 attempts, PASS-only acceptance, project-aware Viewer discovery, and standalone
 read-only behavior. Its bounded summary is uploaded with the existing matrix
 summary artifact. The candidate job still owns exactly one `npm pack`; no
-second v0.10 candidate or matrix exists. This wiring is implemented, but it is
-not evidence that formal cross-platform v0.10 readiness has run or passed.
+second v0.10 candidate or matrix exists. Formal v0.10 exact-candidate readiness
+passed on Windows, Linux, and macOS.
+All four packed smokes, security checks, and PWA gates passed against the same
+candidate. Run 35789033295 records that readiness result.
 
 ## Gate isolation invariant
 

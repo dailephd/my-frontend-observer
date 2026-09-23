@@ -251,7 +251,7 @@ protect against other software already running as the same user.
   `.tmp-*` directories, so a partially written artifact is never presented as
   evidence.
 
-## v0.10 Visual Change authoring boundary (implemented, unreleased)
+## v0.10 Visual Change authoring boundary
 
 v0.10 extends only the project-aware guarded `POST` surface. It adds explicit
 reference approval and actual/reference workflow creation, plus workflow
@@ -276,7 +276,7 @@ separately persisted canonical approval and does not perform that approval.
 Certificate-failure-specific handling, permission-prompt-specific handling
 (Chromium's default deny-all applies; no permission is ever explicitly
 granted), and any non-loopback/remote browsing mode remain unimplemented and
-out of scope. `@dailephd/my-frontend-observer@0.9.0` is published to npm, and a
+out of scope. `@dailephd/my-frontend-observer@0.10.0` is the current release. A
 pre-release readiness CI workflow (Windows/Linux/macOS packed-candidate
 validation, now covering the v0.8 viewer alongside every earlier version's
 packed behavior) exists (see `docs/CI_CD.md`). The v0.7 external-reference/

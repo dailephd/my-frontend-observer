@@ -1,10 +1,7 @@
 # Roadmap
 
-v0.9.1 status: released and published to npm as
-`@dailephd/my-frontend-observer@0.9.1`. It is a bounded maintenance patch that
-corrects the PWA hard-gate test-isolation defect discovered after the v0.9.0
-release. No production PWA regression has been demonstrated. v0.10
-implementation is complete on the feature branch and remains unreleased.
+Current release: v0.10.0, Full Visual Human–LLM Frontend Change Workflow.
+The v0.9.1 PWA hard-gate isolation maintenance release is preserved in history.
 
 This is a version-level specification, not an implementation checklist.
 Concrete steps and sequencing are designed only when a version begins, after
@@ -944,10 +941,8 @@ product/package behavior while proving the stronger test-isolation invariant.
 
 ## v0.10 — Full Visual Human–LLM Frontend Change Workflow
 
-Current status: implementation complete and documentation-reconciled;
-unreleased. Formal pre-release readiness is next, followed by release
-preparation and publication only after explicit approval. The frozen
-implementation authority remains
+Current status: released as `0.10.0`. The frozen implementation authority
+remains
 `docs/plans/v0.10-implementation-plan.md`.
 
 Objective/problem: complete the visual communication branch by combining the

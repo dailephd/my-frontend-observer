@@ -2,12 +2,15 @@
 
 ## [Unreleased]
 
-Implemented the unreleased v0.10 full visual human-LLM frontend-change
-workflow in the source repository: actual/reference visual entry, frozen and
-explicitly activated workflow scope, bounded external-agent handoff, immutable
-canonical check attempts, correction, PASS-only human acceptance, and separate
-governance-result recording. Added integrated Chromium acceptance and an
-installed-package v0.10 workflow smoke while preserving package version 0.9.1.
+## 0.10.0 - 2026-09-23
+
+Shipped the full Visual Change workflow in the project-aware Viewer. People
+can start from an actual frontend or approved reference, confirm and explicitly
+activate scope, and prepare a bounded coding-agent handoff. Immutable check
+attempts support correction; human acceptance requires the latest canonical
+check to PASS, while governance remains separate. Installed-package and Viewer
+support are included. Security and PWA boundaries remain intact: Observer does
+not edit source or grant automatic approval.
 
 ## 0.9.1 - 2026-09-21
 
