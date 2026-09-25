@@ -28,17 +28,16 @@ repository also holds a deterministic demo and four tutorial scenarios for
 v0.9, recorded by the external `@dailephd/my-dev-kit-lab@0.4.9` tool. See
 "v0.9 status" below.
 
-The project is published at package version `0.9.1` (roadmap v0.9.1, PWA
-Hard-Gate Isolation and Reproducible Security Acceptance; the preceding v0.9
-release was Human Visual Annotation and Design-Intent Capture; observation
-schema `1.2.0`;
-comparison schema `1.0.0`; frontend contract schema `1.0.0`; evaluation
-artifact schema `1.0.0`; bounded-agent-context schema `1.0.0`;
-external-reference schema `1.0.0`; visual annotation schema `1.0.0`). v0.9.0
-added the visual annotation schema and did not change any other canonical
-evidence schema version. v0.8.1 did not change any canonical evidence schema
-version either; see "v0.8 status" below for the final, complete v0.8 viewer
-state.
+The preceding v0.9.1 release was the PWA Hard-Gate Isolation and Reproducible
+Security Acceptance maintenance patch; v0.9.0 was Human Visual Annotation and
+Design-Intent Capture. Those releases remain part of the current v0.10.0
+lineage. Observation schema remains `1.2.0`; comparison schema `1.0.0`;
+frontend contract schema `1.0.0`; evaluation artifact schema `1.0.0`;
+bounded-agent-context schema `1.0.0`; external-reference schema `1.0.0`; and
+visual annotation schema `1.0.0`. v0.9.0 added the visual annotation schema
+without changing the other canonical evidence schema versions, and v0.8.1
+likewise changed no canonical evidence schema version. See "v0.8 status" below
+for the final, complete v0.8 viewer state.
 
 ## v0.9.1 maintenance status
 

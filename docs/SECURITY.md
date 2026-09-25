@@ -223,8 +223,8 @@ protect against other software already running as the same user.
   `POST /api/annotations`,
   `POST /api/annotations/:handle/promote-contract`, and
   `POST /api/annotations/:handle/materialize-reference`. `PUT`, `PATCH`, and
-  `DELETE` stay unsupported everywhere. The implemented, unreleased v0.10
-  routes extend this same gate as described below.
+  `DELETE` stay unsupported everywhere. The released v0.10 routes extend this
+  same gate as described below.
 - **No permissive CORS**: no `Access-Control-Allow-*` headers are sent, so a
   page from any other origin cannot read the capability or send a JSON
   authoring request. A real-Chromium test proves this for all three routes.
