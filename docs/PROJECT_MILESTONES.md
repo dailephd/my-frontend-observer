@@ -2010,6 +2010,129 @@ Milestone 10 is complete when:
 - all affected ecosystem contracts remain compatible;
 - no evidence producer's responsibility is merged into another project.
 
+## Milestone 11 — Bounded Runtime Diagnostics and Failure Evidence
+
+### Objective
+
+Extend browser observation with bounded diagnostic evidence needed to explain runtime failures without turning the observer into a general network or telemetry recorder.
+
+### Required capability
+
+Capture, within an explicit observation window:
+
+- bounded/redacted console evidence;
+- page-error evidence;
+- request transport failures;
+- HTTP response status evidence;
+- source/category/timestamp-or-order evidence where reliable;
+- truncation/omission metadata.
+
+Transport failure and an HTTP error response are different evidence states and must never be collapsed.
+
+### Safety and evidence boundaries
+
+Diagnostic capture must preserve the existing local/network policy, redact or omit sensitive values, cap counts/text, and avoid unrestricted request/response bodies, cookies, credentials, authorization headers, or full HAR collection.
+
+### Acceptance criteria
+
+Milestone 11 is complete when:
+
+- deterministic fixtures produce console, page-error, transport-failure, and HTTP-error evidence;
+- transport failure and HTTP status failure remain distinguishable;
+- empty, unavailable, truncated, and redacted evidence are explicit;
+- diagnostics remain traceable to one observation window and environment;
+- ordinary observation behavior remains backward compatible;
+- no secret-bearing unrestricted network dump is introduced.
+
+## Milestone 12 — Controlled Project State and Session Setup
+
+### Objective
+
+Allow a project to establish an explicitly declared local test state before observation and prove what state was achieved.
+
+### Required capability
+
+Support a governed project-supplied setup contract that may establish supported application/session state before capture and records:
+
+- setup identity and provenance;
+- requested state;
+- achieved-state evidence;
+- failure/unavailable state;
+- isolation/session identity;
+- cleanup outcome.
+
+### Boundaries
+
+The observer does not become an authentication provider, credential vault, generic journey recorder, or arbitrary task runner. Setup must execute only through a reviewed project-owned boundary. Credentials/secrets must not be serialized into ordinary evidence.
+
+### Acceptance criteria
+
+Milestone 12 is complete when:
+
+- independent sessions can reproduce a deterministic declared state;
+- failed or partial setup cannot masquerade as achieved state;
+- cleanup/isolation is proven;
+- state evidence can be referenced by later observation/comparison contracts;
+- no production authentication platform or general automation engine is created.
+
+## Milestone 13 — Local Performance Evidence
+
+### Objective
+
+Add bounded performance evidence that can participate in evidence-driven regression workflows without overstating comparability.
+
+### Required capability
+
+Capture supported local performance measurements with:
+
+- metric identity and units;
+- observation/sample provenance;
+- browser/runtime/environment identity;
+- explicit measurement window;
+- baseline/candidate applicability;
+- unavailable/unsupported metrics.
+
+### Comparison rules
+
+Only compatible evidence may be compared directly. Environment or browser differences that materially invalidate comparison must produce incompatibility or unavailable comparison rather than a misleading regression verdict.
+
+### Acceptance criteria
+
+Milestone 13 is complete when:
+
+- deterministic local fixtures produce supported measurements;
+- baseline/candidate comparisons preserve environment provenance;
+- unsupported metrics remain unavailable;
+- repeated samples and comparison policy are inspectable;
+- no universal opaque performance score or hosted benchmark service is introduced.
+
+## Milestone 14 — Bounded Browser and Viewport Matrix
+
+### Objective
+
+Generalize the existing browser adapter into a bounded browser/viewport matrix where real workflow evidence justifies it.
+
+### Required capability
+
+Represent each selected engine/viewport combination as its own environment identity and preserve engine-specific capability/availability differences.
+
+Additional engines such as Firefox or WebKit may be added only with explicit adapter support, deterministic fixtures, cleanup, and cross-platform validation.
+
+### Boundaries
+
+This milestone does not make the observer a complete cross-browser testing service. It does not require every evidence kind to exist on every engine, and it does not permit baselines from incompatible engines to be treated as equivalent.
+
+### Acceptance criteria
+
+Milestone 14 is complete when:
+
+- the supported browser/viewport matrix is explicit and bounded;
+- each observation records exact browser/environment identity;
+- unsupported engine-specific evidence remains unavailable;
+- compatibility rules prevent invalid cross-engine baseline comparison;
+- existing Chromium behavior remains supported;
+- process cleanup and network/security boundaries hold for every supported engine.
+
 ## Cross-Milestone Architecture Rules
 
 Every milestone must preserve these boundaries.

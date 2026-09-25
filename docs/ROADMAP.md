@@ -1032,3 +1032,60 @@ succeeds. Version-start planning must settle visual workflow entry points,
 approval identity and authority, reference selection/applicability, baseline and
 reference governance, correction iteration history, artifact retention, and
 cross-version compatibility.
+
+## v0.11 — Bounded Runtime Diagnostics and Failure Evidence
+
+Current status: planned as `0.11.0` (OBS-DIAG-01).
+
+Objective/problem: explain browser/runtime failures with bounded, redacted diagnostic evidence rather than forcing downstream tools to infer failure causes from screenshots or generic command errors.
+
+Required capabilities: explicit observation windows; bounded console and page-error evidence; request transport-failure evidence; HTTP response-status evidence; deterministic ordering where practical; truncation/redaction/unavailable states; environment and observation provenance.
+
+Constraints: transport failure is not an HTTP error response; diagnostics do not authorize source changes; no unrestricted bodies, credentials, cookies, authorization headers, full HAR dump, remote telemetry service, or general network recorder.
+
+Dependencies: the existing observation identity, artifact, diagnostics, browser/network policy, and ECO-00 reference contracts. Lab is optional for ordinary use.
+
+Acceptance: deterministic fixtures prove each diagnostic category, sensitive-data boundaries, explicit loss/unavailable states, and backward-compatible ordinary observation.
+
+## v0.12 — Controlled Project State and Session Setup
+
+Current status: planned as `0.12.0` (OBS-STATE-01).
+
+Objective/problem: allow reproducible evidence for application states that must be established before observation without turning Observer into an authentication or journey-automation platform.
+
+Required capabilities: governed project-supplied setup identity; requested and achieved-state evidence; isolated session identity; failure/partial state; cleanup evidence; bounded references usable by observation/comparison workflows.
+
+Constraints: project-owned setup boundary only; no credential vault, identity provider, production auth management, unrestricted arbitrary task runner, or persistence of secrets into normal artifacts.
+
+Dependencies: v0.11 diagnostic evidence where setup failures need explanation, existing applicability/state identity, and ECO-00 subject/environment references.
+
+Acceptance: independent sessions reproducibly establish a deterministic fixture state, failed setup cannot appear achieved, cleanup is proven, and downstream evidence retains state provenance.
+
+## v0.13 — Local Performance Evidence
+
+Current status: planned as `0.13.0` (OBS-PERF-01).
+
+Objective/problem: produce bounded local performance evidence that can support regression decisions while preserving environment and comparability limits.
+
+Required capabilities: versioned metric identity/units; measurement windows and samples; browser/environment provenance; baseline/candidate applicability; explicit unavailable metrics; inspectable comparison evidence.
+
+Constraints: no universal composite performance score, hosted benchmark service, or comparison across materially incompatible environments as though equivalent.
+
+Dependencies: existing observation/environment provenance, v0.12 state control when a measurement requires controlled state, and ECO-00 environment/reference semantics.
+
+Acceptance: supported fixture metrics are reproducible enough for meaningful bounded comparison, incompatible comparisons fail closed, and unsupported metrics remain unavailable.
+
+## v0.14 — Bounded Browser and Viewport Matrix
+
+Current status: planned as `0.14.0` (OBS-BROWSER-01).
+
+Objective/problem: support a deliberately bounded browser/viewport matrix while preserving engine identity and evidence capability differences.
+
+Required capabilities: explicit supported matrix; exact engine/version/viewport environment identity; adapter capability reporting; engine-specific unavailable evidence; deterministic local fixtures and cleanup for every supported engine.
+
+Constraints: this does not become a complete cross-browser testing service. Firefox/WebKit or other engines are added only when explicitly supported; incompatible engine baselines are never treated as identical.
+
+Dependencies: current Chromium adapter architecture, v0.13 environment/comparability discipline, and existing security/network/process boundaries.
+
+Acceptance: all supported matrix entries run through the same ownership model, preserve exact environment identity, expose unsupported evidence honestly, and keep current Chromium behavior compatible.
+

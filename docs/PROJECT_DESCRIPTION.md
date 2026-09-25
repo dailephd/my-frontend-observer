@@ -1986,6 +1986,30 @@ This can help a human or LLM identify regions more reliably than position alone.
 
 The project is not initially intended to replace a dedicated accessibility-audit product.
 
+## Post-v0.10 ecosystem evidence extensions
+
+The initial project exclusions above describe what was not required to establish the original product. They do not prohibit later bounded capabilities when those capabilities preserve the same evidence ownership and local-first safety model.
+
+After the full visual workflow, the product may add four explicitly bounded evidence domains:
+
+### Runtime diagnostics
+
+Capture a bounded/redacted observation window for browser console messages, page errors, request transport failures, and HTTP response outcomes. Network transport failure must remain distinct from an HTTP response whose status represents an application/server error. Diagnostics remain evidence; they do not become an unrestricted network recorder, full HAR capture, or telemetry platform.
+
+### Controlled project state
+
+Support project-supplied, explicitly governed local test-state/session setup with achieved-state evidence. State setup may include a project-provided authentication fixture or session artifact, but the observer does not become an identity provider, credential manager, general journey runner, or production authentication system. Secrets and credentials must not be persisted into ordinary evidence.
+
+### Local performance evidence
+
+Capture bounded local performance measurements with explicit browser/environment provenance, observation windows, samples, and comparability rules. Missing or unsupported metrics remain unavailable. Performance evidence must not become an unexplained composite score or a claim that unlike environments are directly comparable.
+
+### Bounded browser and viewport matrices
+
+Allow a deliberately bounded set of browser-engine/viewport combinations when the adapter architecture and fixtures support them. Every engine retains its identity and capability differences. Adding selected Firefox or WebKit evidence later does not turn the product into a complete cross-browser testing service, and evidence from incompatible engines must not be merged as though it were one baseline.
+
+These domains remain subordinate to the core principles: explicit scope, bounded evidence, deterministic artifacts where practical, inspectability, separation of observed and derived claims, and no source editing.
+
 ## Inspectability
 
 Observation and regression results must be explainable.

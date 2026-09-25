@@ -3,6 +3,10 @@
 v0.10.0 is the current release of `@dailephd/my-frontend-observer`.
 Formal Windows, Linux, and macOS exact-candidate readiness, security checks,
 and PWA gates passed before release. The package version is `0.10.0`.
+ECO-00 was adopted on 2026-09-25. The next planned Observer version is
+`v0.11.0` (OBS-DIAG-01), followed by the adopted v0.12.0-v0.14.0 controlled-state,
+performance-evidence, and bounded browser/viewport milestones. These are planned
+only; they do not change the current v0.10.0 runtime surface.
 
 The full Visual Change workflow supports actual-frontend and approved-reference
 entry, structured intent, explicit activation, bounded coding-agent handoff,
@@ -1212,6 +1216,8 @@ npm package.
   implemented and released as `0.9.0` - see "v0.9 status" above.
 
 ## Next target
+
+The next planned release is `v0.11.0` (OBS-DIAG-01: bounded runtime diagnostics and failure evidence). v0.12.0-v0.14.0 are later adopted roadmap reservations; none is implemented yet.
 
 v0.1-v0.10 are implemented, validated, and released (`0.1.0`, `0.2.0`,
 `0.3.0`, `0.4.0`, `0.5.0`, `0.6.0`, `0.7.0`, `0.8.0`, `0.8.1`, `0.9.0`,
