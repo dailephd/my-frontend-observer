@@ -8,6 +8,23 @@ ECO-00 was adopted on 2026-09-25. The next planned Observer version is
 performance-evidence, and bounded browser/viewport milestones. These are planned
 only; they do not change the current v0.10.0 runtime surface.
 
+## v0.10.1 maintenance status
+
+Implementation is complete on `fix/v0.10.1-project-check-baseline-context`
+at `82dc7745b1935b827a57870ff9a942d166d4cca5`. The package remains at
+`0.10.0`; v0.10.1 has not been version-bumped, released, published, or merged
+to master. Formal v0.10.1 pre-release readiness has not run. The maintenance
+fix makes project-aware `check` replay only a validated baseline's optional
+`scrollScenario` and caller-declared `explicitState` into candidate capture.
+URL, viewport, targets, and ordinary capture settings remain project-config
+owned. There is no project-config, observation, comparison, or check-result
+schema change; no CLI change; and no dependency change. The downstream
+`iworkhere.space` v0.3.0 candidate
+`b0ee1bb251571ce2f83b08c55285a12ee68dc4c4` passed all ten document Observer
+lanes with comparable results, zero differences, and passing configured
+contracts. This is consumer validation evidence; it does not mean that
+`iworkhere.space` v0.3.0 is released.
+
 The full Visual Change workflow supports actual-frontend and approved-reference
 entry, structured intent, explicit activation, bounded coding-agent handoff,
 immutable check attempts and correction, PASS-only human acceptance, and
@@ -28,10 +45,11 @@ repository also holds a deterministic demo and four tutorial scenarios for
 v0.9, recorded by the external `@dailephd/my-dev-kit-lab@0.4.9` tool. See
 "v0.9 status" below.
 
-The project is published at package version `0.9.1` (roadmap v0.9.1, PWA
-Hard-Gate Isolation and Reproducible Security Acceptance; the preceding v0.9
-release was Human Visual Annotation and Design-Intent Capture; observation
-schema `1.2.0`;
+The project is published at package version `0.10.0` (roadmap v0.10, Full
+Visual Human–LLM Frontend Change Workflow; the preceding v0.9.1 maintenance
+release was PWA Hard-Gate Isolation and Reproducible Security Acceptance, and
+the v0.9 release was Human Visual Annotation and Design-Intent Capture;
+observation schema `1.2.0`;
 comparison schema `1.0.0`; frontend contract schema `1.0.0`; evaluation
 artifact schema `1.0.0`; bounded-agent-context schema `1.0.0`;
 external-reference schema `1.0.0`; visual annotation schema `1.0.0`). v0.9.0
@@ -1253,6 +1271,7 @@ for the cross-platform readiness validation that preceded this release.
 
 v0.9 (structured visual annotation) is released as
 `@dailephd/my-frontend-observer@0.9.0` - see "v0.9 status" above. v0.10.0 is
-the current release. Its formal exact-candidate readiness passed on Windows,
+the current release; v0.10.1 maintenance implementation is complete but
+unreleased. v0.10.0's formal exact-candidate readiness passed on Windows,
 Linux, and macOS, including installed-package, security, and PWA gates. See
 `docs/reports/v0.10-release-preparation.md` for release-preparation evidence.

@@ -1,8 +1,10 @@
 # Development
 
-The released v0.9.1 package is published as
-`@dailephd/my-frontend-observer@0.9.1` (CLI `my-frontend-observer`). It keeps
-the v0.8.1 project workflow and adds structured visual annotation.
+The current released package is
+`@dailephd/my-frontend-observer@0.10.0` (CLI `my-frontend-observer`). It
+includes the v0.8.1 project workflow, structured visual annotation, and the
+v0.10 Visual Change workflow. The v0.10.1 maintenance implementation is
+complete but unreleased; package version remains `0.10.0`.
 
 The v0.8.1 workflow is exercised through unit and real-Chromium tests. Project fixtures use `init`, `capture baseline`, and `check`; coding-agent consumers use bounded `check --json`. `tests/browser/projectCheckWorkflow.test.ts` covers REVIEW_REQUIRED, contract FAIL-to-PASS, reference FAIL/PASS/BLOCKED, incomparable BLOCKED, current history, and contained acceptance paths. `scripts/ci/runPackedViewerSmoke.mjs` is the single installed-package viewer/project-workflow smoke owner: it repeats REVIEW_REQUIRED and unchanged-contract FAIL-to-PASS before alias-aware viewer proof. Run the full unit, browser, security, build, documentation, and packed-consumer validations before release readiness.
 

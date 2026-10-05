@@ -800,7 +800,7 @@ external-reference services.
 
 ## Current release workflow
 
-The published package is `@dailephd/my-frontend-observer@0.9.1`; install it
+The current published package is `@dailephd/my-frontend-observer@0.10.0`; install it
 with npm and use the `my-frontend-observer` CLI. The ordinary workflow is
 `init`, `capture baseline`, `check baseline`, then `view`. Existing sections
 below retain the historical low-level and viewer workflows for compatibility.

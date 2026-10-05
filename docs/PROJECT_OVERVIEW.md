@@ -40,6 +40,10 @@ visual annotation schema `1.0.0`, visual-change workflow schema `1.0.0`,
 handoff `1.0.0`; Viewer protocol `1.3.0`). Exact-candidate readiness passed
 on Windows, Linux, and macOS.
 
+The v0.10.1 Project Check Baseline Context Replay maintenance implementation
+is complete but unreleased; package version and current release remain
+`0.10.0`. See `CURRENT_STATE.md` for its exact candidate and validation state.
+
 The released low-level command surface remains artifact-oriented: a real
 `observe` command launches Chromium, enforces loopback-only safety, captures
 bounded page/target evidence through CSS shorthand, structured semantic targets,
@@ -142,8 +146,7 @@ runtime observation and stable identity
 → structured visual annotation on runtime screenshots and external references
   (released as 0.9.0)
 → full visual human-LLM workflow with actual-frontend-driven and
-  reference-driven entry modes (implemented, documentation-reconciled,
-  unreleased v0.10)
+  reference-driven entry modes (released as v0.10.0)
 ```
 
 The implemented reference model is not a second observer or a

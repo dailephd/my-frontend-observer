@@ -4,6 +4,10 @@
 release state. Formal exact-candidate readiness passed on Windows, Linux, and
 macOS, including installed-package workflow smokes and security/PWA gates.
 
+The v0.10.1 Project Check Baseline Context Replay implementation is complete
+on its maintenance branch but has not passed formal pre-release readiness,
+been version-bumped, or been published. v0.10.0 remains the current release.
+
 `v0.9.1` (PWA Hard-Gate Isolation and Reproducible Security Acceptance) is the
 previous maintenance release, published to npm as
 `@dailephd/my-frontend-observer`. It hardened isolated PWA security acceptance

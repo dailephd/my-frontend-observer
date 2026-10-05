@@ -41,7 +41,7 @@ the workflow result remain in memory/presentation.
 ## Current package architecture
 
 The current repository is one published TypeScript ESM package
-(`@dailephd/my-frontend-observer@0.9.1`). The CLI remains
+(`@dailephd/my-frontend-observer@0.10.0`). The CLI remains
 `my-frontend-observer`; the npm scope does not rename the product or artifact
 identities.
 

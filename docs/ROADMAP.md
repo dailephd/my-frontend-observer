@@ -1033,6 +1033,21 @@ approval identity and authority, reference selection/applicability, baseline and
 reference governance, correction iteration history, artifact retention, and
 cross-version compatibility.
 
+## v0.10.1 — Project Check Baseline Context Replay
+
+Current status: implementation complete, not released. The package remains
+`0.10.0`; release preparation and version bump have not occurred.
+
+Scope: project-aware `check` validates its immutable baseline and replays only
+that baseline's optional `scrollScenario` and caller-declared `explicitState`
+into candidate capture. URL, viewport, and semantic targets remain owned by
+current project configuration. Project-config schema remains `1.1.0`; there
+is no observation, comparison, or check-result schema change, CLI change, or
+new dependency. Explicit-state replay preserves declared identity only and
+does not establish application or session state. This maintenance version
+does not include v0.11 runtime diagnostics or v0.12 controlled state/session
+setup.
+
 ## v0.11 — Bounded Runtime Diagnostics and Failure Evidence
 
 Current status: planned as `0.11.0` (OBS-DIAG-01).

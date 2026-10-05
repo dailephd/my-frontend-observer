@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- v0.10.1 maintenance implementation: project-aware `check` replays a
+  validated baseline's optional scroll scenario and caller-declared explicit
+  state during candidate capture. Project configuration schema and CLI remain
+  unchanged. Real-Chromium regression coverage verifies replay behavior, and
+  the downstream `iworkhere.space` v0.3.0 Observer blocker was removed across
+  ten document lanes. This work is implemented but not released.
+
 ## 0.10.0 - 2026-09-23
 
 Shipped the full Visual Change workflow in the project-aware Viewer. People
