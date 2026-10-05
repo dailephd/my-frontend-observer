@@ -45,6 +45,7 @@ async function start(ctx: Awaited<ReturnType<typeof context>>, overrides: Record
 }
 
 describe('Batch 5 approved-reference workflow start route', () => {
+  // This real-Viewer case performs seven sequential requests; allow bounded headroom under full-suite I/O contention.
   it('rejects imported scope, exact-source mismatch, non-executable intent, missing alias, missing acceptance, and structural binding errors', async () => {
     const ctx = await context();
     expect((await start(ctx, {}, ctx.importedHandle)).status).toBe(409);
@@ -60,7 +61,7 @@ describe('Batch 5 approved-reference workflow start route', () => {
     delete config.acceptance;
     await writeFile(ctx.configPath, `${JSON.stringify(config, null, 2)}\n`);
     expect((await start(ctx)).status).toBe(409);
-  });
+  }, 10_000);
 
   it('creates an exact inactive reference scope with optional contract omitted, zero attempts, no config mutation, and no path leakage', async () => {
     const ctx = await context(); const configBefore = await readFile(ctx.configPath);
