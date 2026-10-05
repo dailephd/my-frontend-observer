@@ -1,20 +1,20 @@
 # Current State
 
-v0.10.0 is the current release of `@dailephd/my-frontend-observer`.
+v0.10.1 is the current release of `@dailephd/my-frontend-observer`.
 Formal Windows, Linux, and macOS exact-candidate readiness, security checks,
-and PWA gates passed before release. The package version is `0.10.0`.
+and PWA gates passed before release. The package version is `0.10.1`.
 ECO-00 was adopted on 2026-09-25. The next planned Observer version is
 `v0.11.0` (OBS-DIAG-01), followed by the adopted v0.12.0-v0.14.0 controlled-state,
 performance-evidence, and bounded browser/viewport milestones. These are planned
-only; they do not change the current v0.10.0 runtime surface.
+only; they do not change the current v0.10.1 runtime surface.
 
 ## v0.10.1 maintenance status
 
-Implementation is complete on `fix/v0.10.1-project-check-baseline-context`
-at `82dc7745b1935b827a57870ff9a942d166d4cca5`. The package remains at
-`0.10.0`; v0.10.1 has not been version-bumped, released, published, or merged
-to master. Formal v0.10.1 pre-release readiness has not run. The maintenance
-fix makes project-aware `check` replay only a validated baseline's optional
+v0.10.1 is released as package version `0.10.1`. The implementation was
+completed at `82dc7745b1935b827a57870ff9a942d166d4cca5`; exact-candidate
+readiness passed on `f915d693ff697399704269a10145a791ccd4e523` in hosted run
+`37354455573`, attempt 2 (7/7 jobs). Project-aware `check` replays only a
+validated baseline's optional
 `scrollScenario` and caller-declared `explicitState` into candidate capture.
 URL, viewport, targets, and ordinary capture settings remain project-config
 owned. There is no project-config, observation, comparison, or check-result
@@ -45,7 +45,7 @@ repository also holds a deterministic demo and four tutorial scenarios for
 v0.9, recorded by the external `@dailephd/my-dev-kit-lab@0.4.9` tool. See
 "v0.9 status" below.
 
-The project is published at package version `0.10.0` (roadmap v0.10, Full
+The project is published at package version `0.10.1` (roadmap v0.10, Full
 Visual Human–LLM Frontend Change Workflow; the preceding v0.9.1 maintenance
 release was PWA Hard-Gate Isolation and Reproducible Security Acceptance, and
 the v0.9 release was Human Visual Annotation and Design-Intent Capture;
@@ -1271,7 +1271,7 @@ for the cross-platform readiness validation that preceded this release.
 
 v0.9 (structured visual annotation) is released as
 `@dailephd/my-frontend-observer@0.9.0` - see "v0.9 status" above. v0.10.0 is
-the current release; v0.10.1 maintenance implementation is complete but
-unreleased. v0.10.0's formal exact-candidate readiness passed on Windows,
+the previous release; v0.10.1 is the current maintenance release. v0.10.0's
+formal exact-candidate readiness passed on Windows,
 Linux, and macOS, including installed-package, security, and PWA gates. See
 `docs/reports/v0.10-release-preparation.md` for release-preparation evidence.

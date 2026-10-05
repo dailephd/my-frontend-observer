@@ -48,11 +48,13 @@ const currentDocs = [currentState, projectOverview, architecture, readme].join('
 if (/v0\.10[^\n]*(?:remains|is|still)[^\n]*(?:future|unimplemented)|v0\.10[^\n]*implementation has not started/i.test(currentDocs)) {
   throw new Error('Current documentation must not describe the completed v0.10 implementation as future or unimplemented.');
 }
-if (!/v0\.10\.0 is the current release/i.test(currentState)
-  || !/package version is `0\.10\.0`/i.test(currentState)
+const currentRelease = `v${pkg.version} is the current release`;
+const currentPackage = `package version is \`${pkg.version}\``;
+if (!currentState.includes(currentRelease)
+  || !currentState.includes(currentPackage)
   || !/readiness[\s\S]{0,100}passed/i.test(currentState)
   || !/Viewer protocol remains `1\.3\.0`/i.test(currentState)) {
-  throw new Error('CURRENT_STATE.md must record the current v0.10.0 release, passed readiness, package, and Viewer protocol.');
+  throw new Error(`CURRENT_STATE.md must record the current ${currentRelease}, passed readiness, package, and Viewer protocol.`);
 }
 if (!/Current status: released as `0\.10\.0`/i.test(roadmap)) {
   throw new Error('ROADMAP.md must record v0.10 as released at the version level.');

@@ -1,6 +1,6 @@
 # Project Overview
 
-The repository contains the v0.10.0 release of
+The repository contains the v0.10.1 release of
 `@dailephd/my-frontend-observer` under the MIT license. It completes the Visual
 Change workflow on the project workflow (`init`, `capture`, `check`, Viewer).
 
@@ -31,8 +31,9 @@ v0.6, Bounded Agent Context and Native my-dev-kit Ecosystem Integration;
 v0.7, End-to-End Coding-Agent Frontend Change Review; v0.8, Interactive
 Local Observation Viewer; v0.8.1, Project Workflow CLI and Human-Readable
 Evidence Aliases; v0.9, Human Visual Annotation and Design-Intent Capture; and
-v0.10.0, Full Visual Human–LLM Frontend Change Workflow, are released and
-published to npm. The current package version is `0.10.0` as
+v0.10.0, Full Visual Human–LLM Frontend Change Workflow, and v0.10.1, Project
+Check Baseline Context Replay, are released and published to npm. The current
+package version is `0.10.1` as
 `@dailephd/my-frontend-observer` (observation schema `1.2.0`, comparison schema
 `1.0.0`, frontend contract schema `1.0.0`, evaluation artifact schema `1.0.0`,
 bounded-agent-context schema `1.0.0`, external-reference schema `1.0.0`,
@@ -40,9 +41,9 @@ visual annotation schema `1.0.0`, visual-change workflow schema `1.0.0`,
 handoff `1.0.0`; Viewer protocol `1.3.0`). Exact-candidate readiness passed
 on Windows, Linux, and macOS.
 
-The v0.10.1 Project Check Baseline Context Replay maintenance implementation
-is complete but unreleased; package version and current release remain
-`0.10.0`. See `CURRENT_STATE.md` for its exact candidate and validation state.
+In v0.10.1, project-aware `check` replays a validated baseline's optional
+scroll and caller-declared state context while project configuration continues
+to own URL, viewport, and targets. See `CURRENT_STATE.md` for release state.
 
 The released low-level command surface remains artifact-oriented: a real
 `observe` command launches Chromium, enforces loopback-only safety, captures

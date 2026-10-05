@@ -1,6 +1,6 @@
 # Roadmap
 
-Current release: v0.10.0, Full Visual Human–LLM Frontend Change Workflow.
+Current release: v0.10.1, Project Check Baseline Context Replay.
 The v0.9.1 PWA hard-gate isolation maintenance release is preserved in history.
 
 This is a version-level specification, not an implementation checklist.
@@ -1035,8 +1035,7 @@ cross-version compatibility.
 
 ## v0.10.1 — Project Check Baseline Context Replay
 
-Current status: implementation complete, not released. The package remains
-`0.10.0`; release preparation and version bump have not occurred.
+Current status: released as `0.10.1`.
 
 Scope: project-aware `check` validates its immutable baseline and replays only
 that baseline's optional `scrollScenario` and caller-declared `explicitState`

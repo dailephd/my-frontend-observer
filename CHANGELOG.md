@@ -2,14 +2,16 @@
 
 ## [Unreleased]
 
-- v0.10.1 maintenance implementation: project-aware `check` replays a
-  validated baseline's optional scroll scenario and caller-declared explicit
-  state during candidate capture. Project configuration schema and CLI remain
-  unchanged. Real-Chromium regression coverage verifies replay behavior, and
-  the existing packed Viewer smoke now exercises it through the installed
-  candidate for the upcoming Windows/Linux/macOS readiness matrix. The
-  downstream `iworkhere.space` v0.3.0 Observer blocker was removed across ten
-  document lanes. This work is implemented but not released.
+
+## 0.10.1 - 2026-10-05
+
+- Project-aware `check` now replays a validated baseline's optional
+  `scrollScenario` and caller-declared `explicitState` into candidate capture;
+  explicit state remains declarative metadata. Project-config schema, CLI,
+  observation/comparison/check-result schemas, and dependencies are unchanged.
+- Real-Chromium and cross-platform installed-package tests cover baseline
+  replay and configured acceptance. A test-local timeout accommodates the
+  integration-heavy route rejection test under full-suite contention.
 
 ## 0.10.0 - 2026-09-23
 

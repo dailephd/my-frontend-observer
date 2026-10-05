@@ -1,15 +1,12 @@
 # Release
 
-`v0.10.0` (Full Visual Human–LLM Frontend Change Workflow) is the current
-release state. Formal exact-candidate readiness passed on Windows, Linux, and
-macOS, including installed-package workflow smokes and security/PWA gates.
+`v0.10.1` (Project Check Baseline Context Replay) is the current release,
+published as `@dailephd/my-frontend-observer@0.10.1`. Exact-candidate readiness
+passed on Windows, Linux, and macOS, including installed-package workflow
+smokes and security/PWA gates. v0.10.0 is the previous release.
 
-The v0.10.1 Project Check Baseline Context Replay implementation is complete
-on its maintenance branch but has not passed formal pre-release readiness,
-been version-bumped, or been published. v0.10.0 remains the current release.
-
-`v0.9.1` (PWA Hard-Gate Isolation and Reproducible Security Acceptance) is the
-previous maintenance release, published to npm as
+`v0.9.1` (PWA Hard-Gate Isolation and Reproducible Security Acceptance) is an
+earlier maintenance release, published to npm as
 `@dailephd/my-frontend-observer`. It hardened isolated PWA security acceptance
 without changing production behavior.
 
@@ -20,7 +17,7 @@ independently from the npm package version.
 Observation, comparison, frontend contract, evaluation artifact,
 bounded-agent-context, external-reference, visual annotation,
 visual-change-workflow, handoff, Viewer protocol, and package version all
-remain separate: package version is `0.10.0`; observation schema is
+remain separate: package version is `0.10.1`; observation schema is
 `1.2.0`, comparison schema is `1.0.0`, frontend contract schema is `1.0.0`,
 evaluation artifact schema is `1.0.0`, bounded-agent-context schema is
 `1.0.0`, external-reference schema is `1.0.0`, and visual annotation schema is
