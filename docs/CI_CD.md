@@ -2,6 +2,15 @@
 
 CI interprets `check` as PASS `0`, FAIL `1`, REVIEW_REQUIRED `2`, or BLOCKED `3`. The current package is `@dailephd/my-frontend-observer@0.10.0`; its CLI remains `my-frontend-observer`. Packed readiness installs one exact tarball and runs `runPackedViewerSmoke.mjs` as the single project/viewer smoke owner for `init`, `capture`, bounded `check --json` REVIEW_REQUIRED and unchanged-contract FAIL-to-PASS, alias-aware project `view`, and viewer security. `runPackedObservationSmoke.mjs` remains the lower-level legacy observation smoke.
 
+The Viewer/project smoke now also includes the v0.10.1 maintenance regression
+against the installed candidate: it creates a canonical baseline with both
+`scrollScenario` and caller-declared `explicitState`, keeps those fields out of
+project configuration, and requires project `check <baseline> --json` to replay
+them, execute the scroll, compare normally, and pass configured acceptance.
+The existing pre-release matrix already runs this smoke against the one
+SHA-verified tarball on Windows, Linux, and macOS. This wires the behavior into
+future exact-candidate readiness; v0.10.1 formal readiness has not yet run.
+
 The same matrix now also runs `runPackedV010WorkflowSmoke.mjs`. It installs the
 same SHA-verified candidate into a clean consumer and exercises installed
 actual/reference workflow creation, activation, handoff, immutable correction

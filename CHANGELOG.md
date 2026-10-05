@@ -6,8 +6,10 @@
   validated baseline's optional scroll scenario and caller-declared explicit
   state during candidate capture. Project configuration schema and CLI remain
   unchanged. Real-Chromium regression coverage verifies replay behavior, and
-  the downstream `iworkhere.space` v0.3.0 Observer blocker was removed across
-  ten document lanes. This work is implemented but not released.
+  the existing packed Viewer smoke now exercises it through the installed
+  candidate for the upcoming Windows/Linux/macOS readiness matrix. The
+  downstream `iworkhere.space` v0.3.0 Observer blocker was removed across ten
+  document lanes. This work is implemented but not released.
 
 ## 0.10.0 - 2026-09-23
 
