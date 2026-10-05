@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+
+## 0.10.1 - 2026-10-05
+
+- Project-aware `check` now replays a validated baseline's optional
+  `scrollScenario` and caller-declared `explicitState` into candidate capture;
+  explicit state remains declarative metadata. Project-config schema, CLI,
+  observation/comparison/check-result schemas, and dependencies are unchanged.
+- Real-Chromium and cross-platform installed-package tests cover baseline
+  replay and configured acceptance. A test-local timeout accommodates the
+  integration-heavy route rejection test under full-suite contention.
+
 ## 0.10.0 - 2026-09-23
 
 Shipped the full Visual Change workflow in the project-aware Viewer. People

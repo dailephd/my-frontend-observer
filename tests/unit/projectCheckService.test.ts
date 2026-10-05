@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { checkProject } from '../../src/application/projectCheckService.js';
+import { checkProject, projectCheckObservationContext } from '../../src/application/projectCheckService.js';
 import { ALIAS_CATALOG_SCHEMA_VERSION, writeAliasCatalog } from '../../src/projectWorkflow/aliasCatalog.js';
 import { aliasCatalogPath, projectConfigPath, projectEvidenceRoot } from '../../src/projectWorkflow/projectPaths.js';
 
@@ -16,6 +16,26 @@ async function project(defaultBaseline = 'golden'): Promise<string> {
   await writeAliasCatalog(aliasCatalogPath(root), { schemaVersion: ALIAS_CATALOG_SCHEMA_VERSION, observations: {} });
   return root;
 }
+
+describe('project check baseline observation context', () => {
+  const scrollScenario = { action: { kind: 'window-scroll-by' as const, deltaX: 0, deltaY: 420 } };
+  const explicitState = { theme: 'dark', applicationState: 'ready', authenticatedState: 'unauthenticated' as const };
+  const baseRequestConfig = { targetUrl: 'http://127.0.0.1:3000/', viewport: { width: 1280, height: 720 }, targets: [], outputLocation: 'baseline', timeoutMs: 30_000, readiness: { condition: 'load' as const, timeoutMs: 10_000 } };
+
+  it('copies only the optional baseline replay dimensions and leaves the request unchanged', () => {
+    expect(projectCheckObservationContext(baseRequestConfig)).toEqual({});
+    expect(projectCheckObservationContext({ ...baseRequestConfig, scrollScenario })).toEqual({ scrollScenario });
+    expect(projectCheckObservationContext({ ...baseRequestConfig, explicitState })).toEqual({ explicitState });
+    const both = { ...baseRequestConfig, scrollScenario, explicitState };
+    const before = structuredClone(both);
+    expect(projectCheckObservationContext(both)).toEqual({ scrollScenario, explicitState });
+    expect(both).toEqual(before);
+    expect(projectCheckObservationContext(both)).not.toHaveProperty('targetUrl');
+    expect(projectCheckObservationContext(both)).not.toHaveProperty('viewport');
+    expect(projectCheckObservationContext(both)).not.toHaveProperty('targets');
+    expect(projectCheckObservationContext(both)).not.toHaveProperty('timeoutMs');
+  });
+});
 
 describe('project check baseline resolution', () => {
   it('uses defaultBaseline when omitted and explicit alias when supplied', async () => {

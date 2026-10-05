@@ -1,6 +1,16 @@
 # CI/CD
 
-CI interprets `check` as PASS `0`, FAIL `1`, REVIEW_REQUIRED `2`, or BLOCKED `3`. The current package is `@dailephd/my-frontend-observer@0.10.0`; its CLI remains `my-frontend-observer`. Packed readiness installs one exact tarball and runs `runPackedViewerSmoke.mjs` as the single project/viewer smoke owner for `init`, `capture`, bounded `check --json` REVIEW_REQUIRED and unchanged-contract FAIL-to-PASS, alias-aware project `view`, and viewer security. `runPackedObservationSmoke.mjs` remains the lower-level legacy observation smoke.
+CI interprets `check` as PASS `0`, FAIL `1`, REVIEW_REQUIRED `2`, or BLOCKED `3`. The current package is `@dailephd/my-frontend-observer@0.10.1`; its CLI remains `my-frontend-observer`. Packed readiness installs one exact tarball and runs `runPackedViewerSmoke.mjs` as the single project/viewer smoke owner for `init`, `capture`, bounded `check --json` REVIEW_REQUIRED and unchanged-contract FAIL-to-PASS, alias-aware project `view`, and viewer security. `runPackedObservationSmoke.mjs` remains the lower-level legacy observation smoke.
+
+The Viewer/project smoke now also includes the v0.10.1 maintenance regression
+against the installed candidate: it creates a canonical baseline with both
+`scrollScenario` and caller-declared `explicitState`, keeps those fields out of
+project configuration, and requires project `check <baseline> --json` to replay
+them, execute the scroll, compare normally, and pass configured acceptance.
+The v0.10.1 exact-candidate readiness passed in hosted run `37354455573`,
+attempt 2 (7/7 jobs). Windows, Linux, and macOS consumed the same
+SHA-verified candidate tarball, and the baseline-context replay passed on all
+three matrix lanes.
 
 The same matrix now also runs `runPackedV010WorkflowSmoke.mjs`. It installs the
 same SHA-verified candidate into a clean consumer and exercises installed
@@ -333,6 +343,7 @@ with empty `cleanupErrors`, the tracked demo source is unchanged, and the
 repository status is unchanged. The demo and the lab are repository release
 support only. Neither is in the npm package or an Observer dependency.
 
-The v0.9 matrix wiring has not yet run in GitHub Actions for this candidate.
-The local Windows run of all three smokes against one exact tarball is
-recorded in `docs/reports/v0.9-batch7-integrated-acceptance.md`.
+The v0.9 matrix and tutorial readiness are recorded as completed in
+`docs/reports/v0.9-final-readiness-corrections.md`; the earlier local Windows
+integrated acceptance is recorded in
+`docs/reports/v0.9-batch7-integrated-acceptance.md`.

@@ -19,6 +19,14 @@ acceptance input), upward discovery, centralized managed paths, and the atomic
 alias catalog live under `src/projectWorkflow`. Aliases select exact canonical
 artifact directories; they never replace artifact identities.
 
+Project `check` validates the selected baseline artifact before candidate
+capture. The capture still takes URL, viewport, targets, and operational
+defaults from current project configuration. Only the validated baseline's
+optional `scrollScenario` and `explicitState` are replayed through the
+existing normalized request and observation path. The project-config schema
+does not own these fields. Explicit state remains declarative identity
+metadata; replay does not establish application or session state.
+
 `src/application/projectCheckService.ts` composes the existing observation,
 comparison, contract-evaluation, reference-reader, explicit-binding,
 compatibility, and fidelity owners. `src/projectWorkflow/checkAcceptance.ts`
@@ -33,7 +41,7 @@ the workflow result remain in memory/presentation.
 ## Current package architecture
 
 The current repository is one published TypeScript ESM package
-(`@dailephd/my-frontend-observer@0.9.1`). The CLI remains
+(`@dailephd/my-frontend-observer@0.10.1`). The CLI remains
 `my-frontend-observer`; the npm scope does not rename the product or artifact
 identities.
 
@@ -391,8 +399,9 @@ UI-only feature or a parallel visual-comparison stack. v0.8 (interactive
 viewer) is released as package version `0.8.0`. v0.9 (structured visual
 annotation) is released as package version `0.9.0` - see "v0.9 visual
 annotation architecture" below. v0.10 (full graphical human-LLM workflow) is
-implemented and documentation-reconciled but remains unreleased. The
-constraints below apply to both v0.9 and v0.10.
+released as `0.10.0`; v0.10.1 adds narrow project-check baseline context
+replay without changing these evidence domains. The constraints below apply
+to v0.9 and v0.10.
 
 The evidence domains remain distinct:
 

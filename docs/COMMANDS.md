@@ -13,6 +13,15 @@ Every handoff names `check <baseline> --json` as the exact post-edit machine
 operation. It captures a fresh candidate and runs the existing canonical
 comparison, contract, and configured reference-fidelity owners.
 
+Project-aware `check` validates the selected baseline first, then captures the
+candidate from the current project URL, viewport, targets, and capture
+defaults. It replays only that baseline artifact's optional `scrollScenario`
+and declared `explicitState` so the candidate has the same observation
+context. No new flags are required. `init` and ordinary `capture` remain
+project-config-only; project config does not accept either low-level field.
+Replaying `explicitState` preserves caller-declared identity metadata and does
+not set up browser, application, or session state.
+
 ## v0.8.1 common workflow
 
 `init --url <loopback-url> [--viewport WIDTHxHEIGHT] [--target id=selector ... | --targets-file file] [--default-baseline alias] [--replace]` creates schema-`1.1.0` project configuration; schema `1.0.0` remains readable and forbids `acceptance`. Schema `1.1.0` may add exactly:
@@ -796,7 +805,7 @@ the annotation workflow. The rest of this section describes the inspection
 surface, which is unchanged.
 
 **Current status: viewer behavior is released as package
-`@dailephd/my-frontend-observer@0.9.1`.** Starts one
+`@dailephd/my-frontend-observer@0.10.1`.** Starts one
 loopback-only Node viewer server and serves the same React + TypeScript +
 Vite application to a normal browser or an installed Progressive Web App.
 `--root` is used as a bounded, read-only evidence-discovery root: the server

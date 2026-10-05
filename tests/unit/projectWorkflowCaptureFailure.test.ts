@@ -7,11 +7,22 @@ import { aliasCatalogPath, projectConfigPath, projectEvidenceRoot } from '../../
 
 const observeMock = vi.fn(async () => ({ ok: false as const, diagnostics: [{ code: 'browser-runtime-failure' as const, severity: 'error' as const, message: 'fixture capture failed' }] }));
 vi.mock('../../src/application/observationPersistence.js', () => ({ observe: (...args: unknown[]) => observeMock(...args) }));
-const { captureNamedObservation } = await import('../../src/application/projectWorkflowService.js');
+const { captureCurrentObservation, captureNamedObservation } = await import('../../src/application/projectWorkflowService.js');
 const roots: string[] = [];
 afterEach(async () => Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))));
 
 describe('capture alias replacement transaction', () => {
+  it('revalidates replay context through normalizeRequest before observing', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'observer-capture-context-')); roots.push(root);
+    await mkdir(projectEvidenceRoot(root), { recursive: true });
+    await writeFile(projectConfigPath(root), JSON.stringify({ schemaVersion: '1.1.0', url: 'http://127.0.0.1:3000', viewport: { width: 1280, height: 720 }, targets: [], defaultBaseline: 'baseline' }));
+    await writeAliasCatalog(aliasCatalogPath(root), { schemaVersion: ALIAS_CATALOG_SCHEMA_VERSION, observations: {} });
+    observeMock.mockClear();
+    const result = await captureCurrentObservation(root, { explicitState: { theme: 'not a valid label' } as never });
+    expect(result).toMatchObject({ ok: false, code: 'project-config-invalid' });
+    expect(observeMock).not.toHaveBeenCalled();
+  });
+
   it('preserves the old alias record when the new canonical observation fails', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'observer-capture-failure-')); roots.push(root);
     await mkdir(projectEvidenceRoot(root), { recursive: true });

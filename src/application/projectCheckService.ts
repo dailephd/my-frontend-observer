@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { readProjectConfig } from '../projectWorkflow/projectConfig.js';
 import type { FrontendObserverAcceptanceConfig } from '../projectWorkflow/projectConfig.js';
+import type { NormalizedObservationRequest } from '../request/request.js';
 import { aliasCatalogPath, projectConfigPath, projectEvidenceRoot } from '../projectWorkflow/projectPaths.js';
 import { readAliasCatalog } from '../projectWorkflow/aliasCatalog.js';
 import { loadBindingsFile, loadComparisonConfigFile, resolveContainedAcceptancePath } from '../projectWorkflow/checkAcceptance.js';
@@ -35,6 +36,14 @@ interface PreparedAcceptance {
   comparisonConfig?: ComparisonConfig;
   contract?: { baselineRoot: string; changeRoot: string; baseline: PersistentBaselineContract; change: PerChangeContract };
   reference?: { root: string; bindings: ReferenceRuntimeBindingDeclaration[] };
+}
+
+/** Preserve only baseline-owned observation dimensions that project config cannot express. */
+export function projectCheckObservationContext(requestConfig: NormalizedObservationRequest): { scrollScenario?: NonNullable<NormalizedObservationRequest['scrollScenario']>; explicitState?: NonNullable<NormalizedObservationRequest['explicitState']> } {
+  return {
+    ...(requestConfig.scrollScenario === undefined ? {} : { scrollScenario: requestConfig.scrollScenario }),
+    ...(requestConfig.explicitState === undefined ? {} : { explicitState: requestConfig.explicitState }),
+  };
 }
 
 async function prepareAcceptance(projectRoot: string, config: FrontendObserverAcceptanceConfig): Promise<{ ok: true; value: PreparedAcceptance } | { ok: false; code: string; message: string }> {
@@ -115,7 +124,7 @@ export async function checkProject(projectRoot: string, requestedBaseline?: stri
     return finalizeCheckStatus(result);
   }
 
-  const captured = await captureCurrentObservation(projectRoot);
+  const captured = await captureCurrentObservation(projectRoot, projectCheckObservationContext(baselineRead.artifact.requestConfig));
   if (!captured.ok) {
     addBlocker(result, 'candidate-capture-failed', 'current candidate capture failed; the previous current alias was preserved');
     return finalizeCheckStatus(result);

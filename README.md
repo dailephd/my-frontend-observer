@@ -1,6 +1,6 @@
 # my-frontend-observer
 
-## Common project workflow (v0.10.0)
+## Common project workflow (v0.10.1)
 
 ```powershell
 my-frontend-observer init --url http://127.0.0.1:3000 --target app=#app
@@ -17,9 +17,18 @@ my-frontend-observer view
 `1`, `2`, or `3` for `PASS`, `FAIL`, `REVIEW_REQUIRED`, or `BLOCKED`.
 Canonical hashes remain available in viewer details and persisted provenance,
 but are not normal workflow command inputs. The existing low-level commands
-remain supported. v0.10.0 is the current release.
+remain supported. v0.10.1 is the current release.
 
-v0.10.0 completes the Visual Change workflow described below.
+Project `check` validates the chosen baseline before capturing a new candidate.
+It uses the current project URL, viewport, targets, and normal capture defaults,
+then replays only the baseline's optional scroll scenario and caller-declared
+explicit-state identity. Project config, `init`, and ordinary `capture` do not
+accept those low-level fields. Explicit-state replay does not establish
+browser or session state.
+
+v0.10.0 introduced the Visual Change workflow described below. v0.10.1 ships
+automatic baseline-context replay for project checks without changing the
+project-config schema or CLI; explicit-state replay remains declarative metadata.
 
 `my-frontend-observer` is the local-first rendered browser/runtime evidence
 producer in the my-dev-kit ecosystem. Its durable product purpose is defined
@@ -37,9 +46,10 @@ approves a baseline or reference.
 
 ## Current status
 
-`v0.10.0`, Full Visual Human–LLM Frontend Change Workflow, is the current
-release. It preserves the `v0.9.1` PWA hard-gate isolation and the `v0.9.0`
-Human Visual Annotation and Design-Intent Capture releases and builds on `v0.8.1`, Project Workflow CLI and
+`v0.10.1`, Project Check Baseline Context Replay, is the current release. It
+builds on the `v0.10.0` Full Visual Human–LLM Frontend Change Workflow and
+preserves the `v0.9.1` PWA hard-gate isolation and `v0.9.0` Human Visual
+Annotation and Design-Intent Capture releases, as well as `v0.8.1`, Project Workflow CLI and
 Human-Readable Evidence Aliases, `v0.8.0`, Interactive Local Observation
 Viewer, and `v0.7.0`, End-to-End Coding-Agent Frontend Change
 Review, `v0.6.0`, Bounded Agent Context and Native my-dev-kit Ecosystem

@@ -223,7 +223,7 @@ protect against other software already running as the same user.
   `POST /api/annotations`,
   `POST /api/annotations/:handle/promote-contract`, and
   `POST /api/annotations/:handle/materialize-reference`. `PUT`, `PATCH`, and
-  `DELETE` stay unsupported everywhere. The implemented, unreleased v0.10
+  `DELETE` stay unsupported everywhere. The implemented and released v0.10
   routes extend this same gate as described below.
 - **No permissive CORS**: no `Access-Control-Allow-*` headers are sent, so a
   page from any other origin cannot read the capability or send a JSON
@@ -276,7 +276,7 @@ separately persisted canonical approval and does not perform that approval.
 Certificate-failure-specific handling, permission-prompt-specific handling
 (Chromium's default deny-all applies; no permission is ever explicitly
 granted), and any non-loopback/remote browsing mode remain unimplemented and
-out of scope. `@dailephd/my-frontend-observer@0.10.0` is the current release. A
+out of scope. `@dailephd/my-frontend-observer@0.10.1` is the current release. A
 pre-release readiness CI workflow (Windows/Linux/macOS packed-candidate
 validation, now covering the v0.8 viewer alongside every earlier version's
 packed behavior) exists (see `docs/CI_CD.md`). The v0.7 external-reference/
@@ -291,7 +291,7 @@ Symlink/junction filesystem-escape handling for the viewer's raw-evidence
 routes is now exercised by a dedicated regression test
 (`tests/unit/viewerEvidenceServer.test.ts`), which caught and led to the fix
 described above. The v0.9 annotation write boundary described above is
-implemented and covered by local security tests, but its formal
-cross-platform pre-release security validation has not run yet. None of this
+implemented and covered by local security tests; formal cross-platform
+pre-release validation was completed before release. None of this
 expands the security scope above: remote browsing, certificate handling, and
 permission-prompt handling remain separate, unimplemented concerns.

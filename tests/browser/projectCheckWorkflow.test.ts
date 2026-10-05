@@ -6,12 +6,14 @@ import { mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { runCli, type CliIO } from '../../src/cli.js';
-import { readAliasCatalog } from '../../src/projectWorkflow/aliasCatalog.js';
-import { aliasCatalogPath, projectConfigPath, projectEvidenceRoot } from '../../src/projectWorkflow/projectPaths.js';
+import { ALIAS_CATALOG_SCHEMA_VERSION, readAliasCatalog, writeAliasCatalog } from '../../src/projectWorkflow/aliasCatalog.js';
+import { aliasCatalogPath, observationOutputLocation, projectConfigPath, projectEvidenceRoot } from '../../src/projectWorkflow/projectPaths.js';
 import { resolveContainedAcceptancePath } from '../../src/projectWorkflow/checkAcceptance.js';
 import type { CheckWorkflowResult } from '../../src/projectWorkflow/checkResult.js';
 import { readObservationArtifact } from '../../src/artifacts/artifactReader.js';
+import { observe } from '../../src/application/observationPersistence.js';
 import { approveAndPersistBaseline, persistPerChangeContract } from '../../src/application/frontendContractPersistenceService.js';
+import { normalizeRequest } from '../../src/request/request.js';
 import { importExternalReference, approveExternalReference } from '../../src/application/externalReferencePersistenceService.js';
 import { startViewer, type StartViewerResult } from '../../src/viewerServer/viewerService.js';
 
@@ -56,6 +58,10 @@ async function inProject<T>(root: string, operation: () => Promise<T>): Promise<
 
 function page(widths: { nav: number; workspace: number; rail: number; footer?: number }): string {
   return `<!doctype html><html><head><style>html,body{margin:0}#nav{position:absolute;left:0;top:0;width:${widths.nav}px;height:80px;overflow:hidden}#nav>span{display:block;width:190px}#workspace{position:absolute;left:210px;top:0;width:${widths.workspace}px;height:80px}#rail{position:absolute;left:800px;top:0;width:${widths.rail}px;height:80px}#footer{position:absolute;left:0;top:200px;width:${widths.footer ?? 950}px;height:50px}</style></head><body><nav id="nav"><span>Navigation</span></nav><main id="workspace">Workspace</main><aside id="rail">Rail</aside><footer id="footer">Footer</footer></body></html>`;
+}
+
+function scrollableWorkspacePage(): string {
+  return '<!doctype html><html><head><style>html,body{margin:0}#workspace{width:700px;height:180px;overflow:auto}#content{height:1200px;background:linear-gradient(#fff,#eee)}</style></head><body><main id="workspace"><div id="content">Stable workspace content</div></main></body></html>';
 }
 
 async function initialize(root: string, url: string, targets = ['nav=#nav', 'workspace=#workspace', 'rail=#rail', 'footer=#footer']): Promise<void> {
@@ -104,6 +110,77 @@ describe('project check real-Chromium acceptance', () => {
     await writeFile(path.join(roots.review, 'source', 'index.html'), page({ nav: 195, workspace: 560, rail: 150 }));
     const checked = await runCheckJson(roots.review);
     expect(checked.exitCode).toBe(2); expect(checked.value.status).toBe('REVIEW_REQUIRED'); expect(checked.value.comparison.differenceCount).toBeGreaterThan(0);
+  }, 120_000);
+
+  it('replays validated baseline scroll and explicit-state context through canonical project check', async () => {
+    await resetProject(roots.review);
+    await writeFile(path.join(roots.review, 'source', 'index.html'), scrollableWorkspacePage());
+    const url = await startFileFrontend(roots.review);
+    await inProject(roots.review, async () => {
+      expect(await runCli(['init', '--url', url, '--viewport', '800x600', '--target', 'workspace=#workspace'], output().io)).toBe(0);
+    });
+
+    const scenario = { action: { kind: 'target-scroll-by' as const, target: 'workspace', deltaX: 0, deltaY: 240 } };
+    const explicitState = { theme: 'dark', applicationState: 'ready', authenticatedState: 'unauthenticated' as const };
+    const normalized = normalizeRequest({ targetUrl: url, viewport: { width: 800, height: 600 }, targets: [{ name: 'workspace', selector: '#workspace' }], outputLocation: observationOutputLocation('baseline-context-source'), scrollScenario: scenario, explicitState });
+    if (!normalized.ok) throw new Error(`expected canonical baseline request, got ${JSON.stringify(normalized.diagnostics)}`);
+    const baselineCapture = await observe(normalized.request, { cwd: roots.review });
+    if (!baselineCapture.ok) throw new Error(`expected canonical low-level baseline capture, got ${JSON.stringify(baselineCapture.diagnostics)}`);
+    const baselineManifestPath = path.join(baselineCapture.artifactRoot, 'manifest.json');
+    const baselineManifestBefore = createHash('sha256').update(await readFile(baselineManifestPath)).digest('hex');
+    const baselineRelative = path.relative(projectEvidenceRoot(roots.review), baselineCapture.artifactRoot).split(path.sep).join('/');
+    await writeAliasCatalog(aliasCatalogPath(roots.review), { schemaVersion: ALIAS_CATALOG_SCHEMA_VERSION, observations: {
+      baseline: { observationId: baselineCapture.observationId, requestId: baselineCapture.requestId, relativeArtifactDir: baselineRelative },
+    } });
+
+    const baselineRead = await readObservationArtifact(path.join(baselineCapture.artifactRoot, 'manifest.json'));
+    if (!baselineRead.ok) throw new Error(`expected validated baseline artifact, got ${baselineRead.reason}`);
+    const baselineContract = await approveAndPersistBaseline({
+      artifactKind: 'my-frontend-observer/frontend-contract', schemaVersion: '1.0.0', contractClass: 'baseline', baselineId: 'context-replay-baseline',
+      sourceObservation: { observationId: baselineRead.artifact.observationId, requestId: baselineRead.artifact.requestId, producer: baselineRead.artifact.producer, observationSchemaVersion: baselineRead.artifact.schemaVersion },
+      clauses: [{ clauseId: 'workspace-visible', primitive: { kind: 'target-visible', target: 'workspace' }, supportingEvidence: [] }], provenance: { approvedAt: new Date(0).toISOString() },
+    }, baselineCapture.artifactRoot, { outputLocation: 'contracts/baseline', cwd: roots.review });
+    if (!baselineContract.ok) throw new Error(`expected accepted baseline contract, got ${JSON.stringify(baselineContract.diagnostics)}`);
+    const changeContract = await persistPerChangeContract({
+      artifactKind: 'my-frontend-observer/frontend-contract', schemaVersion: '1.0.0', contractClass: 'change', contractId: 'context-replay-check', contractRequestId: 'context-replay-request', activeBaselineIds: ['context-replay-baseline'], clauses: [],
+    }, { outputLocation: 'contracts/change', cwd: roots.review });
+    if (!changeContract.ok) throw new Error(`expected persisted change contract, got ${JSON.stringify(changeContract.diagnostics)}`);
+    await writeConfigAcceptance(roots.review, {
+      contract: { baselineArtifact: path.relative(roots.review, baselineContract.artifactRoot).split(path.sep).join('/'), changeArtifact: path.relative(roots.review, changeContract.artifactRoot).split(path.sep).join('/') },
+    });
+
+    const checked = await runCheckJson(roots.review);
+    expect(checked.exitCode).toBe(0);
+    expect(checked.value.status).toBe('PASS');
+    expect(checked.value.comparison.state).toBe('comparable');
+    expect(checked.value.comparison.differenceCount).toBe(0);
+    expect(checked.value.contract.state).toBe('PASS');
+    expect(checked.value.blockers).toEqual([]);
+    const catalog = await readAliasCatalog(aliasCatalogPath(roots.review)); if (!catalog.ok) throw new Error(catalog.reason);
+    const current = catalog.catalog.observations.current; if (current === undefined) throw new Error('missing candidate observation');
+    const candidateRead = await readObservationArtifact(path.join(projectEvidenceRoot(roots.review), ...current.relativeArtifactDir.split('/'), 'manifest.json'));
+    if (!candidateRead.ok) throw new Error(`expected validated candidate artifact, got ${candidateRead.reason}`);
+    expect(candidateRead.artifact.requestConfig.scrollScenario).toEqual(scenario);
+    expect(candidateRead.artifact.requestConfig.explicitState).toEqual(explicitState);
+    expect(candidateRead.artifact.scrollScenarioEvidence?.initial.targets.workspace.metrics.value.scrollTop).toBe(0);
+    expect(candidateRead.artifact.scrollScenarioEvidence?.final.targets.workspace.metrics.value.scrollTop).toBe(240);
+    expect(candidateRead.artifact.scrollScenarioEvidence?.transition.targets.workspace?.scrollTop.changed).toBe(true);
+    expect(createHash('sha256').update(await readFile(baselineManifestPath)).digest('hex')).toBe(baselineManifestBefore);
+
+    const configBefore = JSON.parse(await readFile(projectConfigPath(roots.review), 'utf8')) as Record<string, unknown>;
+    expect(configBefore.schemaVersion).toBe('1.1.0');
+    expect(configBefore).not.toHaveProperty('scrollScenario');
+    expect(configBefore).not.toHaveProperty('explicitState');
+
+    const currentBeforeInvalidTarget = current;
+    await writeFile(projectConfigPath(roots.review), `${JSON.stringify({ ...configBefore, targets: [] }, null, 2)}\n`);
+    const invalidTarget = await runCheckJson(roots.review);
+    expect(invalidTarget.exitCode).toBe(3);
+    expect(invalidTarget.value.status).toBe('BLOCKED');
+    expect(invalidTarget.value.blockers).toContainEqual(expect.objectContaining({ code: 'candidate-capture-failed' }));
+    const afterInvalidTarget = await readAliasCatalog(aliasCatalogPath(roots.review)); if (!afterInvalidTarget.ok) throw new Error(afterInvalidTarget.reason);
+    expect(afterInvalidTarget.catalog.observations.current).toEqual(currentBeforeInvalidTarget);
+    expect(createHash('sha256').update(await readFile(baselineManifestPath)).digest('hex')).toBe(baselineManifestBefore);
   }, 120_000);
 
   it('never mutates disposable target source during capture, check, or view', async () => {

@@ -2,7 +2,8 @@ import { access, mkdir, readFile, writeFile, rename, rm } from 'node:fs/promises
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import type { Diagnostic } from '../domain/diagnostics.js';
-import type { RawNamedTarget } from '../request/request.js';
+import type { ExplicitStateDimensions } from '../domain/explicitState.js';
+import type { RawNamedTarget, ScrollScenario } from '../request/request.js';
 import { normalizeRequest } from '../request/request.js';
 import { observe } from './observationPersistence.js';
 import { PROJECT_CONFIG_SCHEMA_VERSION, readProjectConfig, validateObservationAlias, validateProjectConfig } from '../projectWorkflow/projectConfig.js';
@@ -43,7 +44,11 @@ export async function initializeFrontendObserverProject(input: InitializeProject
 
 export interface CaptureNamedObservationInput { projectRoot: string; alias: string; replace: boolean }
 export type CaptureNamedObservationResult = { ok: true; alias: string; observationId: string; requestId: string; artifactRoot: string; completionState: string; diagnostics: readonly Diagnostic[] } | WorkflowFailure;
-async function captureObservation(input: CaptureNamedObservationInput, allowReserved: boolean): Promise<CaptureNamedObservationResult> {
+interface ProjectCheckObservationContext {
+  scrollScenario?: ScrollScenario;
+  explicitState?: ExplicitStateDimensions;
+}
+async function captureObservation(input: CaptureNamedObservationInput, allowReserved: boolean, context: ProjectCheckObservationContext = {}): Promise<CaptureNamedObservationResult> {
   const aliasValidation = validateObservationAlias(input.alias, allowReserved);
   if (!aliasValidation.ok) return { ok: false, code: aliasValidation.reason === 'reserved' ? 'alias-reserved' : 'alias-invalid', message: aliasValidation.reason === 'reserved' ? 'alias "current" is reserved for a later workflow command' : 'alias must match ^[a-z0-9][a-z0-9._-]{0,63}$ and must not be a traversal expression' };
   const config = await readProjectConfig(projectConfigPath(input.projectRoot));
@@ -51,7 +56,14 @@ async function captureObservation(input: CaptureNamedObservationInput, allowRese
   const catalogResult = await readAliasCatalog(aliasCatalogPath(input.projectRoot));
   if (!catalogResult.ok) return { ok: false, code: 'project-catalog-invalid', message: catalogResult.reason };
   if (catalogResult.catalog.observations[input.alias] !== undefined && !input.replace) return { ok: false, code: 'alias-exists', message: `alias "${input.alias}" already exists; pass --replace to point it at a new observation` };
-  const normalized = normalizeRequest({ targetUrl: config.config.url, viewport: config.config.viewport, targets: config.config.targets, outputLocation: observationOutputLocation(input.alias) });
+  const normalized = normalizeRequest({
+    targetUrl: config.config.url,
+    viewport: config.config.viewport,
+    targets: config.config.targets,
+    outputLocation: observationOutputLocation(input.alias),
+    ...(context.scrollScenario === undefined ? {} : { scrollScenario: context.scrollScenario }),
+    ...(context.explicitState === undefined ? {} : { explicitState: context.explicitState }),
+  });
   if (!normalized.ok) return { ok: false, code: 'project-config-invalid', message: normalized.diagnostics.map((entry) => entry.message).join('; ') };
   const result = await observe(normalized.request, { cwd: input.projectRoot });
   if (!result.ok) return { ok: false, code: 'observation-failure', message: 'observation failed', diagnostics: result.diagnostics };
@@ -63,7 +75,7 @@ async function captureObservation(input: CaptureNamedObservationInput, allowRese
   return { ok: true, alias: input.alias, observationId: result.observationId, requestId: result.requestId, artifactRoot: result.artifactRoot, completionState: result.completion.state, diagnostics: result.diagnostics };
 }
 export async function captureNamedObservation(input: CaptureNamedObservationInput): Promise<CaptureNamedObservationResult> { return captureObservation(input, false); }
-export async function captureCurrentObservation(projectRoot: string): Promise<CaptureNamedObservationResult> { return captureObservation({ projectRoot, alias: 'current', replace: true }, true); }
+export async function captureCurrentObservation(projectRoot: string, context: ProjectCheckObservationContext = {}): Promise<CaptureNamedObservationResult> { return captureObservation({ projectRoot, alias: 'current', replace: true }, true, context); }
 
 export async function loadProjectViewerState(projectRootInput: string): Promise<{ ok: true; projectRoot: string; root: string; aliases: Readonly<Record<string, string>> } | WorkflowFailure> {
   const projectRoot = path.resolve(projectRootInput);

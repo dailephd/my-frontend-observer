@@ -20,6 +20,7 @@ import { mkdtemp, mkdir, readFile, writeFile, rm, realpath, symlink } from 'node
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { createHash } from 'node:crypto';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 
 const INSTALLED_PACKAGE_NAME = '@dailephd/my-frontend-observer';
@@ -74,6 +75,10 @@ function artifactPathFromCliOutput(projectDir, artifactPath) {
   return path.isAbsolute(artifactPath)
     ? artifactPath
     : path.resolve(projectDir, artifactPath);
+}
+
+function sha256(bytes) {
+  return createHash('sha256').update(bytes).digest('hex');
 }
 
 // A status root is a filesystem identity, not a caller-visible spelling.
@@ -210,7 +215,8 @@ async function main() {
       'html,body{margin:0;padding:0}' +
       '#header{position:absolute;top:0;left:0;width:800px;height:80px;}' +
       '#sidebar{position:absolute;top:100px;left:0;width:200px;height:400px;}' +
-      '</style></head><body><div id="header">Header</div><div id="sidebar">Sidebar</div></body></html>';
+      '#scroll-spacer{height:1800px}' +
+      '</style></head><body><div id="header">Header</div><div id="sidebar">Sidebar</div><div id="scroll-spacer"></div></body></html>';
     fixtureServer = createServer((req, res) => {
       if (req.url === '/smoke') {
         res.writeHead(200, { 'content-type': 'text/html' });
@@ -285,9 +291,192 @@ async function main() {
     const passedJson = JSON.parse(passed.stdout);
     if (passed.code !== 0 || passedJson.status !== 'PASS') fail(`check PASS failed: ${passed.code} ${passed.stdout} ${passed.stderr}`);
     if (!(await readFile(projectConfigPath)).equals(acceptanceBefore)) fail('acceptance criteria changed during FAIL-to-PASS correction');
-    const checkedCatalog = JSON.parse(await readFile(path.join(projectDir, '.frontend-observer', 'catalog.json'), 'utf8'));
+    let checkedCatalog = JSON.parse(await readFile(path.join(projectDir, '.frontend-observer', 'catalog.json'), 'utf8'));
     if (!checkedCatalog.observations?.baseline || !checkedCatalog.observations?.current) fail('check did not retain baseline/current aliases');
     summary.checkFailPass = true;
+
+    // --- v0.10.1 installed-package regression: replay both immutable baseline context dimensions ---
+    // This baseline is authored by the installed low-level observe command;
+    // the smoke only registers its real identities in the existing catalog.
+    const maintenanceConfig = JSON.parse(await readFile(projectConfigPath, 'utf8'));
+    if (maintenanceConfig.schemaVersion !== '1.1.0') fail('v0.10.1 regression project config is not schema 1.1.0');
+    if ('scrollScenario' in maintenanceConfig) fail('project config unexpectedly owns scrollScenario');
+    if ('explicitState' in maintenanceConfig) fail('project config unexpectedly owns explicitState');
+
+    const scrollScenario = { action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 240 } };
+    const explicitState = { applicationState: 'maintenance-regression' };
+    const scrollScenarioPath = path.join(projectDir, 'maintenance-scroll.json');
+    const explicitStatePath = path.join(projectDir, 'maintenance-state.json');
+    await writeFile(scrollScenarioPath, JSON.stringify(scrollScenario), 'utf8');
+    await writeFile(explicitStatePath, JSON.stringify(explicitState), 'utf8');
+    const maintenanceSource = html;
+    const maintenanceSourceDigest = sha256(Buffer.from(maintenanceSource));
+    const fixtureBodyBeforeCheck = await (await fetch(targetUrl)).text();
+    if (fixtureBodyBeforeCheck !== maintenanceSource) fail('v0.10.1 fixture source did not match the expected deterministic document');
+
+    const contextOutputRel = `${evidenceRootRel}/observations/context-baseline`;
+    const contextObserve = await runBin([
+      'observe', '--url', targetUrl, '--viewport', '1024x768',
+      '--target', 'header=#header', '--target', 'sidebar=#sidebar',
+      '--scroll-scenario-file', scrollScenarioPath, '--state-file', explicitStatePath,
+      '--output', contextOutputRel,
+    ]);
+    if (contextObserve.code !== 0) fail(`v0.10.1 low-level baseline observe failed: ${contextObserve.code} ${contextObserve.stdout} ${contextObserve.stderr}`);
+    const contextArtifactLine = contextObserve.stdout.split('\n').find((line) => line.startsWith('Artifact: '));
+    if (!contextArtifactLine) fail(`v0.10.1 observe stdout missing "Artifact: ": ${contextObserve.stdout}`);
+    const contextObservationDir = artifactPathFromCliOutput(projectDir, contextArtifactLine.slice('Artifact: '.length).trim());
+    const installedPackageApi = await import(pathToFileURL(path.join(installedDir, 'dist', 'index.js')).href);
+    if (typeof installedPackageApi.readObservationArtifact !== 'function') fail('installed package does not export readObservationArtifact');
+    const contextRead = await installedPackageApi.readObservationArtifact(path.join(contextObservationDir, 'manifest.json'));
+    if (!contextRead.ok) fail(`installed canonical observation reader rejected v0.10.1 baseline: ${contextRead.reason}`);
+    const contextManifest = contextRead.artifact;
+    if (JSON.stringify(contextManifest.requestConfig.scrollScenario) !== JSON.stringify(scrollScenario)) fail('installed observation did not preserve the requested baseline scrollScenario');
+    if (JSON.stringify(contextManifest.requestConfig.explicitState) !== JSON.stringify(explicitState)) fail('installed observation did not preserve the requested baseline explicitState');
+    const contextScroll = contextManifest.scrollScenarioEvidence;
+    if (!contextScroll || contextScroll.initial.window.scrollY !== 0 || contextScroll.final.window.scrollY <= contextScroll.initial.window.scrollY || !contextScroll.transition.windowScrollY.changed) {
+      fail(`v0.10.1 baseline did not execute real window scrolling: ${JSON.stringify(contextScroll?.transition?.windowScrollY)}`);
+    }
+
+    const canonicalProjectDir = await canonicalFilesystemPath(projectDir);
+    const canonicalEvidenceRoot = await canonicalFilesystemPath(evidenceRoot);
+    const canonicalContextObservationDir = await canonicalFilesystemPath(contextObservationDir);
+    const contextRelativeArtifactDir = path.relative(canonicalEvidenceRoot, canonicalContextObservationDir).split(path.sep).join('/');
+    if (contextRelativeArtifactDir.startsWith('../') || path.isAbsolute(contextRelativeArtifactDir)) fail('v0.10.1 observation escaped the managed evidence root');
+    const catalogPath = path.join(projectDir, '.frontend-observer', 'catalog.json');
+    const beforeContextCatalog = JSON.parse(await readFile(catalogPath, 'utf8'));
+    if (beforeContextCatalog.schemaVersion !== '1.0.0') fail('v0.10.1 smoke encountered an unexpected alias catalog schema');
+    beforeContextCatalog.observations['context-baseline'] = {
+      observationId: contextManifest.observationId,
+      requestId: contextManifest.requestId,
+      relativeArtifactDir: contextRelativeArtifactDir,
+    };
+    await writeFile(catalogPath, JSON.stringify(beforeContextCatalog, null, 2) + '\n', 'utf8');
+    const registeredCatalog = JSON.parse(await readFile(catalogPath, 'utf8'));
+    if (registeredCatalog.observations['context-baseline']?.observationId !== contextManifest.observationId || registeredCatalog.observations['context-baseline']?.requestId !== contextManifest.requestId) {
+      fail('v0.10.1 baseline alias did not preserve canonical observation identities');
+    }
+    const resolvedContextBaseline = await installedPackageApi.readObservationArtifact(path.join(evidenceRoot, ...contextRelativeArtifactDir.split('/'), 'manifest.json'));
+    if (!resolvedContextBaseline.ok || resolvedContextBaseline.artifact.observationId !== contextManifest.observationId || resolvedContextBaseline.artifact.requestId !== contextManifest.requestId) {
+      fail('installed canonical reader could not resolve the registered v0.10.1 project baseline');
+    }
+
+    const contextContractsDir = path.join(projectDir, 'contracts', 'maintenance-context');
+    await mkdir(contextContractsDir, { recursive: true });
+    const contextBaselineContractFile = path.join(contextContractsDir, 'baseline.json');
+    const contextChangeContractFile = path.join(contextContractsDir, 'change.json');
+    await writeFile(contextBaselineContractFile, JSON.stringify({
+      artifactKind: 'my-frontend-observer/frontend-contract',
+      schemaVersion: '1.0.0',
+      contractClass: 'baseline',
+      baselineId: 'packed-context-baseline',
+      sourceObservation: { observationId: contextManifest.observationId, requestId: contextManifest.requestId, producer: contextManifest.producer, observationSchemaVersion: contextManifest.schemaVersion },
+      clauses: [],
+      provenance: { approvedAt: new Date(0).toISOString() },
+    }), 'utf8');
+    await writeFile(contextChangeContractFile, JSON.stringify({
+      artifactKind: 'my-frontend-observer/frontend-contract',
+      schemaVersion: '1.0.0',
+      contractClass: 'change',
+      contractId: 'packed-context-change',
+      contractRequestId: 'packed-context-change-request',
+      activeBaselineIds: ['packed-context-baseline'],
+      clauses: [{ clauseId: 'protected-sidebar-width', primitive: { kind: 'property-unchanged-within-tolerance', target: 'sidebar', property: 'width', tolerance: { kind: 'exact' } }, category: 'protected', supportingEvidence: [] }],
+    }), 'utf8');
+    const contextApproved = await runBin(['approve-baseline', '--observation', contextObservationDir, '--contract-file', contextBaselineContractFile, '--output', '.frontend-observer/evidence/contracts/baseline']);
+    const contextBaselineContractLine = contextApproved.stdout.split('\n').find((line) => line.startsWith('Artifact: '));
+    if (contextApproved.code !== 0 || !contextBaselineContractLine) fail(`v0.10.1 approve-baseline failed: ${contextApproved.code} ${contextApproved.stdout} ${contextApproved.stderr}`);
+    const contextBaselineContractDir = artifactPathFromCliOutput(projectDir, contextBaselineContractLine.slice('Artifact: '.length).trim());
+    const contextSaved = await runBin(['save-change-contract', '--contract-file', contextChangeContractFile, '--output', '.frontend-observer/evidence/contracts/change']);
+    const contextChangeContractLine = contextSaved.stdout.split('\n').find((line) => line.startsWith('Artifact: '));
+    if (contextSaved.code !== 0 || !contextChangeContractLine) fail(`v0.10.1 save-change-contract failed: ${contextSaved.code} ${contextSaved.stdout} ${contextSaved.stderr}`);
+    const contextChangeContractDir = artifactPathFromCliOutput(projectDir, contextChangeContractLine.slice('Artifact: '.length).trim());
+    const contextBaselineContractRel = path.relative(canonicalProjectDir, await canonicalFilesystemPath(contextBaselineContractDir)).split(path.sep).join('/');
+    const contextChangeContractRel = path.relative(canonicalProjectDir, await canonicalFilesystemPath(contextChangeContractDir)).split(path.sep).join('/');
+    if (contextBaselineContractRel.startsWith('../') || contextChangeContractRel.startsWith('../') || path.isAbsolute(contextBaselineContractRel) || path.isAbsolute(contextChangeContractRel)) {
+      fail('v0.10.1 contract artifacts escaped the disposable project root');
+    }
+    maintenanceConfig.acceptance = {
+      contract: { baselineArtifact: contextBaselineContractRel, changeArtifact: contextChangeContractRel },
+    };
+    await writeFile(projectConfigPath, JSON.stringify(maintenanceConfig, null, 2) + '\n', 'utf8');
+    const contextConfigBeforeCheck = await readFile(projectConfigPath);
+    const baselineManifestPath = path.join(contextObservationDir, 'manifest.json');
+    const baselineScreenshotPath = path.join(contextObservationDir, 'screenshot.png');
+    const baselineManifestBefore = await readFile(baselineManifestPath);
+    const baselineScreenshotBefore = await readFile(baselineScreenshotPath);
+    const baselineContractBefore = await readFile(path.join(contextBaselineContractDir, 'manifest.json'));
+    const changeContractBefore = await readFile(path.join(contextChangeContractDir, 'manifest.json'));
+    const contextCatalogBeforeCheck = JSON.parse(await readFile(catalogPath, 'utf8'));
+    const previousCurrentRecord = contextCatalogBeforeCheck.observations.current;
+    const fixtureSourceBeforeCheck = await (await fetch(targetUrl)).text();
+    const contextCheck = await runBin(['check', 'context-baseline', '--json']);
+    let contextCheckJson;
+    try {
+      contextCheckJson = JSON.parse(contextCheck.stdout);
+    } catch (error) {
+      fail(`v0.10.1 installed check did not emit canonical JSON: ${String(error)} ${contextCheck.stdout} ${contextCheck.stderr}`);
+    }
+    if (contextCheck.code !== 0 || contextCheckJson.status !== 'PASS') fail(`v0.10.1 installed check did not PASS: ${contextCheck.code} ${contextCheck.stdout} ${contextCheck.stderr}`);
+    if (!['comparable', 'comparable-with-warnings'].includes(contextCheckJson.comparison?.state)) fail(`v0.10.1 comparison was not comparable: ${JSON.stringify(contextCheckJson.comparison)}`);
+    if (contextCheckJson.comparison?.differenceCount !== 0) fail(`v0.10.1 unchanged fixture had comparison differences: ${JSON.stringify(contextCheckJson.comparison)}`);
+    if (contextCheckJson.contract?.state !== 'PASS') fail(`v0.10.1 configured contract did not PASS: ${JSON.stringify(contextCheckJson.contract)}`);
+    if (!Array.isArray(contextCheckJson.blockers) || contextCheckJson.blockers.length !== 0) fail(`v0.10.1 check returned blockers: ${JSON.stringify(contextCheckJson.blockers)}`);
+    const contextCatalogAfterCheck = JSON.parse(await readFile(catalogPath, 'utf8'));
+    if (!contextCatalogAfterCheck.observations.current || contextCatalogAfterCheck.observations.current.observationId === previousCurrentRecord?.observationId) fail('v0.10.1 check did not advance current to a fresh candidate');
+    const aliasKeysBefore = Object.keys(contextCatalogBeforeCheck.observations).filter((alias) => alias !== 'current').sort();
+    const aliasKeysAfter = Object.keys(contextCatalogAfterCheck.observations).filter((alias) => alias !== 'current').sort();
+    if (JSON.stringify(aliasKeysAfter) !== JSON.stringify(aliasKeysBefore)) fail('v0.10.1 check changed project aliases other than current');
+    for (const alias of aliasKeysBefore) {
+      if (JSON.stringify(contextCatalogAfterCheck.observations[alias]) !== JSON.stringify(contextCatalogBeforeCheck.observations[alias])) fail(`v0.10.1 check mutated immutable alias "${alias}"`);
+    }
+    const candidateArtifactDir = path.join(evidenceRoot, ...contextCatalogAfterCheck.observations.current.relativeArtifactDir.split('/'));
+    const candidateRead = await installedPackageApi.readObservationArtifact(path.join(candidateArtifactDir, 'manifest.json'));
+    if (!candidateRead.ok) fail(`installed canonical reader rejected v0.10.1 candidate: ${candidateRead.reason}`);
+    const candidateContextMatches = JSON.stringify(candidateRead.artifact.requestConfig.scrollScenario) === JSON.stringify(contextManifest.requestConfig.scrollScenario);
+    const candidateExplicitStateMatches = JSON.stringify(candidateRead.artifact.requestConfig.explicitState) === JSON.stringify(contextManifest.requestConfig.explicitState);
+    if (!candidateContextMatches) fail('v0.10.1 candidate did not replay baseline scrollScenario');
+    if (!candidateExplicitStateMatches) fail('v0.10.1 candidate did not replay baseline explicitState');
+    const candidateScroll = candidateRead.artifact.scrollScenarioEvidence;
+    const scrollExecuted = Boolean(candidateScroll
+      && candidateScroll.initial.window.scrollY === 0
+      && candidateScroll.final.window.scrollY > candidateScroll.initial.window.scrollY
+      && candidateScroll.transition.windowScrollY.changed
+      && candidateScroll.final.window.scrollY === contextScroll.final.window.scrollY);
+    if (!scrollExecuted) fail(`v0.10.1 candidate did not execute the replayed scroll scenario: ${JSON.stringify(candidateScroll?.transition?.windowScrollY)}`);
+    if (!(await readFile(projectConfigPath)).equals(contextConfigBeforeCheck)) fail('v0.10.1 check mutated project configuration');
+    if (!(await readFile(baselineManifestPath)).equals(baselineManifestBefore)) fail('v0.10.1 check mutated the immutable baseline manifest');
+    if (!(await readFile(baselineScreenshotPath)).equals(baselineScreenshotBefore)) fail('v0.10.1 check mutated the immutable baseline screenshot');
+    if (!(await readFile(path.join(contextBaselineContractDir, 'manifest.json'))).equals(baselineContractBefore)) fail('v0.10.1 check mutated the configured baseline contract');
+    if (!(await readFile(path.join(contextChangeContractDir, 'manifest.json'))).equals(changeContractBefore)) fail('v0.10.1 check mutated the configured change contract');
+    const fixtureSourceAfterCheck = await (await fetch(targetUrl)).text();
+    if (fixtureSourceAfterCheck !== fixtureSourceBeforeCheck || sha256(Buffer.from(fixtureSourceAfterCheck)) !== maintenanceSourceDigest || html !== maintenanceSource) fail('v0.10.1 check changed the disposable frontend source');
+    checkedCatalog = contextCatalogAfterCheck;
+    summary.projectCheckBaselineContextReplay = {
+      baselineHasScrollScenario: true,
+      baselineHasExplicitState: true,
+      projectConfigHasScrollScenario: false,
+      projectConfigHasExplicitState: false,
+      checkExitCode: contextCheck.code,
+      checkStatus: contextCheckJson.status,
+      comparisonState: contextCheckJson.comparison.state,
+      differenceCount: contextCheckJson.comparison.differenceCount,
+      contractState: contextCheckJson.contract.state,
+      blockers: contextCheckJson.blockers.length,
+      candidateScrollContextMatches: candidateContextMatches,
+      candidateExplicitStateMatches,
+      scrollExecuted,
+      declaredStateReplay: candidateExplicitStateMatches,
+      controlledStateSetup: 'NOT_IMPLEMENTED',
+      baselineImmutable: true,
+      sourceImmutable: true,
+      currentHistoryAdvanced: true,
+      onlyCurrentAliasChanged: true,
+      baselineObservationId: contextManifest.observationId,
+      candidateObservationId: candidateRead.artifact.observationId,
+      baselineScrollY: contextScroll.final.window.scrollY,
+      candidateScrollY: candidateScroll.final.window.scrollY,
+    };
+    summary.v0101PackedAcceptance = true;
 
     // --- build one real imported + one approved external-reference artifact via the installed CLI ---
     const referenceImagePath = path.join(projectDir, 'reference.png');
@@ -322,8 +511,6 @@ async function main() {
     // Built through the installed package's own exported projectBoundedAgentContext -
     // never hand-edited - against the real observation created above (task requires
     // "installed public/programmatic API if exported", never fabricated schema fields).
-    const installedIndexPath = path.join(installedDir, 'dist', 'index.js');
-    const installedPackageApi = await import(pathToFileURL(installedIndexPath).href);
     if (typeof installedPackageApi.projectBoundedAgentContext !== 'function') fail('installed package does not export projectBoundedAgentContext');
     const contextProjection = installedPackageApi.projectBoundedAgentContext({
       generatedAt: new Date().toISOString(),

@@ -685,12 +685,12 @@ repository. The run result's `status` must be `passed` and its
 `cleanupErrors` must be empty. The demo and scenarios are not in the npm
 package. See `examples/v09-demo/README.md` for details and maintenance notes.
 
-## Complete v0.10 visual-change workflow (implemented, unreleased)
+## Complete v0.10 visual-change workflow (released)
 
 The sequence on top of the v0.7/v0.8 foundation above preserves the current
 engines and lets graphical interfaces consume rather than invent the reference
 model. v0.9 is released as `0.9.0`; v0.10 is implemented in the repository
-and remains unreleased.
+and is released as `0.10.0`.
 
 Actual-frontend entry starts in project-aware `view`: open a runtime
 observation, draw and explicitly associate a mark, author and confirm runtime
@@ -716,6 +716,16 @@ explicit Activate
 The controlling invariants are `DRAW != DECIDE`, `CONFIRM !=
 PROMOTE/MATERIALIZE`, `PROMOTE/MATERIALIZE != ACTIVATE`, `PASS != ACCEPT`, and
 `ACCEPT != GOVERNANCE`.
+
+Project-aware `check` reads and validates its selected immutable baseline
+before capturing `current`. It keeps URL, viewport, targets, and ordinary
+capture settings from `frontend-observer.json`, while replaying only the
+baseline observation's optional `scrollScenario` and caller-declared
+`explicitState` through the canonical request and browser capture path. The
+project config schema, `init`, and normal `capture` do not accept those
+low-level fields. `explicitState` replay preserves the baseline's comparison
+identity only; it does not establish theme, application, or authentication
+state in the browser.
 
 ```text
 stable targets and bounded runtime behavior
@@ -790,7 +800,7 @@ external-reference services.
 
 ## Current release workflow
 
-The published package is `@dailephd/my-frontend-observer@0.9.1`; install it
+The current published package is `@dailephd/my-frontend-observer@0.10.1`; install it
 with npm and use the `my-frontend-observer` CLI. The ordinary workflow is
 `init`, `capture baseline`, `check baseline`, then `view`. Existing sections
 below retain the historical low-level and viewer workflows for compatibility.
