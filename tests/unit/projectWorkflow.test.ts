@@ -21,6 +21,12 @@ describe('project configuration and aliases', () => {
     expect(validateProjectConfig({ ...validConfig, extra: true }).ok).toBe(false);
     expect(validateProjectConfig({ ...validConfig, schemaVersion: '2.0.0' }).ok).toBe(false);
   });
+  it('keeps project config at schema 1.1.0 and rejects low-level baseline observation context', () => {
+    const config = { ...validConfig, schemaVersion: '1.1.0' };
+    expect(validateProjectConfig(config)).toMatchObject({ ok: true, config: { schemaVersion: '1.1.0' } });
+    expect(validateProjectConfig({ ...config, scrollScenario: { action: { kind: 'window-scroll-by', deltaX: 0, deltaY: 10 } } })).toMatchObject({ ok: false, reason: expect.stringContaining('scrollScenario') });
+    expect(validateProjectConfig({ ...config, explicitState: { theme: 'dark' } })).toMatchObject({ ok: false, reason: expect.stringContaining('explicitState') });
+  });
   it('keeps v1.0 compatible and validates the v1.1 acceptance path contract', () => {
     expect(validateProjectConfig(validConfig).ok).toBe(true);
     expect(validateProjectConfig({ ...validConfig, acceptance: {} }).ok).toBe(false);

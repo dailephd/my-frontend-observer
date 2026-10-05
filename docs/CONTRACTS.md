@@ -12,6 +12,17 @@ The v0.10 Batch 2 application composition explicitly activates either the frozen
 
 The v0.10 Batch 3 Viewer exposes bounded workflow inspection at `GET /api/visual-changes/:handle/view` in both standalone and project-aware sessions. Create, activate, check, and restore POST operations are project-aware only, reuse the existing in-memory authoring capability and request guards, accept no filesystem paths, and delegate to the Batch 2 application service. Every new response is `no-store`. Successful immutable mutations return the exact new workflow ID so the Viewer can refresh and reselect that revision without guessing. The Viewer protocol remains `1.3.0`.
 
+Project-aware `check` resolves and validates its immutable baseline before
+candidate capture. Candidate URL, viewport, targets, and ordinary operational
+settings still come from project configuration. The check replays only the
+validated baseline request's optional `scrollScenario` and `explicitState`
+through `normalizeRequest` and the canonical observer. Scroll is executed by
+the normal browser capture path. `explicitState` replay retains the
+caller-declared comparison identity only; it never infers or establishes
+browser, application, theme, or session state. Project config remains schema
+1.1.0 and does not accept either field; `init` and normal `capture` remain
+project-config-only.
+
 The v0.10 Batch 4 actual-frontend entry route promotes only explicitly selected, saved, confirmed, canonically promotable runtime intent without activating project acceptance. It freezes the exact resulting contract instance with the saved annotation, source observation, and configured persistent baseline contract through the Batch 2 workflow-creation owner. Repeated equivalent starts share `contractRequestId` while receiving fresh contract, visual-change request, and workflow instance identities. Activation remains a later explicit workflow action.
 
 Reference entry freezes only an exact approved reference, an annotation authored

@@ -19,6 +19,14 @@ acceptance input), upward discovery, centralized managed paths, and the atomic
 alias catalog live under `src/projectWorkflow`. Aliases select exact canonical
 artifact directories; they never replace artifact identities.
 
+Project `check` validates the selected baseline artifact before candidate
+capture. The capture still takes URL, viewport, targets, and operational
+defaults from current project configuration. Only the validated baseline's
+optional `scrollScenario` and `explicitState` are replayed through the
+existing normalized request and observation path. The project-config schema
+does not own these fields. Explicit state remains declarative identity
+metadata; replay does not establish application or session state.
+
 `src/application/projectCheckService.ts` composes the existing observation,
 comparison, contract-evaluation, reference-reader, explicit-binding,
 compatibility, and fidelity owners. `src/projectWorkflow/checkAcceptance.ts`

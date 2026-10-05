@@ -717,6 +717,16 @@ The controlling invariants are `DRAW != DECIDE`, `CONFIRM !=
 PROMOTE/MATERIALIZE`, `PROMOTE/MATERIALIZE != ACTIVATE`, `PASS != ACCEPT`, and
 `ACCEPT != GOVERNANCE`.
 
+Project-aware `check` reads and validates its selected immutable baseline
+before capturing `current`. It keeps URL, viewport, targets, and ordinary
+capture settings from `frontend-observer.json`, while replaying only the
+baseline observation's optional `scrollScenario` and caller-declared
+`explicitState` through the canonical request and browser capture path. The
+project config schema, `init`, and normal `capture` do not accept those
+low-level fields. `explicitState` replay preserves the baseline's comparison
+identity only; it does not establish theme, application, or authentication
+state in the browser.
+
 ```text
 stable targets and bounded runtime behavior
 → relationships and before/after comparison (released - see above)

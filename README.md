@@ -19,6 +19,13 @@ Canonical hashes remain available in viewer details and persisted provenance,
 but are not normal workflow command inputs. The existing low-level commands
 remain supported. v0.10.0 is the current release.
 
+Project `check` validates the chosen baseline before capturing a new candidate.
+It uses the current project URL, viewport, targets, and normal capture defaults,
+then replays only the baseline's optional scroll scenario and caller-declared
+explicit-state identity. Project config, `init`, and ordinary `capture` do not
+accept those low-level fields. Explicit-state replay does not establish
+browser or session state.
+
 v0.10.0 completes the Visual Change workflow described below.
 
 `my-frontend-observer` is the local-first rendered browser/runtime evidence
