@@ -373,3 +373,7 @@ Planning authorities:
 
 No sibling ecosystem repository is a runtime dependency of the retained
 foundation.
+
+## Node validation and CI
+
+Local full validation uses the latest stable Node.js with `npm run validate:local`. GitHub Actions validates Node 24; its Linux candidate suite and platform-specific packed browser/tutorial smokes have distinct responsibilities. See [docs/CI_NODE_POLICY.md](docs/CI_NODE_POLICY.md).

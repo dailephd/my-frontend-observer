@@ -804,3 +804,7 @@ The current published package is `@dailephd/my-frontend-observer@0.10.1`; instal
 with npm and use the `my-frontend-observer` CLI. The ordinary workflow is
 `init`, `capture baseline`, `check baseline`, then `view`. Existing sections
 below retain the historical low-level and viewer workflows for compatibility.
+
+## Node and CI responsibility
+
+Use `npm run validate:local` on the latest stable Node.js for local candidate validation, and focused tests for iterative corrections. GitHub Actions tests Node 24, with a Linux full unit/browser candidate and OS-specific installed-package/tutorial smokes. The separate security-test step was removed because its assertions were already covered by the complete unit and browser suites. See [CI_NODE_POLICY.md](CI_NODE_POLICY.md).
