@@ -7,6 +7,7 @@ Cross-repository composition is centralized in [my-dev-kit's ecosystem guide](ht
 ```text
 init
 capture baseline
+configure the required contract/reference acceptance
 implement frontend change outside Observer
 check baseline --json
 if FAIL:
@@ -35,7 +36,7 @@ install dependencies (npm install; npx playwright install chromium)
 ## Current observation workflow (supported in 0.9.0)
 
 The real `observe` workflow remains supported in the current published
-`my-frontend-observer@0.9.0` package. Its browser-observation behavior was
+`@dailephd/my-frontend-observer@0.10.1` package. Its browser-observation behavior was
 established in earlier releases; later project/viewer releases compose it
 rather than replacing it. It accepts target configuration through either of
 two input paths, plus one optional runtime scroll scenario:
@@ -88,7 +89,7 @@ independent of the source checkout.
 ## Current comparison workflow (supported in 0.9.0)
 
 **Current status: shipped originally as part of
-`my-frontend-observer@0.4.0` and remains supported in `0.9.0`.** This is a
+`my-frontend-observer@0.4.0` and remains supported in the current `0.10.1` package.** This is a
 separate workflow from the observation workflow above - it consumes two
 already-persisted observation artifacts rather than producing one, and it
 never launches a browser:
@@ -137,7 +138,7 @@ validation of the installed `compare` command
 ## Current frontend contract workflow (supported in 0.9.0)
 
 This text/config-driven workflow shipped in `0.5.0` and remains supported in
-`0.9.0`. It is layered downstream of the two workflows above - it does not
+the current `0.10.1` package. It is layered downstream of the two workflows above - it does not
 replace them. The complete v0.7 coding-agent workflow (the external-reference
 evidence foundation and end-to-end correction loop) is layered on top of
 it - see "Current external-reference foundation workflow" and "Current
@@ -190,6 +191,35 @@ exercises the installed candidate's `approve-baseline`/`save-change-contract`/
 `evaluate-contract` commands against real installed-candidate `observe`/
 `compare` evidence, proven on Windows, Linux, and macOS (see
 `docs/CI_CD.md`).
+
+### Negative-control contract rehearsal
+
+Before relying on a contract to guard a change, rehearse it against a
+disposable deterministic fixture. Freeze one baseline observation, its
+approved baseline contract, and the per-change contract, with the same URL,
+viewport, and target declarations for every candidate. Externally prepare a
+known negative candidate that satisfies the requested change while breaking
+a protected property or preserved invariant, then prepare the corrected
+candidate. Observer captures and evaluates evidence; it never edits the
+fixture's source.
+
+For each already-captured candidate, use distinct output directories and pass
+the `Artifact` path printed by `compare` as the comparison artifact root:
+
+```sh
+my-frontend-observer compare --before <before-root> --after <candidate-root> --output <comparison-dir>
+my-frontend-observer evaluate-contract --before <before-root> --after <candidate-root> --comparison <comparison-artifact-root> --baseline <baseline-contract-root> --change <change-contract-root> --output <evaluation-dir> --enforce
+```
+
+The known negative should return `FAIL` and a nonzero evaluation exit code,
+even when its requested and expected clause results pass. Inspect protected
+and preserved results independently; the corrected candidate should pass
+all required clauses and return `PASS`. Keep the same contracts and original
+artifacts across both evaluations. This pattern is exercised by
+`tests/browser/cliFrontendContracts.test.ts`; each evaluation remains
+separate evidence. A passing rehearsal still requires explicit human review
+and never approves a replacement baseline or accepts a Visual Change
+attempt automatically.
 
 ## Current bounded agent context workflow (released as `0.6.0`)
 
@@ -300,7 +330,8 @@ approve-reference --reference <imported-artifact-root> --output <dir> [--superse
   never modified
 ```
 
-`approve-reference` is the only explicit reference-approval act - it is never
+`approve-reference` exposes the canonical reference-approval act, also used by
+the project-aware Viewer's explicit Approve reference action. Approval is never
 inferred from a successful import. Supersession (`--supersedes`) is
 represented only as a forward pointer on the newer artifact; the artifact it
 supersedes is never rewritten, so prior reference evidence remains immutable
@@ -369,7 +400,7 @@ about runtime/candidate availability.
 Finally, `evaluate-reference-fidelity --reference <root> --candidate <root>
 [--bindings-file <json-file>] [--enforce]` is the first command in this
 stack that actually compares a reference's selected requirements against
-live candidate evidence:
+already-persisted candidate evidence:
 
 ```text
 evaluate-reference-fidelity --reference <root> --candidate <root> [--bindings-file <json-file>] [--enforce]
@@ -378,12 +409,14 @@ evaluate-reference-fidelity --reference <root> --candidate <root> [--bindings-fi
   declarations are handed straight through)
 → read the reference and candidate artifacts through their existing readers
 → evaluateReferenceCandidateFidelity(reference, candidate, bindings):
-  reference/candidate/binding-declaration structural validation
+  reference/candidate structural validation
   → Prompt 3 reference adequacy (inadequate -> "not-evaluated", no
     ordinary result fabricated)
   → Prompt 4 compatibility (incomparable -> "not-evaluated")
-  → Prompt 5 binding evaluation (ambiguous/unavailable/undeclared binding ->
-    the dependent requirement is "unavailable", never guessed)
+  → Prompt 5 binding-declaration validation and binding evaluation
+    (earlier blocking gates leave declarations unassessed;
+    ambiguous/unavailable/undeclared binding -> the dependent requirement
+    is "unavailable", never guessed)
   → per requirement: reference-image-pixel <-> CSS-pixel coordinate mapping
     (from reference.applicability.viewport and the image's own dimensions;
     no viewport or an incoherent aspect ratio -> numeric requirements
@@ -552,13 +585,16 @@ Where `--context-file` is supplied:
 ```
 
 The viewer is optional: every CLI/programmatic workflow above remains
-independently functional without it. The viewer never modifies target
-source or any Observer evidence artifact; never runs
-`@dailephd/my-dev-kit`; never rebuilds a bounded context
-(`projectBoundedAgentContext` is not called at runtime) or its correlation
-(`deriveRuntimeStaticCorrelations`/`attachRuntimeStaticCorrelations` are not
-called at runtime) - it only displays the exact context and bindings it was
-started with. See `docs/COMMANDS.md#view` for the full flag reference and
+independently functional without it. Standalone `view --root` remains
+read-only. The session-context inspection described here displays the exact
+supplied context and bindings without rebuilding either the context or its
+runtime/static correlation. Project-aware authoring may create new immutable
+artifacts and workflow revisions, and explicit activation/restoration may
+update project acceptance through the existing application owners. Preparing a
+Visual Change handoff separately projects its primary bounded context while
+preserving optional supplemental context unchanged. The viewer never edits
+target source, rewrites existing evidence, or runs `@dailephd/my-dev-kit`.
+See `docs/COMMANDS.md#view` for the full flag reference and
 `docs/ARCHITECTURE.md` "v0.8 Batch 1" through "v0.8 Batch 8" for the
 implementation record.
 
@@ -623,8 +659,9 @@ conflict and keeps the draft. If a saved annotation's source evidence
 disappears, the annotation stays inspectable and its source is reported as
 `unavailable`. No replacement source is guessed.
 
-v0.10 correction orchestration (automatic coding-agent runs, rerender loops,
-and automatic approvals) is not implemented.
+The human-controlled v0.10 correction workflow is released and described below.
+Observer does not automatically run coding agents, drive source-edit/rerender
+loops, or approve baselines and references.
 
 ## Developer tutorial-generation workflow (v0.9 demo, not a product command)
 
@@ -803,4 +840,4 @@ external-reference services.
 The current published package is `@dailephd/my-frontend-observer@0.10.1`; install it
 with npm and use the `my-frontend-observer` CLI. The ordinary workflow is
 `init`, `capture baseline`, `check baseline`, then `view`. Existing sections
-below retain the historical low-level and viewer workflows for compatibility.
+above retain the historical low-level and viewer workflows for compatibility.

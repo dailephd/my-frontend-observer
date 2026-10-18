@@ -16,12 +16,13 @@ Repository:
 
 Package:
 
-`my-frontend-observer`
+`@dailephd/my-frontend-observer`
 
 The product is a local-first frontend observation and change-review system. It
 captures bounded browser evidence, persists structured artifacts, compares
 observations, evaluates change contracts, works with external design references,
-and exposes the same canonical evidence through a read-only local viewer/PWA.
+and exposes the same canonical evidence through a local viewer/PWA with
+read-only inspection and guarded project-aware authoring modes.
 
 Role separation is mandatory:
 
@@ -184,9 +185,9 @@ The established ownership model is:
 
 ### Local viewer server
 
-- `src/viewerServer/` owns the read-only Node local viewer server, evidence
-  indexing, safe handles, session input, viewer projections/adapters, and safe
-  media/API boundaries.
+- `src/viewerServer/` owns the Node local viewer server, evidence indexing,
+  safe handles, session input, viewer projections/adapters, safe media/API
+  boundaries, and guarded project-aware authoring routes.
 - The viewer server is not a generic filesystem server.
 - It must remain loopback-only.
 
@@ -253,7 +254,11 @@ fidelity status. Correlation is not source ownership.
 
 ## 9. Viewer-specific invariants
 
-The viewer is local, optional, read-only, and non-mutating.
+The viewer is local and optional. Standalone `view --root` is read-only.
+Project-aware `view` supports explicit, guarded authoring through the existing
+application owners. Those operations create new immutable canonical artifacts
+and workflow revisions. Explicit activation and restoration may update project
+acceptance. Neither mode edits target source or rewrites existing evidence.
 
 Preserve:
 
@@ -263,13 +268,17 @@ Preserve:
 - metadata-first loading;
 - on-demand artifact and media loading;
 - no arbitrary filesystem browsing;
-- no evidence mutation;
+- no modification of an existing evidence artifact;
 - no target-source editing;
-- no baseline/reference approval through viewing;
-- no viewer-created evidence artifact family;
+- no baseline/reference approval merely from viewing or accepting an attempt;
+- explicit project-aware reference approval uses the existing canonical owner;
+- no separate UI-owned evidence family or evaluation engine;
 - no automatic reference/runtime binding;
 - no my-dev-kit invocation from the shipped viewer;
-- no bounded-context rebuild from the viewer;
+- no rebuild of the bounded context supplied as session input;
+- explicit handoff preparation may project a new primary bounded context
+  through the existing canonical builder and preserve supplemental context
+  unchanged;
 - no runtime/static correlation rebuild from the viewer.
 
 Reference-image coordinates and runtime/CSS coordinates are different domains.
@@ -406,8 +415,8 @@ At minimum:
   evidence, not filesystem paths or edit authorization;
 - browser-controlled input must never choose arbitrary local binding/context
   file paths;
-- APIs remain read-only unless a future explicitly authorized version changes
-  that contract;
+- inspection APIs remain read-only; project-aware writes remain confined to
+  the existing guarded authoring and workflow routes;
 - service-worker behavior must not serve stale evidence as current truth.
 
 Do not use dynamic code execution or shell interpolation for user/evidence input

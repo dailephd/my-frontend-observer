@@ -1,5 +1,9 @@
 # Commands
 
+This reference describes `@dailephd/my-frontend-observer@0.10.1`, whose
+executable is `my-frontend-observer`. Historical package versions below record
+earlier releases of a command or contract; they are not installation pins.
+
 ## v0.10 visual workflow operations
 
 v0.10 adds no CLI command. Project-aware `view` exposes the Visual changes
@@ -366,13 +370,17 @@ the two observations are comparable at all:
 - **Hard incompatibilities** (force `incomparable`): different logical page
   URL, different viewport, different browser engine, or a mismatched scroll
   scenario configuration (no scenario vs. a scenario, or two different
-  scenario configurations).
+  scenario configurations). Different explicitly declared theme,
+  authenticated-state, or application-state values also block comparison
+  when both observations declare that dimension.
 - **Warnings** (still `comparable-with-warnings`, comparison proceeds):
   different producer package version, different browser version, or a
   changed/added/removed configured target.
-- **Unassessed dimensions** the observer does not yet model (theme,
-  authenticated state, application state) are always recorded, never
-  silently claimed identical.
+- **Optional declared state** (theme, authenticated state, application state)
+  is compared by exact value when both observations declare the dimension.
+  Equal values add no mismatch reason. A dimension omitted by either side
+  stays `unassessed`; a matching declaration does not prove actual browser or
+  session setup.
 
 An `incomparable` result still persists a structurally valid
 `ComparisonArtifact`: the comparability reasons are recorded, and ordinary
@@ -627,19 +635,22 @@ Options:
   declaring which stable observer runtime target (a configured target name)
   explicitly corresponds to each reference region a selected requirement
   depends on. Never inferred from geometry, matching names, or source code.
-  Optional — omitting it evaluates with no bindings at all, so every
-  requirement whose subject depends on a reference region becomes
-  `unavailable`.
+  Optional — omitting it supplies no bindings. If earlier gates allow
+  evaluation, every requirement whose subject depends on a reference region
+  becomes `unavailable`.
 - `--enforce` — makes a `fail` fidelity state produce a nonzero process
   exit status. A `fail` result is always printed identically with or
   without this flag; `--enforce` changes only the process exit code, never
   the result's content, and has no effect on a `not-evaluated` result.
 
 **This command never launches a browser, never re-resolves targets, and
-never recomputes reference regions/requirements/adequacy, compatibility, or
-bindings** — it reads the already-persisted reference and candidate exactly
-as given and evaluates every selected requirement exactly once via
-`evaluateReferenceCandidateFidelity`.
+never changes authored reference regions, requirements, or binding
+declarations** — it reads the already-persisted reference and candidate
+exactly as given. `evaluateReferenceCandidateFidelity` derives reference
+adequacy, compatibility, and runtime binding results through their existing
+canonical owners before evaluating the selected requirements. Inadequate
+reference evidence or incompatible artifacts stop evaluation before binding
+declarations are validated or requirements are evaluated.
 
 A `not-evaluated` result (reference adequacy inadequate, or reference/
 candidate incompatible) and a `fail` result (a found design mismatch) are
@@ -662,7 +673,7 @@ and exits `0`, unless `--enforce` is given and the state is `fail`, in
 which case it exits nonzero. It exits nonzero and persists nothing for
 invalid CLI syntax, an unreadable/malformed `--reference`/`--candidate`
 target, a malformed `--bindings-file`, or an invalid/out-of-bound binding
-declaration.
+declaration when its evaluation gate is reached.
 
 ## `import-reference`
 
@@ -759,8 +770,9 @@ Options:
   artifact (imported or approved) that this approval explicitly
   supersedes. The prior artifact is never modified.
 
-This is the only explicit reference-approval act in the observer — approval
-is never inferred from a successful import or from any later fidelity
+This command exposes the canonical reference-approval act. The project-aware
+Viewer's explicit Approve reference action delegates to the same owner.
+Approval is never inferred from a successful import or from any later fidelity
 evaluation. Approving persists a brand-new artifact instance (a fresh
 `referenceId` sharing the imported artifact's `referenceRequestId`) that
 carries a reference back to the imported artifact's image rather than a
@@ -795,14 +807,15 @@ There is no separate annotation command. `view` is the annotation entry point:
   for arbitrary evidence roots. It is always read-only. Saved annotations can
   be inspected but not edited, and every authoring request is refused.
 
-In a project-aware session the viewer protocol is `1.3.0` and the API adds
+In a project-aware session the viewer protocol is `1.3.0`. v0.9 added
 `GET /api/authoring/session`, `GET /api/annotations/<handle>/view`, the
 `annotation-overlay` media role, and exactly three authoring routes:
 `POST /api/annotations`, `POST /api/annotations/<handle>/promote-contract`,
 and `POST /api/annotations/<handle>/materialize-reference`. See
 `docs/SECURITY.md` for the local write boundary and `docs/WORKFLOWS.md` for
-the annotation workflow. The rest of this section describes the inspection
-surface, which is unchanged.
+the annotation workflow. v0.10 extends the same guarded surface with the Visual
+Change operations described above. The inspection routes described next remain
+read-only.
 
 **Current status: viewer behavior is released as package
 `@dailephd/my-frontend-observer@0.10.1`.** Starts one
@@ -895,15 +908,15 @@ on-demand fidelity evaluation for the same reference/candidate, when both
 are available. This mode never calls `projectBoundedAgentContext`,
 `deriveRuntimeStaticCorrelations`, or `attachRuntimeStaticCorrelations` —
 only the exact context the session was started with is ever displayed.
-Every other evidence family still shows the bounded metadata/raw-payload
-view established in Batch 2. Every route remains strictly read-only: no
-artifact is ever created, modified, or interpreted beyond its existing
-canonical reader/validator; no binding, fidelity, or bounded-context
-artifact is ever persisted; bounded agent context remains a programmatic-
-only Observer contract — this command adds no way to generate, save, or
-write one; and no batch in this lineage recomputes an "overall" verdict
-spanning contract and fidelity — they remain two independent,
-separately-displayed evidence dimensions.
+The inspection routes retain their existing canonical readers and validators.
+Inspection creates no artifact and persists no binding, fidelity, or
+bounded-context result. The project-aware Visual Change workspace separately
+uses guarded operations to create immutable workflow revisions, activate or
+restore project acceptance, and run the canonical project check. It displays
+that check's composed result while preserving the underlying contract and
+fidelity results. Preparing a handoff delegates primary bounded-context
+projection to the existing application owner; it never rebuilds the optional
+session context or its runtime/static correlation.
 
 ```text
 my-frontend-observer view [--root <evidence-root>] [--bindings-file <json-file>] [--context-file <json-file>] [options]
@@ -942,14 +955,13 @@ Options:
   `isValidBoundedAgentContextArtifact` — never a second validator. Explicit,
   session-only viewer input: held only in server memory, never persisted,
   never written into any Observer artifact, and the file's own path is
-  never exposed to the browser. Bounded agent context remains
-  programmatic-only as an Observer-produced contract — this command does
-  not add a way to generate, save, or write one; the viewer never rebuilds
-  it (`projectBoundedAgentContext` is never called at runtime) and never
-  derives or re-derives runtime/static correlation
-  (`deriveRuntimeStaticCorrelations`/`attachRuntimeStaticCorrelations` are
-  never called at runtime) — it only displays the exact context it was
-  given. A recognized `artifactKind` with a `schemaVersion` other than the
+  never exposed to the browser. Context inspection displays that exact supplied
+  value and never rebuilds it or its runtime/static correlation. If supplied
+  to a Visual Change handoff, it remains unchanged supplemental context;
+  explicit handoff preparation separately projects a primary bounded context
+  through the existing canonical builder. There is no standalone CLI command
+  for generating or persisting bounded context. A recognized `artifactKind`
+  with a `schemaVersion` other than the
   currently supported one (`1.0.0`) starts the viewer showing an honest
   "unsupported version" context state rather than failing. An unreadable
   file, invalid JSON, a non-object root, the wrong `artifactKind`, or a
@@ -1009,13 +1021,12 @@ Current supported boundaries:
 - `npm run test:browser` — run the real-Chromium integration suite
   (`tests/browser/`), including a real `observe` end-to-end test against the
   deterministic local fixture.
-- `npm run test:security` — run only the safety-relevant subset of the suite
-  (`tests/unit/policy.test.ts` plus the real-Chromium enforcement cases in
-  `tests/browser/chromiumAdapter.test.ts`: unsafe initial target, prohibited
-  redirect, prohibited subresource request, and browser cleanup around
-  safety/navigation failure) — a discoverable entry point for security
-  review tooling; it is a subset of, not a replacement for, `npm test` and
-  `npm run test:browser`.
+- `npm run test:security` — run safety-focused unit coverage for browser
+  policy, viewer access and authoring, evidence paths, and project workflows;
+  the real-Chromium adapter, PWA, and project-check suites; then the isolated
+  `test:pwa-hard-gate`. The exact file list is owned by
+  `package.json#scripts.test:security`. This command supplements the complete
+  `npm test` and `npm run test:browser` suites.
 - `npm run build` — clean, then compile `src/` (including `src/cli.ts`) to
   `dist/`, then build the viewer web app (`viewer/`) with Vite into
   `dist/viewer/` (v0.8 Batch 1). Both outputs ship inside the existing

@@ -106,7 +106,7 @@ This prints a concise result (`Observation:`/`State:`/`Artifact:`/`Targets:`/
 name, a stable `id`, a `data-*` attribute, a semantic landmark element,
 exact text, or an ordered fallback between several of those - ships
 alongside it. See "Structured semantic targets" in
-[docs/COMMANDS.md](docs/COMMANDS.md#structured-semantic-targets-targets-file)
+[docs/COMMANDS.md](docs/COMMANDS.md#structured-semantic-targets---targets-file)
 for the exact JSON format.
 
 ### Runtime scroll scenarios
