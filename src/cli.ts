@@ -126,13 +126,13 @@ Options:
                   existing canonical isValidBoundedAgentContextArtifact,
                   held only in server memory, never persisted, never written
                   into any Observer artifact, and never exposed as a path to
-                  the browser. Bounded agent context remains programmatic-
-                  only as an Observer-produced contract - this command does
-                  not add a way to generate, save, or write one; the viewer
-                  never rebuilds it (no projectBoundedAgentContext call) and
-                  never derives runtime/static correlation (no
-                  deriveRuntimeStaticCorrelations/attachRuntimeStaticCorrelations
-                  call) - it only displays the exact context it was given.
+                  the browser. Context inspection displays that exact value
+                  without rebuilding it or its runtime/static correlation.
+                  In a Visual Change handoff it remains unchanged supplemental
+                  context; explicit Prepare handoff separately projects a
+                  primary bounded context through the canonical builder.
+                  There is no standalone CLI command for generating or
+                  persisting bounded context.
                   A recognized artifactKind with a schemaVersion other than
                   the currently supported one starts the viewer showing an
                   honest "unsupported version" context state rather than
@@ -156,10 +156,13 @@ project-aware session also enables local visual-annotation and Visual Change
 authoring: the viewer may create immutable annotations/contracts/references,
 explicitly approve an imported reference, create/activate/check a frozen
 workflow, prepare a non-persisted handoff, review attempts, and record already
-completed governance results. All writes stay inside managed project evidence
-and use canonical application owners. The server never edits target source,
+completed governance results. Immutable artifacts stay inside managed project
+evidence; explicit activation/restoration may update project acceptance through
+canonical application owners. Passive inspection never launches a browser observation;
+explicit project-aware Run check captures current evidence through the canonical
+project check owner. The server never edits target source,
 never automatically approves a baseline/reference or restores acceptance,
-never exposes the evidence root as a generic static directory, never launches a browser observation,
+never exposes the evidence root as a generic static directory,
 and never launches a coding agent or orchestrator. The
 process keeps running (serving the viewer) until interrupted. On success,
 prints the viewer URL and exits only when the server stops. On invalid
@@ -506,8 +509,9 @@ Options:
                           modified.
   --help                 Show this help.
 
-This is the only explicit reference-approval act in the observer - approval
-is never inferred from a successful import or from any later fidelity
+This command exposes the canonical reference-approval act. The project-aware
+Viewer's explicit Approve reference action delegates to the same owner.
+Approval is never inferred from a successful import or from any later fidelity
 evaluation. Approving persists a brand-new artifact instance (a fresh
 referenceId sharing the imported artifact's referenceRequestId) that carries
 a reference back to the imported artifact's image rather than a second copy
@@ -545,9 +549,10 @@ Options:
                         geometry, matching names, or source code - a
                         binding exists only because this file declares it.
                         Optional - omitting it (or supplying an empty
-                        "bindings" array) evaluates with no bindings at
-                        all, so every requirement whose subject depends on
-                        a reference region becomes "unavailable".
+                        "bindings" array) supplies no bindings. If earlier
+                        gates allow evaluation, every requirement whose
+                        subject depends on a reference region becomes
+                        "unavailable".
   --enforce  Make a FAIL fidelity result produce a nonzero process exit
              status. A FAIL result is always printed identically with or
              without this flag - it changes only the process exit code,
@@ -557,10 +562,12 @@ Options:
   --help     Show this help.
 
 This command never launches a browser, never re-resolves targets, and
-never recomputes reference regions/requirements/adequacy, compatibility, or
-bindings - it reads the already-persisted reference and candidate exactly
-as given, evaluates the supplied binding declarations, and evaluates every
-one of the reference's selected requirements exactly once. It persists
+never changes authored reference regions, requirements, or binding
+declarations. It reads the persisted reference and candidate exactly as
+given, then derives adequacy, compatibility, and runtime binding results
+through their existing canonical owners. Inadequate reference evidence or
+incompatible artifacts stop evaluation before binding declarations are
+validated or selected requirements are evaluated. It persists
 nothing: the result exists only for this invocation. On success, prints a
 concise result (reference-side adequacy, compatibility state, the overall
 fidelity state - "not-evaluated"/"pass"/"fail" - and a pass/fail/unavailable
@@ -570,8 +577,8 @@ result (reference adequacy inadequate, or reference/candidate
 incompatible) is a successful, structured evaluation outcome, never an
 execution error - it always exits 0. On invalid syntax, an unreadable/
 malformed --reference or --candidate target, a malformed --bindings-file,
-or an invalid/out-of-bound binding declaration, prints structured
-diagnostics to stderr and exits nonzero.
+or an invalid/out-of-bound binding declaration when its gate is reached,
+prints structured diagnostics to stderr and exits nonzero.
 `;
 
 function parseViewport(raw: string): { width: number; height: number } | undefined {

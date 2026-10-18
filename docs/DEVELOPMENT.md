@@ -89,11 +89,12 @@ against a disposable local HTTP target is the way to confirm the packaged
 CLI performs a real observation independent of the source checkout. This is
 local package validation only, not a release procedure.
 
-`npm run test:security` runs only the safety-relevant subset of the suite
-(`tests/unit/policy.test.ts` plus the real-Chromium enforcement cases in
-`tests/browser/chromiumAdapter.test.ts`) - a discoverable entry point for
-security review tooling, not a replacement for `npm test`/`npm run
-test:browser`.
+`npm run test:security` runs the safety-focused unit tests for browser policy,
+viewer access and authoring, evidence paths, and project workflows, then the
+real-Chromium adapter, PWA, and project-check suites. It finishes by running
+`npm run test:pwa-hard-gate` independently. The exact file list is owned by
+`package.json#scripts.test:security`. This entry point supplements the complete
+`npm test` and `npm run test:browser` suites.
 
 `scripts/ci/runPackedObservationSmoke.mjs <tarball-path>` is the same
 packed-candidate smoke described above, packaged as a reusable script: it
@@ -221,8 +222,8 @@ This starts a real, loopback-only server serving the actual built PWA. As of
 v0.8 (all eight implementation batches), it reads `--root` only for bounded,
 read-only evidence discovery through the existing canonical
 readers/classifiers - it never writes to `--root` or modifies any artifact
-under it. The v0.9 annotation authoring surface (implemented, not yet
-released) is available only from the project-aware `node dist/cli.js view`
+under it. The v0.9 annotation authoring surface (released in `0.9.0` and
+included in the current package) is available only from the project-aware `node dist/cli.js view`
 inside an initialized project, never from `--root`. Its end-to-end browser
 proof is `tests/browser/v09IntegratedAcceptance.test.ts`, and its packed
 installed proof is `scripts/ci/runPackedV09AnnotationSmoke.mjs`.

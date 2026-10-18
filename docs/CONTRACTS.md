@@ -49,7 +49,7 @@ No existing evidence schema changed for v0.10.
 ## Current contracts
 
 The observation artifact contract is published in the current
-`my-frontend-observer@0.7.0` package and proven both from the source checkout
+`@dailephd/my-frontend-observer@0.10.1` package and proven both from the source checkout
 and from the packed npm tarball, on Windows, Linux, and macOS. The observation
 schema is `1.2.0` (see "v0.2 target contract" and "v0.3 scroll scenario
 contract" below):
@@ -133,7 +133,7 @@ exclusive per invocation, and both converge on the same
 observation produces exactly the same `manifest.json` shape as a
 CSS-shorthand one. Schema `1.1.0` was the v0.2 published artifact schema;
 schema `1.2.0` has been emitted since v0.3 and remains the observation schema
-in the current published v0.7.0 package, for both target-input modes
+in the current published v0.10.1 package, for both target-input modes
 (target semantics are unchanged from v0.2 - see the v0.3 scroll scenario
 contract below for what schema `1.2.0` actually adds). `--targets-file`'s
 local input path is never part of the persisted request identity or
@@ -214,8 +214,9 @@ directly, and its local path is operational input only, exactly like
 
 ## v0.4 comparison contract (shipped as part of this release)
 
-**Current status: shipped as part of the published `my-frontend-observer@0.4.0`
-package and unchanged through the current `0.7.0` release.** Observation
+**Release history: shipped as part of `my-frontend-observer@0.4.0`.** The
+comparison schema remains `1.0.0` in the current `0.10.1` release; optional
+declared-state comparability was added in v0.7 as described below. Observation
 schema remains `1.2.0`. Comparison is a distinct artifact kind and schema,
 never a bump to the observation schema:
 
@@ -247,9 +248,11 @@ three states (`comparable`/`comparable-with-warnings`/`incomparable`) with
 structured reasons, never a bare boolean. Hard incompatibilities (page URL,
 viewport, browser engine, scroll-scenario configuration mismatch) force
 `incomparable`; producer-version, browser-version, and target-configuration
-differences are warning-only; theme/authenticated-state/application-state
-identity are recorded as `unassessed` dimensions the observer does not yet
-model - never silently claimed identical. An `incomparable` result still
+differences are warning-only. Theme, authenticated-state, and application-state
+identity are assessed by exact value when both observations declare that
+dimension: unequal values block comparison, equal values add no reason, and a
+dimension missing from either side remains `unassessed`. Declarations never
+establish actual browser or session state. An `incomparable` result still
 persists a structurally valid `ComparisonArtifact` with empty rendered
 differences, not a fabricated comparison.
 
@@ -522,9 +525,10 @@ a fresh per-execution instance identity.
 
 **Export/public boundary**: `src/index.ts` exports the complete
 bounded-agent-context/correlation type and function surface as a
-programmatic library contract. There is no CLI command (`observe`/`compare`/
-`approve-baseline`/`save-change-contract`/`evaluate-contract` remain the only
-public commands) and no orchestrator/lab code in this repository - bounded
+programmatic library contract. There is no dedicated bounded-context CLI
+command. The current Visual Change handoff uses the same builder for its
+primary runtime context and preserves optional supplemental context unchanged.
+There is no orchestrator/lab code in this repository - bounded
 runtime-evidence consumption by `my-dev-kit-orchestrator` and exact
 readers/fixtures/evaluation in `my-dev-kit-lab` are separate sibling-
 repository deliverables outside `my-frontend-observer`'s public surface.
@@ -1412,17 +1416,19 @@ authoring-conflict concept (each requirement is evaluated independently
 against its own subject), so reusing `conflict` would invite a status this
 prompt can never actually produce.
 
-**Evaluation order (frozen, never reordered):** reference structural
-validation -> candidate structural validation -> binding-declaration
-structural validation -> Prompt 3 reference adequacy -> Prompt 4
-compatibility -> Prompt 5 binding evaluation -> per-requirement candidate-
-evidence/coordinate-mapping checks -> per-requirement tolerance/
-relationship comparison -> overall result. The first three (structural
-validation) failures return `{ ok: false, reason }` - a caller/config error,
-never a fidelity outcome. The next two (adequacy `inadequate`, compatibility
-`incomparable`) short-circuit to `state: 'not-evaluated'` with an empty
-`requirementResults` - an earlier blocking gate never lets an ordinary
-PASS/FAIL requirement set get fabricated past it. `adequacy` "partial" (some,
+**Current canonical evaluation order:** reference structural validation ->
+candidate structural validation -> Prompt 3 reference adequacy -> Prompt 4
+compatibility -> Prompt 5 binding-declaration validation and binding
+evaluation -> per-requirement candidate-evidence/coordinate-mapping checks
+-> per-requirement tolerance/relationship comparison -> overall result.
+Invalid reference/candidate structure, or invalid binding declarations when
+their gate is reached, returns `{ ok: false, reason }` - a caller/config
+error, never a fidelity outcome. Adequacy `inadequate` and compatibility
+`incomparable` short-circuit to `state: 'not-evaluated'` with an empty
+`requirementResults` before binding-declaration validation; bindings remain
+unassessed when either earlier gate blocks. An earlier blocking gate never
+lets an ordinary PASS/FAIL requirement set get fabricated past it.
+`adequacy` "partial" (some,
 but not all, authored requirements individually unavailable) does **not**
 block evaluation - it proceeds normally, and the individual unavailable
 reference-side requirements simply also report `unavailable` at the
