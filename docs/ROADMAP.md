@@ -1047,6 +1047,81 @@ does not establish application or session state. This maintenance version
 does not include v0.11 runtime diagnostics or v0.12 controlled state/session
 setup.
 
+## v0.10.2 — Kit Static-Evidence Compatibility Qualification
+
+Current status: planned as the earliest compatibility maintenance slot
+(`OBS-KIT-COMPAT`). The current release remains `0.10.1`. If that exact consumer
+qualifies without a product change, record `QUALIFIED_NO_CHANGE` and retain it;
+this reservation does not force a new release.
+
+Objective/problem: qualify the existing runtime/static correlation and bounded
+context surfaces against the Kit producer selected for the Kit `v1.15.0` and
+Lab `v0.10.0` source-analysis migration. Kit owns source parsing, normalized
+facts, graph evidence and retrieval. Observer owns browser evidence, runtime
+identity, comparison, frontend acceptance and explicit correlation. Its ordinary
+browser workflows remain usable without Kit or Lab.
+
+The [coordinated source-analysis migration](https://github.com/dailephd/my-dev-kit/blob/main/docs/ECOSYSTEM_COORDINATED_ROADMAP.md#79-kit-backed-lab-source-audits--2026-10-27)
+is `ECO-SOURCE-01`: Kit owns `KIT-FACTS-01` and Lab owns `LAB-KIT-01`. This
+Observer milestone qualifies its existing downstream boundary without creating
+another source-analysis implementation.
+
+Required capabilities and boundaries:
+
+- Keep the current caller-supplied static-candidate contract and canonical
+  correlation/export owners. A developer or coding agent obtains bounded Kit
+  evidence and supplies records at that boundary; Observer does not acquire a
+  language parser, source index or autonomous Kit invocation.
+- Freeze exact producer/consumer identities, contract/schema versions, fixture
+  identities and package or candidate digests. Readiness-verified candidates may
+  support coordinated development; distinguish those results from release-package
+  compatibility and never infer compatibility from the newest package version.
+- Qualify TypeScript, JavaScript, Python, Java and Kotlin static identities where
+  supplied, and Rust-containing source evidence as the extension proof. Preserve
+  the distinction between a static candidate and demonstrated runtime ownership;
+  the backend or source language alone does not identify the code responsible
+  for a rendered target.
+- Preserve `correlated`, `ambiguous` and `unavailable` outcomes, competing
+  candidates, source provenance, adequacy, omissions and truncation. Exercise
+  missing, unsupported, stale, wrong-snapshot and conflicting evidence. A check
+  that the current candidate contract cannot express remains an explicit gap
+  at the Kit-to-caller boundary, not an invented Observer guarantee.
+- Keep runtime targets, static candidates, reference regions, source snapshots
+  and filesystem paths distinct. Permit only the smallest additive compatibility
+  correction established necessary by qualification. Do not invent subject
+  equivalence or claim correlation proves compilation, tests or runtime causes.
+- The external large language model (LLM) planner and coding agent coordinate
+  tool selection and execution through workflow templates. Orchestrator supplies
+  instructions and readiness decisions. Lab may invoke a controlled Kit producer
+  internally for its selected source audits; this does not add an all-tool
+  executor or move source analysis into Observer.
+
+Dependencies/ecosystem/compatibility: the migration is the first workstream in
+Kit `v1.15.0` and Lab `v0.10.0`, preserving their existing `KIT-API-01` static
+interface/data-relationship and `LAB-EVIDENCE-01` executable-evidence scopes. Lab
+removes its duplicate analyzers at gate 5 only after gates 1–4 establish parity
+or approved corrections for TypeScript, JavaScript, Python, Java and Kotlin,
+with no unresolved regression. Gate 6 then proves Rust reuse before the migration
+is complete. Observer qualification
+is downstream and is not a prerequisite for initial Kit-to-Lab migration or
+cutover unless a shared contract consumed by Observer changes. Such a change
+requires qualification before its use by Observer. The full ecosystem later
+requires exact compatible bundles; neither this plan nor successful isolated
+qualification establishes that the newest four releases are compatible.
+
+Acceptance: retain browser-only operation, existing frontend acceptance and
+correlation behavior, and honest unsupported semantics. Record the exact tuple
+and positive/negative proof as `QUALIFIED_NO_CHANGE`,
+`QUALIFIED_WITH_BOUNDED_COMPATIBILITY_CHANGE`, or
+`BLOCKED_INCOMPATIBLE_PRODUCER`. Any required package release follows its separate
+release workflow. Ecosystem certification and activation remain separate.
+
+Exclusions: no shared analysis library or fifth repository, Lab audit-policy
+copy, parser for any Kit-supported language, new source-analysis engine,
+automatic tool-chain execution, new browser engine, state/session setup,
+performance metrics, or diagnostic capture. The existing v0.11, v0.12, v0.13
+and v0.14 assignments and their acceptance criteria remain unchanged.
+
 ## v0.11 — Bounded Runtime Diagnostics and Failure Evidence
 
 Current status: planned as `0.11.0` (OBS-DIAG-01).
