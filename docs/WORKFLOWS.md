@@ -17,9 +17,12 @@ finish only after PASS
 view
 ```
 
-Observer reports evidence and acceptance. The external human, coding agent, or
-orchestrator edits source; Observer never does. With no executable contract or
-approved reference, successful comparison yields `REVIEW_REQUIRED`, not PASS.
+Observer reports evidence and acceptance. The developer or coding agent edits
+source. The external large language model (LLM) planner and coding agent choose
+and execute tool steps through workflow templates; Orchestrator supplies
+instructions and readiness decisions without editing source or launching the
+other tools. With no executable contract or approved reference, successful
+comparison yields `REVIEW_REQUIRED`, not PASS.
 
 ## Current validation workflow
 

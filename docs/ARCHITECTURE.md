@@ -382,6 +382,12 @@ never adds a `sourceOwner`/`causedBy`-shaped field, preserving the
 architectural rule that runtime identity never silently becomes source
 ownership.
 
+The [Kit static-evidence qualification milestone](ROADMAP.md#v0102--kit-static-evidence-compatibility-qualification)
+governs subsequent compatibility with the selected Kit producer. It does not
+change this current caller-supplied boundary or establish compatibility between
+the newest ecosystem releases. Tool selection and execution remain external
+planner/coding-agent responsibilities.
+
 This layer is a programmatic export/correlation boundary only: `src/index.ts`
 re-exports its full type/function surface, but there is no new CLI command,
 no `src/artifacts/boundedAgentContext*` writer/reader, and no orchestrator or
